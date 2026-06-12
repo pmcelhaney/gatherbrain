@@ -110,7 +110,16 @@ export class App {
       return;
     }
 
-    this.appRoot.innerHTML = schema.fullPageTemplate;
+    const template = document.createElement('template');
+    template.innerHTML = schema.fullPageTemplate;
+    for (const el of template.content.querySelectorAll('*')) {
+      for (const attr of [...el.attributes]) {
+        if (attr.name.startsWith('on')) {
+          el.removeAttribute(attr.name);
+        }
+      }
+    }
+    this.appRoot.replaceChildren(template.content.cloneNode(true));
 
     const router: Router = {
       navigateTo,
