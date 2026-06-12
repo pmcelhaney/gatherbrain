@@ -200,9 +200,12 @@ export function parseQueryString(attr: string): EntityQuery {
         break;
       }
 
-      case 'limit':
-        query.limit = parseInt(value, 10);
+      case 'limit': {
+        const n = Number.parseInt(value, 10);
+        if (!Number.isFinite(n) || n < 0) break;
+        query.limit = n;
         break;
+      }
     }
   }
 
