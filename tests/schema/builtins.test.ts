@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { BUILTIN_SCHEMAS } from './builtins';
+import { BUILTIN_SCHEMAS } from '../../src/schema/builtins';
 
 describe('BUILTIN_SCHEMAS', () => {
   const schemaNames = BUILTIN_SCHEMAS.map((s) => s.name);

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { loadSchemasFromVault } from './loader';
-import { type VaultService } from '../store/vault';
+import { loadSchemasFromVault } from '../../src/schema/loader';
+import { type VaultService } from '../../src/store/vault';
 
 function makeMockFileHandle(content: string): FileSystemFileHandle {
   const file = { text: async () => content } as unknown as File;

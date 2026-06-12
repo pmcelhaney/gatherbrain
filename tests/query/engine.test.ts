@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { QueryEngine, parseQueryString } from './engine';
-import { EntityStore } from '../store/entity-store';
-import { type Entity } from '../types/index';
+import { QueryEngine, parseQueryString } from '../../src/query/engine';
+import { EntityStore } from '../../src/store/entity-store';
+import { type Entity } from '../../src/types/index';
 
 function makeStore(entities: Entity[]): EntityStore {
   const store = new EntityStore();

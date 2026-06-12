@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { slugify, capturedNoteFilePath } from './file-path';
-import { type Entity } from '../types/index';
+import { slugify, capturedNoteFilePath } from '../../src/store/file-path';
+import { type Entity } from '../../src/types/index';
 
 describe('slugify', () => {
   it('lowercases and hyphenates words', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { EntityStore } from './entity-store';
-import { type VaultService } from './vault';
+import { EntityStore } from '../../src/store/entity-store';
+import { type VaultService } from '../../src/store/vault';
 
 type FileEntry = { kind: 'file'; content: string };
 type DirEntry = { kind: 'directory'; children: FileTree };

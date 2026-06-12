@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseEntityFile, serializeEntityFile } from './parser';
+import { parseEntityFile, serializeEntityFile } from '../../src/store/parser';
 
 describe('parseEntityFile', () => {
   it('parses a file with frontmatter and body', () => {

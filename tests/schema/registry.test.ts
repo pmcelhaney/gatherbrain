@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { SchemaRegistry } from './registry';
-import { type Schema } from '../types/index';
+import { SchemaRegistry } from '../../src/schema/registry';
+import { type Schema } from '../../src/types/index';
 
 const testSchema: Schema = {
   name: 'meeting',
