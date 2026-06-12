@@ -192,9 +192,10 @@ export function parseQueryString(attr: string): EntityQuery {
 
       case 'sort': {
         const parts = value.trim().split(/\s+/);
+        const direction = parts[1] === 'desc' ? 'desc' : 'asc';
         query.sort = {
           field: parts[0],
-          direction: (parts[1] as 'asc' | 'desc') ?? 'asc',
+          direction,
         };
         break;
       }
