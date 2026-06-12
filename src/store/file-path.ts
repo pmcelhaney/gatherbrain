@@ -26,10 +26,8 @@ export function capturedNoteFilePath(
   const timestamp = `${year}-${month}-${day}-${hours}${minutes}${seconds}`;
   const slug = slugify(title);
 
-  const sourceFolder = sourceEntity.filePath
-    .split('/')
-    .slice(0, -1)
-    .join('/');
+  const sourceFolder = sourceEntity.filePath.split('/').slice(0, -1).join('/');
+  const fileName = `${timestamp}-${slug}.md`;
 
-  return `${sourceFolder}/${timestamp}-${slug}.md`;
+  return sourceFolder ? `${sourceFolder}/${fileName}` : fileName;
 }
