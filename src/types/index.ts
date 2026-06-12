@@ -37,8 +37,17 @@ export interface RelationListProperty extends BaseProperty {
 }
 
 /** Union of all supported property definition shapes. */
+export type PrimitivePropertyType = Exclude<
+  PropertyType,
+  'enum' | 'relation' | 'relation-list'
+>;
+
+export interface PrimitiveProperty extends BaseProperty {
+  type: PrimitivePropertyType;
+}
+
 export type PropertyDefinition =
-  | BaseProperty
+  | PrimitiveProperty
   | EnumProperty
   | RelationProperty
   | RelationListProperty;
