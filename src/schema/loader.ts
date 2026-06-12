@@ -43,7 +43,20 @@ export async function loadSchemasFromVault(
         continue;
       }
 
-      schemas.push(parsed as Schema);
+      const candidate = parsed as Partial<Schema>;
+      if (
+        typeof candidate.name !== 'string' ||
+        typeof candidate.folder !== 'string' ||
+        typeof candidate.properties !== 'object' ||
+        candidate.properties === null
+      ) {
+        console.warn(
+          `Schema file ${name} is missing required fields (name, folder, properties). Skipping.`,
+        );
+        continue;
+      }
+
+      schemas.push(candidate as Schema);
     } catch (err) {
       console.warn(`Failed to parse schema file ${name}:`, err);
     }
