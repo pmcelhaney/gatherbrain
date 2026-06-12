@@ -219,6 +219,10 @@ export class EntityStore {
     const fileHandle = await dir.getFileHandle(fileName);
     const writable = await fileHandle.createWritable();
 
+    if ('id' in patch || 'schema' in patch) {
+      throw new Error('Cannot update id or schema via updateFrontmatter.');
+    }
+
     const updatedFrontmatter = { ...existing.frontmatter, ...patch };
     const content = serializeEntityFile(updatedFrontmatter, existing.body);
 
