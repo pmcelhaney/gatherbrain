@@ -104,7 +104,9 @@ export class App {
     const schema = this.schemas.get(entity.schema);
 
     if (!schema || !schema.fullPageTemplate) {
-      this.appRoot.innerHTML = `<p>No template for schema: ${entity.schema}</p>`;
+      const p = document.createElement('p');
+      p.textContent = `No template for schema: ${entity.schema}`;
+      this.appRoot.replaceChildren(p);
       return;
     }
 
