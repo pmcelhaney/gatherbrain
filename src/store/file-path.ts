@@ -5,7 +5,7 @@ export function slugify(text: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/[^\p{Letter}\p{Number}\s-]/gu, '')
     .trim()
     .replace(/[\s]+/g, '-')
     .replace(/-+/g, '-');
