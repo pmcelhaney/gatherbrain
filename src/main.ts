@@ -32,8 +32,16 @@ function renderOpenVaultButton(): void {
   button.type = 'button';
   button.textContent = 'Open Vault';
   button.addEventListener('click', async () => {
-    await vaultService.open();
-    renderVaultName(vaultService.getHandle().name);
+    try {
+      await vaultService.open();
+      renderVaultName(vaultService.getHandle().name);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return;
+      }
+
+      throw err;
+    }
   });
 
   app.append(button);
