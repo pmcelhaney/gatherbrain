@@ -89,7 +89,9 @@ export class App {
     const entity = this.store.getById(id);
 
     if (!entity) {
-      this.appRoot.innerHTML = `<p>Not found: ${id}</p>`;
+      const p = document.createElement('p');
+      p.textContent = `Not found: ${id}`;
+      this.appRoot.replaceChildren(p);
       return;
     }
 
