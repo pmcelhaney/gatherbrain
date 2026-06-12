@@ -82,7 +82,13 @@ export class App {
   }
 
   private renderHome(): void {
-    this.appRoot.innerHTML = `<h1>GatherBrain</h1><p>Vault: ${this.vault.getHandle().name}</p>`;
+    const h1 = document.createElement('h1');
+    h1.textContent = 'GatherBrain';
+
+    const p = document.createElement('p');
+    p.textContent = `Vault: ${this.vault.getHandle().name}`;
+
+    this.appRoot.replaceChildren(h1, p);
   }
 
   private renderEntityPage(id: string): void {
