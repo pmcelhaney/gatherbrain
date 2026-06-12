@@ -6,7 +6,7 @@ export class VaultService {
   handle: FileSystemDirectoryHandle | null = null;
 
   async open(): Promise<void> {
-    const handle = await window.showDirectoryPicker();
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
     this.handle = handle;
     await set(VAULT_HANDLE_KEY, handle);
   }
