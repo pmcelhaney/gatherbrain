@@ -91,6 +91,10 @@ export class EntityStore {
           body,
         };
 
+        if (this.index.has(id)) {
+          console.warn(`Skipping ${path}: duplicate id '${id}'.`);
+          continue;
+        }
         this.index.set(id, entity);
       } catch (err) {
         console.warn(`Failed to load entity from ${path}:`, err);
