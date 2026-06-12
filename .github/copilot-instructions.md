@@ -8,7 +8,7 @@ Implement features **one user story at a time**. Keep each change focused to a s
 
 ## User stories
 
-User stories live in `github/user-stories/`. Each file describes a feature, its requirements, and acceptance criteria. Stories provide useful context even after they are implemented — **do not delete story files**.
+User stories live in `.github/user-stories/`. Each file describes a feature, its requirements, and acceptance criteria. Stories provide useful context even after they are implemented — **do not delete story files**.
 
 ## Required workflow
 
@@ -34,7 +34,7 @@ User stories live in `github/user-stories/`. Each file describes a feature, its 
 Every PR description must include a section titled exactly `## Manual acceptance tests` with 3–6 checkboxes. Each checkbox must describe an observable behavior (not an implementation detail). When creating the PR, leave all boxes unchecked — the reviewer checks each one after manually verifying the behavior. All boxes must be checked before the PR can be merged.
 
 - Cover the main success path, at least one edge case, and one regression check where applicable.
-- Exception: if a PR only adds files under `github/` or `.github/`, this section may be omitted.
+- Exception: if a PR only adds files under `.github/`, this section may be omitted.
 
 ## Quality bar for every change
 
