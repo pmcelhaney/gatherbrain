@@ -247,13 +247,17 @@ export async function updateFactTypeAtIndex(options = {}) {
   }
 
   const fact = await factAtIndex({ index, notesDirectory });
-  const markdown = await readFile(fact.path, 'utf8');
-  await writeFile(fact.path, markdownWithFactType(markdown, type));
+  await updateFactType(fact.path, type);
 
   return {
     ...fact,
     type
   };
+}
+
+export async function updateFactType(filePath, type) {
+  const markdown = await readFile(filePath, 'utf8');
+  await writeFile(filePath, markdownWithFactType(markdown, type));
 }
 
 export async function saveFact(text, options = {}) {

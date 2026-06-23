@@ -9,6 +9,7 @@ import {
   completeEntry,
   createReadlineCompleter,
   createPromptState,
+  filterNotesForLens,
   handleEntry,
   openEditor,
   renderTui
@@ -116,6 +117,81 @@ test('colors non-fact note types in the TUI', () => {
   );
 });
 
+test('filters notes for the todo lens', () => {
+  assert.deepEqual(
+    filterNotesForLens([
+      { type: 'fact', text: 'Ignore me.' },
+      { type: 'todo', text: 'Do this.' },
+      { type: 'waiting', text: 'Waiting on this.' },
+      { type: 'in progress', text: 'Doing this.' }
+    ], 'todo'),
+    [
+      { type: 'todo', text: 'Do this.' },
+      { type: 'waiting', text: 'Waiting on this.' },
+      { type: 'in progress', text: 'Doing this.' }
+    ]
+  );
+});
+
+test('shows the active lens in the TUI header', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const state = createPromptState({ appDirectory, notesDirectory });
+  state.activeLens = 'todo';
+
+  assert.deepEqual(
+    buildTuiLines({
+      state,
+      notes: [{ type: 'todo', text: 'Do this.' }],
+      rows: 4,
+      columns: 80
+    }),
+    [
+      'Context: notes | Lens: todo',
+      '1. todo Do this.'
+    ]
+  );
+});
+
+test('/l switches lenses', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+
+    assert.deepEqual(await handleEntry('/l todo', state), {
+      action: 'continue',
+      message: 'lens todo'
+    });
+    assert.equal(state.activeLens, 'todo');
+    assert.deepEqual(await handleEntry('/l all', state), {
+      action: 'continue',
+      message: 'lens all'
+    });
+    assert.equal(state.activeLens, 'all');
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('/l reports unknown lenses', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+
+    assert.deepEqual(await handleEntry('/l someday', state), {
+      action: 'continue',
+      message: 'unknown lens someday'
+    });
+    assert.equal(state.activeLens, 'all');
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('type command changes a listed item type', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const notesDirectory = path.join(appDirectory, 'notes');
@@ -147,6 +223,41 @@ test('type command changes a listed item type', async () => {
     assert.equal(
       thirdNote,
       '---\ntype: foo\n---\n\nThird fact.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('type command targets the active lens list', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const todoPath = path.join(notesDirectory, '2026-06-23T09-06-07.012-04-00.md');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+    state.activeLens = 'todo';
+    await mkdir(notesDirectory, { recursive: true });
+    await writeFile(
+      path.join(notesDirectory, '2026-06-23T09-04-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+    await writeFile(
+      path.join(notesDirectory, '2026-06-23T09-05-07.012-04-00.md'),
+      '---\ntype: waiting\n---\n\nWaiting item.\n'
+    );
+    await writeFile(
+      todoPath,
+      '---\ntype: todo\n---\n\nTodo item.\n'
+    );
+
+    assert.deepEqual(await handleEntry(':done 2', state), {
+      action: 'continue',
+      message: 'set item 2 type to done'
+    });
+    assert.equal(
+      await readFile(todoPath, 'utf8'),
+      '---\ntype: done\n---\n\nTodo item.\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -197,6 +308,38 @@ test('/e command returns an edit action for a listed item', async () => {
         itemNumber: 2
       }
     );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('/e command targets the active lens list', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const todoPath = path.join(notesDirectory, '2026-06-23T09-06-07.012-04-00.md');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+    state.activeLens = 'todo';
+    await mkdir(notesDirectory, { recursive: true });
+    await writeFile(
+      path.join(notesDirectory, '2026-06-23T09-04-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+    await writeFile(
+      path.join(notesDirectory, '2026-06-23T09-05-07.012-04-00.md'),
+      '---\ntype: waiting\n---\n\nWaiting item.\n'
+    );
+    await writeFile(
+      todoPath,
+      '---\ntype: todo\n---\n\nTodo item.\n'
+    );
+
+    assert.deepEqual(await handleEntry('/e 2', state), {
+      action: 'edit',
+      filePath: todoPath,
+      itemNumber: 2
+    });
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

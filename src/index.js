@@ -7,11 +7,10 @@ import readline from 'node:readline/promises';
 import { env as processEnv, stdin as input, stdout as output } from 'node:process';
 import {
   ensureContextDirectory,
-  factAtIndex,
   listContextDirectories,
   listFacts,
   saveFact,
-  updateFactTypeAtIndex
+  updateFactType
 } from './facts.js';
 
 const defaultAppDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -20,6 +19,9 @@ const quitCommands = new Set([':q', ':quit', ':exit']);
 const ansiTypeColor = '\x1b[36m';
 const ansiResetColor = '\x1b[39m';
 const ansiCodePattern = /\x1b\[[0-9;]*m/gu;
+const defaultLens = 'all';
+const lensNames = new Set([defaultLens, 'todo']);
+const todoLensTypes = new Set(['todo', 'waiting', 'in progress', 'fact']);
 
 export function createPromptState(options = {}) {
   const appDirectory = options.appDirectory ?? defaultAppDirectory;
@@ -29,6 +31,7 @@ export function createPromptState(options = {}) {
     appDirectory,
     notesDirectory,
     activeNotesDirectory: notesDirectory,
+    activeLens: defaultLens,
     statusMessage: ''
   };
 }
@@ -40,6 +43,38 @@ export function currentContextName(state) {
   );
 
   return relativeContext.length > 0 ? relativeContext : path.basename(state.notesDirectory);
+}
+
+function currentLensName(state) {
+  return state.activeLens ?? defaultLens;
+}
+
+export function filterNotesForLens(notes, lens = defaultLens) {
+  if (lens === 'todo') {
+    return notes.filter((note) => todoLensTypes.has(note.type));
+  }
+
+  return notes;
+}
+
+async function visibleFactsForState(state) {
+  const facts = await listFacts({ notesDirectory: state.activeNotesDirectory });
+  return filterNotesForLens(facts, currentLensName(state));
+}
+
+async function visibleFactAtIndex(state, index) {
+  if (!Number.isInteger(index) || index < 1) {
+    throw new Error('item number must be a positive integer');
+  }
+
+  const facts = await visibleFactsForState(state);
+  const fact = facts[index - 1];
+
+  if (!fact) {
+    throw new Error(`item ${index} does not exist`);
+  }
+
+  return fact;
 }
 
 function visibleLength(line) {
@@ -129,8 +164,10 @@ export function buildTuiLines(options = {}) {
   } = options;
   const visibleRows = Math.max(rows - 1, 1);
   const noteRows = Math.max(visibleRows - 1, 0);
+  const lens = currentLensName(state);
+  const lensText = lens === defaultLens ? '' : ` | Lens: ${lens}`;
   const status = state.statusMessage ? ` | ${state.statusMessage}` : '';
-  const header = fitLine(`Context: ${currentContextName(state)}${status}`, columns);
+  const header = fitLine(`Context: ${currentContextName(state)}${lensText}${status}`, columns);
   let bodyLines = noteLinesForDisplay(notes, { includeColor });
 
   if (bodyLines.length > noteRows) {
@@ -273,16 +310,45 @@ export async function handleEntry(entry, state) {
     };
   }
 
+  const lensSwitch = command.match(/^\/l(?:\s+(.*))?$/u);
+
+  if (lensSwitch) {
+    const lensName = lensSwitch[1]?.trim() ?? '';
+
+    if (lensName.length === 0) {
+      state.statusMessage = 'usage: /l <lens>';
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
+
+    if (!lensNames.has(lensName)) {
+      state.statusMessage = `unknown lens ${lensName}`;
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
+
+    state.activeLens = lensName;
+    state.statusMessage = '';
+
+    return {
+      action: 'continue',
+      message: `lens ${lensName}`
+    };
+  }
+
   const editCommand = command.match(/^\/e\s+([1-9]\d*)$/u);
 
   if (editCommand) {
     const [, itemNumber] = editCommand;
 
     try {
-      const fact = await factAtIndex({
-        index: Number(itemNumber),
-        notesDirectory: state.activeNotesDirectory
-      });
+      const fact = await visibleFactAtIndex(state, Number(itemNumber));
       state.statusMessage = '';
 
       return {
@@ -306,11 +372,8 @@ export async function handleEntry(entry, state) {
     const [, type, itemNumber] = typeChange;
 
     try {
-      await updateFactTypeAtIndex({
-        index: Number(itemNumber),
-        notesDirectory: state.activeNotesDirectory,
-        type
-      });
+      const fact = await visibleFactAtIndex(state, Number(itemNumber));
+      await updateFactType(fact.path, type);
     } catch (error) {
       state.statusMessage = error.message;
 
@@ -361,7 +424,7 @@ async function main() {
 
   try {
     while (true) {
-      const notes = await listFacts({ notesDirectory: state.activeNotesDirectory });
+      const notes = await visibleFactsForState(state);
       output.write(renderTui({
         state,
         notes,
