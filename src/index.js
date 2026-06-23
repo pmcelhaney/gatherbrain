@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
+import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import readline from 'node:readline/promises';
-import { stdin as input, stdout as output } from 'node:process';
+import { env as processEnv, stdin as input, stdout as output } from 'node:process';
 import {
   ensureContextDirectory,
+  factAtIndex,
   listContextDirectories,
   listFacts,
   saveFact,
@@ -15,6 +17,9 @@ import {
 const defaultAppDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const quitCommands = new Set([':q', ':quit', ':exit']);
+const ansiTypeColor = '\x1b[36m';
+const ansiResetColor = '\x1b[39m';
+const ansiCodePattern = /\x1b\[[0-9;]*m/gu;
 
 export function createPromptState(options = {}) {
   const appDirectory = options.appDirectory ?? defaultAppDirectory;
@@ -37,12 +42,41 @@ export function currentContextName(state) {
   return relativeContext.length > 0 ? relativeContext : path.basename(state.notesDirectory);
 }
 
+function visibleLength(line) {
+  return line.replace(ansiCodePattern, '').length;
+}
+
+function truncateVisible(line, columns) {
+  let result = '';
+  let visible = 0;
+
+  for (let index = 0; index < line.length && visible < columns;) {
+    const ansiCode = line.slice(index).match(/^\x1b\[[0-9;]*m/u);
+
+    if (ansiCode) {
+      result += ansiCode[0];
+      index += ansiCode[0].length;
+      continue;
+    }
+
+    result += line[index];
+    index += 1;
+    visible += 1;
+  }
+
+  if (result.lastIndexOf(ansiTypeColor) > result.lastIndexOf(ansiResetColor)) {
+    result += ansiResetColor;
+  }
+
+  return result;
+}
+
 function fitLine(line, columns) {
   if (columns <= 0) {
     return '';
   }
 
-  if (line.length <= columns) {
+  if (visibleLength(line) <= columns) {
     return line;
   }
 
@@ -50,10 +84,24 @@ function fitLine(line, columns) {
     return '.'.repeat(columns);
   }
 
-  return `${line.slice(0, columns - 3)}...`;
+  return `${truncateVisible(line, columns - 3)}...`;
 }
 
-function noteLinesForDisplay(notes) {
+function displayType(type, includeColor) {
+  if (type === 'fact') {
+    return '';
+  }
+
+  if (includeColor) {
+    return `${ansiTypeColor}${type}${ansiResetColor} `;
+  }
+
+  return `${type} `;
+}
+
+function noteLinesForDisplay(notes, options = {}) {
+  const { includeColor = false } = options;
+
   if (notes.length === 0) {
     return ['No notes yet.'];
   }
@@ -61,8 +109,9 @@ function noteLinesForDisplay(notes) {
   return notes.flatMap((note, noteIndex) => {
     const lines = note.text.split(/\r?\n/u);
     const displayLines = lines.length > 0 ? lines : [''];
-    const prefix = `${noteIndex + 1}. [${note.type ?? 'note'}] `;
-    const continuationPrefix = ' '.repeat(prefix.length);
+    const type = note.type ?? 'note';
+    const prefix = `${noteIndex + 1}. ${displayType(type, includeColor)}`;
+    const continuationPrefix = ' '.repeat(visibleLength(prefix));
 
     return displayLines.map((line, index) => (
       index === 0 ? `${prefix}${line}` : `${continuationPrefix}${line}`
@@ -75,13 +124,14 @@ export function buildTuiLines(options = {}) {
     state,
     notes = [],
     rows = 24,
-    columns = 80
+    columns = 80,
+    includeColor = false
   } = options;
   const visibleRows = Math.max(rows - 1, 1);
   const noteRows = Math.max(visibleRows - 1, 0);
   const status = state.statusMessage ? ` | ${state.statusMessage}` : '';
   const header = fitLine(`Context: ${currentContextName(state)}${status}`, columns);
-  let bodyLines = noteLinesForDisplay(notes);
+  let bodyLines = noteLinesForDisplay(notes, { includeColor });
 
   if (bodyLines.length > noteRows) {
     const shownRows = Math.max(noteRows - 1, 0);
@@ -103,7 +153,10 @@ export function renderTui(options = {}) {
     rows = 24,
     includeAnsi = true
   } = options;
-  const lines = buildTuiLines(options);
+  const lines = buildTuiLines({
+    ...options,
+    includeColor: includeAnsi
+  });
   const screen = lines.join('\n');
 
   if (!includeAnsi) {
@@ -139,6 +192,36 @@ export async function completeEntry(line, state) {
 export function createReadlineCompleter(state) {
   return (line) => completeEntry(line, state)
     .catch(() => [[], line]);
+}
+
+export function openEditor(filePath, options = {}) {
+  const {
+    editor = processEnv.EDITOR,
+    spawnProcess = spawn
+  } = options;
+
+  if (!editor) {
+    return Promise.reject(new Error('EDITOR is not set'));
+  }
+
+  return new Promise((resolve, reject) => {
+    const child = spawnProcess(editor, [filePath], {
+      shell: true,
+      stdio: 'inherit'
+    });
+
+    child.on('error', reject);
+    child.on('exit', (code, signal) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(new Error(signal
+        ? `${editor} exited with signal ${signal}`
+        : `${editor} exited with code ${code}`));
+    });
+  });
 }
 
 export async function handleEntry(entry, state) {
@@ -188,6 +271,33 @@ export async function handleEntry(entry, state) {
       action: 'continue',
       message
     };
+  }
+
+  const editCommand = command.match(/^\/e\s+([1-9]\d*)$/u);
+
+  if (editCommand) {
+    const [, itemNumber] = editCommand;
+
+    try {
+      const fact = await factAtIndex({
+        index: Number(itemNumber),
+        notesDirectory: state.activeNotesDirectory
+      });
+      state.statusMessage = '';
+
+      return {
+        action: 'edit',
+        filePath: fact.path,
+        itemNumber: Number(itemNumber)
+      };
+    } catch (error) {
+      state.statusMessage = error.message;
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
   }
 
   const typeChange = command.match(/^:([A-Za-z][A-Za-z0-9_-]*)\s+([1-9]\d*)$/u);
@@ -265,6 +375,27 @@ async function main() {
 
       if (result.action === 'quit') {
         break;
+      }
+
+      if (result.action === 'edit') {
+        terminal.pause();
+
+        if (useAlternateScreen) {
+          output.write('\x1b[?1049l');
+        }
+
+        try {
+          await openEditor(result.filePath);
+          state.statusMessage = `edited item ${result.itemNumber}`;
+        } catch (error) {
+          state.statusMessage = error.message;
+        } finally {
+          if (useAlternateScreen) {
+            output.write('\x1b[?1049h');
+          }
+
+          terminal.resume();
+        }
       }
     }
   } finally {

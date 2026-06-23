@@ -211,11 +211,10 @@ export async function listContextDirectories(options = {}) {
   return contexts.sort();
 }
 
-export async function updateFactTypeAtIndex(options = {}) {
+export async function factAtIndex(options = {}) {
   const {
     index,
-    notesDirectory,
-    type
+    notesDirectory
   } = options;
 
   if (!Number.isInteger(index) || index < 1) {
@@ -226,10 +225,6 @@ export async function updateFactTypeAtIndex(options = {}) {
     throw new Error('notesDirectory is required');
   }
 
-  if (!type) {
-    throw new Error('type is required');
-  }
-
   const facts = await listFacts({ notesDirectory });
   const fact = facts[index - 1];
 
@@ -237,6 +232,21 @@ export async function updateFactTypeAtIndex(options = {}) {
     throw new Error(`item ${index} does not exist`);
   }
 
+  return fact;
+}
+
+export async function updateFactTypeAtIndex(options = {}) {
+  const {
+    index,
+    notesDirectory,
+    type
+  } = options;
+
+  if (!type) {
+    throw new Error('type is required');
+  }
+
+  const fact = await factAtIndex({ index, notesDirectory });
   const markdown = await readFile(fact.path, 'utf8');
   await writeFile(fact.path, markdownWithFactType(markdown, type));
 

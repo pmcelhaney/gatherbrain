@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { EventEmitter } from 'node:events';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -9,6 +10,7 @@ import {
   createReadlineCompleter,
   createPromptState,
   handleEntry,
+  openEditor,
   renderTui
 } from '../src/index.js';
 
@@ -88,10 +90,29 @@ test('builds TUI lines with the current context and note contents', () => {
     }),
     [
       'Context: my-cool-project',
-      '1. [fact] First fact.',
-      '2. [task] Second fact.',
-      '          with detail.'
+      '1. First fact.',
+      '2. task Second fact.',
+      '        with detail.'
     ]
+  );
+});
+
+test('colors non-fact note types in the TUI', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const state = createPromptState({ appDirectory, notesDirectory });
+
+  assert.equal(
+    renderTui({
+      state,
+      notes: [
+        { type: 'fact', text: 'First fact.' },
+        { type: 'task', text: 'Second fact.' }
+      ],
+      rows: 5,
+      columns: 80
+    }),
+    '\x1b[2J\x1b[HContext: notes\n1. First fact.\n2. \x1b[36mtask\x1b[39m Second fact.\x1b[5;1H'
   );
 });
 
@@ -149,6 +170,89 @@ test('type command reports missing item', async () => {
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
+});
+
+test('/e command returns an edit action for a listed item', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const secondNotePath = path.join(notesDirectory, '2026-06-23T09-05-07.012-04-00.md');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+    await mkdir(notesDirectory, { recursive: true });
+    await writeFile(
+      path.join(notesDirectory, '2026-06-23T09-04-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+    await writeFile(
+      secondNotePath,
+      '---\ntype: fact\n---\n\nSecond fact.\n'
+    );
+
+    assert.deepEqual(
+      await handleEntry('/e 2', state),
+      {
+        action: 'edit',
+        filePath: secondNotePath,
+        itemNumber: 2
+      }
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('/e command reports missing item', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+
+    assert.deepEqual(
+      await handleEntry('/e 3', state),
+      {
+        action: 'continue',
+        message: 'item 3 does not exist'
+      }
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('opens a note in the configured editor', async () => {
+  const calls = [];
+  const child = new EventEmitter();
+
+  const editorPromise = openEditor('/tmp/note.md', {
+    editor: 'test-editor',
+    spawnProcess: (command, args, options) => {
+      calls.push({ command, args, options });
+      return child;
+    }
+  });
+
+  child.emit('exit', 0);
+  await editorPromise;
+
+  assert.deepEqual(calls, [
+    {
+      command: 'test-editor',
+      args: ['/tmp/note.md'],
+      options: {
+        shell: true,
+        stdio: 'inherit'
+      }
+    }
+  ]);
+});
+
+test('reports missing EDITOR when opening a note', async () => {
+  await assert.rejects(
+    openEditor('/tmp/note.md', { editor: '' }),
+    /EDITOR is not set/
+  );
 });
 
 test('renders the prompt target on the bottom row', () => {

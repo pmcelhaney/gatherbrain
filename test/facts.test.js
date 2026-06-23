@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildFactMarkdown,
+  factAtIndex,
   factTypeFromMarkdown,
   factTextFromMarkdown,
   listContextDirectories,
@@ -157,6 +158,31 @@ test('updates a fact type by one-based index', async () => {
     assert.equal(
       await readFile(targetPath, 'utf8'),
       '---\ntype: task\n---\n\nSecond fact.\n'
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('gets a fact by one-based index', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
+
+  try {
+    await writeFile(
+      path.join(directory, '2026-06-23T09-04-07.012-04-00.md'),
+      buildFactMarkdown('First fact.')
+    );
+    await writeFile(
+      path.join(directory, '2026-06-23T09-05-07.012-04-00.md'),
+      buildFactMarkdown('Second fact.')
+    );
+
+    assert.equal(
+      (await factAtIndex({
+        index: 2,
+        notesDirectory: directory
+      })).text,
+      'Second fact.'
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
