@@ -135,35 +135,64 @@ export async function listFacts(options = {}) {
     throw new Error('notesDirectory is required');
   }
 
-  let entries;
+  const filenames = [];
 
-  try {
-    entries = await readdir(notesDirectory, { withFileTypes: true });
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      return [];
+  async function visit(directory, relativeDirectory = '') {
+    let entries;
+
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        return;
+      }
+
+      throw error;
     }
 
-    throw error;
+    const sortedEntries = entries.toSorted((left, right) => left.name.localeCompare(right.name));
+
+    await Promise.all(
+      sortedEntries.map(async (entry) => {
+        const relativePath = relativeDirectory
+          ? path.join(relativeDirectory, entry.name)
+          : entry.name;
+        const filePath = path.join(directory, entry.name);
+
+        if (entry.isDirectory()) {
+          await visit(filePath, relativePath);
+          return;
+        }
+
+        if (entry.isFile() && path.extname(entry.name) === '.md') {
+          filenames.push(relativePath);
+        }
+      })
+    );
   }
 
-  const filenames = entries
-    .filter((entry) => entry.isFile() && path.extname(entry.name) === '.md')
-    .map((entry) => entry.name)
-    .sort();
+  await visit(notesDirectory);
 
   return Promise.all(
-    filenames.map(async (filename) => {
-      const filePath = path.join(notesDirectory, filename);
-      const markdown = await readFile(filePath, 'utf8');
+    filenames
+      .sort((left, right) => {
+        const filenameComparison = path.basename(left).localeCompare(path.basename(right));
 
-      return {
-        filename,
-        path: filePath,
-        type: factTypeFromMarkdown(markdown) ?? 'note',
-        text: factTextFromMarkdown(markdown)
-      };
-    })
+        return filenameComparison === 0
+          ? left.localeCompare(right)
+          : filenameComparison;
+      })
+      .map(async (filename) => {
+        const filePath = path.join(notesDirectory, filename);
+        const markdown = await readFile(filePath, 'utf8');
+
+        return {
+          filename,
+          path: filePath,
+          type: factTypeFromMarkdown(markdown) ?? 'note',
+          text: factTextFromMarkdown(markdown)
+        };
+      })
   );
 }
 

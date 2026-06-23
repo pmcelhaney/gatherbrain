@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  buildPagedNoteLines,
   buildTuiLines,
   completeEntry,
   createReadlineCompleter,
@@ -12,6 +13,7 @@ import {
   filterNotesForLens,
   handleEntry,
   openEditor,
+  pageNavigationForNotes,
   renderTui
 } from '../src/index.js';
 
@@ -91,10 +93,119 @@ test('builds TUI lines with the current context and note contents', () => {
     }),
     [
       'Context: my-cool-project',
-      '1. First fact.',
-      '2. task Second fact.',
-      '        with detail.'
+      ' 1. First fact.',
+      ' 2. task Second fact.',
+      '    with detail.'
     ]
+  );
+});
+
+test('wraps note lines and indents continuations by four spaces', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const state = createPromptState({ appDirectory, notesDirectory });
+
+  assert.deepEqual(
+    buildTuiLines({
+      state,
+      notes: [
+        { type: 'fact', text: 'This is a long note body.' },
+        { type: 'fact', text: 'Tenth item.' },
+        { type: 'fact', text: 'Third item.' },
+        { type: 'fact', text: 'Fourth item.' },
+        { type: 'fact', text: 'Fifth item.' },
+        { type: 'fact', text: 'Sixth item.' },
+        { type: 'fact', text: 'Seventh item.' },
+        { type: 'fact', text: 'Eighth item.' },
+        { type: 'fact', text: 'Ninth item.' },
+        { type: 'fact', text: 'Tenth item.' }
+      ],
+      rows: 20,
+      columns: 15
+    }).slice(0, 4),
+    [
+      'Context: notes',
+      ' 1. This is a',
+      '    long note',
+      '    body.'
+    ]
+  );
+});
+
+test('wraps long words only when no word boundary fits', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const state = createPromptState({ appDirectory, notesDirectory });
+
+  assert.deepEqual(
+    buildTuiLines({
+      state,
+      notes: [{ type: 'fact', text: 'supercalifragilistic' }],
+      rows: 10,
+      columns: 15
+    }),
+    [
+      'Context: notes',
+      ' 1. supercalifr',
+      '    agilistic'
+    ]
+  );
+});
+
+test('paginates by complete items and shows an ellipsis', () => {
+  assert.deepEqual(
+    buildPagedNoteLines({
+      notes: [
+        { type: 'fact', text: 'First item wraps.' },
+        { type: 'fact', text: 'Second item wraps.' },
+        { type: 'fact', text: 'Third item.' }
+      ],
+      rows: 5,
+      columns: 12
+    }),
+    {
+      lines: [
+        ' 1. First',
+        '    item',
+        '    wraps.',
+        '...'
+      ],
+      nextPageStartIndex: 1,
+      previousPageStartIndex: null
+    }
+  );
+});
+
+test('navigates note pages', () => {
+  const notes = [
+    { type: 'fact', text: 'First item wraps.' },
+    { type: 'fact', text: 'Second item wraps.' },
+    { type: 'fact', text: 'Third item.' }
+  ];
+
+  assert.deepEqual(
+    pageNavigationForNotes({
+      notes,
+      pageStartIndex: 0,
+      rows: 4,
+      columns: 12
+    }),
+    {
+      nextPageStartIndex: 1,
+      previousPageStartIndex: null
+    }
+  );
+  assert.deepEqual(
+    pageNavigationForNotes({
+      notes,
+      pageStartIndex: 1,
+      rows: 4,
+      columns: 12
+    }),
+    {
+      nextPageStartIndex: 2,
+      previousPageStartIndex: 0
+    }
   );
 });
 
@@ -113,7 +224,7 @@ test('colors non-fact note types in the TUI', () => {
       rows: 5,
       columns: 80
     }),
-    '\x1b[2J\x1b[HContext: notes\n1. First fact.\n2. \x1b[36mtask\x1b[39m Second fact.\x1b[5;1H'
+    '\x1b[2J\x1b[HContext: notes\n 1. First fact.\n 2. \x1b[36mtask\x1b[39m Second fact.\x1b[5;1H'
   );
 });
 
@@ -126,6 +237,7 @@ test('filters notes for the todo lens', () => {
       { type: 'in progress', text: 'Doing this.' }
     ], 'todo'),
     [
+      { type: 'fact', text: 'Ignore me.' },
       { type: 'todo', text: 'Do this.' },
       { type: 'waiting', text: 'Waiting on this.' },
       { type: 'in progress', text: 'Doing this.' }
@@ -148,7 +260,7 @@ test('shows the active lens in the TUI header', () => {
     }),
     [
       'Context: notes | Lens: todo',
-      '1. todo Do this.'
+      ' 1. todo Do this.'
     ]
   );
 });
@@ -232,7 +344,7 @@ test('type command changes a listed item type', async () => {
 test('type command targets the active lens list', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const notesDirectory = path.join(appDirectory, 'notes');
-  const todoPath = path.join(notesDirectory, '2026-06-23T09-06-07.012-04-00.md');
+  const waitingPath = path.join(notesDirectory, '2026-06-23T09-05-07.012-04-00.md');
 
   try {
     const state = createPromptState({ appDirectory, notesDirectory });
@@ -247,7 +359,7 @@ test('type command targets the active lens list', async () => {
       '---\ntype: waiting\n---\n\nWaiting item.\n'
     );
     await writeFile(
-      todoPath,
+      path.join(notesDirectory, '2026-06-23T09-06-07.012-04-00.md'),
       '---\ntype: todo\n---\n\nTodo item.\n'
     );
 
@@ -256,8 +368,8 @@ test('type command targets the active lens list', async () => {
       message: 'set item 2 type to done'
     });
     assert.equal(
-      await readFile(todoPath, 'utf8'),
-      '---\ntype: done\n---\n\nTodo item.\n'
+      await readFile(waitingPath, 'utf8'),
+      '---\ntype: done\n---\n\nWaiting item.\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -316,7 +428,7 @@ test('/e command returns an edit action for a listed item', async () => {
 test('/e command targets the active lens list', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const notesDirectory = path.join(appDirectory, 'notes');
-  const todoPath = path.join(notesDirectory, '2026-06-23T09-06-07.012-04-00.md');
+  const waitingPath = path.join(notesDirectory, '2026-06-23T09-05-07.012-04-00.md');
 
   try {
     const state = createPromptState({ appDirectory, notesDirectory });
@@ -331,13 +443,13 @@ test('/e command targets the active lens list', async () => {
       '---\ntype: waiting\n---\n\nWaiting item.\n'
     );
     await writeFile(
-      todoPath,
+      path.join(notesDirectory, '2026-06-23T09-06-07.012-04-00.md'),
       '---\ntype: todo\n---\n\nTodo item.\n'
     );
 
     assert.deepEqual(await handleEntry('/e 2', state), {
       action: 'edit',
-      filePath: todoPath,
+      filePath: waitingPath,
       itemNumber: 2
     });
   } finally {

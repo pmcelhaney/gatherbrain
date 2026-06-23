@@ -136,6 +136,41 @@ test('lists facts in a notes directory', async () => {
   }
 });
 
+test('lists facts in nested notes directories', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
+
+  try {
+    await mkdir(path.join(directory, 'project'), { recursive: true });
+    await writeFile(
+      path.join(directory, '2026-06-23T09-05-07.012-04-00.md'),
+      buildFactMarkdown('Second fact.')
+    );
+    await writeFile(
+      path.join(directory, 'project', '2026-06-23T09-04-07.012-04-00.md'),
+      buildFactMarkdown('First fact.')
+    );
+
+    assert.deepEqual(
+      (await listFacts({ notesDirectory: directory })).map((fact) => ({
+        filename: fact.filename,
+        text: fact.text
+      })),
+      [
+        {
+          filename: path.join('project', '2026-06-23T09-04-07.012-04-00.md'),
+          text: 'First fact.'
+        },
+        {
+          filename: '2026-06-23T09-05-07.012-04-00.md',
+          text: 'Second fact.'
+        }
+      ]
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('updates a fact type by one-based index', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
   const targetPath = path.join(directory, '2026-06-23T09-05-07.012-04-00.md');

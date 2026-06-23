@@ -3,6 +3,7 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
+import { emitKeypressEvents } from 'node:readline';
 import readline from 'node:readline/promises';
 import { env as processEnv, stdin as input, stdout as output } from 'node:process';
 import {
@@ -32,6 +33,7 @@ export function createPromptState(options = {}) {
     notesDirectory,
     activeNotesDirectory: notesDirectory,
     activeLens: defaultLens,
+    pageStartIndex: 0,
     statusMessage: ''
   };
 }
@@ -122,6 +124,44 @@ function fitLine(line, columns) {
   return `${truncateVisible(line, columns - 3)}...`;
 }
 
+function wrapPlainText(text, columns) {
+  if (columns <= 0) {
+    return [text];
+  }
+
+  const remainingText = text.trim();
+
+  if (remainingText.length === 0) {
+    return [''];
+  }
+
+  const lines = [];
+  let remaining = remainingText;
+
+  while (remaining.length > columns) {
+    let breakIndex = -1;
+
+    for (let index = columns; index > 0; index -= 1) {
+      if (/\s/u.test(remaining[index])) {
+        breakIndex = index;
+        break;
+      }
+    }
+
+    if (breakIndex === -1) {
+      lines.push(remaining.slice(0, columns));
+      remaining = remaining.slice(columns).trimStart();
+      continue;
+    }
+
+    lines.push(remaining.slice(0, breakIndex));
+    remaining = remaining.slice(breakIndex + 1).trimStart();
+  }
+
+  lines.push(remaining);
+  return lines;
+}
+
 function displayType(type, includeColor) {
   if (type === 'fact') {
     return '';
@@ -134,24 +174,153 @@ function displayType(type, includeColor) {
   return `${type} `;
 }
 
-function noteLinesForDisplay(notes, options = {}) {
-  const { includeColor = false } = options;
+function noteBlocksForDisplay(notes, options = {}) {
+  const {
+    columns = 80,
+    includeColor = false
+  } = options;
 
   if (notes.length === 0) {
-    return ['No notes yet.'];
+    return [['No notes yet.']];
   }
 
-  return notes.flatMap((note, noteIndex) => {
+  const numberWidth = Math.max(2, String(notes.length).length);
+  const continuationPrefix = '    ';
+  const continuationColumns = Math.max(columns - continuationPrefix.length, 1);
+
+  return notes.map((note, noteIndex) => {
     const lines = note.text.split(/\r?\n/u);
     const displayLines = lines.length > 0 ? lines : [''];
     const type = note.type ?? 'note';
-    const prefix = `${noteIndex + 1}. ${displayType(type, includeColor)}`;
-    const continuationPrefix = ' '.repeat(visibleLength(prefix));
+    const firstPrefix = `${String(noteIndex + 1).padStart(numberWidth)}. ${displayType(type, includeColor)}`;
+    const firstColumns = Math.max(columns - visibleLength(firstPrefix), 1);
 
-    return displayLines.map((line, index) => (
-      index === 0 ? `${prefix}${line}` : `${continuationPrefix}${line}`
-    ));
+    return displayLines.flatMap((line, lineIndex) => {
+      const prefix = lineIndex === 0 ? firstPrefix : continuationPrefix;
+      const wrappedLines = wrapPlainText(
+        line,
+        lineIndex === 0 ? firstColumns : continuationColumns
+      );
+
+      return wrappedLines.map((wrappedLine, wrappedLineIndex) => (
+        wrappedLineIndex === 0
+          ? `${prefix}${wrappedLine}`
+          : `${continuationPrefix}${wrappedLine}`
+      ));
+    });
   });
+}
+
+export function buildPagedNoteLines(options = {}) {
+  const {
+    columns = 80,
+    includeColor = false,
+    notes = [],
+    pageStartIndex = 0,
+    rows = 0
+  } = options;
+  const noteRows = Math.max(rows, 0);
+
+  if (noteRows === 0) {
+    return {
+      lines: [],
+      nextPageStartIndex: null,
+      previousPageStartIndex: pageStartIndex > 0 ? 0 : null
+    };
+  }
+
+  const noteBlocks = noteBlocksForDisplay(notes, { columns, includeColor });
+
+  if (notes.length === 0) {
+    return {
+      lines: noteBlocks[0].slice(0, noteRows),
+      nextPageStartIndex: null,
+      previousPageStartIndex: null
+    };
+  }
+
+  const startIndex = Math.min(Math.max(pageStartIndex, 0), notes.length - 1);
+  const lines = [];
+  let nextPageStartIndex = null;
+
+  for (let noteIndex = startIndex; noteIndex < noteBlocks.length; noteIndex += 1) {
+    const block = noteBlocks[noteIndex];
+    const hasMoreAfter = noteIndex < noteBlocks.length - 1;
+    const rowsNeeded = block.length + (hasMoreAfter ? 1 : 0);
+
+    if (lines.length > 0 && lines.length + rowsNeeded > noteRows) {
+      lines.push('...');
+      nextPageStartIndex = noteIndex;
+      break;
+    }
+
+    if (lines.length === 0 && block.length > noteRows) {
+      lines.push(...block.slice(0, Math.max(noteRows - 1, 0)));
+      lines.push('...');
+      nextPageStartIndex = noteIndex + 1 < noteBlocks.length ? noteIndex + 1 : null;
+      break;
+    }
+
+    if (lines.length + block.length > noteRows) {
+      lines.push('...');
+      nextPageStartIndex = noteIndex;
+      break;
+    }
+
+    lines.push(...block);
+  }
+
+  const previousPageStartIndex = startIndex > 0 ? Math.max(startIndex - 1, 0) : null;
+
+  return {
+    lines,
+    nextPageStartIndex,
+    previousPageStartIndex
+  };
+}
+
+export function pageNavigationForNotes(options = {}) {
+  const {
+    columns = 80,
+    includeColor = false,
+    notes = [],
+    pageStartIndex = 0,
+    rows = 0
+  } = options;
+  const currentPage = buildPagedNoteLines({
+    columns,
+    includeColor,
+    notes,
+    pageStartIndex,
+    rows
+  });
+  let previousPageStartIndex = null;
+  let candidateStartIndex = 0;
+
+  while (candidateStartIndex < pageStartIndex) {
+    const candidatePage = buildPagedNoteLines({
+      columns,
+      includeColor,
+      notes,
+      pageStartIndex: candidateStartIndex,
+      rows
+    });
+
+    if (
+      candidatePage.nextPageStartIndex === null
+      || candidatePage.nextPageStartIndex >= pageStartIndex
+    ) {
+      previousPageStartIndex = candidateStartIndex;
+      break;
+    }
+
+    candidateStartIndex = candidatePage.nextPageStartIndex;
+  }
+
+  return {
+    nextPageStartIndex: currentPage.nextPageStartIndex,
+    previousPageStartIndex
+  };
 }
 
 export function buildTuiLines(options = {}) {
@@ -168,20 +337,17 @@ export function buildTuiLines(options = {}) {
   const lensText = lens === defaultLens ? '' : ` | Lens: ${lens}`;
   const status = state.statusMessage ? ` | ${state.statusMessage}` : '';
   const header = fitLine(`Context: ${currentContextName(state)}${lensText}${status}`, columns);
-  let bodyLines = noteLinesForDisplay(notes, { includeColor });
-
-  if (bodyLines.length > noteRows) {
-    const shownRows = Math.max(noteRows - 1, 0);
-    const hiddenRows = bodyLines.length - shownRows;
-    bodyLines = [
-      `... ${hiddenRows} earlier lines`,
-      ...(shownRows > 0 ? bodyLines.slice(-shownRows) : [])
-    ];
-  }
+  const { lines: bodyLines } = buildPagedNoteLines({
+    columns,
+    includeColor,
+    notes,
+    pageStartIndex: state.pageStartIndex ?? 0,
+    rows: noteRows
+  });
 
   return [
     header,
-    ...bodyLines.slice(0, noteRows).map((line) => fitLine(line, columns))
+    ...bodyLines.slice(0, noteRows)
   ];
 }
 
@@ -302,6 +468,7 @@ export async function handleEntry(entry, state) {
     }
 
     const message = `context ${path.relative(state.notesDirectory, state.activeNotesDirectory)}`;
+    state.pageStartIndex = 0;
     state.statusMessage = '';
 
     return {
@@ -334,6 +501,7 @@ export async function handleEntry(entry, state) {
     }
 
     state.activeLens = lensName;
+    state.pageStartIndex = 0;
     state.statusMessage = '';
 
     return {
@@ -384,6 +552,7 @@ export async function handleEntry(entry, state) {
     }
 
     const message = `set item ${itemNumber} type to ${type}`;
+    state.pageStartIndex = 0;
     state.statusMessage = '';
 
     return {
@@ -396,6 +565,7 @@ export async function handleEntry(entry, state) {
     notesDirectory: state.activeNotesDirectory
   });
   const message = `saved ${path.relative(state.appDirectory, savedPath)}`;
+  state.pageStartIndex = 0;
   state.statusMessage = '';
 
   return {
@@ -406,17 +576,77 @@ export async function handleEntry(entry, state) {
 
 async function main() {
   const state = createPromptState();
+  let notes = [];
+  let editorOpen = false;
   const terminal = readline.createInterface({
     input,
     output,
     completer: createReadlineCompleter(state)
   });
   const useAlternateScreen = output.isTTY;
+  const terminalRows = () => output.rows ?? 24;
+  const terminalColumns = () => output.columns ?? 80;
+  const noteRows = () => Math.max(Math.max(terminalRows() - 1, 1) - 1, 0);
+
+  function renderCurrentScreen() {
+    output.write(renderTui({
+      state,
+      notes,
+      rows: terminalRows(),
+      columns: terminalColumns(),
+      includeAnsi: output.isTTY
+    }));
+  }
+
+  function redrawPrompt() {
+    output.write(`> ${terminal.line}`);
+  }
+
+  function changePage(direction) {
+    const navigation = pageNavigationForNotes({
+      columns: terminalColumns(),
+      includeColor: output.isTTY,
+      notes,
+      pageStartIndex: state.pageStartIndex ?? 0,
+      rows: noteRows()
+    });
+    const nextPageStartIndex = direction === 'down'
+      ? navigation.nextPageStartIndex
+      : navigation.previousPageStartIndex;
+
+    if (nextPageStartIndex === null) {
+      return;
+    }
+
+    state.pageStartIndex = nextPageStartIndex;
+    renderCurrentScreen();
+    redrawPrompt();
+  }
+
+  if (input.isTTY) {
+    emitKeypressEvents(input, terminal);
+  }
+
+  const onKeypress = (_value, key) => {
+    if (editorOpen) {
+      return;
+    }
+
+    if (key?.name === 'pagedown') {
+      changePage('down');
+      return;
+    }
+
+    if (key?.name === 'pageup') {
+      changePage('up');
+    }
+  };
 
   terminal.on('SIGINT', () => {
     output.write('\n');
     terminal.close();
   });
+  input.on('keypress', onKeypress);
 
   if (useAlternateScreen) {
     output.write('\x1b[?1049h');
@@ -424,14 +654,8 @@ async function main() {
 
   try {
     while (true) {
-      const notes = await visibleFactsForState(state);
-      output.write(renderTui({
-        state,
-        notes,
-        rows: output.rows ?? 24,
-        columns: output.columns ?? 80,
-        includeAnsi: output.isTTY
-      }));
+      notes = await visibleFactsForState(state);
+      renderCurrentScreen();
 
       const entry = await terminal.question('> ');
       const result = await handleEntry(entry, state);
@@ -441,6 +665,7 @@ async function main() {
       }
 
       if (result.action === 'edit') {
+        editorOpen = true;
         terminal.pause();
 
         if (useAlternateScreen) {
@@ -458,10 +683,13 @@ async function main() {
           }
 
           terminal.resume();
+          editorOpen = false;
         }
       }
     }
   } finally {
+    input.off('keypress', onKeypress);
+
     if (useAlternateScreen) {
       output.write('\x1b[?1049l');
     }
