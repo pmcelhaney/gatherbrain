@@ -1,10 +1,13 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildFactMarkdown,
+  factTextFromMarkdown,
+  listContextDirectories,
+  listFacts,
   resolveContextDirectory,
   saveFact,
   timestampForFilename
@@ -14,6 +17,13 @@ test('builds fact Markdown with the requested front matter', () => {
   assert.equal(
     buildFactMarkdown('The sky is blue.'),
     '---\ntype: fact\n---\n\nThe sky is blue.\n'
+  );
+});
+
+test('extracts fact text from Markdown front matter', () => {
+  assert.equal(
+    factTextFromMarkdown('---\ntype: fact\n---\n\nThe sky is blue.\n'),
+    'The sky is blue.'
   );
 });
 
@@ -63,4 +73,59 @@ test('rejects context directories outside the notes directory', () => {
     () => resolveContextDirectory('../outside', { notesDirectory }),
     /context must be a folder inside notesDirectory/
   );
+});
+
+test('lists facts in a notes directory', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
+
+  try {
+    await writeFile(
+      path.join(directory, '2026-06-23T09-04-07.012-04-00.md'),
+      buildFactMarkdown('First fact.')
+    );
+    await writeFile(
+      path.join(directory, '2026-06-23T09-05-07.012-04-00.md'),
+      buildFactMarkdown('Second fact.')
+    );
+    await writeFile(path.join(directory, 'ignored.txt'), 'Not a note.');
+
+    assert.deepEqual(
+      await listFacts({ notesDirectory: directory }),
+      [
+        {
+          filename: '2026-06-23T09-04-07.012-04-00.md',
+          path: path.join(directory, '2026-06-23T09-04-07.012-04-00.md'),
+          text: 'First fact.'
+        },
+        {
+          filename: '2026-06-23T09-05-07.012-04-00.md',
+          path: path.join(directory, '2026-06-23T09-05-07.012-04-00.md'),
+          text: 'Second fact.'
+        }
+      ]
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('lists context directories recursively', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
+
+  try {
+    await mkdir(path.join(directory, 'alpha', 'deep'), { recursive: true });
+    await mkdir(path.join(directory, 'beta'), { recursive: true });
+    await writeFile(path.join(directory, '2026-06-23T09-04-07.012-04-00.md'), 'A note.');
+
+    assert.deepEqual(
+      await listContextDirectories({ notesDirectory: directory }),
+      [
+        'alpha',
+        'alpha/deep',
+        'beta'
+      ]
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });

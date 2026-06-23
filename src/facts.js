@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const pad = (value, width = 2) => String(value).padStart(width, '0');
@@ -33,6 +33,23 @@ export function timestampForFilename(date = new Date()) {
 
 export function buildFactMarkdown(text) {
   return `---\ntype: fact\n---\n\n${text}\n`;
+}
+
+export function factTextFromMarkdown(markdown) {
+  if (!markdown.startsWith('---')) {
+    return markdown.trimEnd();
+  }
+
+  const frontMatter = markdown.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/u);
+
+  if (!frontMatter) {
+    return markdown.trimEnd();
+  }
+
+  return markdown
+    .slice(frontMatter[0].length)
+    .replace(/^\r?\n/u, '')
+    .trimEnd();
 }
 
 export function resolveContextDirectory(contextName, options = {}) {
@@ -72,6 +89,88 @@ export async function ensureContextDirectory(contextName, options = {}) {
   const contextDirectory = resolveContextDirectory(contextName, options);
   await mkdir(contextDirectory, { recursive: true });
   return contextDirectory;
+}
+
+export async function listFacts(options = {}) {
+  const { notesDirectory } = options;
+
+  if (!notesDirectory) {
+    throw new Error('notesDirectory is required');
+  }
+
+  let entries;
+
+  try {
+    entries = await readdir(notesDirectory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return [];
+    }
+
+    throw error;
+  }
+
+  const filenames = entries
+    .filter((entry) => entry.isFile() && path.extname(entry.name) === '.md')
+    .map((entry) => entry.name)
+    .sort();
+
+  return Promise.all(
+    filenames.map(async (filename) => {
+      const filePath = path.join(notesDirectory, filename);
+      const markdown = await readFile(filePath, 'utf8');
+
+      return {
+        filename,
+        path: filePath,
+        text: factTextFromMarkdown(markdown)
+      };
+    })
+  );
+}
+
+export async function listContextDirectories(options = {}) {
+  const { notesDirectory } = options;
+
+  if (!notesDirectory) {
+    throw new Error('notesDirectory is required');
+  }
+
+  const contexts = [];
+
+  async function visit(directory, relativeDirectory = '') {
+    let entries;
+
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        return;
+      }
+
+      throw error;
+    }
+
+    const directories = entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+
+    await Promise.all(
+      directories.map(async (directoryName) => {
+        const relativeContext = relativeDirectory
+          ? path.join(relativeDirectory, directoryName)
+          : directoryName;
+        const contextName = relativeContext.split(path.sep).join('/');
+
+        contexts.push(contextName);
+        await visit(path.join(directory, directoryName), relativeContext);
+      })
+    );
+  }
+
+  await visit(notesDirectory);
+  return contexts.sort();
 }
 
 export async function saveFact(text, options = {}) {
