@@ -1,8 +1,9 @@
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const pad = (value, width = 2) => String(value).padStart(width, '0');
 const factTypePattern = /^[A-Za-z][A-Za-z0-9_-]*$/u;
+const recycleDirectoryName = '.recycle-bin';
 
 export function timestampForFilename(date = new Date()) {
   const timezoneOffsetMinutes = -date.getTimezoneOffset();
@@ -214,7 +215,7 @@ export async function listFacts(options = {}) {
           : entry.name;
         const filePath = path.join(directory, entry.name);
 
-        if (entry.isDirectory()) {
+        if (entry.isDirectory() && entry.name !== recycleDirectoryName) {
           await visit(filePath, relativePath);
           return;
         }
@@ -276,7 +277,7 @@ export async function listContextDirectories(options = {}) {
     }
 
     const directories = entries
-      .filter((entry) => entry.isDirectory())
+      .filter((entry) => entry.isDirectory() && entry.name !== recycleDirectoryName)
       .map((entry) => entry.name)
       .sort();
 
@@ -349,6 +350,29 @@ export async function updateFactType(filePath, type) {
 export async function addFactRelation(filePath, relation) {
   const markdown = await readFile(filePath, 'utf8');
   await writeFile(filePath, markdownWithRelation(markdown, relation));
+}
+
+export async function deleteFact(filePath) {
+  const recycleDirectory = path.join(path.dirname(filePath), recycleDirectoryName);
+  await mkdir(recycleDirectory, { recursive: true });
+
+  const extension = path.extname(filePath);
+  const basename = path.basename(filePath, extension);
+  let destination = path.join(recycleDirectory, path.basename(filePath));
+
+  for (let attempt = 1;; attempt += 1) {
+    try {
+      await access(destination);
+      destination = path.join(recycleDirectory, `${basename}-${attempt}${extension}`);
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        throw error;
+      }
+
+      await rename(filePath, destination);
+      return destination;
+    }
+  }
 }
 
 export async function saveFact(text, options = {}) {

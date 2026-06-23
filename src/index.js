@@ -8,6 +8,7 @@ import readline from 'node:readline/promises';
 import { env as processEnv, stdin as input, stdout as output } from 'node:process';
 import {
   addFactRelation,
+  deleteFact,
   ensureContextDirectory,
   listContextDirectories,
   listFacts,
@@ -29,6 +30,7 @@ const commandHelp = [
   '/s <context>',
   '/l <lens>',
   '/e <item>',
+  '/d <item>',
   '/r <item> <context>'
 ];
 
@@ -729,6 +731,35 @@ export async function handleEntry(entry, state) {
         message: state.statusMessage
       };
     }
+  }
+
+  const deleteCommand = command.match(/^\/d\s+([1-9]\d*)$/u);
+
+  if (deleteCommand) {
+    const [, itemNumber] = deleteCommand;
+
+    try {
+      const fact = await visibleFactAtIndex(state, Number(itemNumber));
+      await deleteFact(fact.path);
+    } catch (error) {
+      state.statusMessage = error.message;
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
+
+    const message = `recycled item ${itemNumber}`;
+    state.pageStartIndex = 0;
+    state.statusMessage = '';
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message
+    };
   }
 
   const relationCommand = command.match(/^\/r\s+([1-9]\d*)\s+(.+)$/u);

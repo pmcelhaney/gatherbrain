@@ -85,13 +85,13 @@ test('/ lists commands without saving a note', async () => {
 
     assert.deepEqual(await handleEntry('/', state), {
       action: 'continue',
-      message: '/s <context> | /l <lens> | /e <item> | /r <item> <context>'
+      message: '/s <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context>'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         notes: [{ type: 'fact', text: 'Existing note.' }],
-        rows: 8,
+        rows: 9,
         columns: 80
       }),
       [
@@ -101,6 +101,7 @@ test('/ lists commands without saving a note', async () => {
         '/s <context>',
         '/l <lens>',
         '/e <item>',
+        '/d <item>',
         '/r <item> <context>'
       ]
     );
@@ -119,13 +120,13 @@ test('unknown slash commands show an error and list commands', async () => {
 
     assert.deepEqual(await handleEntry('/wat now', state), {
       action: 'continue',
-      message: 'unknown command /wat; /s <context> | /l <lens> | /e <item> | /r <item> <context>'
+      message: 'unknown command /wat; /s <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context>'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         notes: [{ type: 'fact', text: 'Existing note.' }],
-        rows: 10,
+        rows: 11,
         columns: 80
       }),
       [
@@ -137,6 +138,7 @@ test('unknown slash commands show an error and list commands', async () => {
         '/s <context>',
         '/l <lens>',
         '/e <item>',
+        '/d <item>',
         '/r <item> <context>'
       ]
     );
@@ -730,6 +732,107 @@ test('/e command reports missing item', async () => {
 
     assert.deepEqual(
       await handleEntry('/e 3', state),
+      {
+        action: 'continue',
+        message: 'item 3 does not exist'
+      }
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('/d command recycles a listed item', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const firstNotePath = path.join(notesDirectory, '2026-06-23T09-04-07.012-04-00.md');
+  const secondNotePath = path.join(notesDirectory, '2026-06-23T09-05-07.012-04-00.md');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+    await mkdir(notesDirectory, { recursive: true });
+    await writeFile(
+      firstNotePath,
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+    await writeFile(
+      secondNotePath,
+      '---\ntype: fact\n---\n\nSecond fact.\n'
+    );
+
+    assert.deepEqual(await handleEntry('/d 2', state), {
+      action: 'continue',
+      message: 'recycled item 2'
+    });
+    assert.deepEqual((await readdir(notesDirectory)).sort(), [
+      '.recycle-bin',
+      path.basename(firstNotePath)
+    ]);
+    await assert.rejects(readFile(secondNotePath, 'utf8'), { code: 'ENOENT' });
+    assert.equal(
+      await readFile(path.join(notesDirectory, '.recycle-bin', path.basename(secondNotePath)), 'utf8'),
+      '---\ntype: fact\n---\n\nSecond fact.\n'
+    );
+    assert.deepEqual(
+      (await visibleFactsForState(state)).map((fact) => fact.text),
+      ['First fact.']
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('/d command targets the active lens list', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const factPath = path.join(notesDirectory, '2026-06-23T09-04-07.012-04-00.md');
+  const waitingPath = path.join(notesDirectory, '2026-06-23T09-05-07.012-04-00.md');
+  const todoPath = path.join(notesDirectory, '2026-06-23T09-06-07.012-04-00.md');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+    state.activeLens = 'todo';
+    await mkdir(notesDirectory, { recursive: true });
+    await writeFile(
+      factPath,
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+    await writeFile(
+      waitingPath,
+      '---\ntype: waiting\n---\n\nWaiting item.\n'
+    );
+    await writeFile(
+      todoPath,
+      '---\ntype: todo\n---\n\nTodo item.\n'
+    );
+
+    assert.deepEqual(await handleEntry('/d 2', state), {
+      action: 'continue',
+      message: 'recycled item 2'
+    });
+    assert.deepEqual((await readdir(notesDirectory)).sort(), [
+      '.recycle-bin',
+      path.basename(factPath),
+      path.basename(todoPath)
+    ]);
+    assert.equal(
+      await readFile(path.join(notesDirectory, '.recycle-bin', path.basename(waitingPath)), 'utf8'),
+      '---\ntype: waiting\n---\n\nWaiting item.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('/d command reports missing item', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+
+    assert.deepEqual(
+      await handleEntry('/d 3', state),
       {
         action: 'continue',
         message: 'item 3 does not exist'
