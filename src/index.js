@@ -332,11 +332,12 @@ export function buildTuiLines(options = {}) {
     includeColor = false
   } = options;
   const visibleRows = Math.max(rows - 1, 1);
-  const noteRows = Math.max(visibleRows - 1, 0);
+  const noteRows = Math.max(visibleRows - 2, 0);
   const lens = currentLensName(state);
-  const lensText = lens === defaultLens ? '' : ` | Lens: ${lens}`;
+  const lensText = lens === defaultLens ? '' : ` | ${lens}`;
   const status = state.statusMessage ? ` | ${state.statusMessage}` : '';
-  const header = fitLine(`Context: ${currentContextName(state)}${lensText}${status}`, columns);
+  const header = fitLine(`${currentContextName(state)}${lensText}${status}`, columns);
+  const separator = '-'.repeat(Math.max(columns, 0));
   const { lines: bodyLines } = buildPagedNoteLines({
     columns,
     includeColor,
@@ -347,6 +348,7 @@ export function buildTuiLines(options = {}) {
 
   return [
     header,
+    separator,
     ...bodyLines.slice(0, noteRows)
   ];
 }
@@ -380,16 +382,20 @@ export async function completeEntry(line, state) {
     return [['/s '], line];
   }
 
-  const commandPrefix = `/s${contextCompletion[1]}`;
   const partialContext = contextCompletion[2] ?? '';
   const contexts = await listContextDirectories({
     notesDirectory: state.notesDirectory
   });
   const matches = contexts
-    .filter((contextName) => contextName.startsWith(partialContext))
-    .map((contextName) => `${commandPrefix}${contextName}`);
+    .filter((contextName) => {
+      const contextFolder = contextName.split('/').at(-1) ?? contextName;
 
-  return [matches, line];
+      return contextName.startsWith(partialContext)
+        || contextFolder.startsWith(partialContext);
+    })
+    .map((contextName) => contextName);
+
+  return [matches, partialContext];
 }
 
 export function createReadlineCompleter(state) {

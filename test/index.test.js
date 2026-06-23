@@ -92,7 +92,8 @@ test('builds TUI lines with the current context and note contents', () => {
       columns: 80
     }),
     [
-      'Context: my-cool-project',
+      'my-cool-project',
+      '--------------------------------------------------------------------------------',
       ' 1. First fact.',
       ' 2. task Second fact.',
       '    with detail.'
@@ -122,9 +123,10 @@ test('wraps note lines and indents continuations by four spaces', () => {
       ],
       rows: 20,
       columns: 15
-    }).slice(0, 4),
+    }).slice(0, 5),
     [
-      'Context: notes',
+      'notes',
+      '---------------',
       ' 1. This is a',
       '    long note',
       '    body.'
@@ -145,7 +147,8 @@ test('wraps long words only when no word boundary fits', () => {
       columns: 15
     }),
     [
-      'Context: notes',
+      'notes',
+      '---------------',
       ' 1. supercalifr',
       '    agilistic'
     ]
@@ -224,7 +227,7 @@ test('colors non-fact note types in the TUI', () => {
       rows: 5,
       columns: 80
     }),
-    '\x1b[2J\x1b[HContext: notes\n 1. First fact.\n 2. \x1b[36mtask\x1b[39m Second fact.\x1b[5;1H'
+    '\x1b[2J\x1b[Hnotes\n--------------------------------------------------------------------------------\n 1. First fact.\n 2. \x1b[36mtask\x1b[39m Second fact.\x1b[5;1H'
   );
 });
 
@@ -259,7 +262,8 @@ test('shows the active lens in the TUI header', () => {
       columns: 80
     }),
     [
-      'Context: notes | Lens: todo',
+      'notes | todo',
+      '--------------------------------------------------------------------------------',
       ' 1. todo Do this.'
     ]
   );
@@ -522,7 +526,7 @@ test('renders the prompt target on the bottom row', () => {
       rows: 4,
       columns: 40
     }),
-    '\x1b[2J\x1b[HContext: notes\nNo notes yet.\x1b[4;1H'
+    '\x1b[2J\x1b[Hnotes\n----------------------------------------\nNo notes yet.\x1b[4;1H'
   );
 });
 
@@ -531,17 +535,22 @@ test('completes /s context names', async () => {
   const notesDirectory = path.join(appDirectory, 'notes');
 
   try {
+    await mkdir(path.join(notesDirectory, 'alpha', 'deep-project'), { recursive: true });
     await mkdir(path.join(notesDirectory, 'my-cool-project'), { recursive: true });
     await mkdir(path.join(notesDirectory, 'other-project'), { recursive: true });
     const state = createPromptState({ appDirectory, notesDirectory });
 
     assert.deepEqual(
       await completeEntry('/s my', state),
-      [['/s my-cool-project'], '/s my']
+      [['my-cool-project'], 'my']
+    );
+    assert.deepEqual(
+      await completeEntry('/s deep', state),
+      [['alpha/deep-project'], 'deep']
     );
     assert.deepEqual(
       await completeEntry('/s ', state),
-      [['/s my-cool-project', '/s other-project'], '/s ']
+      [['alpha', 'alpha/deep-project', 'my-cool-project', 'other-project'], '']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -571,7 +580,7 @@ test('readline completer returns /s completions', async () => {
     const state = createPromptState({ appDirectory, notesDirectory });
     const completer = createReadlineCompleter(state);
 
-    assert.deepEqual(await completer('/s my'), [['/s my-cool-project'], '/s my']);
+    assert.deepEqual(await completer('/s my'), [['my-cool-project'], 'my']);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
