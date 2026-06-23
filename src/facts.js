@@ -2,6 +2,7 @@ import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const pad = (value, width = 2) => String(value).padStart(width, '0');
+const factTypePattern = /^[A-Za-z][A-Za-z0-9_-]*$/u;
 
 export function timestampForFilename(date = new Date()) {
   const timezoneOffsetMinutes = -date.getTimezoneOffset();
@@ -35,12 +36,28 @@ export function buildFactMarkdown(text) {
   return `---\ntype: fact\n---\n\n${text}\n`;
 }
 
+function matchFrontMatter(markdown) {
+  return markdown.match(/^---\r?\n(?<frontMatter>[\s\S]*?)\r?\n---\r?\n?/u);
+}
+
+export function factTypeFromMarkdown(markdown) {
+  const frontMatter = matchFrontMatter(markdown)?.groups.frontMatter;
+
+  if (!frontMatter) {
+    return null;
+  }
+
+  const type = frontMatter.match(/^type:\s*(?<type>.+?)\s*$/mu)?.groups.type;
+
+  return type ?? null;
+}
+
 export function factTextFromMarkdown(markdown) {
   if (!markdown.startsWith('---')) {
     return markdown.trimEnd();
   }
 
-  const frontMatter = markdown.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/u);
+  const frontMatter = matchFrontMatter(markdown);
 
   if (!frontMatter) {
     return markdown.trimEnd();
@@ -50,6 +67,26 @@ export function factTextFromMarkdown(markdown) {
     .slice(frontMatter[0].length)
     .replace(/^\r?\n/u, '')
     .trimEnd();
+}
+
+export function markdownWithFactType(markdown, type) {
+  if (!factTypePattern.test(type)) {
+    throw new Error('type must start with a letter and contain only letters, numbers, _, or -');
+  }
+
+  const frontMatterMatch = matchFrontMatter(markdown);
+
+  if (!frontMatterMatch) {
+    return `---\ntype: ${type}\n---\n\n${markdown}`;
+  }
+
+  const frontMatter = frontMatterMatch.groups.frontMatter;
+  const nextFrontMatter = /^type:\s*.*$/mu.test(frontMatter)
+    ? frontMatter.replace(/^type:\s*.*$/mu, `type: ${type}`)
+    : `type: ${type}\n${frontMatter}`;
+  const body = markdown.slice(frontMatterMatch[0].length);
+
+  return `---\n${nextFrontMatter.trimEnd()}\n---\n${body}`;
 }
 
 export function resolveContextDirectory(contextName, options = {}) {
@@ -123,6 +160,7 @@ export async function listFacts(options = {}) {
       return {
         filename,
         path: filePath,
+        type: factTypeFromMarkdown(markdown) ?? 'note',
         text: factTextFromMarkdown(markdown)
       };
     })
@@ -171,6 +209,41 @@ export async function listContextDirectories(options = {}) {
 
   await visit(notesDirectory);
   return contexts.sort();
+}
+
+export async function updateFactTypeAtIndex(options = {}) {
+  const {
+    index,
+    notesDirectory,
+    type
+  } = options;
+
+  if (!Number.isInteger(index) || index < 1) {
+    throw new Error('item number must be a positive integer');
+  }
+
+  if (!notesDirectory) {
+    throw new Error('notesDirectory is required');
+  }
+
+  if (!type) {
+    throw new Error('type is required');
+  }
+
+  const facts = await listFacts({ notesDirectory });
+  const fact = facts[index - 1];
+
+  if (!fact) {
+    throw new Error(`item ${index} does not exist`);
+  }
+
+  const markdown = await readFile(fact.path, 'utf8');
+  await writeFile(fact.path, markdownWithFactType(markdown, type));
+
+  return {
+    ...fact,
+    type
+  };
 }
 
 export async function saveFact(text, options = {}) {

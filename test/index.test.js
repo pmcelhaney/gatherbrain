@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -80,19 +80,75 @@ test('builds TUI lines with the current context and note contents', () => {
     buildTuiLines({
       state,
       notes: [
-        { text: 'First fact.' },
-        { text: 'Second fact.\nwith detail.' }
+        { type: 'fact', text: 'First fact.' },
+        { type: 'task', text: 'Second fact.\nwith detail.' }
       ],
       rows: 6,
       columns: 80
     }),
     [
       'Context: my-cool-project',
-      '- First fact.',
-      '- Second fact.',
-      '  with detail.'
+      '1. [fact] First fact.',
+      '2. [task] Second fact.',
+      '          with detail.'
     ]
   );
+});
+
+test('type command changes a listed item type', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+    await mkdir(notesDirectory, { recursive: true });
+    await writeFile(
+      path.join(notesDirectory, '2026-06-23T09-04-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+    await writeFile(
+      path.join(notesDirectory, '2026-06-23T09-05-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nSecond fact.\n'
+    );
+    await writeFile(
+      path.join(notesDirectory, '2026-06-23T09-06-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nThird fact.\n'
+    );
+
+    const result = await handleEntry(':foo 3', state);
+    const files = await readdir(notesDirectory);
+    const thirdNote = await readFile(path.join(notesDirectory, files.sort()[2]), 'utf8');
+
+    assert.deepEqual(result, {
+      action: 'continue',
+      message: 'set item 3 type to foo'
+    });
+    assert.equal(
+      thirdNote,
+      '---\ntype: foo\n---\n\nThird fact.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('type command reports missing item', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+
+    assert.deepEqual(
+      await handleEntry(':foo 3', state),
+      {
+        action: 'continue',
+        message: 'item 3 does not exist'
+      }
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
 });
 
 test('renders the prompt target on the bottom row', () => {

@@ -5,12 +5,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildFactMarkdown,
+  factTypeFromMarkdown,
   factTextFromMarkdown,
   listContextDirectories,
   listFacts,
+  markdownWithFactType,
   resolveContextDirectory,
   saveFact,
-  timestampForFilename
+  timestampForFilename,
+  updateFactTypeAtIndex
 } from '../src/facts.js';
 
 test('builds fact Markdown with the requested front matter', () => {
@@ -24,6 +27,27 @@ test('extracts fact text from Markdown front matter', () => {
   assert.equal(
     factTextFromMarkdown('---\ntype: fact\n---\n\nThe sky is blue.\n'),
     'The sky is blue.'
+  );
+});
+
+test('extracts fact type from Markdown front matter', () => {
+  assert.equal(
+    factTypeFromMarkdown('---\ntype: task\n---\n\nThe sky is blue.\n'),
+    'task'
+  );
+});
+
+test('updates fact type in Markdown front matter', () => {
+  assert.equal(
+    markdownWithFactType('---\ntype: fact\n---\n\nThe sky is blue.\n', 'task'),
+    '---\ntype: task\n---\n\nThe sky is blue.\n'
+  );
+});
+
+test('rejects invalid fact types', () => {
+  assert.throws(
+    () => markdownWithFactType(buildFactMarkdown('The sky is blue.'), 'bad:type'),
+    /type must start with a letter/
   );
 });
 
@@ -95,14 +119,44 @@ test('lists facts in a notes directory', async () => {
         {
           filename: '2026-06-23T09-04-07.012-04-00.md',
           path: path.join(directory, '2026-06-23T09-04-07.012-04-00.md'),
+          type: 'fact',
           text: 'First fact.'
         },
         {
           filename: '2026-06-23T09-05-07.012-04-00.md',
           path: path.join(directory, '2026-06-23T09-05-07.012-04-00.md'),
+          type: 'fact',
           text: 'Second fact.'
         }
       ]
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('updates a fact type by one-based index', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
+  const targetPath = path.join(directory, '2026-06-23T09-05-07.012-04-00.md');
+
+  try {
+    await writeFile(
+      path.join(directory, '2026-06-23T09-04-07.012-04-00.md'),
+      buildFactMarkdown('First fact.')
+    );
+    await writeFile(targetPath, buildFactMarkdown('Second fact.'));
+
+    assert.equal(
+      (await updateFactTypeAtIndex({
+        index: 2,
+        notesDirectory: directory,
+        type: 'task'
+      })).type,
+      'task'
+    );
+    assert.equal(
+      await readFile(targetPath, 'utf8'),
+      '---\ntype: task\n---\n\nSecond fact.\n'
     );
   } finally {
     await rm(directory, { recursive: true, force: true });

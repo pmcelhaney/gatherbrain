@@ -8,7 +8,8 @@ import {
   ensureContextDirectory,
   listContextDirectories,
   listFacts,
-  saveFact
+  saveFact,
+  updateFactTypeAtIndex
 } from './facts.js';
 
 const defaultAppDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -57,12 +58,14 @@ function noteLinesForDisplay(notes) {
     return ['No notes yet.'];
   }
 
-  return notes.flatMap((note) => {
+  return notes.flatMap((note, noteIndex) => {
     const lines = note.text.split(/\r?\n/u);
     const displayLines = lines.length > 0 ? lines : [''];
+    const prefix = `${noteIndex + 1}. [${note.type ?? 'note'}] `;
+    const continuationPrefix = ' '.repeat(prefix.length);
 
     return displayLines.map((line, index) => (
-      index === 0 ? `- ${line}` : `  ${line}`
+      index === 0 ? `${prefix}${line}` : `${continuationPrefix}${line}`
     ));
   });
 }
@@ -179,6 +182,35 @@ export async function handleEntry(entry, state) {
     }
 
     const message = `context ${path.relative(state.notesDirectory, state.activeNotesDirectory)}`;
+    state.statusMessage = '';
+
+    return {
+      action: 'continue',
+      message
+    };
+  }
+
+  const typeChange = command.match(/^:([A-Za-z][A-Za-z0-9_-]*)\s+([1-9]\d*)$/u);
+
+  if (typeChange) {
+    const [, type, itemNumber] = typeChange;
+
+    try {
+      await updateFactTypeAtIndex({
+        index: Number(itemNumber),
+        notesDirectory: state.activeNotesDirectory,
+        type
+      });
+    } catch (error) {
+      state.statusMessage = error.message;
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
+
+    const message = `set item ${itemNumber} type to ${type}`;
     state.statusMessage = '';
 
     return {
