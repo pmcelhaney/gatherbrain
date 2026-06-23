@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildFactMarkdown,
+  resolveContextDirectory,
   saveFact,
   timestampForFilename
 } from '../src/facts.js';
@@ -44,4 +45,22 @@ test('saves a fact to a timestamp-named Markdown file', async () => {
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('resolves context directories inside the notes directory', () => {
+  const notesDirectory = path.join(tmpdir(), 'gatherbrain-notes');
+  const contextDirectory = resolveContextDirectory('my-cool-project', {
+    notesDirectory
+  });
+
+  assert.equal(contextDirectory, path.join(notesDirectory, 'my-cool-project'));
+});
+
+test('rejects context directories outside the notes directory', () => {
+  const notesDirectory = path.join(tmpdir(), 'gatherbrain-notes');
+
+  assert.throws(
+    () => resolveContextDirectory('../outside', { notesDirectory }),
+    /context must be a folder inside notesDirectory/
+  );
 });

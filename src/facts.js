@@ -35,6 +35,45 @@ export function buildFactMarkdown(text) {
   return `---\ntype: fact\n---\n\n${text}\n`;
 }
 
+export function resolveContextDirectory(contextName, options = {}) {
+  const { notesDirectory } = options;
+
+  if (!notesDirectory) {
+    throw new Error('notesDirectory is required');
+  }
+
+  const trimmedContextName = contextName.trim();
+
+  if (trimmedContextName.length === 0) {
+    throw new Error('context name is required');
+  }
+
+  if (path.isAbsolute(trimmedContextName)) {
+    throw new Error('context name must be relative');
+  }
+
+  const notesRoot = path.resolve(notesDirectory);
+  const contextDirectory = path.resolve(notesRoot, trimmedContextName);
+  const relativeContextPath = path.relative(notesRoot, contextDirectory);
+
+  if (
+    relativeContextPath.length === 0
+    || relativeContextPath === '..'
+    || relativeContextPath.startsWith(`..${path.sep}`)
+    || path.isAbsolute(relativeContextPath)
+  ) {
+    throw new Error('context must be a folder inside notesDirectory');
+  }
+
+  return contextDirectory;
+}
+
+export async function ensureContextDirectory(contextName, options = {}) {
+  const contextDirectory = resolveContextDirectory(contextName, options);
+  await mkdir(contextDirectory, { recursive: true });
+  return contextDirectory;
+}
+
 export async function saveFact(text, options = {}) {
   const {
     notesDirectory,
