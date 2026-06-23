@@ -25,6 +25,12 @@ const ansiCodePattern = /\x1b\[[0-9;]*m/gu;
 const defaultLens = 'all';
 const lensNames = new Set([defaultLens, 'todo']);
 const todoLensTypes = new Set(['todo', 'waiting', 'in progress', 'fact']);
+const commandHelp = [
+  '/s <context>',
+  '/l <lens>',
+  '/e <item>',
+  '/r <item> <context>'
+];
 
 export function createPromptState(options = {}) {
   const appDirectory = options.appDirectory ?? defaultAppDirectory;
@@ -36,6 +42,7 @@ export function createPromptState(options = {}) {
     activeNotesDirectory: notesDirectory,
     activeLens: defaultLens,
     pageStartIndex: 0,
+    temporaryBodyLines: null,
     statusMessage: ''
   };
 }
@@ -368,6 +375,16 @@ export function buildPagedNoteLines(options = {}) {
   };
 }
 
+function buildTemporaryBodyLines(lines, rows, columns) {
+  return {
+    lines: lines
+      .flatMap((line) => wrapPlainText(line, columns))
+      .slice(0, rows),
+    nextPageStartIndex: null,
+    previousPageStartIndex: null
+  };
+}
+
 export function pageNavigationForNotes(options = {}) {
   const {
     columns = 80,
@@ -427,13 +444,15 @@ export function buildTuiLines(options = {}) {
   const status = state.statusMessage ? ` | ${state.statusMessage}` : '';
   const header = fitLine(`${currentContextName(state)}${lensText}${status}`, columns);
   const separator = '-'.repeat(Math.max(columns, 0));
-  const { lines: bodyLines } = buildPagedNoteLines({
-    columns,
-    includeColor,
-    notes,
-    pageStartIndex: state.pageStartIndex ?? 0,
-    rows: noteRows
-  });
+  const { lines: bodyLines } = state.temporaryBodyLines
+    ? buildTemporaryBodyLines(state.temporaryBodyLines, noteRows, columns)
+    : buildPagedNoteLines({
+      columns,
+      includeColor,
+      notes,
+      pageStartIndex: state.pageStartIndex ?? 0,
+      rows: noteRows
+    });
 
   return [
     header,
@@ -515,6 +534,19 @@ export function createReadlineCompleter(state) {
     .catch(() => [[], line]);
 }
 
+function clearTemporaryBody(state) {
+  state.temporaryBodyLines = null;
+}
+
+function showCommandHelp(state, message = null) {
+  state.statusMessage = '';
+  state.temporaryBodyLines = [
+    ...(message ? [message, ''] : []),
+    'Commands:',
+    ...commandHelp
+  ];
+}
+
 export function openEditor(filePath, options = {}) {
   const {
     editor = processEnv.EDITOR,
@@ -583,8 +615,18 @@ export async function handleEntry(entry, state) {
 
   if (command.length === 0) {
     state.statusMessage = '';
+    clearTemporaryBody(state);
 
     return { action: 'continue' };
+  }
+
+  if (command === '/') {
+    showCommandHelp(state);
+
+    return {
+      action: 'continue',
+      message: commandHelp.join(' | ')
+    };
   }
 
   const contextSwitch = command.match(/^\/s(?:\s+(.*))?$/u);
@@ -594,6 +636,7 @@ export async function handleEntry(entry, state) {
 
     if (contextName.length === 0) {
       state.statusMessage = 'usage: /s <context>';
+      clearTemporaryBody(state);
 
       return {
         action: 'continue',
@@ -607,6 +650,7 @@ export async function handleEntry(entry, state) {
       });
     } catch (error) {
       state.statusMessage = error.message;
+      clearTemporaryBody(state);
 
       return {
         action: 'continue',
@@ -617,6 +661,7 @@ export async function handleEntry(entry, state) {
     const message = `context ${path.relative(state.notesDirectory, state.activeNotesDirectory)}`;
     state.pageStartIndex = 0;
     state.statusMessage = '';
+    clearTemporaryBody(state);
 
     return {
       action: 'continue',
@@ -631,6 +676,7 @@ export async function handleEntry(entry, state) {
 
     if (lensName.length === 0) {
       state.statusMessage = 'usage: /l <lens>';
+      clearTemporaryBody(state);
 
       return {
         action: 'continue',
@@ -640,6 +686,7 @@ export async function handleEntry(entry, state) {
 
     if (!lensNames.has(lensName)) {
       state.statusMessage = `unknown lens ${lensName}`;
+      clearTemporaryBody(state);
 
       return {
         action: 'continue',
@@ -650,6 +697,7 @@ export async function handleEntry(entry, state) {
     state.activeLens = lensName;
     state.pageStartIndex = 0;
     state.statusMessage = '';
+    clearTemporaryBody(state);
 
     return {
       action: 'continue',
@@ -665,6 +713,7 @@ export async function handleEntry(entry, state) {
     try {
       const fact = await visibleFactAtIndex(state, Number(itemNumber));
       state.statusMessage = '';
+      clearTemporaryBody(state);
 
       return {
         action: 'edit',
@@ -673,6 +722,7 @@ export async function handleEntry(entry, state) {
       };
     } catch (error) {
       state.statusMessage = error.message;
+      clearTemporaryBody(state);
 
       return {
         action: 'continue',
@@ -693,6 +743,7 @@ export async function handleEntry(entry, state) {
 
       const message = `related item ${itemNumber} to ${relation}`;
       state.statusMessage = '';
+      clearTemporaryBody(state);
 
       return {
         action: 'continue',
@@ -700,6 +751,7 @@ export async function handleEntry(entry, state) {
       };
     } catch (error) {
       state.statusMessage = error.message;
+      clearTemporaryBody(state);
 
       return {
         action: 'continue',
@@ -710,10 +762,21 @@ export async function handleEntry(entry, state) {
 
   if (/^\/r(?:\s|$)/u.test(command)) {
     state.statusMessage = 'usage: /r <item> <context>';
+    clearTemporaryBody(state);
 
     return {
       action: 'continue',
       message: state.statusMessage
+    };
+  }
+
+  if (command.startsWith('/')) {
+    const message = `unknown command ${command.split(/\s/u)[0]}`;
+    showCommandHelp(state, message);
+
+    return {
+      action: 'continue',
+      message: `${message}; ${commandHelp.join(' | ')}`
     };
   }
 
@@ -727,6 +790,7 @@ export async function handleEntry(entry, state) {
       await updateFactType(fact.path, type);
     } catch (error) {
       state.statusMessage = error.message;
+      clearTemporaryBody(state);
 
       return {
         action: 'continue',
@@ -737,6 +801,7 @@ export async function handleEntry(entry, state) {
     const message = `set item ${itemNumber} type to ${type}`;
     state.pageStartIndex = 0;
     state.statusMessage = '';
+    clearTemporaryBody(state);
 
     return {
       action: 'continue',
@@ -750,6 +815,7 @@ export async function handleEntry(entry, state) {
   const message = `saved ${path.relative(state.appDirectory, savedPath)}`;
   state.pageStartIndex = 0;
   state.statusMessage = '';
+  clearTemporaryBody(state);
 
   return {
     action: 'continue',

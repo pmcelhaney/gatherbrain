@@ -76,6 +76,76 @@ test('/s without a context does not save a note', async () => {
   }
 });
 
+test('/ lists commands without saving a note', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+
+    assert.deepEqual(await handleEntry('/', state), {
+      action: 'continue',
+      message: '/s <context> | /l <lens> | /e <item> | /r <item> <context>'
+    });
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        notes: [{ type: 'fact', text: 'Existing note.' }],
+        rows: 8,
+        columns: 80
+      }),
+      [
+        'notes',
+        '--------------------------------------------------------------------------------',
+        'Commands:',
+        '/s <context>',
+        '/l <lens>',
+        '/e <item>',
+        '/r <item> <context>'
+      ]
+    );
+    await assert.rejects(readdir(notesDirectory), { code: 'ENOENT' });
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('unknown slash commands show an error and list commands', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+
+    assert.deepEqual(await handleEntry('/wat now', state), {
+      action: 'continue',
+      message: 'unknown command /wat; /s <context> | /l <lens> | /e <item> | /r <item> <context>'
+    });
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        notes: [{ type: 'fact', text: 'Existing note.' }],
+        rows: 10,
+        columns: 80
+      }),
+      [
+        'notes',
+        '--------------------------------------------------------------------------------',
+        'unknown command /wat',
+        '',
+        'Commands:',
+        '/s <context>',
+        '/l <lens>',
+        '/e <item>',
+        '/r <item> <context>'
+      ]
+    );
+    await assert.rejects(readdir(notesDirectory), { code: 'ENOENT' });
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('builds TUI lines with the current context and note contents', () => {
   const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
   const notesDirectory = path.join(appDirectory, 'notes');
