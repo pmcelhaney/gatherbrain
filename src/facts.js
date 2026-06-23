@@ -89,6 +89,51 @@ export function markdownWithFactType(markdown, type) {
   return `---\n${nextFrontMatter.trimEnd()}\n---\n${body}`;
 }
 
+function quoteFrontMatterString(value) {
+  return `"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
+}
+
+function relationsFromFrontMatter(frontMatter) {
+  const relations = frontMatter.match(/^relations:\s*\[(?<relations>.*?)\]\s*$/mu)
+    ?.groups.relations;
+
+  if (relations === undefined) {
+    return [];
+  }
+
+  return [...relations.matchAll(/"(?<relation>(?:\\.|[^"\\])*)"/gu)]
+    .map((match) => match.groups.relation
+      .replaceAll('\\"', '"')
+      .replaceAll('\\\\', '\\'));
+}
+
+export function markdownWithRelation(markdown, relation) {
+  const frontMatterMatch = matchFrontMatter(markdown);
+
+  if (!frontMatterMatch) {
+    return [
+      '---',
+      `relations: [${quoteFrontMatterString(relation)}]`,
+      '---',
+      '',
+      markdown
+    ].join('\n');
+  }
+
+  const frontMatter = frontMatterMatch.groups.frontMatter;
+  const relations = relationsFromFrontMatter(frontMatter);
+  const nextRelations = relations.includes(relation)
+    ? relations
+    : [...relations, relation];
+  const relationLine = `relations: [${nextRelations.map(quoteFrontMatterString).join(', ')}]`;
+  const nextFrontMatter = /^relations:\s*\[.*?\]\s*$/mu.test(frontMatter)
+    ? frontMatter.replace(/^relations:\s*\[.*?\]\s*$/mu, relationLine)
+    : `${frontMatter.trimEnd()}\n${relationLine}`;
+  const body = markdown.slice(frontMatterMatch[0].length);
+
+  return `---\n${nextFrontMatter.trimEnd()}\n---\n${body}`;
+}
+
 export function resolveContextDirectory(contextName, options = {}) {
   const { notesDirectory } = options;
 
@@ -287,6 +332,11 @@ export async function updateFactTypeAtIndex(options = {}) {
 export async function updateFactType(filePath, type) {
   const markdown = await readFile(filePath, 'utf8');
   await writeFile(filePath, markdownWithFactType(markdown, type));
+}
+
+export async function addFactRelation(filePath, relation) {
+  const markdown = await readFile(filePath, 'utf8');
+  await writeFile(filePath, markdownWithRelation(markdown, relation));
 }
 
 export async function saveFact(text, options = {}) {

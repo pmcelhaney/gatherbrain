@@ -7,6 +7,7 @@ import { emitKeypressEvents } from 'node:readline';
 import readline from 'node:readline/promises';
 import { env as processEnv, stdin as input, stdout as output } from 'node:process';
 import {
+  addFactRelation,
   ensureContextDirectory,
   listContextDirectories,
   listFacts,
@@ -374,28 +375,51 @@ export function renderTui(options = {}) {
 export async function completeEntry(line, state) {
   const contextCompletion = line.match(/^\/s(?:(\s+)(.*))?$/u);
 
-  if (!contextCompletion) {
+  if (contextCompletion) {
+    if (!contextCompletion[1]) {
+      return [['/s '], line];
+    }
+
+    const partialContext = contextCompletion[2] ?? '';
+    const matches = await matchingContextCompletions(partialContext, state);
+
+    return [matches.map((context) => context.name), partialContext];
+  }
+
+  const relationCompletion = line.match(/^\/r\s+[1-9]\d*\s+(.*)$/u);
+
+  if (!relationCompletion) {
     return [[], line];
   }
 
-  if (!contextCompletion[1]) {
-    return [['/s '], line];
-  }
+  const partialContext = relationCompletion[1] ?? '';
+  const matches = await matchingContextCompletions(partialContext, state);
+  const relationCompletions = partialContext.includes('/')
+    ? matches.map((context) => `/${context.name}`)
+    : matches.map((context) => context.folder);
 
-  const partialContext = contextCompletion[2] ?? '';
+  return [relationCompletions, partialContext];
+}
+
+async function matchingContextCompletions(partialContext, state) {
   const contexts = await listContextDirectories({
     notesDirectory: state.notesDirectory
   });
-  const matches = contexts
+
+  return contexts
+    .map((contextName) => ({
+      folder: contextName.split('/').at(-1) ?? contextName,
+      name: contextName
+    }))
     .filter((contextName) => {
-      const contextFolder = contextName.split('/').at(-1) ?? contextName;
+      const comparableName = contextName.name.startsWith('/')
+        ? contextName.name
+        : `/${contextName.name}`;
 
-      return contextName.startsWith(partialContext)
-        || contextFolder.startsWith(partialContext);
-    })
-    .map((contextName) => contextName);
-
-  return [matches, partialContext];
+      return contextName.name.startsWith(partialContext)
+        || comparableName.startsWith(partialContext)
+        || contextName.folder.startsWith(partialContext);
+    });
 }
 
 export function createReadlineCompleter(state) {
@@ -431,6 +455,35 @@ export function openEditor(filePath, options = {}) {
         : `${editor} exited with code ${code}`));
     });
   });
+}
+
+async function relationForContextReference(contextReference, state) {
+  const requestedContext = contextReference.trim();
+
+  if (requestedContext.length === 0) {
+    throw new Error('usage: /r <item> <context>');
+  }
+
+  const normalizedContext = requestedContext.replace(/^\/+/u, '');
+  const contexts = await listContextDirectories({
+    notesDirectory: state.notesDirectory
+  });
+  const matches = contexts.filter((contextName) => {
+    const contextFolder = contextName.split('/').at(-1) ?? contextName;
+
+    return contextName === normalizedContext
+      || contextFolder === normalizedContext;
+  });
+
+  if (matches.length === 0) {
+    throw new Error(`context ${requestedContext} does not exist`);
+  }
+
+  if (matches.length > 1) {
+    throw new Error(`context ${requestedContext} is ambiguous`);
+  }
+
+  return `/${matches[0]}`;
 }
 
 export async function handleEntry(entry, state) {
@@ -538,6 +591,42 @@ export async function handleEntry(entry, state) {
         message: state.statusMessage
       };
     }
+  }
+
+  const relationCommand = command.match(/^\/r\s+([1-9]\d*)\s+(.+)$/u);
+
+  if (relationCommand) {
+    const [, itemNumber, contextReference] = relationCommand;
+
+    try {
+      const fact = await visibleFactAtIndex(state, Number(itemNumber));
+      const relation = await relationForContextReference(contextReference, state);
+      await addFactRelation(fact.path, relation);
+
+      const message = `related item ${itemNumber} to ${relation}`;
+      state.statusMessage = '';
+
+      return {
+        action: 'continue',
+        message
+      };
+    } catch (error) {
+      state.statusMessage = error.message;
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
+  }
+
+  if (/^\/r(?:\s|$)/u.test(command)) {
+    state.statusMessage = 'usage: /r <item> <context>';
+
+    return {
+      action: 'continue',
+      message: state.statusMessage
+    };
   }
 
   const typeChange = command.match(/^:([A-Za-z][A-Za-z0-9_-]*)\s+([1-9]\d*)$/u);

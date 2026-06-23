@@ -480,6 +480,92 @@ test('/e command reports missing item', async () => {
   }
 });
 
+test('/r command relates a listed item to a context', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const notePath = path.join(notesDirectory, '2026-06-23T09-04-07.012-04-00.md');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+    await mkdir(path.join(notesDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await writeFile(
+      notePath,
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+
+    assert.deepEqual(await handleEntry('/r 1 Steve Ma', state), {
+      action: 'continue',
+      message: 'related item 1 to /people/Steve Ma'
+    });
+    assert.equal(
+      await readFile(notePath, 'utf8'),
+      '---\ntype: fact\nrelations: ["/people/Steve Ma"]\n---\n\nFirst fact.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('/r command accepts full context paths', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const notePath = path.join(notesDirectory, '2026-06-23T09-04-07.012-04-00.md');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+    await mkdir(path.join(notesDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await writeFile(
+      notePath,
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+
+    assert.deepEqual(await handleEntry('/r 1 /people/Steve Ma', state), {
+      action: 'continue',
+      message: 'related item 1 to /people/Steve Ma'
+    });
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('/r command reports ambiguous context names', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+    await mkdir(path.join(notesDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await mkdir(path.join(notesDirectory, 'vendors', 'Steve Ma'), { recursive: true });
+    await writeFile(
+      path.join(notesDirectory, '2026-06-23T09-04-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+
+    assert.deepEqual(await handleEntry('/r 1 Steve Ma', state), {
+      action: 'continue',
+      message: 'context Steve Ma is ambiguous'
+    });
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('/r command reports missing context usage', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+
+    assert.deepEqual(await handleEntry('/r 1', state), {
+      action: 'continue',
+      message: 'usage: /r <item> <context>'
+    });
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('opens a note in the configured editor', async () => {
   const calls = [];
   const child = new EventEmitter();
@@ -551,6 +637,28 @@ test('completes /s context names', async () => {
     assert.deepEqual(
       await completeEntry('/s ', state),
       [['alpha', 'alpha/deep-project', 'my-cool-project', 'other-project'], '']
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('completes /r context folder names', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    await mkdir(path.join(notesDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await mkdir(path.join(notesDirectory, 'projects', 'gatherbrain'), { recursive: true });
+    const state = createPromptState({ appDirectory, notesDirectory });
+
+    assert.deepEqual(
+      await completeEntry('/r 1 Steve', state),
+      [['Steve Ma'], 'Steve']
+    );
+    assert.deepEqual(
+      await completeEntry('/r 1 /people/S', state),
+      [['/people/Steve Ma'], '/people/S']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

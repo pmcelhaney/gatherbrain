@@ -10,6 +10,7 @@ import {
   factTextFromMarkdown,
   listContextDirectories,
   listFacts,
+  markdownWithRelation,
   markdownWithFactType,
   resolveContextDirectory,
   saveFact,
@@ -42,6 +43,23 @@ test('updates fact type in Markdown front matter', () => {
   assert.equal(
     markdownWithFactType('---\ntype: fact\n---\n\nThe sky is blue.\n', 'task'),
     '---\ntype: task\n---\n\nThe sky is blue.\n'
+  );
+});
+
+test('adds a relation to Markdown front matter', () => {
+  assert.equal(
+    markdownWithRelation('---\ntype: fact\n---\n\nThe sky is blue.\n', '/people/Steve Ma'),
+    '---\ntype: fact\nrelations: ["/people/Steve Ma"]\n---\n\nThe sky is blue.\n'
+  );
+});
+
+test('appends a relation to Markdown front matter', () => {
+  assert.equal(
+    markdownWithRelation(
+      '---\ntype: fact\nrelations: ["/people/Ada"]\n---\n\nThe sky is blue.\n',
+      '/people/Steve Ma'
+    ),
+    '---\ntype: fact\nrelations: ["/people/Ada", "/people/Steve Ma"]\n---\n\nThe sky is blue.\n'
   );
 });
 
