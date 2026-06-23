@@ -107,6 +107,16 @@ function relationsFromFrontMatter(frontMatter) {
       .replaceAll('\\\\', '\\'));
 }
 
+export function factRelationsFromMarkdown(markdown) {
+  const frontMatter = matchFrontMatter(markdown)?.groups.frontMatter;
+
+  if (!frontMatter) {
+    return [];
+  }
+
+  return relationsFromFrontMatter(frontMatter);
+}
+
 export function markdownWithRelation(markdown, relation) {
   const frontMatterMatch = matchFrontMatter(markdown);
 
@@ -230,10 +240,12 @@ export async function listFacts(options = {}) {
       .map(async (filename) => {
         const filePath = path.join(notesDirectory, filename);
         const markdown = await readFile(filePath, 'utf8');
+        const relations = factRelationsFromMarkdown(markdown);
 
         return {
           filename,
           path: filePath,
+          ...(relations.length > 0 ? { relations } : {}),
           type: factTypeFromMarkdown(markdown) ?? 'note',
           text: factTextFromMarkdown(markdown)
         };

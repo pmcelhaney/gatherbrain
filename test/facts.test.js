@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {
   buildFactMarkdown,
   factAtIndex,
+  factRelationsFromMarkdown,
   factTypeFromMarkdown,
   factTextFromMarkdown,
   listContextDirectories,
@@ -36,6 +37,13 @@ test('extracts fact type from Markdown front matter', () => {
   assert.equal(
     factTypeFromMarkdown('---\ntype: task\n---\n\nThe sky is blue.\n'),
     'task'
+  );
+});
+
+test('extracts fact relations from Markdown front matter', () => {
+  assert.deepEqual(
+    factRelationsFromMarkdown('---\ntype: fact\nrelations: ["/people/Steve Ma"]\n---\n\nThe sky is blue.\n'),
+    ['/people/Steve Ma']
   );
 });
 
@@ -183,6 +191,24 @@ test('lists facts in nested notes directories', async () => {
           text: 'Second fact.'
         }
       ]
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('lists fact relations', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
+
+  try {
+    await writeFile(
+      path.join(directory, '2026-06-23T09-04-07.012-04-00.md'),
+      '---\ntype: fact\nrelations: ["/people/Steve Ma"]\n---\n\nFirst fact.\n'
+    );
+
+    assert.deepEqual(
+      (await listFacts({ notesDirectory: directory })).map((fact) => fact.relations),
+      [['/people/Steve Ma']]
     );
   } finally {
     await rm(directory, { recursive: true, force: true });

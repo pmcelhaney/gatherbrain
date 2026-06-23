@@ -14,7 +14,8 @@ import {
   handleEntry,
   openEditor,
   pageNavigationForNotes,
-  renderTui
+  renderTui,
+  visibleFactsForState
 } from '../src/index.js';
 
 test('/s switches context without creating a note', async () => {
@@ -231,6 +232,81 @@ test('colors non-fact note types in the TUI', () => {
   );
 });
 
+test('shows related folder names after related notes', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const state = createPromptState({ appDirectory, notesDirectory });
+
+  assert.deepEqual(
+    buildTuiLines({
+      state,
+      notes: [
+        {
+          displayRelations: ['Steve Ma', 'gatherbrain'],
+          type: 'fact',
+          text: 'Related fact.'
+        }
+      ],
+      rows: 5,
+      columns: 80
+    }),
+    [
+      'notes',
+      '--------------------------------------------------------------------------------',
+      ' 1. Related fact. <Steve Ma, gatherbrain'
+    ]
+  );
+});
+
+test('colors related folder names in the TUI', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const state = createPromptState({ appDirectory, notesDirectory });
+
+  assert.equal(
+    renderTui({
+      state,
+      notes: [
+        {
+          displayRelations: ['Steve Ma'],
+          type: 'fact',
+          text: 'Related fact.'
+        }
+      ],
+      rows: 4,
+      columns: 80
+    }),
+    '\x1b[2J\x1b[Hnotes\n--------------------------------------------------------------------------------\n 1. Related fact. \x1b[35m<Steve Ma\x1b[39m\x1b[4;1H'
+  );
+});
+
+test('shows outbound relation names after direct notes', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const state = createPromptState({ appDirectory, notesDirectory });
+
+  assert.deepEqual(
+    buildTuiLines({
+      state,
+      notes: [
+        {
+          displayRelationDirection: '>',
+          displayRelations: ['Steve Ma', 'gatherbrain'],
+          type: 'fact',
+          text: 'Direct fact.'
+        }
+      ],
+      rows: 5,
+      columns: 80
+    }),
+    [
+      'notes',
+      '--------------------------------------------------------------------------------',
+      ' 1. Direct fact. >Steve Ma, gatherbrain'
+    ]
+  );
+});
+
 test('filters notes for the todo lens', () => {
   assert.deepEqual(
     filterNotesForLens([
@@ -374,6 +450,120 @@ test('type command targets the active lens list', async () => {
     assert.equal(
       await readFile(waitingPath, 'utf8'),
       '---\ntype: done\n---\n\nWaiting item.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('commands show source folders for notes related to the active context', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const contextDirectory = path.join(notesDirectory, 'people', 'Steve Ma');
+  const relatedPath = path.join(notesDirectory, 'projects', '2026-06-23T09-05-07.012-04-00.md');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+    state.activeNotesDirectory = contextDirectory;
+    await mkdir(contextDirectory, { recursive: true });
+    await mkdir(path.dirname(relatedPath), { recursive: true });
+    await writeFile(
+      path.join(contextDirectory, '2026-06-23T09-04-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nDirect fact.\n'
+    );
+    await writeFile(
+      relatedPath,
+      '---\ntype: fact\nrelations: ["/people/Steve Ma"]\n---\n\nRelated fact.\n'
+    );
+    await writeFile(
+      path.join(notesDirectory, 'projects', '2026-06-23T09-06-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nUnrelated fact.\n'
+    );
+
+    const visibleFacts = await visibleFactsForState(state);
+
+    assert.deepEqual(
+      visibleFacts.map((fact) => ({
+        displayRelations: fact.displayRelations,
+        text: fact.text
+      })),
+      [
+        { displayRelations: undefined, text: 'Direct fact.' },
+        { displayRelations: ['projects'], text: 'Related fact.' }
+      ]
+    );
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        notes: visibleFacts,
+        rows: 5,
+        columns: 80
+      }),
+      [
+        'people/Steve Ma',
+        '--------------------------------------------------------------------------------',
+        ' 1. Direct fact.',
+        ' 2. Related fact. <projects'
+      ]
+    );
+    assert.deepEqual(await handleEntry(':todo 2', state), {
+      action: 'continue',
+      message: 'set item 2 type to todo'
+    });
+    assert.equal(
+      await readFile(relatedPath, 'utf8'),
+      '---\ntype: todo\nrelations: ["/people/Steve Ma"]\n---\n\nRelated fact.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('commands show outbound relations for direct notes in the active context', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const contextDirectory = path.join(notesDirectory, 'gatherbrain');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+    state.activeNotesDirectory = contextDirectory;
+    await mkdir(path.join(notesDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await mkdir(contextDirectory, { recursive: true });
+    await writeFile(
+      path.join(contextDirectory, '2026-06-23T09-04-07.012-04-00.md'),
+      '---\ntype: done\nrelations: ["/people/Steve Ma"]\n---\n\nTurn the app into a TUI.\n'
+    );
+
+    const visibleFacts = await visibleFactsForState(state);
+
+    assert.deepEqual(
+      visibleFacts.map((fact) => ({
+        displayRelationDirection: fact.displayRelationDirection,
+        displayRelations: fact.displayRelations,
+        text: fact.text,
+        type: fact.type
+      })),
+      [
+        {
+          displayRelationDirection: '>',
+          displayRelations: ['Steve Ma'],
+          text: 'Turn the app into a TUI.',
+          type: 'done'
+        }
+      ]
+    );
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        notes: visibleFacts,
+        rows: 5,
+        columns: 80
+      }),
+      [
+        'gatherbrain',
+        '--------------------------------------------------------------------------------',
+        ' 1. done Turn the app into a TUI. >Steve Ma'
+      ]
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

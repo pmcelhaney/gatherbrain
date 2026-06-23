@@ -19,6 +19,7 @@ const defaultAppDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.
 
 const quitCommands = new Set([':q', ':quit', ':exit']);
 const ansiTypeColor = '\x1b[36m';
+const ansiRelationColor = '\x1b[35m';
 const ansiResetColor = '\x1b[39m';
 const ansiCodePattern = /\x1b\[[0-9;]*m/gu;
 const defaultLens = 'all';
@@ -52,6 +53,42 @@ function currentLensName(state) {
   return state.activeLens ?? defaultLens;
 }
 
+function pathIsInside(directory, filePath) {
+  const relativePath = path.relative(directory, filePath);
+
+  return relativePath.length === 0
+    || (
+      !relativePath.startsWith(`..${path.sep}`)
+      && relativePath !== '..'
+      && !path.isAbsolute(relativePath)
+    );
+}
+
+function relationForActiveContext(state) {
+  const relativeContext = path.relative(
+    state.notesDirectory,
+    state.activeNotesDirectory
+  );
+
+  return relativeContext.length > 0
+    ? `/${relativeContext.split(path.sep).join('/')}`
+    : '/';
+}
+
+function folderNameForFact(fact, state) {
+  const relativeDirectory = path.dirname(path.relative(state.notesDirectory, fact.path));
+
+  if (relativeDirectory === '.') {
+    return path.basename(state.notesDirectory);
+  }
+
+  return relativeDirectory.split(path.sep).at(-1) ?? relativeDirectory;
+}
+
+function folderNameForRelation(relation) {
+  return relation.replace(/^\/+/u, '').split('/').at(-1) ?? relation;
+}
+
 export function filterNotesForLens(notes, lens = defaultLens) {
   if (lens === 'todo') {
     return notes.filter((note) => todoLensTypes.has(note.type));
@@ -60,8 +97,34 @@ export function filterNotesForLens(notes, lens = defaultLens) {
   return notes;
 }
 
-async function visibleFactsForState(state) {
-  const facts = await listFacts({ notesDirectory: state.activeNotesDirectory });
+export async function visibleFactsForState(state) {
+  const contextRelation = relationForActiveContext(state);
+  const facts = (await listFacts({ notesDirectory: state.notesDirectory }))
+    .flatMap((fact) => {
+      const insideContext = pathIsInside(state.activeNotesDirectory, fact.path);
+      const relatedToContext = fact.relations?.includes(contextRelation) ?? false;
+
+      if (!insideContext && !relatedToContext) {
+        return [];
+      }
+
+      return [{
+        ...fact,
+        ...(insideContext && fact.relations?.length > 0
+          ? {
+            displayRelationDirection: '>',
+            displayRelations: fact.relations.map(folderNameForRelation)
+          }
+          : {}),
+        ...(!insideContext && relatedToContext
+          ? {
+            displayRelationDirection: '<',
+            displayRelations: [folderNameForFact(fact, state)]
+          }
+          : {})
+      }];
+    });
+
   return filterNotesForLens(facts, currentLensName(state));
 }
 
@@ -102,7 +165,10 @@ function truncateVisible(line, columns) {
     visible += 1;
   }
 
-  if (result.lastIndexOf(ansiTypeColor) > result.lastIndexOf(ansiResetColor)) {
+  if (
+    result.lastIndexOf(ansiTypeColor) > result.lastIndexOf(ansiResetColor)
+    || result.lastIndexOf(ansiRelationColor) > result.lastIndexOf(ansiResetColor)
+  ) {
     result += ansiResetColor;
   }
 
@@ -175,6 +241,20 @@ function displayType(type, includeColor) {
   return `${type} `;
 }
 
+function relationSuffixText(relations, direction = '<') {
+  if (!relations || relations.length === 0) {
+    return '';
+  }
+
+  return `${direction}${relations.join(', ')}`;
+}
+
+function displayRelationSuffix(suffix, includeColor) {
+  return includeColor
+    ? `${ansiRelationColor}${suffix}${ansiResetColor}`
+    : suffix;
+}
+
 function noteBlocksForDisplay(notes, options = {}) {
   const {
     columns = 80,
@@ -193,21 +273,29 @@ function noteBlocksForDisplay(notes, options = {}) {
     const lines = note.text.split(/\r?\n/u);
     const displayLines = lines.length > 0 ? lines : [''];
     const type = note.type ?? 'note';
+    const relationSuffix = relationSuffixText(note.displayRelations, note.displayRelationDirection);
     const firstPrefix = `${String(noteIndex + 1).padStart(numberWidth)}. ${displayType(type, includeColor)}`;
     const firstColumns = Math.max(columns - visibleLength(firstPrefix), 1);
 
     return displayLines.flatMap((line, lineIndex) => {
       const prefix = lineIndex === 0 ? firstPrefix : continuationPrefix;
+      const displayLine = lineIndex === displayLines.length - 1
+        ? `${line}${relationSuffix ? ` ${relationSuffix}` : ''}`
+        : line;
       const wrappedLines = wrapPlainText(
-        line,
+        displayLine,
         lineIndex === 0 ? firstColumns : continuationColumns
       );
 
-      return wrappedLines.map((wrappedLine, wrappedLineIndex) => (
-        wrappedLineIndex === 0
-          ? `${prefix}${wrappedLine}`
-          : `${continuationPrefix}${wrappedLine}`
-      ));
+      return wrappedLines.map((wrappedLine, wrappedLineIndex) => {
+        const displayedLine = relationSuffix && wrappedLine.endsWith(relationSuffix)
+          ? `${wrappedLine.slice(0, -relationSuffix.length)}${displayRelationSuffix(relationSuffix, includeColor)}`
+          : wrappedLine;
+
+        return wrappedLineIndex === 0
+          ? `${prefix}${displayedLine}`
+          : `${continuationPrefix}${displayedLine}`;
+      });
     });
   });
 }
