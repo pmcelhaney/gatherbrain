@@ -1,0 +1,99 @@
+{
+  "commands": [
+    {
+      "name": "switch",
+      "action": "switch_context",
+      "arguments": [
+        {
+          "name": "context",
+          "type": "context",
+          "consume": "rest",
+          "prompt": "Switch to which context?"
+        }
+      ]
+    },
+    {
+      "name": "gaze",
+      "action": "change_gaze",
+      "arguments": [
+        {
+          "name": "context",
+          "type": "context",
+          "consume": "rest",
+          "prompt": "Gaze at which context?"
+        }
+      ]
+    },
+    {
+      "name": "clear-gaze",
+      "action": "clear_gaze",
+      "arguments": []
+    },
+    {
+      "name": "lens",
+      "action": "switch_lens",
+      "arguments": [
+        {
+          "name": "lens",
+          "type": "lens",
+          "prompt": "Use which lens?"
+        }
+      ]
+    },
+    {
+      "name": "edit",
+      "action": "edit_fact",
+      "arguments": [
+        {
+          "name": "item",
+          "type": "fact",
+          "prompt": "Edit which fact?"
+        }
+      ]
+    },
+    {
+      "name": "delete",
+      "action": "delete_fact",
+      "arguments": [
+        {
+          "name": "item",
+          "type": "fact",
+          "prompt": "Delete which fact?"
+        }
+      ]
+    },
+    {
+      "name": "relate",
+      "action": "relate_fact",
+      "arguments": [
+        {
+          "name": "item",
+          "type": "fact",
+          "prompt": "Relate which fact?"
+        },
+        {
+          "name": "context",
+          "type": "context",
+          "consume": "rest",
+          "prompt": "Relate it to which context?"
+        }
+      ]
+    },
+    {
+      "name": "type",
+      "action": "set_fact_type",
+      "arguments": [
+        {
+          "name": "type",
+          "type": "factType",
+          "prompt": "Set which type?"
+        },
+        {
+          "name": "item",
+          "type": "fact",
+          "prompt": "Change which fact?"
+        }
+      ]
+    }
+  ]
+}

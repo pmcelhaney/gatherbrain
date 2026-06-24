@@ -1,70 +1,19 @@
 import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const itemNumberPattern = '[1-9]\\d*';
 const typeNamePattern = '[A-Za-z][A-Za-z0-9_-]*';
 const commandConfigPath = path.join('.gatherbrain', 'commands.json');
+const defaultCommandConfigPath = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'default-config',
+  'commands.json'
+);
 
-const builtInCommandDefinitions = [
-  {
-    name: 'switch',
-    action: 'switch_context',
-    arguments: [
-      { name: 'context', type: 'context', consume: 'rest', prompt: 'Switch to which context?' }
-    ]
-  },
-  {
-    name: 'gaze',
-    action: 'change_gaze',
-    arguments: [
-      { name: 'context', type: 'context', consume: 'rest', prompt: 'Gaze at which context?' }
-    ]
-  },
-  {
-    name: 'clear-gaze',
-    action: 'clear_gaze',
-    arguments: []
-  },
-  {
-    name: 'lens',
-    action: 'switch_lens',
-    arguments: [
-      { name: 'lens', type: 'lens', prompt: 'Use which lens?' }
-    ]
-  },
-  {
-    name: 'edit',
-    action: 'edit_fact',
-    arguments: [
-      { name: 'item', type: 'fact', prompt: 'Edit which fact?' }
-    ]
-  },
-  {
-    name: 'delete',
-    action: 'delete_fact',
-    arguments: [
-      { name: 'item', type: 'fact', prompt: 'Delete which fact?' }
-    ]
-  },
-  {
-    name: 'relate',
-    action: 'relate_fact',
-    arguments: [
-      { name: 'item', type: 'fact', prompt: 'Relate which fact?' },
-      { name: 'context', type: 'context', consume: 'rest', prompt: 'Relate it to which context?' }
-    ]
-  },
-  {
-    name: 'type',
-    action: 'set_fact_type',
-    arguments: [
-      { name: 'type', type: 'factType', prompt: 'Set which type?' },
-      { name: 'item', type: 'fact', prompt: 'Change which fact?' }
-    ]
-  }
-];
-
-const defaultCommandRegistry = createCommandRegistry(builtInCommandDefinitions);
+const defaultCommandRegistry = createCommandRegistry(readCommandConfigSync(defaultCommandConfigPath).commands);
 
 const shortcutUsages = [
   '/s <context>',
@@ -90,7 +39,7 @@ function usageForCommandDefinition(commandDefinition) {
     : `:${commandDefinition.name}`;
 }
 
-export function createCommandRegistry(commandDefinitions = builtInCommandDefinitions) {
+export function createCommandRegistry(commandDefinitions = defaultCommandRegistry.definitions) {
   return {
     definitions: commandDefinitions.map(normalizeCommandDefinition)
   };
@@ -98,29 +47,57 @@ export function createCommandRegistry(commandDefinitions = builtInCommandDefinit
 
 export async function loadCommandRegistry(options = {}) {
   const { rootDirectory } = options;
+  const defaultCommands = readCommandConfigSync(defaultCommandConfigPath).commands;
 
   if (!rootDirectory) {
-    return defaultCommandRegistry;
+    return createCommandRegistry(defaultCommands);
   }
 
   const configFilePath = path.join(rootDirectory, commandConfigPath);
-  let config;
+  let localConfig;
 
   try {
-    config = JSON.parse(await readFile(configFilePath, 'utf8'));
+    localConfig = JSON.parse(await readFile(configFilePath, 'utf8'));
   } catch (error) {
     if (error.code === 'ENOENT') {
-      return defaultCommandRegistry;
+      return createCommandRegistry(defaultCommands);
     }
 
     throw error;
   }
 
-  if (!config || !Array.isArray(config.commands)) {
+  if (!localConfig || !Array.isArray(localConfig.commands)) {
     throw new Error(`${commandConfigPath} must contain a commands array`);
   }
 
-  return createCommandRegistry(config.commands);
+  return createCommandRegistry(mergeCommandDefinitions(defaultCommands, localConfig.commands));
+}
+
+function readCommandConfigSync(configFilePath) {
+  const config = JSON.parse(readFileSync(configFilePath, 'utf8'));
+
+  if (!config || !Array.isArray(config.commands)) {
+    throw new Error(`${configFilePath} must contain a commands array`);
+  }
+
+  return config;
+}
+
+function mergeCommandDefinitions(defaultCommands, localCommands) {
+  const mergedCommands = defaultCommands.map((commandDefinition) => ({ ...commandDefinition }));
+  const indexesByName = new Map(mergedCommands.map((commandDefinition, index) => [commandDefinition.name, index]));
+
+  for (const localCommand of localCommands) {
+    if (indexesByName.has(localCommand.name)) {
+      mergedCommands[indexesByName.get(localCommand.name)] = localCommand;
+      continue;
+    }
+
+    indexesByName.set(localCommand.name, mergedCommands.length);
+    mergedCommands.push(localCommand);
+  }
+
+  return mergedCommands;
 }
 
 function commandDefinitionsFor(registry = defaultCommandRegistry) {

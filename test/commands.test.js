@@ -232,8 +232,18 @@ test('loads workspace command definitions from config', async () => {
 
     const registry = await loadCommandRegistry({ rootDirectory });
 
-    assert.deepEqual(commandNames(registry), ['jump']);
-    assert.deepEqual(commandHelp(registry), [':jump <context>']);
+    assert.deepEqual(commandNames(registry), [
+      'switch',
+      'gaze',
+      'clear-gaze',
+      'lens',
+      'edit',
+      'delete',
+      'relate',
+      'type',
+      'jump'
+    ]);
+    assert.deepEqual(commandHelp(registry).at(-1), ':jump <context>');
     assert.deepEqual(parseEntry(':jump people/alex', registry), {
       context: 'people/alex',
       type: 'switch_context'
@@ -249,6 +259,60 @@ test('loads workspace command definitions from config', async () => {
         prompt: 'Jump where?'
       },
       prompt: 'Jump where?'
+    });
+  } finally {
+    await rm(rootDirectory, { recursive: true, force: true });
+  }
+});
+
+test('workspace command config overrides default commands by name', async () => {
+  const rootDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-commands-'));
+
+  try {
+    await mkdir(path.join(rootDirectory, '.gatherbrain'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, '.gatherbrain', 'commands.json'),
+      JSON.stringify({
+        commands: [
+          {
+            name: 'switch',
+            action: 'switch_context',
+            arguments: [
+              {
+                name: 'context',
+                type: 'context',
+                consume: 'rest',
+                prompt: 'Override where?'
+              }
+            ]
+          }
+        ]
+      })
+    );
+
+    const registry = await loadCommandRegistry({ rootDirectory });
+
+    assert.deepEqual(commandNames(registry), [
+      'switch',
+      'gaze',
+      'clear-gaze',
+      'lens',
+      'edit',
+      'delete',
+      'relate',
+      'type'
+    ]);
+    assert.deepEqual(parseEntry(':switch', registry), {
+      type: 'prompt_command_argument',
+      commandName: 'switch',
+      values: {},
+      argument: {
+        name: 'context',
+        type: 'context',
+        consume: 'rest',
+        prompt: 'Override where?'
+      },
+      prompt: 'Override where?'
     });
   } finally {
     await rm(rootDirectory, { recursive: true, force: true });
