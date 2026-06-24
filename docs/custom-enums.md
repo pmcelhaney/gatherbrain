@@ -10,6 +10,8 @@ To customize enums for a workspace, create this file inside the workspace root:
 
 The app loads default enums first, then loads workspace enums. A workspace enum with the same name as a default enum replaces that default. A workspace enum with a new name is appended.
 
+Default enums are defined in `default-config/enums.json`.
+
 ## File Format
 
 ```json

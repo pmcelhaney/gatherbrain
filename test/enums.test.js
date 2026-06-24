@@ -22,6 +22,12 @@ test('creates enum registries from string values', () => {
   assert.equal(hasEnumValue('status', 'done', registry), false);
 });
 
+test('loads default enum definitions from config', async () => {
+  const registry = await loadEnumRegistry();
+
+  assert.deepEqual(enumValues('todoFactTypes', registry), ['fact', 'todo', 'waiting', 'in progress']);
+});
+
 test('loads workspace enum definitions over defaults', async () => {
   const rootDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-enums-'));
 

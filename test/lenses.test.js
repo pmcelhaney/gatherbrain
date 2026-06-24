@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadWorkspaceModel } from '../src/model.js';
+import { createEnumRegistry } from '../src/enums.js';
 import {
   createLensRegistry,
   defaultLensId,
@@ -171,6 +172,46 @@ test('configured lens filters by front matter type', async () => {
         }
       }
     ]);
+    const lensModel = presentLens({
+      lensId: 'tasks',
+      lensRegistry,
+      model,
+      state: { currentContextDirectory: directory }
+    });
+
+    assert.deepEqual(
+      lensModel.facts.map((fact) => fact.text),
+      ['Todo.', 'Waiting.']
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('configured lens filters by enum reference', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-lenses-'));
+
+  try {
+    await writeFile(path.join(directory, 'todo.md'), '---\ntype: todo\n---\n\nTodo.\n');
+    await writeFile(path.join(directory, 'waiting.md'), '---\ntype: waiting\n---\n\nWaiting.\n');
+    await writeFile(path.join(directory, 'done.md'), '---\ntype: done\n---\n\nDone.\n');
+
+    const model = await loadWorkspaceModel({ rootDirectory: directory });
+    const lensRegistry = createLensRegistry([
+      {
+        id: 'tasks',
+        presenter: 'context_facts',
+        filter: {
+          enum: 'taskTypes'
+        }
+      }
+    ], {
+      enumRegistry: createEnumRegistry({
+        taskTypes: {
+          values: ['todo', 'waiting']
+        }
+      })
+    });
     const lensModel = presentLens({
       lensId: 'tasks',
       lensRegistry,
