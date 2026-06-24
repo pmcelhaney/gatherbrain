@@ -38,6 +38,7 @@ import {
   loadLensRegistry,
   presentLens
 } from './lenses.js';
+import { renderTemplateLines } from './templates.js';
 
 const defaultAppDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -294,6 +295,7 @@ export async function visibleBodyForState(state) {
 
   return lensModel.body ?? {
     type: 'facts',
+    template: 'facts',
     facts: lensModel.facts ?? []
   };
 }
@@ -602,6 +604,12 @@ function buildTemporaryBodyLines(lines, rows, columns) {
   };
 }
 
+function renderBodyLines(body, lines) {
+  const template = body?.template ?? body?.type ?? 'facts';
+
+  return renderTemplateLines(template, { lines });
+}
+
 export function pageNavigationForFacts(options = {}) {
   const {
     columns = 80,
@@ -681,11 +689,14 @@ export function buildTuiLines(options = {}) {
       pageStartIndex: state.pageStartIndex ?? 0,
       rows: factRows
     });
+  const renderedBodyLines = state.temporaryBodyLines
+    ? bodyLines
+    : renderBodyLines(body ?? { type: 'facts', template: 'facts' }, bodyLines);
 
   return [
     header,
     separator,
-    ...bodyLines.slice(0, factRows)
+    ...renderedBodyLines.slice(0, factRows)
   ];
 }
 
@@ -1287,6 +1298,7 @@ async function main() {
   });
   let body = {
     type: 'facts',
+    template: 'facts',
     facts: []
   };
   let editorOpen = false;

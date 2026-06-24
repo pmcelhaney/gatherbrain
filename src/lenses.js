@@ -118,6 +118,7 @@ const lensDefinitions = new Map([
         return {
           body: {
             type: 'facts',
+            template: 'facts',
             facts
           },
           facts

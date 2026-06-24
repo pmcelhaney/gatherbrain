@@ -41,7 +41,10 @@ Supported presenters:
 Presenters return a body view model. The current renderer supports:
 
 - `body.type: "facts"`
+- `body.template: "facts"`
 - `body.facts`: the ordered fact list to render
+
+The default body template lives at `default-config/templates/facts.hbs`. It is rendered with Handlebars after the app has prepared the terminal-ready body lines.
 
 ## Filters
 

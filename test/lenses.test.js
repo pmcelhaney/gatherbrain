@@ -107,6 +107,7 @@ test('all lens presents direct and related facts for the active context', async 
 
     assert.deepEqual(lensModel.body, {
       type: 'facts',
+      template: 'facts',
       facts: lensModel.facts
     });
     assert.deepEqual(

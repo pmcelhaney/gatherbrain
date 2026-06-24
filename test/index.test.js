@@ -398,6 +398,7 @@ test('builds TUI lines from a body view model', () => {
       state,
       body: {
         type: 'facts',
+        template: 'facts',
         facts: [
           { type: 'fact', text: 'First fact.' },
           { type: 'task', text: 'Second fact.' }
@@ -531,6 +532,7 @@ test('navigates body pages', () => {
     pageNavigationForBody({
       body: {
         type: 'facts',
+        template: 'facts',
         facts: [
           { type: 'fact', text: 'First item wraps.' },
           { type: 'fact', text: 'Second item wraps.' },
@@ -892,6 +894,7 @@ test('/g changes gaze without changing the current context', async () => {
     const body = await visibleBodyForState(state);
 
     assert.equal(body.type, 'facts');
+    assert.equal(body.template, 'facts');
     assert.deepEqual(
       body.facts.map((fact) => fact.text),
       ['Gaze context fact.']
