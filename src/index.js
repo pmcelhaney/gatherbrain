@@ -28,7 +28,8 @@ import {
   loadWorkspaceModel,
   refreshContext,
   refreshFact,
-  removeFact
+  removeFact,
+  watchWorkspaceModel
 } from './model.js';
 import {
   defaultLensId,
@@ -1409,6 +1410,24 @@ async function main() {
       redrawPrompt();
     }
   };
+  const modelWatcher = watchWorkspaceModel(state.model, {
+    onChange: async () => {
+      body = await visibleBodyForState(state);
+
+      if (!editorOpen) {
+        renderCurrentScreen();
+        redrawPrompt();
+      }
+    },
+    onError: (error) => {
+      state.statusMessage = error.message;
+
+      if (!editorOpen) {
+        renderCurrentScreen();
+        redrawPrompt();
+      }
+    }
+  });
 
   terminal.on('SIGINT', () => {
     output.write('\n');
@@ -1457,6 +1476,7 @@ async function main() {
       }
     }
   } finally {
+    modelWatcher.close();
     input.off('keypress', onKeypress);
 
     if (useAlternateScreen) {

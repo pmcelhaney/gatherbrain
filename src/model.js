@@ -1,3 +1,4 @@
+import { watch } from 'node:fs';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import {
@@ -9,6 +10,20 @@ import {
 
 function toWorkspacePath(filePath) {
   return filePath.split(path.sep).join('/');
+}
+
+function hasHiddenPathPart(workspacePath) {
+  return workspacePath
+    .split('/')
+    .some((pathPart) => pathPart.startsWith('.'));
+}
+
+function watchEventAffectsModel(filename) {
+  if (filename === null || filename === undefined) {
+    return true;
+  }
+
+  return !hasHiddenPathPart(toWorkspacePath(String(filename)));
 }
 
 function relativeId(rootPath, filePath) {
@@ -197,4 +212,113 @@ export function removeFact(model, factPath) {
 
   model.facts.delete(factId);
   removeFactFromContexts(model, factId);
+}
+
+export function watchWorkspaceModel(model, options = {}) {
+  const {
+    debounceMs = 50,
+    onChange = () => {},
+    onError = () => {},
+    watchFunction = watch
+  } = options;
+  const watchers = new Map();
+  let closed = false;
+  let refreshTimer = null;
+  let refreshing = false;
+  let refreshAgain = false;
+
+  function closeWatchers() {
+    for (const watcher of watchers.values()) {
+      watcher.close();
+    }
+
+    watchers.clear();
+  }
+
+  function watchContextDirectories() {
+    closeWatchers();
+
+    for (const context of model.contexts.values()) {
+      try {
+        const watcher = watchFunction(
+          context.path,
+          { persistent: false },
+          (_eventType, filename) => {
+            if (closed || !watchEventAffectsModel(filename)) {
+              return;
+            }
+
+            scheduleRefresh();
+          }
+        );
+
+        watcher.on?.('error', (error) => {
+          if (!closed) {
+            onError(error);
+          }
+        });
+        watchers.set(context.id, watcher);
+      } catch (error) {
+        onError(error);
+      }
+    }
+  }
+
+  async function refreshModel() {
+    if (closed) {
+      return;
+    }
+
+    if (refreshing) {
+      refreshAgain = true;
+      return;
+    }
+
+    refreshing = true;
+
+    try {
+      do {
+        refreshAgain = false;
+        await refreshContext(model, model.rootPath);
+
+        if (closed) {
+          return;
+        }
+
+        watchContextDirectories();
+        await onChange(model);
+      } while (refreshAgain && !closed);
+    } catch (error) {
+      onError(error);
+    } finally {
+      refreshing = false;
+    }
+  }
+
+  function scheduleRefresh() {
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+    }
+
+    refreshTimer = setTimeout(() => {
+      refreshTimer = null;
+      void refreshModel();
+    }, debounceMs);
+  }
+
+  watchContextDirectories();
+
+  return {
+    close() {
+      closed = true;
+
+      if (refreshTimer) {
+        clearTimeout(refreshTimer);
+        refreshTimer = null;
+      }
+
+      closeWatchers();
+    },
+    refreshNow: refreshModel
+  };
 }

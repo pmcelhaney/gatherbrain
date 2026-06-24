@@ -4,6 +4,8 @@
 
 The app is launched with a workspace root. The root directory and every non-hidden subdirectory are contexts. Hidden directories, including `.trash` and `.gatherbrain`, are ignored.
 
+The workspace is loaded into an in-memory model at startup. Visible workspace directories are watched while the TUI is running, so external Markdown edits and newly created contexts are reflected in the model without restarting the app.
+
 The top of the screen shows the current context, existing facts in that context and its subcontexts are listed below it, and the prompt stays on the bottom line.
 
 When facts do not fit on one screen, complete items are paged with an ellipsis. Use `Page Up` and `Page Down` to move between pages.
