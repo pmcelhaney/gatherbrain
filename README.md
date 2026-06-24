@@ -22,7 +22,9 @@ Use `:delete 3` to move the third listed fact to `.trash` inside its context dir
 
 Use `:relate 3 people/alex` to add a workspace-relative context path to the third listed fact's reserved `relatedContexts` front matter field.
 
-Use `:type task 3` to change the third listed fact's front matter type to `task`. The type name can be any letter-starting word with letters, numbers, `_`, or `-`.
+Use `:type task 3` to change the third listed fact's front matter type to `task`. The type name can be any letter-starting word with letters, numbers, `_`, or `-`; enum-listed values can also include spaces, such as `in progress`.
+
+Use `:due today 3` to set the third listed fact's `due` front matter property to a normalized date such as `2026-06-24`.
 
 Default commands are defined in `default-config/commands.json`. A workspace-local `.gatherbrain/commands.json` can add commands or override defaults with the same command name. See [Custom Commands](docs/custom-commands.md).
 

@@ -26,11 +26,12 @@ test('lists built-in command help', () => {
     ':edit <item>',
     ':delete <item>',
     ':relate <item> <context>',
-    ':type <type> <item>'
+    ':type <type> <item>',
+    ':due <value> <item>'
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item>'
+    ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item>'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -40,7 +41,8 @@ test('lists built-in command help', () => {
     'edit',
     'delete',
     'relate',
-    'type'
+    'type',
+    'due'
   ]);
   assert.deepEqual(shortcutHelp(), [
     '/s <context>',
@@ -58,6 +60,10 @@ test('lists built-in command help', () => {
   assert.deepEqual(commandArguments('type'), [
     { name: 'type', type: 'factType', enum: 'factType', prompt: 'Set which type?' },
     { name: 'item', type: 'fact', prompt: 'Change which fact?' }
+  ]);
+  assert.deepEqual(commandArguments('due'), [
+    { name: 'value', type: 'date', prompt: 'Due when?' },
+    { name: 'item', type: 'fact', prompt: 'Set due date on which fact?' }
   ]);
   assert.equal(commandArguments('missing'), null);
 });
@@ -180,6 +186,12 @@ test('parses fact commands', () => {
     message: 'usage: :type <type> <item>',
     type: 'usage_error'
   });
+  assert.deepEqual(parseEntry(':due 2026-07-04 2'), {
+    itemNumber: 2,
+    property: 'due',
+    type: 'set_fact_property',
+    value: '2026-07-04'
+  });
   assert.deepEqual(parseEntry(':edit 2 extra'), {
     message: 'usage: :edit <item>',
     type: 'usage_error'
@@ -214,6 +226,43 @@ test('continues prompted commands', () => {
   assert.deepEqual(continuePromptedCommand(parseEntry(':edit'), 'nope'), {
     message: 'usage: :edit <item>',
     type: 'usage_error'
+  });
+});
+
+test('normalizes date command arguments', async () => {
+  const registry = await loadCommandRegistry({
+    dateToday: new Date(2026, 5, 24, 12)
+  });
+
+  assert.deepEqual(parseEntry(':due today 4', registry), {
+    itemNumber: 4,
+    property: 'due',
+    type: 'set_fact_property',
+    value: '2026-06-24'
+  });
+  assert.deepEqual(parseEntry(':due in 2 weeks 4', registry), {
+    itemNumber: 4,
+    property: 'due',
+    type: 'set_fact_property',
+    value: '2026-07-08'
+  });
+  assert.deepEqual(parseEntry(':due someday 4', registry), {
+    message: 'usage: :due <value> <item>',
+    type: 'usage_error'
+  });
+  assert.deepEqual(continuePromptedCommand({
+    ...parseEntry(':due', registry),
+    registry
+  }, 'tomorrow'), {
+    type: 'prompt_command_argument',
+    commandName: 'due',
+    values: { value: '2026-06-25' },
+    argument: {
+      name: 'item',
+      type: 'fact',
+      prompt: 'Set due date on which fact?'
+    },
+    prompt: 'Set due date on which fact?'
   });
 });
 
@@ -253,6 +302,7 @@ test('loads workspace command definitions from config', async () => {
       'delete',
       'relate',
       'type',
+      'due',
       'jump'
     ]);
     assert.deepEqual(commandHelp(registry).at(-1), ':jump <context>');
@@ -356,7 +406,8 @@ test('workspace command config overrides default commands by name', async () => 
       'edit',
       'delete',
       'relate',
-      'type'
+      'type',
+      'due'
     ]);
     assert.deepEqual(parseEntry(':switch', registry), {
       type: 'prompt_command_argument',

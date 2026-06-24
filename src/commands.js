@@ -7,6 +7,7 @@ import {
   hasEnumValue,
   loadEnumRegistry
 } from './enums.js';
+import { parseDateArgument } from './dates.js';
 
 const itemNumberPattern = '[1-9]\\d*';
 const typeNamePattern = '[A-Za-z][A-Za-z0-9_-]*';
@@ -47,6 +48,7 @@ function usageForCommandDefinition(commandDefinition) {
 export function createCommandRegistry(commandDefinitions = defaultCommandRegistry.definitions, options = {}) {
   return {
     definitions: commandDefinitions.map(normalizeCommandDefinition),
+    dateToday: options.dateToday ?? null,
     enumRegistry: options.enumRegistry ?? null
   };
 }
@@ -56,8 +58,13 @@ export async function loadCommandRegistry(options = {}) {
   const defaultCommands = readCommandConfigSync(defaultCommandConfigPath).commands;
   const enumRegistry = options.enumRegistry ?? await loadEnumRegistry({ rootDirectory });
 
+  const registryOptions = {
+    dateToday: options.dateToday ?? null,
+    enumRegistry
+  };
+
   if (!rootDirectory) {
-    return createCommandRegistry(defaultCommands, { enumRegistry });
+    return createCommandRegistry(defaultCommands, registryOptions);
   }
 
   const configFilePath = path.join(rootDirectory, commandConfigPath);
@@ -67,7 +74,7 @@ export async function loadCommandRegistry(options = {}) {
     localConfig = JSON.parse(await readFile(configFilePath, 'utf8'));
   } catch (error) {
     if (error.code === 'ENOENT') {
-      return createCommandRegistry(defaultCommands, { enumRegistry });
+      return createCommandRegistry(defaultCommands, registryOptions);
     }
 
     throw error;
@@ -77,7 +84,7 @@ export async function loadCommandRegistry(options = {}) {
     throw new Error(`${commandConfigPath} must contain a commands array`);
   }
 
-  return createCommandRegistry(mergeCommandDefinitions(defaultCommands, localConfig.commands), { enumRegistry });
+  return createCommandRegistry(mergeCommandDefinitions(defaultCommands, localConfig.commands), registryOptions);
 }
 
 function readCommandConfigSync(configFilePath) {
@@ -119,6 +126,7 @@ function normalizeCommandDefinition(commandDefinition) {
   return {
     name: commandDefinition.name,
     action: commandDefinition.action,
+    ...(commandDefinition.property ? { property: commandDefinition.property } : {}),
     arguments: (commandDefinition.arguments ?? []).map((argument) => ({ ...argument }))
   };
 }
@@ -159,6 +167,7 @@ function parseNamedCommand(command, registry) {
   if (commandDefinition) {
     return parseCommandArguments(commandDefinition, args, {
       enumRegistry: registry?.enumRegistry,
+      dateToday: registry?.dateToday,
       promptForMissing: true
     });
   }
@@ -172,6 +181,7 @@ function parseNamedCommand(command, registry) {
 function parseCommandArguments(commandDefinition, args, options = {}) {
   const {
     enumRegistry = null,
+    dateToday = null,
     promptForMissing = false
   } = options;
   const parsedArguments = {};
@@ -189,7 +199,7 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
       };
     }
 
-    const argumentValue = readArgumentValue(argument, remainingArgs, { enumRegistry });
+    const argumentValue = readArgumentValue(argument, remainingArgs, { enumRegistry, dateToday });
     const value = argumentValue?.value;
 
     if (!value) {
@@ -199,7 +209,7 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
       };
     }
 
-    const parsedValue = parseArgumentValue(argument, value, { enumRegistry });
+    const parsedValue = parseArgumentValue(argument, value, { enumRegistry, dateToday });
 
     if (parsedValue === null) {
       return {
@@ -223,7 +233,10 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
 }
 
 function readArgumentValue(argument, remainingArgs, options = {}) {
-  const { enumRegistry = null } = options;
+  const {
+    enumRegistry = null,
+    dateToday = null
+  } = options;
 
   if (argument.consume === 'rest') {
     return {
@@ -242,6 +255,21 @@ function readArgumentValue(argument, remainingArgs, options = {}) {
         value: matchingValue,
         remainingArgs: remainingArgs.slice(matchingValue.length).trim()
       };
+    }
+  }
+
+  if (argument.type === 'date') {
+    const tokens = remainingArgs.split(/\s+/u);
+
+    for (let tokenCount = tokens.length; tokenCount > 0; tokenCount -= 1) {
+      const value = tokens.slice(0, tokenCount).join(' ');
+
+      if (parseDateArgument(value, { today: dateToday })) {
+        return {
+          value,
+          remainingArgs: tokens.slice(tokenCount).join(' ')
+        };
+      }
     }
   }
 
@@ -266,7 +294,10 @@ function promptForArgument(commandDefinition, values, argument) {
 }
 
 function parseArgumentValue(argument, value, options = {}) {
-  const { enumRegistry = null } = options;
+  const {
+    enumRegistry = null,
+    dateToday = null
+  } = options;
 
   if (argument.type === 'fact') {
     return new RegExp(`^${itemNumberPattern}$`, 'u').test(value)
@@ -288,6 +319,10 @@ function parseArgumentValue(argument, value, options = {}) {
     return argument.enum && hasEnumValue(argument.enum, value, enumRegistry)
       ? value
       : null;
+  }
+
+  if (argument.type === 'date') {
+    return parseDateArgument(value, { today: dateToday });
   }
 
   return value;
@@ -320,6 +355,7 @@ export function continuePromptedCommand(pendingCommand, value) {
   }
 
   const parsedValue = parseArgumentValue(argument, trimmedValue, {
+    dateToday: registry?.dateToday,
     enumRegistry: registry?.enumRegistry
   });
 
@@ -381,6 +417,15 @@ function buildCommandAction(commandDefinition, values) {
       type: 'set_fact_type',
       factType: values.type,
       itemNumber: values.item
+    };
+  }
+
+  if (commandDefinition.action === 'set_fact_property') {
+    return {
+      type: 'set_fact_property',
+      itemNumber: values.item,
+      property: commandDefinition.property ?? values.property,
+      value: values.value
     };
   }
 

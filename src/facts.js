@@ -2,7 +2,8 @@ import { access, mkdir, readdir, readFile, rename, writeFile } from 'node:fs/pro
 import path from 'node:path';
 
 const pad = (value, width = 2) => String(value).padStart(width, '0');
-const factTypePattern = /^[A-Za-z][A-Za-z0-9_-]*$/u;
+const factTypePattern = /^[A-Za-z][A-Za-z0-9 _-]*$/u;
+const frontMatterPropertyPattern = /^[A-Za-z][A-Za-z0-9_-]*$/u;
 const trashDirectoryName = '.trash';
 const relatedContextsField = 'relatedContexts';
 
@@ -160,7 +161,7 @@ export function factTextFromMarkdown(markdown) {
 
 export function markdownWithFactType(markdown, type) {
   if (!factTypePattern.test(type)) {
-    throw new Error('type must start with a letter and contain only letters, numbers, _, or -');
+    throw new Error('type must start with a letter and contain only letters, numbers, spaces, _, or -');
   }
 
   const frontMatterMatch = matchFrontMatter(markdown);
@@ -173,6 +174,28 @@ export function markdownWithFactType(markdown, type) {
   const nextFrontMatter = /^type:\s*.*$/mu.test(frontMatter)
     ? frontMatter.replace(/^type:\s*.*$/mu, `type: ${type}`)
     : `type: ${type}\n${frontMatter}`;
+  const body = markdown.slice(frontMatterMatch[0].length);
+
+  return `---\n${nextFrontMatter.trimEnd()}\n---\n${body}`;
+}
+
+export function markdownWithFrontMatterProperty(markdown, property, value) {
+  if (!frontMatterPropertyPattern.test(property)) {
+    throw new Error('property must start with a letter and contain only letters, numbers, _, or -');
+  }
+
+  const propertyLine = `${property}: ${quoteFrontMatterScalar(value)}`;
+  const frontMatterMatch = matchFrontMatter(markdown);
+
+  if (!frontMatterMatch) {
+    return `---\n${propertyLine}\n---\n\n${markdown}`;
+  }
+
+  const frontMatter = frontMatterMatch.groups.frontMatter;
+  const propertyPattern = new RegExp(`^${escapeRegExp(property)}:\\s*.*$`, 'mu');
+  const nextFrontMatter = propertyPattern.test(frontMatter)
+    ? frontMatter.replace(propertyPattern, propertyLine)
+    : `${frontMatter.trimEnd()}\n${propertyLine}`;
   const body = markdown.slice(frontMatterMatch[0].length);
 
   return `---\n${nextFrontMatter.trimEnd()}\n---\n${body}`;
@@ -442,6 +465,11 @@ export async function updateFactTypeAtIndex(options = {}) {
 export async function updateFactType(filePath, type) {
   const markdown = await readFile(filePath, 'utf8');
   await writeFile(filePath, markdownWithFactType(markdown, type));
+}
+
+export async function updateFactProperty(filePath, property, value) {
+  const markdown = await readFile(filePath, 'utf8');
+  await writeFile(filePath, markdownWithFrontMatterProperty(markdown, property, value));
 }
 
 export async function addFactRelation(filePath, relation) {

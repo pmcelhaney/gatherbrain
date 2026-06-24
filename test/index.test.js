@@ -235,13 +235,13 @@ test('/ lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry('/', state), {
       action: 'continue',
-      message: ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item>'
+      message: ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item>'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         facts: [{ type: 'fact', text: 'Existing fact.' }],
-        rows: 12,
+        rows: 13,
         columns: 80
       }),
       [
@@ -255,7 +255,8 @@ test('/ lists commands without saving a fact', async () => {
         ':edit <item>',
         ':delete <item>',
         ':relate <item> <context>',
-        ':type <type> <item>'
+        ':type <type> <item>',
+        ':due <value> <item>'
       ]
     );
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
@@ -273,13 +274,13 @@ test('unknown slash commands show an error and list commands', async () => {
 
     assert.deepEqual(await handleEntry('/wat now', state), {
       action: 'continue',
-      message: 'unknown command /wat; :switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item>'
+      message: 'unknown command /wat; :switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item>'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         facts: [{ type: 'fact', text: 'Existing fact.' }],
-        rows: 14,
+        rows: 15,
         columns: 80
       }),
       [
@@ -295,7 +296,8 @@ test('unknown slash commands show an error and list commands', async () => {
         ':edit <item>',
         ':delete <item>',
         ':relate <item> <context>',
-        ':type <type> <item>'
+        ':type <type> <item>',
+        ':due <value> <item>'
       ]
     );
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
@@ -1147,6 +1149,50 @@ test('type command reports missing item', async () => {
   }
 });
 
+test('due command sets a normalized due date property', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const factPath = path.join(rootDirectory, '2026-06-23T09-05-07.012-04-00.md');
+  const commandRegistry = createCommandRegistry([
+    {
+      name: 'due',
+      action: 'set_fact_property',
+      property: 'due',
+      arguments: [
+        {
+          name: 'value',
+          type: 'date',
+          prompt: 'Due when?'
+        },
+        {
+          name: 'item',
+          type: 'fact',
+          prompt: 'Set due date on which fact?'
+        }
+      ]
+    }
+  ], {
+    dateToday: new Date(2026, 5, 24, 12)
+  });
+
+  try {
+    await mkdir(rootDirectory, { recursive: true });
+    await writeFile(factPath, '---\ntype: fact\n---\n\nExisting fact.\n');
+    const state = createPromptState({ appDirectory, commandRegistry, rootDirectory });
+
+    assert.deepEqual(await handleEntry(':due today 1', state), {
+      action: 'continue',
+      message: 'set item 1 due to 2026-06-24'
+    });
+    assert.equal(
+      await readFile(factPath, 'utf8'),
+      '---\ntype: fact\ndue: 2026-06-24\n---\n\nExisting fact.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('/e command returns an edit action for a listed item', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -1653,7 +1699,8 @@ test('completes colon command names', async () => {
       ':edit ',
       ':delete ',
       ':relate ',
-      ':type '
+      ':type ',
+      ':due '
     ], ':']
   );
 });

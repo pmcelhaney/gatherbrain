@@ -13,6 +13,7 @@ import {
   listContextDirectories,
   listFacts,
   markdownWithContextLinks,
+  markdownWithFrontMatterProperty,
   markdownWithRelation,
   markdownWithFactType,
   resolveContextDirectory,
@@ -95,6 +96,25 @@ test('updates fact type in Markdown front matter', () => {
   assert.equal(
     markdownWithFactType('---\ntype: fact\n---\n\nThe sky is blue.\n', 'task'),
     '---\ntype: task\n---\n\nThe sky is blue.\n'
+  );
+  assert.equal(
+    markdownWithFactType('---\ntype: fact\n---\n\nThe sky is blue.\n', 'in progress'),
+    '---\ntype: in progress\n---\n\nThe sky is blue.\n'
+  );
+});
+
+test('updates Markdown front matter properties', () => {
+  assert.equal(
+    markdownWithFrontMatterProperty('---\ntitle: Test\n---\n\nBody.\n', 'due', '2026-06-24'),
+    '---\ntitle: Test\ndue: 2026-06-24\n---\n\nBody.\n'
+  );
+  assert.equal(
+    markdownWithFrontMatterProperty('---\ntitle: Test\ndue: 2026-06-24\n---\n\nBody.\n', 'due', '2026-07-01'),
+    '---\ntitle: Test\ndue: 2026-07-01\n---\n\nBody.\n'
+  );
+  assert.throws(
+    () => markdownWithFrontMatterProperty('---\ntitle: Test\n---\n\nBody.\n', 'bad:property', '2026-06-24'),
+    /property must start/
   );
 });
 

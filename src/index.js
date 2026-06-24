@@ -21,6 +21,7 @@ import {
   deleteFact,
   resolveContextDirectory,
   saveFact,
+  updateFactProperty,
   updateFactType
 } from './facts.js';
 import {
@@ -1193,6 +1194,32 @@ export async function handleEntry(entry, state) {
     }
 
     const message = `set item ${parsedEntry.itemNumber} type to ${parsedEntry.factType}`;
+    state.pageStartIndex = 0;
+    state.statusMessage = '';
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message
+    };
+  }
+
+  if (parsedEntry.type === 'set_fact_property') {
+    try {
+      const fact = await visibleFactAtIndex(state, parsedEntry.itemNumber);
+      await updateFactProperty(fact.path, parsedEntry.property, parsedEntry.value);
+      await refreshFact(await ensureModel(state), fact.path);
+    } catch (error) {
+      state.statusMessage = error.message;
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
+
+    const message = `set item ${parsedEntry.itemNumber} ${parsedEntry.property} to ${parsedEntry.value}`;
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);

@@ -95,6 +95,23 @@
           "prompt": "Change which fact?"
         }
       ]
+    },
+    {
+      "name": "due",
+      "action": "set_fact_property",
+      "property": "due",
+      "arguments": [
+        {
+          "name": "value",
+          "type": "date",
+          "prompt": "Due when?"
+        },
+        {
+          "name": "item",
+          "type": "fact",
+          "prompt": "Set due date on which fact?"
+        }
+      ]
     }
   ]
 }

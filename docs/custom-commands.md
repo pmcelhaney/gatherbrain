@@ -49,6 +49,7 @@ Supported actions:
 - `delete_fact`: move a fact to `.trash`. Requires `item`.
 - `relate_fact`: add a related context to a fact. Requires `item` and `context`.
 - `set_fact_type`: change a fact type. Requires `type` and `item`.
+- `set_fact_property`: change a front matter property on a fact. Requires `item` and `value`, plus either command-level `property` or a `property` argument.
 
 ## Argument Types
 
@@ -58,7 +59,8 @@ Supported argument types:
 - `fact`: a numbered fact from the current visible list.
 - `lens`: a lens id. Supports completion.
 - `enum`: a string value from `.gatherbrain/enums.json`. Supports completion.
-- `factType`: a type string starting with a letter and containing only letters, numbers, `_`, or `-`. If `enum` is set, those enum values are offered as completions.
+- `factType`: a type string starting with a letter and containing only letters, numbers, `_`, or `-`. If `enum` is set, those enum values are offered as completions and may include spaces.
+- `date`: a natural language date normalized to `YYYY-MM-DD`.
 
 Argument fields:
 
@@ -67,6 +69,14 @@ Argument fields:
 - `enum`: required when `type` is `enum`; optional when `type` is `factType`. Names the configured enum to use for values or completions.
 - `prompt`: text shown when the user omits this argument.
 - `consume`: optional. Use `"rest"` when the argument may contain spaces or slashes and should consume the rest of the command line.
+
+Date arguments understand:
+
+- `today`, `tomorrow`, and `yesterday`
+- `in 2 days` and `in 2 weeks`
+- weekdays such as `friday` and `next monday`
+- `YYYY-MM-DD`
+- `M/D/YYYY` and `M/D/YY`
 
 ## Examples
 
@@ -167,3 +177,31 @@ Use an enum argument when the command should only accept configured values:
 ```
 
 The `status` enum values come from `.gatherbrain/enums.json`. See [Custom Enums](custom-enums.md).
+
+Add a command that sets a date property:
+
+```json
+{
+  "commands": [
+    {
+      "name": "due",
+      "action": "set_fact_property",
+      "property": "due",
+      "arguments": [
+        {
+          "name": "value",
+          "type": "date",
+          "prompt": "Due when?"
+        },
+        {
+          "name": "item",
+          "type": "fact",
+          "prompt": "Set due date on which fact?"
+        }
+      ]
+    }
+  ]
+}
+```
+
+This adds commands such as `:due today 3`, which writes `due: 2026-06-24`.
