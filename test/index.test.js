@@ -1813,6 +1813,50 @@ test('completes named command arguments', async () => {
   }
 });
 
+test('completes fact arguments by visible fact title', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await handleEntry('Call Steve', state);
+    await handleEntry('Email Alex', state);
+
+    assert.deepEqual(
+      await completeEntry(':edit Cal', state),
+      [['1'], 'Cal']
+    );
+    assert.deepEqual(
+      await completeEntry(':delete Email', state),
+      [['2'], 'Email']
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('completes prompted fact arguments by visible fact title', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await handleEntry('Call Steve', state);
+    await handleEntry('Email Alex', state);
+
+    assert.deepEqual(await handleEntry(':edit', state), {
+      action: 'continue',
+      message: 'Edit which fact?'
+    });
+    assert.deepEqual(
+      await completeEntry('Email', state),
+      [['2'], 'Email']
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('readline completer returns /s completions', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');

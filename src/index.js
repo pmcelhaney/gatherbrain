@@ -735,6 +735,12 @@ export function renderTui(options = {}) {
 }
 
 export async function completeEntry(line, state) {
+  if (state.pendingCommand?.argument?.type === 'fact') {
+    const matches = await matchingFactCompletions(line, state);
+
+    return [matches, line];
+  }
+
   if (state.pendingCommand?.argument?.type === 'context') {
     const matches = await matchingContextCompletions(line, state);
 
@@ -769,6 +775,12 @@ export async function completeEntry(line, state) {
 
   if (namedEnumCompletion) {
     return namedEnumCompletion;
+  }
+
+  const namedFactCompletion = await matchingNamedFactArgument(line, state);
+
+  if (namedFactCompletion) {
+    return namedFactCompletion;
   }
 
   const namedContextCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+(?<partial>.*)$/u);
@@ -849,7 +861,32 @@ export async function completeEntry(line, state) {
   return [[], line];
 }
 
+async function matchingNamedFactArgument(line, state) {
+  const argumentCompletion = matchingNamedArgument(line, state);
+
+  if (argumentCompletion?.argument?.type !== 'fact') {
+    return null;
+  }
+
+  const matches = await matchingFactCompletions(argumentCompletion.partialValue, state);
+
+  return [matches, argumentCompletion.partialValue];
+}
+
 function matchingNamedEnumArgument(line, state) {
+  const argumentCompletion = matchingNamedArgument(line, state);
+
+  if (!argumentCompletion || !enumCompletableArgument(argumentCompletion.argument)) {
+    return null;
+  }
+
+  const matches = commandArgumentValues(argumentCompletion.argument, state.commandRegistry)
+    .filter((value) => value.startsWith(argumentCompletion.partialValue));
+
+  return [matches, argumentCompletion.partialValue];
+}
+
+function matchingNamedArgument(line, state) {
   const match = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)(?:\s+(?<args>.*))?$/u);
 
   if (!match) {
@@ -867,19 +904,32 @@ function matchingNamedEnumArgument(line, state) {
   const argumentIndex = args.endsWith(' ') ? tokens.length : Math.max(tokens.length - 1, 0);
   const argument = argumentsDefinition[argumentIndex];
 
-  if (!enumCompletableArgument(argument)) {
+  if (!argument) {
     return null;
   }
 
   const partialValue = args.endsWith(' ') ? '' : (tokens.at(-1) ?? '');
-  const matches = commandArgumentValues(argument, state.commandRegistry)
-    .filter((value) => value.startsWith(partialValue));
 
-  return [matches, partialValue];
+  return {
+    argument,
+    partialValue
+  };
 }
 
 function enumCompletableArgument(argument) {
   return ['enum', 'factType'].includes(argument?.type) && Boolean(argument.enum);
+}
+
+async function matchingFactCompletions(partialTitle, state) {
+  const facts = await visibleFactsForState(state);
+
+  return facts
+    .map((fact, index) => ({
+      itemNumber: String(index + 1),
+      title: fact.title ?? ''
+    }))
+    .filter((completion) => completion.title.startsWith(partialTitle))
+    .map((completion) => completion.itemNumber);
 }
 
 async function matchingContextCompletions(partialContext, state) {
