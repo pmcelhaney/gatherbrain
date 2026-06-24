@@ -24,6 +24,12 @@ import {
   refreshFact,
   removeFact
 } from './model.js';
+import {
+  defaultViewId,
+  filterFactsForView,
+  hasView,
+  presentView
+} from './views.js';
 
 const defaultAppDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -32,9 +38,6 @@ const ansiLinkColor = '\x1b[34m';
 const ansiRelationColor = '\x1b[35m';
 const ansiResetColor = '\x1b[39m';
 const ansiCodePattern = /\x1b\[[0-9;]*m/gu;
-const defaultLens = 'all';
-const lensNames = new Set([defaultLens, 'todo']);
-const todoLensTypes = new Set(['todo', 'waiting', 'in progress', 'fact']);
 export function createPromptState(options = {}) {
   const appDirectory = options.appDirectory ?? defaultAppDirectory;
   const notesDirectory = options.rootDirectory ?? options.notesDirectory ?? path.join(appDirectory, 'notes');
@@ -43,7 +46,7 @@ export function createPromptState(options = {}) {
     appDirectory,
     notesDirectory,
     activeNotesDirectory: notesDirectory,
-    activeLens: defaultLens,
+    activeLens: defaultViewId,
     model: options.model ?? null,
     pageStartIndex: 0,
     temporaryBodyLines: null,
@@ -64,7 +67,7 @@ export function currentContextName(state) {
 }
 
 function currentLensName(state) {
-  return state.activeLens ?? defaultLens;
+  return state.activeLens ?? defaultViewId;
 }
 
 function currentView(state) {
@@ -221,40 +224,6 @@ export function keyDebugLines(value, key) {
   ];
 }
 
-function pathIsInside(directory, filePath) {
-  const relativePath = path.relative(directory, filePath);
-
-  return relativePath.length === 0
-    || (
-      !relativePath.startsWith(`..${path.sep}`)
-      && relativePath !== '..'
-      && !path.isAbsolute(relativePath)
-    );
-}
-
-function relationForActiveContext(state) {
-  const relativeContext = path.relative(
-    state.notesDirectory,
-    state.activeNotesDirectory
-  );
-
-  return relativeContext.length > 0 ? relativeContext.split(path.sep).join('/') : '';
-}
-
-function folderNameForFact(fact, state) {
-  const relativeDirectory = path.dirname(path.relative(state.notesDirectory, fact.path));
-
-  if (relativeDirectory === '.') {
-    return path.basename(state.notesDirectory);
-  }
-
-  return relativeDirectory.split(path.sep).at(-1) ?? relativeDirectory;
-}
-
-function folderNameForRelation(relation) {
-  return relation.split('/').at(-1) ?? relation;
-}
-
 async function ensureModel(state) {
   if (!state.model) {
     state.model = await loadWorkspaceModel({ rootDirectory: state.notesDirectory });
@@ -269,56 +238,19 @@ async function contextIdsForState(state) {
   return [...model.contexts.keys()].filter((contextId) => contextId !== '').sort();
 }
 
-function factsForModel(model) {
-  return [...model.facts.values()]
-    .sort((left, right) => {
-      const filenameComparison = path.basename(left.filename).localeCompare(path.basename(right.filename));
-
-      return filenameComparison === 0
-        ? left.filename.localeCompare(right.filename)
-        : filenameComparison;
-    });
-}
-
-export function filterNotesForLens(notes, lens = defaultLens) {
-  if (lens === 'todo') {
-    return notes.filter((note) => todoLensTypes.has(note.type));
-  }
-
-  return notes;
+export function filterNotesForLens(notes, lens = defaultViewId) {
+  return filterFactsForView(notes, lens);
 }
 
 export async function visibleFactsForState(state) {
   const model = await ensureModel(state);
-  const contextRelation = relationForActiveContext(state);
-  const facts = factsForModel(model)
-    .flatMap((fact) => {
-      const insideContext = pathIsInside(state.activeNotesDirectory, fact.path);
-      const relatedToContext = contextRelation.length > 0
-        && (fact.relations?.includes(contextRelation) ?? false);
+  const viewModel = presentView({
+    model,
+    state,
+    viewId: currentLensName(state)
+  });
 
-      if (!insideContext && !relatedToContext) {
-        return [];
-      }
-
-      return [{
-        ...fact,
-        ...(insideContext && fact.relations?.length > 0
-          ? {
-            displayRelationDirection: '>',
-            displayRelations: fact.relations.map(folderNameForRelation)
-          }
-          : {}),
-        ...(!insideContext && relatedToContext
-          ? {
-            displayRelationDirection: '<',
-            displayRelations: [folderNameForFact(fact, state)]
-          }
-          : {})
-      }];
-    });
-
-  return filterNotesForLens(facts, currentLensName(state));
+  return viewModel.facts ?? [];
 }
 
 async function visibleFactAtIndex(state, index) {
@@ -670,7 +602,7 @@ export function buildTuiLines(options = {}) {
   const visibleRows = Math.max(rows - 1, 1);
   const noteRows = Math.max(visibleRows - 2, 0);
   const lens = currentLensName(state);
-  const lensText = lens === defaultLens ? '' : ` | ${lens}`;
+  const lensText = lens === defaultViewId ? '' : ` | ${lens}`;
   const status = state.statusMessage ? ` | ${state.statusMessage}` : '';
   const header = fitLine(`${currentContextName(state)}${lensText}${status}`, columns);
   const separator = '-'.repeat(Math.max(columns, 0));
@@ -930,7 +862,7 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'switch_lens') {
-    if (!lensNames.has(parsedEntry.lens)) {
+    if (!hasView(parsedEntry.lens)) {
       state.statusMessage = `unknown lens ${parsedEntry.lens}`;
       clearTemporaryBody(state);
 
