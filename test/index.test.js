@@ -118,13 +118,13 @@ test('/ lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry('/', state), {
       action: 'continue',
-      message: '/s <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
+      message: '/s <context> | /g <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         facts: [{ type: 'fact', text: 'Existing fact.' }],
-        rows: 10,
+        rows: 11,
         columns: 80
       }),
       [
@@ -132,6 +132,7 @@ test('/ lists commands without saving a fact', async () => {
         '--------------------------------------------------------------------------------',
         'Commands:',
         '/s <context>',
+        '/g <context>',
         '/l <lens>',
         '/e <item>',
         '/d <item>',
@@ -154,13 +155,13 @@ test('unknown slash commands show an error and list commands', async () => {
 
     assert.deepEqual(await handleEntry('/wat now', state), {
       action: 'continue',
-      message: 'unknown command /wat; /s <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
+      message: 'unknown command /wat; /s <context> | /g <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         facts: [{ type: 'fact', text: 'Existing fact.' }],
-        rows: 12,
+        rows: 13,
         columns: 80
       }),
       [
@@ -170,6 +171,7 @@ test('unknown slash commands show an error and list commands', async () => {
         '',
         'Commands:',
         '/s <context>',
+        '/g <context>',
         '/l <lens>',
         '/e <item>',
         '/d <item>',
@@ -678,6 +680,140 @@ test('/l reports unknown lenses', async () => {
       message: 'unknown lens someday'
     });
     assert.equal(state.currentLensId, 'all');
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('/g changes gaze without changing the current context', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const currentContext = path.join(rootDirectory, 'projects', 'gatherbrain');
+  const gazeContext = path.join(rootDirectory, 'people', 'Alex');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(currentContext, { recursive: true });
+    await mkdir(gazeContext, { recursive: true });
+    await writeFile(
+      path.join(currentContext, 'current.md'),
+      '---\ntype: fact\n---\n\nCurrent context fact.\n'
+    );
+    await writeFile(
+      path.join(gazeContext, 'gaze.md'),
+      '---\ntype: fact\n---\n\nGaze context fact.\n'
+    );
+
+    assert.deepEqual(await handleEntry('/s projects/gatherbrain', state), {
+      action: 'continue',
+      message: 'context projects/gatherbrain'
+    });
+    assert.deepEqual(await handleEntry('/g people/Alex', state), {
+      action: 'continue',
+      message: 'gaze people/Alex'
+    });
+    assert.equal(state.currentContextDirectory, currentContext);
+    assert.equal(state.gazeContextDirectory, gazeContext);
+    assert.deepEqual(
+      (await visibleFactsForState(state)).map((fact) => fact.text),
+      ['Gaze context fact.']
+    );
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        facts: await visibleFactsForState(state),
+        rows: 4,
+        columns: 80
+      }),
+      [
+        'projects/gatherbrain -> people/Alex',
+        '--------------------------------------------------------------------------------',
+        ' 1. Gaze context fact.'
+      ]
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('saving while gazing creates in the current context and relates to gaze', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const currentContext = path.join(rootDirectory, 'projects', 'gatherbrain');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(currentContext, { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Alex'), { recursive: true });
+
+    await handleEntry('/s projects/gatherbrain', state);
+    await handleEntry('/g people/Alex', state);
+    assert.deepEqual(await handleEntry('Follow up with Alex', state), {
+      action: 'continue',
+      message: `saved ${path.join('facts', 'projects', 'gatherbrain', 'follow-up-with-alex.md')}`
+    });
+
+    assert.deepEqual(
+      await readdir(currentContext),
+      ['follow-up-with-alex.md']
+    );
+    assert.equal(
+      await readFile(path.join(currentContext, 'follow-up-with-alex.md'), 'utf8'),
+      '---\ntitle: "Follow up with Alex"\ntype: fact\nrelatedContexts: ["people/Alex"]\n---\n\n\n'
+    );
+    assert.deepEqual(
+      (await visibleFactsForState(state)).map((fact) => ({
+        displayRelationDirection: fact.displayRelationDirection,
+        displayRelations: fact.displayRelations,
+        text: fact.text
+      })),
+      [
+        {
+          displayRelationDirection: '<',
+          displayRelations: ['gatherbrain'],
+          text: 'Follow up with Alex'
+        }
+      ]
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('/s clears gaze', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Alex'), { recursive: true });
+
+    await handleEntry('/g people/Alex', state);
+    assert.equal(state.gazeContextDirectory, path.join(rootDirectory, 'people', 'Alex'));
+    await handleEntry('/s projects/gatherbrain', state);
+    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'projects', 'gatherbrain'));
+    assert.equal(state.gazeContextDirectory, null);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('/g clears gaze', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(path.join(rootDirectory, 'people', 'Alex'), { recursive: true });
+
+    await handleEntry('/g people/Alex', state);
+    assert.equal(state.gazeContextDirectory, path.join(rootDirectory, 'people', 'Alex'));
+    assert.deepEqual(await handleEntry('/g', state), {
+      action: 'continue',
+      message: 'gaze cleared'
+    });
+    assert.equal(state.gazeContextDirectory, null);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -1269,6 +1405,28 @@ test('completes /s context names', async () => {
   }
 });
 
+test('completes /g context names', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'people', 'Alex'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(
+      await completeEntry('/g Al', state),
+      [['people/Alex'], 'Al']
+    );
+    assert.deepEqual(
+      await completeEntry('/g ', state),
+      [['people', 'people/Alex', 'projects', 'projects/gatherbrain'], '']
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('completes /r context folder names', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -1308,7 +1466,7 @@ test('completes context mentions in fact text', async () => {
   }
 });
 
-test('only completes the /s command', async () => {
+test('only completes context commands', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -1316,6 +1474,7 @@ test('only completes the /s command', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(await completeEntry('/s', state), [['/s '], '/s']);
+    assert.deepEqual(await completeEntry('/g', state), [['/g '], '/g']);
     assert.deepEqual(await completeEntry('regular fact', state), [[], 'regular fact']);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

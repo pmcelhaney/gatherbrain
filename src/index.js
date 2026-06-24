@@ -46,6 +46,7 @@ export function createPromptState(options = {}) {
     appDirectory,
     rootDirectory,
     currentContextDirectory: rootDirectory,
+    gazeContextDirectory: null,
     currentLensId: defaultLensId,
     model: options.model ?? null,
     pageStartIndex: 0,
@@ -61,6 +62,19 @@ export function currentContextName(state) {
   const relativeContext = path.relative(
     state.rootDirectory,
     state.currentContextDirectory
+  );
+
+  return relativeContext.length > 0 ? relativeContext : path.basename(state.rootDirectory);
+}
+
+export function currentGazeName(state) {
+  if (!state.gazeContextDirectory) {
+    return null;
+  }
+
+  const relativeContext = path.relative(
+    state.rootDirectory,
+    state.gazeContextDirectory
   );
 
   return relativeContext.length > 0 ? relativeContext : path.basename(state.rootDirectory);
@@ -238,6 +252,19 @@ async function contextIdsForState(state) {
   return [...model.contexts.keys()].filter((contextId) => contextId !== '').sort();
 }
 
+function contextIdForDirectory(state, contextDirectory) {
+  const contextId = path
+    .relative(state.rootDirectory, contextDirectory)
+    .split(path.sep)
+    .join('/');
+
+  return contextId === '' ? '' : contextId;
+}
+
+function lensContextDirectoryForState(state) {
+  return state.gazeContextDirectory ?? state.currentContextDirectory;
+}
+
 export function filterFactsForLensId(facts, lens = defaultLensId) {
   return filterFactsForLens(facts, lens);
 }
@@ -246,7 +273,10 @@ export async function visibleFactsForState(state) {
   const model = await ensureModel(state);
   const lensModel = presentLens({
     model,
-    state,
+    state: {
+      ...state,
+      lensContextDirectory: lensContextDirectoryForState(state)
+    },
     lensId: currentLensIdForState(state)
   });
 
@@ -602,9 +632,11 @@ export function buildTuiLines(options = {}) {
   const visibleRows = Math.max(rows - 1, 1);
   const factRows = Math.max(visibleRows - 2, 0);
   const lens = currentLensIdForState(state);
+  const gaze = currentGazeName(state);
   const lensText = lens === defaultLensId ? '' : ` | ${lens}`;
+  const gazeText = gaze ? ` -> ${gaze}` : '';
   const status = state.statusMessage ? ` | ${state.statusMessage}` : '';
-  const header = fitLine(`${currentContextName(state)}${lensText}${status}`, columns);
+  const header = fitLine(`${currentContextName(state)}${gazeText}${lensText}${status}`, columns);
   const separator = '-'.repeat(Math.max(columns, 0));
   const { lines: bodyLines } = state.temporaryBodyLines
     ? buildTemporaryBodyLines(state.temporaryBodyLines, factRows, columns)
@@ -642,14 +674,16 @@ export function renderTui(options = {}) {
 }
 
 export async function completeEntry(line, state) {
-  const contextCompletion = line.match(/^\/s(?:(\s+)(.*))?$/u);
+  const contextCompletion = line.match(/^\/([sg])(?:(\s+)(.*))?$/u);
 
   if (contextCompletion) {
-    if (!contextCompletion[1]) {
-      return [['/s '], line];
+    const command = contextCompletion[1];
+
+    if (!contextCompletion[2]) {
+      return [[`/${command} `], line];
     }
 
-    const partialContext = contextCompletion[2] ?? '';
+    const partialContext = contextCompletion[3] ?? '';
     const matches = await matchingContextCompletions(partialContext, state);
 
     return [matches.map((context) => context.name), partialContext];
@@ -778,6 +812,20 @@ async function relationForContextReference(contextReference, state) {
   return matches[0];
 }
 
+async function resolveExistingContextDirectory(contextReference, state) {
+  const contextDirectory = resolveContextDirectory(contextReference, {
+    rootDirectory: state.rootDirectory
+  });
+  const normalizedContext = contextIdForDirectory(state, contextDirectory);
+  const contexts = await contextIdsForState(state);
+
+  if (!contexts.includes(normalizedContext)) {
+    throw new Error(`context ${contextReference} does not exist`);
+  }
+
+  return contextDirectory;
+}
+
 export async function handleEntry(entry, state) {
   const parsedEntry = parseEntry(entry);
 
@@ -826,18 +874,7 @@ export async function handleEntry(entry, state) {
     let nextContextDirectory;
 
     try {
-      nextContextDirectory = resolveContextDirectory(parsedEntry.context, {
-        rootDirectory: state.rootDirectory
-      });
-      const normalizedContext = path
-        .relative(state.rootDirectory, nextContextDirectory)
-        .split(path.sep)
-        .join('/');
-      const contexts = await contextIdsForState(state);
-
-      if (!contexts.includes(normalizedContext)) {
-        throw new Error(`context ${parsedEntry.context} does not exist`);
-      }
+      nextContextDirectory = await resolveExistingContextDirectory(parsedEntry.context, state);
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);
@@ -852,8 +889,44 @@ export async function handleEntry(entry, state) {
       ...currentLens(state),
       currentContextDirectory: nextContextDirectory
     });
+    state.gazeContextDirectory = null;
 
     const message = `context ${path.relative(state.rootDirectory, state.currentContextDirectory)}`;
+
+    return {
+      action: 'continue',
+      message
+    };
+  }
+
+  if (parsedEntry.type === 'clear_gaze') {
+    state.gazeContextDirectory = null;
+    state.statusMessage = '';
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message: 'gaze cleared'
+    };
+  }
+
+  if (parsedEntry.type === 'change_gaze') {
+    try {
+      state.gazeContextDirectory = await resolveExistingContextDirectory(parsedEntry.context, state);
+    } catch (error) {
+      state.statusMessage = error.message;
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
+
+    const message = `gaze ${contextIdForDirectory(state, state.gazeContextDirectory)}`;
+    state.pageStartIndex = 0;
+    state.statusMessage = '';
+    clearTemporaryBody(state);
 
     return {
       action: 'continue',
@@ -994,6 +1067,9 @@ export async function handleEntry(entry, state) {
   }
 
   const savedPath = await saveFact(parsedEntry.title, {
+    relations: state.gazeContextDirectory
+      ? [contextIdForDirectory(state, state.gazeContextDirectory)]
+      : [],
     rootDirectory: state.currentContextDirectory
   });
   await refreshContext(await ensureModel(state), state.currentContextDirectory);

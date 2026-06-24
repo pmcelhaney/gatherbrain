@@ -29,6 +29,15 @@ test('builds fact Markdown with the requested front matter', () => {
   );
 });
 
+test('builds fact Markdown with related contexts', () => {
+  assert.equal(
+    buildFactMarkdown('The sky is blue.', {
+      relations: ['people/alex', 'projects/gatherbrain']
+    }),
+    '---\ntitle: "The sky is blue."\ntype: fact\nrelatedContexts: ["people/alex", "projects/gatherbrain"]\n---\n\n\n'
+  );
+});
+
 test('extracts fact title from Markdown front matter', () => {
   assert.equal(
     factTitleFromMarkdown('---\ntitle: "The sky is blue."\ntype: fact\n---\n\n'),

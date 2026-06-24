@@ -10,6 +10,8 @@ When facts do not fit on one screen, complete items are paged with an ellipsis. 
 
 Use `/s my-cool-project` to switch to an existing context. Subsequent facts are written to that directory. Press `Tab` after `/s` to complete existing context folders.
 
+Use `/g people/alex` to gaze at another context while staying in the current context. New facts are still written to the current context and get `relatedContexts` pointing at the gaze context. Use `/g` to clear gaze.
+
 Use `/l todo` to switch to the todo lens, which only shows facts with type `todo`, `waiting`, `in progress`, or `fact` (the default type). Use `/l all` to show every fact again.
 
 Use `/e 3` to open the third listed fact in `$EDITOR`.

@@ -48,13 +48,18 @@ export function slugifyTitle(title) {
 export function buildFactMarkdown(title, options = {}) {
   const {
     body = '',
+    relations = [],
     type = 'fact'
   } = options;
+  const relationLines = relations.length > 0
+    ? [`${relatedContextsField}: [${relations.map(quoteFrontMatterString).join(', ')}]`]
+    : [];
 
   return [
     '---',
     `title: ${quoteFrontMatterScalar(title)}`,
     `type: ${quoteFrontMatterScalar(type)}`,
+    ...relationLines,
     '---',
     '',
     body,
@@ -469,6 +474,7 @@ export async function deleteFact(filePath) {
 
 export async function saveFact(text, options = {}) {
   const {
+    relations = [],
     title = text,
     type = 'fact',
     rootDirectory,
@@ -489,7 +495,7 @@ export async function saveFact(text, options = {}) {
     const filePath = path.join(destinationDirectory, filename);
 
     try {
-      await writeFile(filePath, buildFactMarkdown(title, { type }), { flag: 'wx' });
+      await writeFile(filePath, buildFactMarkdown(title, { relations, type }), { flag: 'wx' });
       return filePath;
     } catch (error) {
       if (error.code !== 'EEXIST') {

@@ -91,7 +91,7 @@ const lensDefinitions = new Map([
     {
       id: 'all',
       presenter: ({ model, state }) => ({
-        facts: visibleFactsForContext(model, state.currentContextDirectory)
+        facts: visibleFactsForContext(model, state.lensContextDirectory ?? state.currentContextDirectory)
       })
     }
   ],
@@ -101,7 +101,7 @@ const lensDefinitions = new Map([
       id: 'todo',
       presenter: ({ model, state }) => ({
         facts: filterFactsForLens(
-          visibleFactsForContext(model, state.currentContextDirectory),
+          visibleFactsForContext(model, state.lensContextDirectory ?? state.currentContextDirectory),
           'todo'
         )
       })

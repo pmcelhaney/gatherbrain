@@ -1,5 +1,6 @@
 const commandUsages = [
   '/s <context>',
+  '/g <context>',
   '/l <lens>',
   '/e <item>',
   '/d <item>',
@@ -59,6 +60,16 @@ export function parseEntry(entry) {
     return lens.length === 0
       ? { type: 'usage_error', message: 'usage: /l <lens>' }
       : { type: 'switch_lens', lens };
+  }
+
+  const gazeCommand = command.match(/^\/g(?:\s+(.*))?$/u);
+
+  if (gazeCommand) {
+    const context = gazeCommand[1]?.trim() ?? '';
+
+    return context.length === 0
+      ? { type: 'clear_gaze' }
+      : { type: 'change_gaze', context };
   }
 
   const editCommand = command.match(new RegExp(`^/e\\s+(${itemNumberPattern})$`, 'u'));

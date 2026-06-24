@@ -9,6 +9,7 @@ import {
 test('lists built-in command help', () => {
   assert.deepEqual(commandHelp(), [
     '/s <context>',
+    '/g <context>',
     '/l <lens>',
     '/e <item>',
     '/d <item>',
@@ -17,7 +18,7 @@ test('lists built-in command help', () => {
   ]);
   assert.equal(
     commandHelpText(),
-    '/s <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
+    '/s <context> | /g <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
   );
 });
 
@@ -37,6 +38,13 @@ test('parses context and lens commands', () => {
   assert.deepEqual(parseEntry('/s'), {
     message: 'usage: /s <context>',
     type: 'usage_error'
+  });
+  assert.deepEqual(parseEntry('/g people/alex'), {
+    context: 'people/alex',
+    type: 'change_gaze'
+  });
+  assert.deepEqual(parseEntry('/g'), {
+    type: 'clear_gaze'
   });
   assert.deepEqual(parseEntry('/l todo'), {
     type: 'switch_lens',
