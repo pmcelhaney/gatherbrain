@@ -4,83 +4,67 @@ const typeNamePattern = '[A-Za-z][A-Za-z0-9_-]*';
 const commandDefinitions = [
   {
     name: 'switch',
-    usage: ':switch <context>',
-    parse: (args) => args.length === 0
-      ? { type: 'usage_error', message: 'usage: :switch <context>' }
-      : { type: 'switch_context', context: args }
+    arguments: [
+      { name: 'context', type: 'context', consume: 'rest' }
+    ],
+    build: ({ context }) => ({ type: 'switch_context', context })
   },
   {
     name: 'gaze',
-    usage: ':gaze <context>',
-    parse: (args) => args.length === 0
-      ? { type: 'usage_error', message: 'usage: :gaze <context>' }
-      : { type: 'change_gaze', context: args }
+    arguments: [
+      { name: 'context', type: 'context', consume: 'rest' }
+    ],
+    build: ({ context }) => ({ type: 'change_gaze', context })
   },
   {
     name: 'clear-gaze',
-    usage: ':clear-gaze',
-    parse: (args) => args.length === 0
-      ? { type: 'clear_gaze' }
-      : { type: 'usage_error', message: 'usage: :clear-gaze' }
+    arguments: [],
+    build: () => ({ type: 'clear_gaze' })
   },
   {
     name: 'lens',
-    usage: ':lens <lens>',
-    parse: (args) => args.length === 0
-      ? { type: 'usage_error', message: 'usage: :lens <lens>' }
-      : { type: 'switch_lens', lens: args }
+    arguments: [
+      { name: 'lens', type: 'lens' }
+    ],
+    build: ({ lens }) => ({ type: 'switch_lens', lens })
   },
   {
     name: 'edit',
-    usage: ':edit <item>',
-    parse: (args) => {
-      const match = args.match(new RegExp(`^(${itemNumberPattern})$`, 'u'));
-
-      return match
-        ? { type: 'edit_fact', itemNumber: positiveItemNumber(match[1]) }
-        : { type: 'usage_error', message: 'usage: :edit <item>' };
-    }
+    arguments: [
+      { name: 'item', type: 'fact' }
+    ],
+    build: ({ item }) => ({ type: 'edit_fact', itemNumber: item })
   },
   {
     name: 'delete',
-    usage: ':delete <item>',
-    parse: (args) => {
-      const match = args.match(new RegExp(`^(${itemNumberPattern})$`, 'u'));
-
-      return match
-        ? { type: 'delete_fact', itemNumber: positiveItemNumber(match[1]) }
-        : { type: 'usage_error', message: 'usage: :delete <item>' };
-    }
+    arguments: [
+      { name: 'item', type: 'fact' }
+    ],
+    build: ({ item }) => ({ type: 'delete_fact', itemNumber: item })
   },
   {
     name: 'relate',
-    usage: ':relate <item> <context>',
-    parse: (args) => {
-      const match = args.match(new RegExp(`^(${itemNumberPattern})\\s+(.+)$`, 'u'));
-
-      return match
-        ? {
-          type: 'relate_fact',
-          itemNumber: positiveItemNumber(match[1]),
-          contextReference: match[2]
-        }
-        : { type: 'usage_error', message: 'usage: :relate <item> <context>' };
-    }
+    arguments: [
+      { name: 'item', type: 'fact' },
+      { name: 'context', type: 'context', consume: 'rest' }
+    ],
+    build: ({ item, context }) => ({
+      type: 'relate_fact',
+      itemNumber: item,
+      contextReference: context
+    })
   },
   {
     name: 'type',
-    usage: ':type <type> <item>',
-    parse: (args) => {
-      const match = args.match(new RegExp(`^(${typeNamePattern})\\s+(${itemNumberPattern})$`, 'u'));
-
-      return match
-        ? {
-          type: 'set_fact_type',
-          factType: match[1],
-          itemNumber: positiveItemNumber(match[2])
-        }
-        : { type: 'usage_error', message: 'usage: :type <type> <item>' };
-    }
+    arguments: [
+      { name: 'type', type: 'factType' },
+      { name: 'item', type: 'fact' }
+    ],
+    build: ({ item, type }) => ({
+      type: 'set_fact_type',
+      factType: type,
+      itemNumber: item
+    })
   }
 ];
 
@@ -98,8 +82,18 @@ function positiveItemNumber(value) {
   return Number(value);
 }
 
+function usageForCommandDefinition(commandDefinition) {
+  const argumentUsage = commandDefinition.arguments
+    .map((argument) => `<${argument.name}>`)
+    .join(' ');
+
+  return argumentUsage.length > 0
+    ? `:${commandDefinition.name} ${argumentUsage}`
+    : `:${commandDefinition.name}`;
+}
+
 export function commandHelp() {
-  return commandDefinitions.map((commandDefinition) => commandDefinition.usage);
+  return commandDefinitions.map(usageForCommandDefinition);
 }
 
 export function commandHelpText() {
@@ -108,6 +102,12 @@ export function commandHelpText() {
 
 export function commandNames() {
   return commandDefinitions.map((commandDefinition) => commandDefinition.name);
+}
+
+export function commandArguments(commandName) {
+  const commandDefinition = commandDefinitions.find((candidate) => candidate.name === commandName);
+
+  return commandDefinition?.arguments.map((argument) => ({ ...argument })) ?? null;
 }
 
 export function shortcutHelp() {
@@ -126,13 +126,77 @@ function parseNamedCommand(command) {
   const commandDefinition = commandDefinitions.find((candidate) => candidate.name === name);
 
   if (commandDefinition) {
-    return commandDefinition.parse(args);
+    return parseCommandArguments(commandDefinition, args);
   }
 
   return {
     commandName: `:${name}`,
     type: 'unknown_command'
   };
+}
+
+function parseCommandArguments(commandDefinition, args) {
+  const parsedArguments = {};
+  let remainingArgs = args.trim();
+
+  for (const argument of commandDefinition.arguments) {
+    if (remainingArgs.length === 0) {
+      return {
+        type: 'usage_error',
+        message: `usage: ${usageForCommandDefinition(commandDefinition)}`
+      };
+    }
+
+    const value = argument.consume === 'rest'
+      ? remainingArgs
+      : remainingArgs.match(/^(?<value>\S+)(?:\s+(?<remaining>.*))?$/u)?.groups.value;
+
+    if (!value) {
+      return {
+        type: 'usage_error',
+        message: `usage: ${usageForCommandDefinition(commandDefinition)}`
+      };
+    }
+
+    const parsedValue = parseArgumentValue(argument, value);
+
+    if (parsedValue === null) {
+      return {
+        type: 'usage_error',
+        message: `usage: ${usageForCommandDefinition(commandDefinition)}`
+      };
+    }
+
+    parsedArguments[argument.name] = parsedValue;
+    remainingArgs = argument.consume === 'rest'
+      ? ''
+      : (remainingArgs.match(/^\S+(?:\s+(?<remaining>.*))?$/u)?.groups.remaining ?? '').trim();
+  }
+
+  if (remainingArgs.length > 0) {
+    return {
+      type: 'usage_error',
+      message: `usage: ${usageForCommandDefinition(commandDefinition)}`
+    };
+  }
+
+  return commandDefinition.build(parsedArguments);
+}
+
+function parseArgumentValue(argument, value) {
+  if (argument.type === 'fact') {
+    return new RegExp(`^${itemNumberPattern}$`, 'u').test(value)
+      ? positiveItemNumber(value)
+      : null;
+  }
+
+  if (argument.type === 'factType') {
+    return new RegExp(`^${typeNamePattern}$`, 'u').test(value)
+      ? value
+      : null;
+  }
+
+  return value;
 }
 
 export function parseEntry(entry) {

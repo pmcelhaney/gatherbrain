@@ -7,6 +7,7 @@ import { emitKeypressEvents } from 'node:readline';
 import readline from 'node:readline/promises';
 import { env as processEnv, stdin as input, stdout as output } from 'node:process';
 import {
+  commandArguments,
   commandNames,
   commandHelp,
   commandHelpText,
@@ -687,19 +688,27 @@ export async function completeEntry(line, state) {
     return [matches, line];
   }
 
-  const namedContextCompletion = line.match(/^:(?:switch|gaze)\s+(.*)$/u);
+  const namedContextCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+(?<partial>.*)$/u);
 
-  if (namedContextCompletion) {
-    const partialContext = namedContextCompletion[1] ?? '';
+  if (
+    namedContextCompletion
+    && commandArguments(namedContextCompletion.groups.commandName)?.length === 1
+    && commandArguments(namedContextCompletion.groups.commandName)?.at(0)?.type === 'context'
+  ) {
+    const partialContext = namedContextCompletion.groups.partial ?? '';
     const matches = await matchingContextCompletions(partialContext, state);
 
     return [matches.map((context) => context.name), partialContext];
   }
 
-  const namedRelationCompletion = line.match(/^:relate\s+[1-9]\d*\s+(.*)$/u);
+  const namedRelationCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+[1-9]\d*\s+(?<partial>.*)$/u);
 
-  if (namedRelationCompletion) {
-    const partialContext = namedRelationCompletion[1] ?? '';
+  if (
+    namedRelationCompletion
+    && commandArguments(namedRelationCompletion.groups.commandName)?.length > 1
+    && commandArguments(namedRelationCompletion.groups.commandName)?.at(-1)?.type === 'context'
+  ) {
+    const partialContext = namedRelationCompletion.groups.partial ?? '';
     const matches = await matchingContextCompletions(partialContext, state);
     const relationCompletions = partialContext.includes('/')
       ? matches.map((context) => `/${context.name}`)
@@ -708,10 +717,10 @@ export async function completeEntry(line, state) {
     return [relationCompletions, partialContext];
   }
 
-  const namedLensCompletion = line.match(/^:lens\s+(.*)$/u);
+  const namedLensCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+(?<partial>.*)$/u);
 
-  if (namedLensCompletion) {
-    const partialLens = namedLensCompletion[1] ?? '';
+  if (namedLensCompletion && commandArguments(namedLensCompletion.groups.commandName)?.at(-1)?.type === 'lens') {
+    const partialLens = namedLensCompletion.groups.partial ?? '';
     const matches = lensIds().filter((lensId) => lensId.startsWith(partialLens));
 
     return [matches, partialLens];

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  commandArguments,
   commandNames,
   commandHelp,
   commandHelpText,
@@ -42,6 +43,11 @@ test('lists built-in command help', () => {
     '/r <item> <context>',
     '/debug keys'
   ]);
+  assert.deepEqual(commandArguments('relate'), [
+    { name: 'item', type: 'fact' },
+    { name: 'context', type: 'context', consume: 'rest' }
+  ]);
+  assert.equal(commandArguments('missing'), null);
 });
 
 test('parses control entries', () => {
@@ -129,6 +135,14 @@ test('parses fact commands', () => {
     factType: 'done',
     itemNumber: 5,
     type: 'set_fact_type'
+  });
+  assert.deepEqual(parseEntry(':type bad:type 5'), {
+    message: 'usage: :type <type> <item>',
+    type: 'usage_error'
+  });
+  assert.deepEqual(parseEntry(':edit 2 extra'), {
+    message: 'usage: :edit <item>',
+    type: 'usage_error'
   });
 });
 
