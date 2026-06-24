@@ -25,11 +25,11 @@ import {
   removeFact
 } from './model.js';
 import {
-  defaultViewId,
-  filterFactsForView,
-  hasView,
-  presentView
-} from './views.js';
+  defaultLensId,
+  filterFactsForLens,
+  hasLens,
+  presentLens
+} from './lenses.js';
 
 const defaultAppDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -46,12 +46,12 @@ export function createPromptState(options = {}) {
     appDirectory,
     rootDirectory,
     currentContextDirectory: rootDirectory,
-    currentViewId: defaultViewId,
+    currentLensId: defaultLensId,
     model: options.model ?? null,
     pageStartIndex: 0,
     temporaryBodyLines: null,
-    viewBackStack: [],
-    viewForwardStack: [],
+    lensBackStack: [],
+    lensForwardStack: [],
     debugKeys: false,
     statusMessage: ''
   };
@@ -66,71 +66,71 @@ export function currentContextName(state) {
   return relativeContext.length > 0 ? relativeContext : path.basename(state.rootDirectory);
 }
 
-function currentViewIdForState(state) {
-  return state.currentViewId ?? defaultViewId;
+function currentLensIdForState(state) {
+  return state.currentLensId ?? defaultLensId;
 }
 
-function currentView(state) {
+function currentLens(state) {
   return {
-    currentViewId: currentViewIdForState(state),
+    currentLensId: currentLensIdForState(state),
     currentContextDirectory: state.currentContextDirectory
   };
 }
 
-function viewsAreEqual(left, right) {
-  return left.currentViewId === right.currentViewId
+function lensesAreEqual(left, right) {
+  return left.currentLensId === right.currentLensId
     && path.resolve(left.currentContextDirectory) === path.resolve(right.currentContextDirectory);
 }
 
-function applyView(state, view) {
-  state.currentViewId = view.currentViewId;
-  state.currentContextDirectory = view.currentContextDirectory;
+function applyLens(state, lens) {
+  state.currentLensId = lens.currentLensId;
+  state.currentContextDirectory = lens.currentContextDirectory;
   state.pageStartIndex = 0;
   state.statusMessage = '';
   clearTemporaryBody(state);
 }
 
-function changeView(state, nextView) {
-  const previousView = currentView(state);
+function changeLens(state, nextLens) {
+  const previousLens = currentLens(state);
 
-  if (viewsAreEqual(previousView, nextView)) {
+  if (lensesAreEqual(previousLens, nextLens)) {
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);
     return false;
   }
 
-  state.viewBackStack.push(previousView);
-  state.viewForwardStack = [];
-  applyView(state, nextView);
+  state.lensBackStack.push(previousLens);
+  state.lensForwardStack = [];
+  applyLens(state, nextLens);
   return true;
 }
 
-export function navigateViewBack(state) {
-  const previousView = state.viewBackStack.pop();
+export function navigateLensBack(state) {
+  const previousLens = state.lensBackStack.pop();
 
-  if (!previousView) {
+  if (!previousLens) {
     return false;
   }
 
-  state.viewForwardStack.push(currentView(state));
-  applyView(state, previousView);
+  state.lensForwardStack.push(currentLens(state));
+  applyLens(state, previousLens);
   return true;
 }
 
-export function navigateViewForward(state) {
-  const nextView = state.viewForwardStack.pop();
+export function navigateLensForward(state) {
+  const nextLens = state.lensForwardStack.pop();
 
-  if (!nextView) {
+  if (!nextLens) {
     return false;
   }
 
-  state.viewBackStack.push(currentView(state));
-  applyView(state, nextView);
+  state.lensBackStack.push(currentLens(state));
+  applyLens(state, nextLens);
   return true;
 }
 
-export function viewNavigationForKey(key) {
+export function lensNavigationForKey(key) {
   if (!key) {
     return null;
   }
@@ -238,19 +238,19 @@ async function contextIdsForState(state) {
   return [...model.contexts.keys()].filter((contextId) => contextId !== '').sort();
 }
 
-export function filterFactsForViewId(facts, view = defaultViewId) {
-  return filterFactsForView(facts, view);
+export function filterFactsForLensId(facts, lens = defaultLensId) {
+  return filterFactsForLens(facts, lens);
 }
 
 export async function visibleFactsForState(state) {
   const model = await ensureModel(state);
-  const viewModel = presentView({
+  const lensModel = presentLens({
     model,
     state,
-    viewId: currentViewIdForState(state)
+    lensId: currentLensIdForState(state)
   });
 
-  return viewModel.facts ?? [];
+  return lensModel.facts ?? [];
 }
 
 async function visibleFactAtIndex(state, index) {
@@ -601,10 +601,10 @@ export function buildTuiLines(options = {}) {
   } = options;
   const visibleRows = Math.max(rows - 1, 1);
   const factRows = Math.max(visibleRows - 2, 0);
-  const view = currentViewIdForState(state);
-  const viewText = view === defaultViewId ? '' : ` | ${view}`;
+  const lens = currentLensIdForState(state);
+  const lensText = lens === defaultLensId ? '' : ` | ${lens}`;
   const status = state.statusMessage ? ` | ${state.statusMessage}` : '';
-  const header = fitLine(`${currentContextName(state)}${viewText}${status}`, columns);
+  const header = fitLine(`${currentContextName(state)}${lensText}${status}`, columns);
   const separator = '-'.repeat(Math.max(columns, 0));
   const { lines: bodyLines } = state.temporaryBodyLines
     ? buildTemporaryBodyLines(state.temporaryBodyLines, factRows, columns)
@@ -848,8 +848,8 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    changeView(state, {
-      ...currentView(state),
+    changeLens(state, {
+      ...currentLens(state),
       currentContextDirectory: nextContextDirectory
     });
 
@@ -861,9 +861,9 @@ export async function handleEntry(entry, state) {
     };
   }
 
-  if (parsedEntry.type === 'switch_view') {
-    if (!hasView(parsedEntry.view)) {
-      state.statusMessage = `unknown view ${parsedEntry.view}`;
+  if (parsedEntry.type === 'switch_lens') {
+    if (!hasLens(parsedEntry.lens)) {
+      state.statusMessage = `unknown lens ${parsedEntry.lens}`;
       clearTemporaryBody(state);
 
       return {
@@ -872,14 +872,14 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    changeView(state, {
-      ...currentView(state),
-      currentViewId: parsedEntry.view
+    changeLens(state, {
+      ...currentLens(state),
+      currentLensId: parsedEntry.lens
     });
 
     return {
       action: 'continue',
-      message: `view ${parsedEntry.view}`
+      message: `lens ${parsedEntry.lens}`
     };
   }
 
@@ -1063,10 +1063,10 @@ async function main() {
     redrawPrompt();
   }
 
-  async function changeView(direction) {
+  async function changeLens(direction) {
     const changed = direction === 'forward'
-      ? navigateViewForward(state)
-      : navigateViewBack(state);
+      ? navigateLensForward(state)
+      : navigateLensBack(state);
 
     if (!changed) {
       return;
@@ -1091,10 +1091,10 @@ async function main() {
       state.temporaryBodyLines = keyDebugLines(value, key);
     }
 
-    const viewNavigation = viewNavigationForKey(key);
+    const lensNavigation = lensNavigationForKey(key);
 
-    if (viewNavigation) {
-      void changeView(viewNavigation);
+    if (lensNavigation) {
+      void changeLens(lensNavigation);
       return;
     }
 

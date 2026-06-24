@@ -10,18 +10,18 @@ import {
   completeEntry,
   createReadlineCompleter,
   createPromptState,
-  filterFactsForViewId,
+  filterFactsForLensId,
   handleEntry,
   keyDebugLines,
-  navigateViewBack,
-  navigateViewForward,
+  navigateLensBack,
+  navigateLensForward,
   openEditor,
   pageNavigationForKey,
   pageNavigationForFacts,
   refreshEditedFact,
   renderTui,
   visibleFactsForState,
-  viewNavigationForKey
+  lensNavigationForKey
 } from '../src/index.js';
 
 test('/s switches context without creating a fact', async () => {
@@ -118,7 +118,7 @@ test('/ lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry('/', state), {
       action: 'continue',
-      message: '/s <context> | /l <view> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
+      message: '/s <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
     });
     assert.deepEqual(
       buildTuiLines({
@@ -132,7 +132,7 @@ test('/ lists commands without saving a fact', async () => {
         '--------------------------------------------------------------------------------',
         'Commands:',
         '/s <context>',
-        '/l <view>',
+        '/l <lens>',
         '/e <item>',
         '/d <item>',
         '/r <item> <context>',
@@ -154,7 +154,7 @@ test('unknown slash commands show an error and list commands', async () => {
 
     assert.deepEqual(await handleEntry('/wat now', state), {
       action: 'continue',
-      message: 'unknown command /wat; /s <context> | /l <view> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
+      message: 'unknown command /wat; /s <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
     });
     assert.deepEqual(
       buildTuiLines({
@@ -170,7 +170,7 @@ test('unknown slash commands show an error and list commands', async () => {
         '',
         'Commands:',
         '/s <context>',
-        '/l <view>',
+        '/l <lens>',
         '/e <item>',
         '/d <item>',
         '/r <item> <context>',
@@ -561,9 +561,9 @@ test('does not show outbound relation names already shown as Markdown links', ()
   );
 });
 
-test('filters facts for the todo view', () => {
+test('filters facts for the todo lens', () => {
   assert.deepEqual(
-    filterFactsForViewId([
+    filterFactsForLensId([
       { type: 'fact', text: 'Ignore me.' },
       { type: 'todo', text: 'Do this.' },
       { type: 'waiting', text: 'Waiting on this.' },
@@ -578,11 +578,11 @@ test('filters facts for the todo view', () => {
   );
 });
 
-test('shows the active view in the TUI header', () => {
+test('shows the active lens in the TUI header', () => {
   const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
   const rootDirectory = path.join(appDirectory, 'facts');
   const state = createPromptState({ appDirectory, rootDirectory });
-  state.currentViewId = 'todo';
+  state.currentLensId = 'todo';
 
   assert.deepEqual(
     buildTuiLines({
@@ -599,7 +599,7 @@ test('shows the active view in the TUI header', () => {
   );
 });
 
-test('/l switches views', async () => {
+test('/l switches lenses', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -608,20 +608,20 @@ test('/l switches views', async () => {
 
     assert.deepEqual(await handleEntry('/l todo', state), {
       action: 'continue',
-      message: 'view todo'
+      message: 'lens todo'
     });
-    assert.equal(state.currentViewId, 'todo');
+    assert.equal(state.currentLensId, 'todo');
     assert.deepEqual(await handleEntry('/l all', state), {
       action: 'continue',
-      message: 'view all'
+      message: 'lens all'
     });
-    assert.equal(state.currentViewId, 'all');
+    assert.equal(state.currentLensId, 'all');
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
 });
 
-test('view history navigates context and view changes', async () => {
+test('lens history navigates context and lens changes', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -633,40 +633,40 @@ test('view history navigates context and view changes', async () => {
     await handleEntry('/s gatherbrain', state);
     await handleEntry('/l todo', state);
     assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'gatherbrain'));
-    assert.equal(state.currentViewId, 'todo');
+    assert.equal(state.currentLensId, 'todo');
 
-    assert.equal(navigateViewBack(state), true);
+    assert.equal(navigateLensBack(state), true);
     assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'gatherbrain'));
-    assert.equal(state.currentViewId, 'all');
+    assert.equal(state.currentLensId, 'all');
 
-    assert.equal(navigateViewBack(state), true);
+    assert.equal(navigateLensBack(state), true);
     assert.equal(state.currentContextDirectory, rootDirectory);
-    assert.equal(state.currentViewId, 'all');
+    assert.equal(state.currentLensId, 'all');
 
-    assert.equal(navigateViewForward(state), true);
+    assert.equal(navigateLensForward(state), true);
     assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'gatherbrain'));
-    assert.equal(state.currentViewId, 'all');
+    assert.equal(state.currentLensId, 'all');
 
     await handleEntry('/s people', state);
     assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'people'));
-    assert.equal(navigateViewForward(state), false);
+    assert.equal(navigateLensForward(state), false);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
 });
 
-test('maps alt-arrow keys to view navigation directions', () => {
-  assert.equal(viewNavigationForKey({ meta: true, name: 'left' }), 'back');
-  assert.equal(viewNavigationForKey({ meta: true, name: 'right' }), 'forward');
-  assert.equal(viewNavigationForKey({ sequence: '\x1b[1;3D' }), 'back');
-  assert.equal(viewNavigationForKey({ sequence: '\x1bb' }), 'back');
-  assert.equal(viewNavigationForKey({ sequence: '\x1b[1;3C' }), 'forward');
-  assert.equal(viewNavigationForKey({ sequence: '\x1bf' }), 'forward');
-  assert.equal(viewNavigationForKey({ name: 'escape', sequence: '\x1b' }), null);
-  assert.equal(viewNavigationForKey({ name: 'pagedown' }), null);
+test('maps alt-arrow keys to lens navigation directions', () => {
+  assert.equal(lensNavigationForKey({ meta: true, name: 'left' }), 'back');
+  assert.equal(lensNavigationForKey({ meta: true, name: 'right' }), 'forward');
+  assert.equal(lensNavigationForKey({ sequence: '\x1b[1;3D' }), 'back');
+  assert.equal(lensNavigationForKey({ sequence: '\x1bb' }), 'back');
+  assert.equal(lensNavigationForKey({ sequence: '\x1b[1;3C' }), 'forward');
+  assert.equal(lensNavigationForKey({ sequence: '\x1bf' }), 'forward');
+  assert.equal(lensNavigationForKey({ name: 'escape', sequence: '\x1b' }), null);
+  assert.equal(lensNavigationForKey({ name: 'pagedown' }), null);
 });
 
-test('/l reports unknown views', async () => {
+test('/l reports unknown lenses', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -675,9 +675,9 @@ test('/l reports unknown views', async () => {
 
     assert.deepEqual(await handleEntry('/l someday', state), {
       action: 'continue',
-      message: 'unknown view someday'
+      message: 'unknown lens someday'
     });
-    assert.equal(state.currentViewId, 'all');
+    assert.equal(state.currentLensId, 'all');
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -720,14 +720,14 @@ test('type command changes a listed item type', async () => {
   }
 });
 
-test('type command targets the active view list', async () => {
+test('type command targets the active lens list', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const waitingPath = path.join(rootDirectory, '2026-06-23T09-05-07.012-04-00.md');
 
   try {
     const state = createPromptState({ appDirectory, rootDirectory });
-    state.currentViewId = 'todo';
+    state.currentLensId = 'todo';
     await mkdir(rootDirectory, { recursive: true });
     await writeFile(
       path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md'),
@@ -922,14 +922,14 @@ test('/e command returns an edit action for a listed item', async () => {
   }
 });
 
-test('/e command targets the active view list', async () => {
+test('/e command targets the active lens list', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const waitingPath = path.join(rootDirectory, '2026-06-23T09-05-07.012-04-00.md');
 
   try {
     const state = createPromptState({ appDirectory, rootDirectory });
-    state.currentViewId = 'todo';
+    state.currentLensId = 'todo';
     await mkdir(rootDirectory, { recursive: true });
     await writeFile(
       path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md'),
@@ -1014,7 +1014,7 @@ test('/d command trashes a listed item', async () => {
   }
 });
 
-test('/d command targets the active view list', async () => {
+test('/d command targets the active lens list', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const factPath = path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md');
@@ -1023,7 +1023,7 @@ test('/d command targets the active view list', async () => {
 
   try {
     const state = createPromptState({ appDirectory, rootDirectory });
-    state.currentViewId = 'todo';
+    state.currentLensId = 'todo';
     await mkdir(rootDirectory, { recursive: true });
     await writeFile(
       factPath,

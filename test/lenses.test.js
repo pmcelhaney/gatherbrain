@@ -5,24 +5,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadWorkspaceModel } from '../src/model.js';
 import {
-  defaultViewId,
-  filterFactsForView,
-  hasView,
-  presentView,
-  viewIds
-} from '../src/views.js';
+  defaultLensId,
+  filterFactsForLens,
+  hasLens,
+  presentLens,
+  lensIds
+} from '../src/lenses.js';
 
-test('exposes built-in view ids', () => {
-  assert.equal(defaultViewId, 'all');
-  assert.deepEqual(viewIds(), ['all', 'todo']);
-  assert.equal(hasView('all'), true);
-  assert.equal(hasView('todo'), true);
-  assert.equal(hasView('missing'), false);
+test('exposes built-in lens ids', () => {
+  assert.equal(defaultLensId, 'all');
+  assert.deepEqual(lensIds(), ['all', 'todo']);
+  assert.equal(hasLens('all'), true);
+  assert.equal(hasLens('todo'), true);
+  assert.equal(hasLens('missing'), false);
 });
 
-test('filters facts for the todo view', () => {
+test('filters facts for the todo lens', () => {
   assert.deepEqual(
-    filterFactsForView([
+    filterFactsForLens([
       { type: 'fact', text: 'Fact' },
       { type: 'todo', text: 'Todo' },
       { type: 'waiting', text: 'Waiting' },
@@ -38,8 +38,8 @@ test('filters facts for the todo view', () => {
   );
 });
 
-test('all view presents direct and related facts for the active context', async () => {
-  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-views-'));
+test('all lens presents direct and related facts for the active context', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-lenses-'));
   const activeContext = path.join(directory, 'people', 'Steve Ma');
   const relatedPath = path.join(directory, 'projects', 'related.md');
 
@@ -60,14 +60,14 @@ test('all view presents direct and related facts for the active context', async 
     );
 
     const model = await loadWorkspaceModel({ rootDirectory: directory });
-    const viewModel = presentView({
+    const lensModel = presentLens({
       model,
       state: { currentContextDirectory: activeContext },
-      viewId: 'all'
+      lensId: 'all'
     });
 
     assert.deepEqual(
-      viewModel.facts.map((fact) => ({
+      lensModel.facts.map((fact) => ({
         displayRelationDirection: fact.displayRelationDirection,
         displayRelations: fact.displayRelations,
         text: fact.text
@@ -90,8 +90,8 @@ test('all view presents direct and related facts for the active context', async 
   }
 });
 
-test('todo view presents only todo-compatible facts', async () => {
-  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-views-'));
+test('todo lens presents only todo-compatible facts', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-lenses-'));
 
   try {
     await writeFile(path.join(directory, 'fact.md'), '---\ntype: fact\n---\n\nFact.\n');
@@ -99,14 +99,14 @@ test('todo view presents only todo-compatible facts', async () => {
     await writeFile(path.join(directory, 'done.md'), '---\ntype: done\n---\n\nDone.\n');
 
     const model = await loadWorkspaceModel({ rootDirectory: directory });
-    const viewModel = presentView({
+    const lensModel = presentLens({
       model,
       state: { currentContextDirectory: directory },
-      viewId: 'todo'
+      lensId: 'todo'
     });
 
     assert.deepEqual(
-      viewModel.facts.map((fact) => fact.text),
+      lensModel.facts.map((fact) => fact.text),
       ['Fact.', 'Todo.']
     );
   } finally {

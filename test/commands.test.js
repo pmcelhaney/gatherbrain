@@ -9,7 +9,7 @@ import {
 test('lists built-in command help', () => {
   assert.deepEqual(commandHelp(), [
     '/s <context>',
-    '/l <view>',
+    '/l <lens>',
     '/e <item>',
     '/d <item>',
     '/r <item> <context>',
@@ -17,7 +17,7 @@ test('lists built-in command help', () => {
   ]);
   assert.equal(
     commandHelpText(),
-    '/s <context> | /l <view> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
+    '/s <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
   );
 });
 
@@ -29,7 +29,7 @@ test('parses control entries', () => {
   assert.deepEqual(parseEntry('/debug keys'), { type: 'debug_keys' });
 });
 
-test('parses context and view commands', () => {
+test('parses context and lens commands', () => {
   assert.deepEqual(parseEntry('/s people/alex'), {
     context: 'people/alex',
     type: 'switch_context'
@@ -39,11 +39,11 @@ test('parses context and view commands', () => {
     type: 'usage_error'
   });
   assert.deepEqual(parseEntry('/l todo'), {
-    type: 'switch_view',
-    view: 'todo'
+    type: 'switch_lens',
+    lens: 'todo'
   });
   assert.deepEqual(parseEntry('/l'), {
-    message: 'usage: /l <view>',
+    message: 'usage: /l <lens>',
     type: 'usage_error'
   });
 });

@@ -1,8 +1,8 @@
 import path from 'node:path';
 
-export const defaultViewId = 'all';
+export const defaultLensId = 'all';
 
-const todoViewTypes = new Set(['todo', 'waiting', 'in progress', 'fact']);
+const todoLensTypes = new Set(['todo', 'waiting', 'in progress', 'fact']);
 
 function pathIsInside(directory, filePath) {
   const relativePath = path.relative(directory, filePath);
@@ -77,15 +77,15 @@ function visibleFactsForContext(model, contextPath) {
     });
 }
 
-export function filterFactsForView(facts, viewId = defaultViewId) {
-  if (viewId === 'todo') {
-    return facts.filter((fact) => todoViewTypes.has(fact.type));
+export function filterFactsForLens(facts, lensId = defaultLensId) {
+  if (lensId === 'todo') {
+    return facts.filter((fact) => todoLensTypes.has(fact.type));
   }
 
   return facts;
 }
 
-const viewDefinitions = new Map([
+const lensDefinitions = new Map([
   [
     'all',
     {
@@ -100,7 +100,7 @@ const viewDefinitions = new Map([
     {
       id: 'todo',
       presenter: ({ model, state }) => ({
-        facts: filterFactsForView(
+        facts: filterFactsForLens(
           visibleFactsForContext(model, state.currentContextDirectory),
           'todo'
         )
@@ -109,16 +109,16 @@ const viewDefinitions = new Map([
   ]
 ]);
 
-export function viewIds() {
-  return [...viewDefinitions.keys()];
+export function lensIds() {
+  return [...lensDefinitions.keys()];
 }
 
-export function hasView(viewId) {
-  return viewDefinitions.has(viewId);
+export function hasLens(lensId) {
+  return lensDefinitions.has(lensId);
 }
 
-export function presentView(input) {
-  const view = viewDefinitions.get(input.viewId ?? defaultViewId) ?? viewDefinitions.get(defaultViewId);
+export function presentLens(input) {
+  const lens = lensDefinitions.get(input.lensId ?? defaultLensId) ?? lensDefinitions.get(defaultLensId);
 
-  return view.presenter(input);
+  return lens.presenter(input);
 }
