@@ -112,6 +112,11 @@
           "prompt": "Set due date on which fact?"
         }
       ]
+    },
+    {
+      "name": "debug-keys",
+      "action": "debug_keys",
+      "arguments": []
     }
   ]
 }

@@ -30,7 +30,7 @@ import { createCommandRegistry } from '../src/commands.js';
 import { createEnumRegistry } from '../src/enums.js';
 import { createLensRegistry } from '../src/lenses.js';
 
-test('/s switches context without creating a fact', async () => {
+test(':switch switches context without creating a fact', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -38,7 +38,7 @@ test('/s switches context without creating a fact', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
     await mkdir(path.join(rootDirectory, 'my-cool-project'), { recursive: true });
 
-    const switchResult = await handleEntry('/s my-cool-project', state);
+    const switchResult = await handleEntry(':switch my-cool-project', state);
 
     assert.deepEqual(switchResult, {
       action: 'continue',
@@ -95,18 +95,18 @@ test('saves typed text as a titled fact without deriving relationships from gaze
   }
 });
 
-test('/s without a context does not save a fact', async () => {
+test(':switch without a context does not save a fact', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
   try {
     const state = createPromptState({ appDirectory, rootDirectory });
 
-    const result = await handleEntry('/s', state);
+    const result = await handleEntry(':switch', state);
 
     assert.deepEqual(result, {
       action: 'continue',
-      message: 'usage: /s <context>'
+      message: 'Switch to which context?'
     });
     assert.equal(state.currentContextDirectory, rootDirectory);
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
@@ -229,22 +229,22 @@ test('completes enum command arguments', async () => {
   }
 });
 
-test('/ lists commands without saving a fact', async () => {
+test(':help lists commands without saving a fact', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
   try {
     const state = createPromptState({ appDirectory, rootDirectory });
 
-    assert.deepEqual(await handleEntry('/', state), {
+    assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item>'
+      message: ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         facts: [{ type: 'fact', text: 'Existing fact.' }],
-        rows: 13,
+        rows: 14,
         columns: 80
       }),
       [
@@ -259,7 +259,8 @@ test('/ lists commands without saving a fact', async () => {
         ':delete <item>',
         ':relate <item> <context>',
         ':type <type> <item>',
-        ':due <value> <item>'
+        ':due <value> <item>',
+        ':debug-keys'
       ]
     );
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
@@ -268,7 +269,7 @@ test('/ lists commands without saving a fact', async () => {
   }
 });
 
-test('unknown slash commands show an error and list commands', async () => {
+test('slash commands show a colon command usage error', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -277,7 +278,7 @@ test('unknown slash commands show an error and list commands', async () => {
 
     assert.deepEqual(await handleEntry('/wat now', state), {
       action: 'continue',
-      message: 'unknown command /wat; :switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item>'
+      message: 'slash shortcuts are no longer supported; use colon commands'
     });
     assert.deepEqual(
       buildTuiLines({
@@ -287,20 +288,9 @@ test('unknown slash commands show an error and list commands', async () => {
         columns: 80
       }),
       [
-        'facts',
+        'facts | slash shortcuts are no longer supported; use colon commands',
         '--------------------------------------------------------------------------------',
-        'unknown command /wat',
-        '',
-        'Commands:',
-        ':switch <context>',
-        ':gaze <context>',
-        ':clear-gaze',
-        ':lens <lens>',
-        ':edit <item>',
-        ':delete <item>',
-        ':relate <item> <context>',
-        ':type <type> <item>',
-        ':due <value> <item>'
+        ' 1. Existing fact.'
       ]
     );
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
@@ -309,20 +299,20 @@ test('unknown slash commands show an error and list commands', async () => {
   }
 });
 
-test('/debug keys toggles key debugging', async () => {
+test(':debug-keys toggles key debugging', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
   try {
     const state = createPromptState({ appDirectory, rootDirectory });
 
-    assert.deepEqual(await handleEntry('/debug keys', state), {
+    assert.deepEqual(await handleEntry(':debug-keys', state), {
       action: 'continue',
       message: 'key debug on'
     });
     assert.equal(state.debugKeys, true);
 
-    assert.deepEqual(await handleEntry('/debug keys', state), {
+    assert.deepEqual(await handleEntry(':debug-keys', state), {
       action: 'continue',
       message: 'key debug off'
     });
@@ -809,19 +799,19 @@ test('shows the active lens in the TUI header', () => {
   );
 });
 
-test('/l switches lenses', async () => {
+test(':lens switches lenses', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
   try {
     const state = createPromptState({ appDirectory, rootDirectory });
 
-    assert.deepEqual(await handleEntry('/l todo', state), {
+    assert.deepEqual(await handleEntry(':lens todo', state), {
       action: 'continue',
       message: 'lens todo'
     });
     assert.equal(state.currentLensId, 'todo');
-    assert.deepEqual(await handleEntry('/l all', state), {
+    assert.deepEqual(await handleEntry(':lens all', state), {
       action: 'continue',
       message: 'lens all'
     });
@@ -840,8 +830,8 @@ test('lens history navigates context and lens changes', async () => {
     await mkdir(path.join(rootDirectory, 'gatherbrain'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'people'), { recursive: true });
 
-    await handleEntry('/s gatherbrain', state);
-    await handleEntry('/l todo', state);
+    await handleEntry(':switch gatherbrain', state);
+    await handleEntry(':lens todo', state);
     assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'gatherbrain'));
     assert.equal(state.currentLensId, 'todo');
 
@@ -857,7 +847,7 @@ test('lens history navigates context and lens changes', async () => {
     assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'gatherbrain'));
     assert.equal(state.currentLensId, 'all');
 
-    await handleEntry('/s people', state);
+    await handleEntry(':switch people', state);
     assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'people'));
     assert.equal(navigateLensForward(state), false);
   } finally {
@@ -876,14 +866,14 @@ test('maps alt-arrow keys to lens navigation directions', () => {
   assert.equal(lensNavigationForKey({ name: 'pagedown' }), null);
 });
 
-test('/l reports unknown lenses', async () => {
+test(':lens reports unknown lenses', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
   try {
     const state = createPromptState({ appDirectory, rootDirectory });
 
-    assert.deepEqual(await handleEntry('/l someday', state), {
+    assert.deepEqual(await handleEntry(':lens someday', state), {
       action: 'continue',
       message: 'unknown lens someday'
     });
@@ -893,7 +883,7 @@ test('/l reports unknown lenses', async () => {
   }
 });
 
-test('/g changes gaze without changing the current context', async () => {
+test(':gaze changes gaze without changing the current context', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const currentContext = path.join(rootDirectory, 'projects', 'gatherbrain');
@@ -912,11 +902,11 @@ test('/g changes gaze without changing the current context', async () => {
       '---\ntype: fact\n---\n\nGaze context fact.\n'
     );
 
-    assert.deepEqual(await handleEntry('/s projects/gatherbrain', state), {
+    assert.deepEqual(await handleEntry(':switch projects/gatherbrain', state), {
       action: 'continue',
       message: 'context projects/gatherbrain'
     });
-    assert.deepEqual(await handleEntry('/g people/Alex', state), {
+    assert.deepEqual(await handleEntry(':gaze people/Alex', state), {
       action: 'continue',
       message: 'gaze people/Alex'
     });
@@ -962,8 +952,8 @@ test('saving while gazing creates in the current context and relates to gaze', a
     await mkdir(currentContext, { recursive: true });
     await mkdir(path.join(rootDirectory, 'people', 'Alex'), { recursive: true });
 
-    await handleEntry('/s projects/gatherbrain', state);
-    await handleEntry('/g people/Alex', state);
+    await handleEntry(':switch projects/gatherbrain', state);
+    await handleEntry(':gaze people/Alex', state);
     assert.deepEqual(await handleEntry('Follow up with Alex', state), {
       action: 'continue',
       message: `saved ${path.join('facts', 'projects', 'gatherbrain', 'follow-up-with-alex.md')}`
@@ -996,7 +986,7 @@ test('saving while gazing creates in the current context and relates to gaze', a
   }
 });
 
-test('/s clears gaze', async () => {
+test(':switch clears gaze', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -1005,9 +995,9 @@ test('/s clears gaze', async () => {
     await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'people', 'Alex'), { recursive: true });
 
-    await handleEntry('/g people/Alex', state);
+    await handleEntry(':gaze people/Alex', state);
     assert.equal(state.gazeContextDirectory, path.join(rootDirectory, 'people', 'Alex'));
-    await handleEntry('/s projects/gatherbrain', state);
+    await handleEntry(':switch projects/gatherbrain', state);
     assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'projects', 'gatherbrain'));
     assert.equal(state.gazeContextDirectory, null);
   } finally {
@@ -1015,7 +1005,7 @@ test('/s clears gaze', async () => {
   }
 });
 
-test('/g clears gaze', async () => {
+test(':gaze clears gaze', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -1023,9 +1013,9 @@ test('/g clears gaze', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
     await mkdir(path.join(rootDirectory, 'people', 'Alex'), { recursive: true });
 
-    await handleEntry('/g people/Alex', state);
+    await handleEntry(':gaze people/Alex', state);
     assert.equal(state.gazeContextDirectory, path.join(rootDirectory, 'people', 'Alex'));
-    assert.deepEqual(await handleEntry('/g', state), {
+    assert.deepEqual(await handleEntry(':clear-gaze', state), {
       action: 'continue',
       message: 'gaze cleared'
     });
@@ -1288,7 +1278,7 @@ test('due command sets a normalized due date property', async () => {
   }
 });
 
-test('/e command returns an edit action for a listed item', async () => {
+test(':edit command returns an edit action for a listed item', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const secondFactPath = path.join(rootDirectory, '2026-06-23T09-05-07.012-04-00.md');
@@ -1306,7 +1296,7 @@ test('/e command returns an edit action for a listed item', async () => {
     );
 
     assert.deepEqual(
-      await handleEntry('/e 2', state),
+      await handleEntry(':edit 2', state),
       {
         action: 'edit',
         filePath: secondFactPath,
@@ -1319,7 +1309,7 @@ test('/e command returns an edit action for a listed item', async () => {
   }
 });
 
-test('/e command targets the active lens list', async () => {
+test(':edit command targets the active lens list', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const waitingPath = path.join(rootDirectory, '2026-06-23T09-05-07.012-04-00.md');
@@ -1341,7 +1331,7 @@ test('/e command targets the active lens list', async () => {
       '---\ntype: todo\n---\n\nTodo item.\n'
     );
 
-    assert.deepEqual(await handleEntry('/e 2', state), {
+    assert.deepEqual(await handleEntry(':edit 2', state), {
       action: 'edit',
       filePath: waitingPath,
       itemLabel: '2',
@@ -1352,7 +1342,7 @@ test('/e command targets the active lens list', async () => {
   }
 });
 
-test('/e command reports missing item', async () => {
+test(':edit command reports missing item', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -1360,7 +1350,7 @@ test('/e command reports missing item', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(
-      await handleEntry('/e 3', state),
+      await handleEntry(':edit 3', state),
       {
         action: 'continue',
         message: 'item 3 does not exist'
@@ -1371,7 +1361,7 @@ test('/e command reports missing item', async () => {
   }
 });
 
-test('/d command trashes a listed item', async () => {
+test(':delete command trashes a listed item', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const firstFactPath = path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md');
@@ -1389,7 +1379,7 @@ test('/d command trashes a listed item', async () => {
       '---\ntype: fact\n---\n\nSecond fact.\n'
     );
 
-    assert.deepEqual(await handleEntry('/d 2', state), {
+    assert.deepEqual(await handleEntry(':delete 2', state), {
       action: 'continue',
       message: 'trashed item 2'
     });
@@ -1412,7 +1402,7 @@ test('/d command trashes a listed item', async () => {
   }
 });
 
-test('/d command targets the active lens list', async () => {
+test(':delete command targets the active lens list', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const factPath = path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md');
@@ -1436,7 +1426,7 @@ test('/d command targets the active lens list', async () => {
       '---\ntype: todo\n---\n\nTodo item.\n'
     );
 
-    assert.deepEqual(await handleEntry('/d 2', state), {
+    assert.deepEqual(await handleEntry(':delete 2', state), {
       action: 'continue',
       message: 'trashed item 2'
     });
@@ -1454,7 +1444,7 @@ test('/d command targets the active lens list', async () => {
   }
 });
 
-test('/d command reports missing item', async () => {
+test(':delete command reports missing item', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -1462,7 +1452,7 @@ test('/d command reports missing item', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(
-      await handleEntry('/d 3', state),
+      await handleEntry(':delete 3', state),
       {
         action: 'continue',
         message: 'item 3 does not exist'
@@ -1473,7 +1463,7 @@ test('/d command reports missing item', async () => {
   }
 });
 
-test('/r command relates a listed item to a context', async () => {
+test(':relate command relates a listed item to a context', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const factPath = path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md');
@@ -1486,7 +1476,7 @@ test('/r command relates a listed item to a context', async () => {
       '---\ntype: fact\n---\n\nFirst fact.\n'
     );
 
-    assert.deepEqual(await handleEntry('/r 1 Steve Ma', state), {
+    assert.deepEqual(await handleEntry(':relate 1 Steve Ma', state), {
       action: 'continue',
       message: 'related item 1 to people/Steve Ma'
     });
@@ -1539,7 +1529,7 @@ test('named relate prompts for item and context', async () => {
   }
 });
 
-test('/r command accepts full context paths', async () => {
+test(':relate command accepts full context paths', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const factPath = path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md');
@@ -1552,7 +1542,7 @@ test('/r command accepts full context paths', async () => {
       '---\ntype: fact\n---\n\nFirst fact.\n'
     );
 
-    assert.deepEqual(await handleEntry('/r 1 /people/Steve Ma', state), {
+    assert.deepEqual(await handleEntry(':relate 1 /people/Steve Ma', state), {
       action: 'continue',
       message: 'related item 1 to people/Steve Ma'
     });
@@ -1561,7 +1551,7 @@ test('/r command accepts full context paths', async () => {
   }
 });
 
-test('/r command reports ambiguous context names', async () => {
+test(':relate command reports ambiguous context names', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -1574,7 +1564,7 @@ test('/r command reports ambiguous context names', async () => {
       '---\ntype: fact\n---\n\nFirst fact.\n'
     );
 
-    assert.deepEqual(await handleEntry('/r 1 Steve Ma', state), {
+    assert.deepEqual(await handleEntry(':relate 1 Steve Ma', state), {
       action: 'continue',
       message: 'context Steve Ma is ambiguous'
     });
@@ -1583,16 +1573,16 @@ test('/r command reports ambiguous context names', async () => {
   }
 });
 
-test('/r command reports missing context usage', async () => {
+test(':relate command reports missing context usage', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
   try {
     const state = createPromptState({ appDirectory, rootDirectory });
 
-    assert.deepEqual(await handleEntry('/r 1', state), {
+    assert.deepEqual(await handleEntry(':relate 1', state), {
       action: 'continue',
-      message: 'usage: /r <item> <context>'
+      message: 'Relate it to which context?'
     });
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -1676,7 +1666,7 @@ test('renders the prompt target on the bottom row', () => {
   );
 });
 
-test('completes /s context names', async () => {
+test('completes :switch context names', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -1687,15 +1677,15 @@ test('completes /s context names', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(
-      await completeEntry('/s my', state),
+      await completeEntry(':switch my', state),
       [['my-cool-project'], 'my']
     );
     assert.deepEqual(
-      await completeEntry('/s deep', state),
+      await completeEntry(':switch deep', state),
       [['alpha/deep-project'], 'deep']
     );
     assert.deepEqual(
-      await completeEntry('/s ', state),
+      await completeEntry(':switch ', state),
       [['alpha', 'alpha/deep-project', 'my-cool-project', 'other-project'], '']
     );
   } finally {
@@ -1703,7 +1693,7 @@ test('completes /s context names', async () => {
   }
 });
 
-test('completes /g context names', async () => {
+test('completes :gaze context names', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -1713,11 +1703,11 @@ test('completes /g context names', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(
-      await completeEntry('/g Al', state),
+      await completeEntry(':gaze Al', state),
       [['people/Alex'], 'Al']
     );
     assert.deepEqual(
-      await completeEntry('/g ', state),
+      await completeEntry(':gaze ', state),
       [['people', 'people/Alex', 'projects', 'projects/gatherbrain'], '']
     );
   } finally {
@@ -1725,7 +1715,7 @@ test('completes /g context names', async () => {
   }
 });
 
-test('completes /r context folder names', async () => {
+test('completes :relate context folder names', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -1735,11 +1725,11 @@ test('completes /r context folder names', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(
-      await completeEntry('/r 1 Steve', state),
+      await completeEntry(':relate 1 Steve', state),
       [['Steve Ma'], 'Steve']
     );
     assert.deepEqual(
-      await completeEntry('/r 1 /people/S', state),
+      await completeEntry(':relate 1 /people/S', state),
       [['/people/Steve Ma'], '/people/S']
     );
   } finally {
@@ -1764,15 +1754,15 @@ test('completes context mentions in fact text', async () => {
   }
 });
 
-test('only completes context commands', async () => {
+test('does not complete slash commands', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
   try {
     const state = createPromptState({ appDirectory, rootDirectory });
 
-    assert.deepEqual(await completeEntry('/s', state), [['/s '], '/s']);
-    assert.deepEqual(await completeEntry('/g', state), [['/g '], '/g']);
+    assert.deepEqual(await completeEntry('/s', state), [[], '/s']);
+    assert.deepEqual(await completeEntry('/g', state), [[], '/g']);
     assert.deepEqual(await completeEntry('regular fact', state), [[], 'regular fact']);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -1797,7 +1787,8 @@ test('completes colon command names', async () => {
       ':delete ',
       ':relate ',
       ':type ',
-      ':due '
+      ':due ',
+      ':debug-keys '
     ], ':']
   );
 });
@@ -1923,7 +1914,7 @@ test('executes commands with fact titles completed as final arguments', async ()
   }
 });
 
-test('readline completer returns /s completions', async () => {
+test('readline completer returns :switch completions', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -1932,7 +1923,7 @@ test('readline completer returns /s completions', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
     const completer = createReadlineCompleter(state);
 
-    assert.deepEqual(await completer('/s my'), [['my-cool-project'], 'my']);
+    assert.deepEqual(await completer(':switch my'), [['my-cool-project'], 'my']);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

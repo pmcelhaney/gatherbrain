@@ -880,33 +880,6 @@ export async function completeEntry(line, state) {
     return [matches, partialLens];
   }
 
-  const contextCompletion = line.match(/^\/([sg])(?:(\s+)(.*))?$/u);
-
-  if (contextCompletion) {
-    const command = contextCompletion[1];
-
-    if (!contextCompletion[2]) {
-      return [[`/${command} `], line];
-    }
-
-    const partialContext = contextCompletion[3] ?? '';
-    const matches = await matchingContextCompletions(partialContext, state);
-
-    return [matches.map((context) => context.name), partialContext];
-  }
-
-  const relationCompletion = line.match(/^\/r\s+[1-9]\d*\s+(.*)$/u);
-
-  if (relationCompletion) {
-    const partialContext = relationCompletion[1] ?? '';
-    const matches = await matchingContextCompletions(partialContext, state);
-    const relationCompletions = partialContext.includes('/')
-      ? matches.map((context) => `/${context.name}`)
-      : matches.map((context) => context.folder);
-
-    return [relationCompletions, partialContext];
-  }
-
   const mentionCompletion = line.match(/(^|\s)(@[^\s]*)$/u);
 
   if (mentionCompletion) {
@@ -1074,7 +1047,7 @@ async function relationForContextReference(contextReference, state) {
   const requestedContext = contextReference.trim();
 
   if (requestedContext.length === 0) {
-    throw new Error('usage: /r <item> <context>');
+    throw new Error('usage: :relate <item> <context>');
   }
 
   const normalizedContext = requestedContext.replace(/^\/+/u, '');

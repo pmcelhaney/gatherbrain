@@ -12,8 +12,7 @@ import {
   continuePromptedCommand,
   createCommandRegistry,
   loadCommandRegistry,
-  parseEntry,
-  shortcutHelp
+  parseEntry
 } from '../src/commands.js';
 import { createEnumRegistry } from '../src/enums.js';
 
@@ -27,11 +26,12 @@ test('lists built-in command help', () => {
     ':delete <item>',
     ':relate <item> <context>',
     ':type <type> <item>',
-    ':due <value> <item>'
+    ':due <value> <item>',
+    ':debug-keys'
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item>'
+    ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -42,16 +42,8 @@ test('lists built-in command help', () => {
     'delete',
     'relate',
     'type',
-    'due'
-  ]);
-  assert.deepEqual(shortcutHelp(), [
-    '/s <context>',
-    '/g <context>',
-    '/l <lens>',
-    '/e <item>',
-    '/d <item>',
-    '/r <item> <context>',
-    '/debug keys'
+    'due',
+    'debug-keys'
   ]);
   assert.deepEqual(commandArguments('relate'), [
     { name: 'item', type: 'fact', prompt: 'Relate which fact?' },
@@ -72,38 +64,29 @@ test('parses control entries', () => {
   assert.deepEqual(parseEntry(''), { type: 'empty' });
   assert.deepEqual(parseEntry('   '), { type: 'empty' });
   assert.deepEqual(parseEntry(':q'), { type: 'quit' });
-  assert.deepEqual(parseEntry('/'), { type: 'help' });
+  assert.deepEqual(parseEntry('/'), {
+    message: 'slash shortcuts are no longer supported; use colon commands',
+    type: 'usage_error'
+  });
   assert.deepEqual(parseEntry(':help'), { type: 'help' });
-  assert.deepEqual(parseEntry('/debug keys'), { type: 'debug_keys' });
+  assert.deepEqual(parseEntry(':debug-keys'), { type: 'debug_keys' });
 });
 
 test('parses context and lens commands', () => {
-  assert.deepEqual(parseEntry('/s people/alex'), {
-    context: 'people/alex',
-    type: 'switch_context'
-  });
-  assert.deepEqual(parseEntry('/s'), {
-    message: 'usage: /s <context>',
-    type: 'usage_error'
-  });
-  assert.deepEqual(parseEntry('/g people/alex'), {
-    context: 'people/alex',
-    type: 'change_gaze'
-  });
-  assert.deepEqual(parseEntry('/g'), {
-    type: 'clear_gaze'
-  });
-  assert.deepEqual(parseEntry('/l todo'), {
-    type: 'switch_lens',
-    lens: 'todo'
-  });
-  assert.deepEqual(parseEntry('/l'), {
-    message: 'usage: /l <lens>',
-    type: 'usage_error'
-  });
   assert.deepEqual(parseEntry(':switch people/alex'), {
     context: 'people/alex',
     type: 'switch_context'
+  });
+  assert.deepEqual(parseEntry(':gaze people/alex'), {
+    context: 'people/alex',
+    type: 'change_gaze'
+  });
+  assert.deepEqual(parseEntry(':clear-gaze'), {
+    type: 'clear_gaze'
+  });
+  assert.deepEqual(parseEntry(':lens todo'), {
+    type: 'switch_lens',
+    lens: 'todo'
   });
   assert.deepEqual(parseEntry(':switch'), {
     type: 'prompt_command_argument',
@@ -128,26 +111,20 @@ test('parses context and lens commands', () => {
     lens: 'todo',
     type: 'switch_lens'
   });
+  assert.deepEqual(parseEntry(':lens'), {
+    type: 'prompt_command_argument',
+    commandName: 'lens',
+    values: {},
+    argument: {
+      name: 'lens',
+      type: 'lens',
+      prompt: 'Use which lens?'
+    },
+    prompt: 'Use which lens?'
+  });
 });
 
 test('parses fact commands', () => {
-  assert.deepEqual(parseEntry('/e 2'), {
-    itemNumber: 2,
-    type: 'edit_fact'
-  });
-  assert.deepEqual(parseEntry('/d 3'), {
-    itemNumber: 3,
-    type: 'delete_fact'
-  });
-  assert.deepEqual(parseEntry('/r 4 people/alex'), {
-    contextReference: 'people/alex',
-    itemNumber: 4,
-    type: 'relate_fact'
-  });
-  assert.deepEqual(parseEntry('/r 4'), {
-    message: 'usage: /r <item> <context>',
-    type: 'usage_error'
-  });
   assert.deepEqual(parseEntry(':edit 2'), {
     itemNumber: 2,
     type: 'edit_fact'
@@ -308,6 +285,7 @@ test('loads workspace command definitions from config', async () => {
       'relate',
       'type',
       'due',
+      'debug-keys',
       'jump'
     ]);
     assert.deepEqual(commandHelp(registry).at(-1), ':jump <context>');
@@ -417,7 +395,8 @@ test('workspace command config overrides default commands by name', async () => 
       'delete',
       'relate',
       'type',
-      'due'
+      'due',
+      'debug-keys'
     ]);
     assert.deepEqual(parseEntry(':switch', registry), {
       type: 'prompt_command_argument',
@@ -438,8 +417,8 @@ test('workspace command config overrides default commands by name', async () => 
 
 test('parses unknown commands and fact creation', () => {
   assert.deepEqual(parseEntry('/wat now'), {
-    commandName: '/wat',
-    type: 'unknown_command'
+    message: 'slash shortcuts are no longer supported; use colon commands',
+    type: 'usage_error'
   });
   assert.deepEqual(parseEntry(':wat now'), {
     commandName: ':wat',

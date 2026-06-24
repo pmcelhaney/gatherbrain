@@ -21,16 +21,6 @@ const defaultCommandConfigPath = path.resolve(
 
 const defaultCommandRegistry = createCommandRegistry(readCommandConfigSync(defaultCommandConfigPath).commands);
 
-const shortcutUsages = [
-  '/s <context>',
-  '/g <context>',
-  '/l <lens>',
-  '/e <item>',
-  '/d <item>',
-  '/r <item> <context>',
-  '/debug keys'
-];
-
 function positiveItemNumber(value) {
   return Number(value);
 }
@@ -147,10 +137,6 @@ export function commandArguments(commandName, registry = defaultCommandRegistry)
   const commandDefinition = commandDefinitionsFor(registry).find((candidate) => candidate.name === commandName);
 
   return commandDefinition?.arguments.map((argument) => ({ ...argument })) ?? null;
-}
-
-export function shortcutHelp() {
-  return shortcutUsages;
 }
 
 function parseNamedCommand(command, registry) {
@@ -419,6 +405,10 @@ function buildCommandAction(commandDefinition, values) {
     return { type: 'clear_gaze' };
   }
 
+  if (commandDefinition.action === 'debug_keys') {
+    return { type: 'debug_keys' };
+  }
+
   if (commandDefinition.action === 'switch_lens') {
     return { type: 'switch_lens', lens: values.lens };
   }
@@ -482,16 +472,8 @@ export function parseEntry(entry, registry = defaultCommandRegistry) {
     return { type: 'quit' };
   }
 
-  if (command === '/') {
-    return { type: 'help' };
-  }
-
   if (command === ':help') {
     return { type: 'help' };
-  }
-
-  if (command === '/debug keys') {
-    return { type: 'debug_keys' };
   }
 
   const namedCommand = parseNamedCommand(command, registry);
@@ -500,75 +482,10 @@ export function parseEntry(entry, registry = defaultCommandRegistry) {
     return namedCommand;
   }
 
-  const switchCommand = command.match(/^\/s(?:\s+(.*))?$/u);
-
-  if (switchCommand) {
-    const context = switchCommand[1]?.trim() ?? '';
-
-    return context.length === 0
-      ? { type: 'usage_error', message: 'usage: /s <context>' }
-      : { type: 'switch_context', context };
-  }
-
-  const lensCommand = command.match(/^\/l(?:\s+(.*))?$/u);
-
-  if (lensCommand) {
-    const lens = lensCommand[1]?.trim() ?? '';
-
-    return lens.length === 0
-      ? { type: 'usage_error', message: 'usage: /l <lens>' }
-      : { type: 'switch_lens', lens };
-  }
-
-  const gazeCommand = command.match(/^\/g(?:\s+(.*))?$/u);
-
-  if (gazeCommand) {
-    const context = gazeCommand[1]?.trim() ?? '';
-
-    return context.length === 0
-      ? { type: 'clear_gaze' }
-      : { type: 'change_gaze', context };
-  }
-
-  const editCommand = command.match(new RegExp(`^/e\\s+(${itemNumberPattern})$`, 'u'));
-
-  if (editCommand) {
-    return {
-      itemNumber: positiveItemNumber(editCommand[1]),
-      type: 'edit_fact'
-    };
-  }
-
-  const deleteCommand = command.match(new RegExp(`^/d\\s+(${itemNumberPattern})$`, 'u'));
-
-  if (deleteCommand) {
-    return {
-      itemNumber: positiveItemNumber(deleteCommand[1]),
-      type: 'delete_fact'
-    };
-  }
-
-  const relationCommand = command.match(new RegExp(`^/r\\s+(${itemNumberPattern})\\s+(.+)$`, 'u'));
-
-  if (relationCommand) {
-    return {
-      contextReference: relationCommand[2],
-      itemNumber: positiveItemNumber(relationCommand[1]),
-      type: 'relate_fact'
-    };
-  }
-
-  if (/^\/r(?:\s|$)/u.test(command)) {
-    return {
-      message: 'usage: /r <item> <context>',
-      type: 'usage_error'
-    };
-  }
-
   if (command.startsWith('/')) {
     return {
-      commandName: command.split(/\s/u)[0],
-      type: 'unknown_command'
+      message: 'slash shortcuts are no longer supported; use colon commands',
+      type: 'usage_error'
     };
   }
 

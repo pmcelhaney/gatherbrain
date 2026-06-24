@@ -28,25 +28,13 @@ Use `:type task 3` to change the third listed fact's front matter type to `task`
 
 Use `:due today 3` to set the third listed fact's `due` front matter property to a normalized date such as `2026-06-24`.
 
+Use `:debug-keys` to toggle key debugging output.
+
 Default commands are defined in `default-config/commands.json`. A workspace-local `.gatherbrain/commands.json` can add commands or override defaults with the same command name. See [Custom Commands](docs/custom-commands.md).
 
 Command enum arguments can use workspace-local `.gatherbrain/enums.json` value lists. See [Custom Enums](docs/custom-enums.md).
 
 Default lenses are defined in `default-config/lenses.json`. A workspace-local `.gatherbrain/lenses.json` can add lenses or override defaults with the same lens id. See [Custom Lenses](docs/custom-lenses.md).
-
-The older slash shortcuts still work:
-
-Use `/s my-cool-project` to switch to an existing context. Subsequent facts are written to that directory. Press `Tab` after `/s` to complete existing context folders.
-
-Use `/g people/alex` to gaze at another context while staying in the current context. New facts are still written to the current context and get `relatedContexts` pointing at the gaze context. Use `/g` to clear gaze.
-
-Use `/l todo` to switch to the todo lens, which only shows facts with type `todo`, `waiting`, `in progress`, or `fact` (the default type). Use `/l all` to show every fact again.
-
-Use `/e 3` to open the third listed fact in `$EDITOR`.
-
-Use `/d 3` to move the third listed fact to `.trash` inside its context directory.
-
-Use `/r 3 people/alex` to add a workspace-relative context path to the third listed fact's reserved `relatedContexts` front matter field.
 
 Each saved file uses this front matter:
 
