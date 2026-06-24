@@ -16,10 +16,12 @@ import {
   navigateLensBack,
   navigateLensForward,
   openEditor,
+  pageNavigationForBody,
   pageNavigationForKey,
   pageNavigationForFacts,
   refreshEditedFact,
   renderTui,
+  visibleBodyForState,
   visibleFactsForState,
   lensNavigationForKey
 } from '../src/index.js';
@@ -386,6 +388,33 @@ test('builds TUI lines with the current context and fact contents', () => {
   );
 });
 
+test('builds TUI lines from a body view model', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const state = createPromptState({ appDirectory, rootDirectory });
+
+  assert.deepEqual(
+    buildTuiLines({
+      state,
+      body: {
+        type: 'facts',
+        facts: [
+          { type: 'fact', text: 'First fact.' },
+          { type: 'task', text: 'Second fact.' }
+        ]
+      },
+      rows: 5,
+      columns: 80
+    }),
+    [
+      'facts',
+      '--------------------------------------------------------------------------------',
+      ' 1. First fact.',
+      ' 2. task Second fact.'
+    ]
+  );
+});
+
 test('wraps fact lines and indents continuations by four spaces', () => {
   const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -493,6 +522,27 @@ test('navigates fact pages', () => {
     {
       nextPageStartIndex: 2,
       previousPageStartIndex: 0
+    }
+  );
+});
+
+test('navigates body pages', () => {
+  assert.deepEqual(
+    pageNavigationForBody({
+      body: {
+        type: 'facts',
+        facts: [
+          { type: 'fact', text: 'First item wraps.' },
+          { type: 'fact', text: 'Second item wraps.' },
+          { type: 'fact', text: 'Third item.' }
+        ]
+      },
+      rows: 5,
+      columns: 12
+    }),
+    {
+      nextPageStartIndex: 1,
+      previousPageStartIndex: null
     }
   );
 });
@@ -839,10 +889,17 @@ test('/g changes gaze without changing the current context', async () => {
       (await visibleFactsForState(state)).map((fact) => fact.text),
       ['Gaze context fact.']
     );
+    const body = await visibleBodyForState(state);
+
+    assert.equal(body.type, 'facts');
+    assert.deepEqual(
+      body.facts.map((fact) => fact.text),
+      ['Gaze context fact.']
+    );
     assert.deepEqual(
       buildTuiLines({
         state,
-        facts: await visibleFactsForState(state),
+        body,
         rows: 4,
         columns: 80
       }),

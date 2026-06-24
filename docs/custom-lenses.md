@@ -38,6 +38,11 @@ Supported presenters:
 
 - `context_facts`: presents facts visible from the active context or gaze context. It includes facts inside that context and facts related to that context.
 
+Presenters return a body view model. The current renderer supports:
+
+- `body.type: "facts"`
+- `body.facts`: the ordered fact list to render
+
 ## Filters
 
 The `context_facts` presenter supports:

@@ -280,7 +280,7 @@ export function filterFactsForLensId(facts, lens = defaultLensId) {
   return filterFactsForLens(facts, lens);
 }
 
-export async function visibleFactsForState(state) {
+export async function visibleBodyForState(state) {
   const model = await ensureModel(state);
   const lensModel = presentLens({
     model,
@@ -292,7 +292,20 @@ export async function visibleFactsForState(state) {
     lensId: currentLensIdForState(state)
   });
 
-  return lensModel.facts ?? [];
+  return lensModel.body ?? {
+    type: 'facts',
+    facts: lensModel.facts ?? []
+  };
+}
+
+function factsForBody(body) {
+  return body?.type === 'facts' && Array.isArray(body.facts)
+    ? body.facts
+    : [];
+}
+
+export async function visibleFactsForState(state) {
+  return factsForBody(await visibleBodyForState(state));
 }
 
 async function visibleFactAtIndex(state, index) {
@@ -633,9 +646,17 @@ export function pageNavigationForFacts(options = {}) {
   };
 }
 
+export function pageNavigationForBody(options = {}) {
+  return pageNavigationForFacts({
+    ...options,
+    facts: factsForBody(options.body)
+  });
+}
+
 export function buildTuiLines(options = {}) {
   const {
     state,
+    body = null,
     facts = [],
     rows = 24,
     columns = 80,
@@ -650,12 +671,13 @@ export function buildTuiLines(options = {}) {
   const status = state.statusMessage ? ` | ${state.statusMessage}` : '';
   const header = fitLine(`${currentContextName(state)}${gazeText}${lensText}${status}`, columns);
   const separator = '-'.repeat(Math.max(columns, 0));
+  const bodyFacts = body ? factsForBody(body) : facts;
   const { lines: bodyLines } = state.temporaryBodyLines
     ? buildTemporaryBodyLines(state.temporaryBodyLines, factRows, columns)
     : buildPagedFactLines({
       columns,
       includeColor,
-      facts,
+      facts: bodyFacts,
       pageStartIndex: state.pageStartIndex ?? 0,
       rows: factRows
     });
@@ -1263,7 +1285,10 @@ async function main() {
       rootDirectory: effectiveRootDirectory
     })
   });
-  let facts = [];
+  let body = {
+    type: 'facts',
+    facts: []
+  };
   let editorOpen = false;
   const terminal = readline.createInterface({
     input,
@@ -1278,7 +1303,7 @@ async function main() {
   function renderCurrentScreen() {
     output.write(renderTui({
       state,
-      facts,
+      body,
       rows: terminalRows(),
       columns: terminalColumns(),
       includeAnsi: output.isTTY
@@ -1290,10 +1315,10 @@ async function main() {
   }
 
   function changePage(direction) {
-    const navigation = pageNavigationForFacts({
+    const navigation = pageNavigationForBody({
+      body,
       columns: terminalColumns(),
       includeColor: output.isTTY,
-      facts,
       pageStartIndex: state.pageStartIndex ?? 0,
       rows: factRows()
     });
@@ -1319,7 +1344,7 @@ async function main() {
       return;
     }
 
-    facts = await visibleFactsForState(state);
+    body = await visibleBodyForState(state);
     renderCurrentScreen();
     redrawPrompt();
   }
@@ -1370,7 +1395,7 @@ async function main() {
 
   try {
     while (true) {
-      facts = await visibleFactsForState(state);
+      body = await visibleBodyForState(state);
       renderCurrentScreen();
 
       const entry = await terminal.question('> ');

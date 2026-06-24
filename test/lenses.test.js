@@ -105,6 +105,10 @@ test('all lens presents direct and related facts for the active context', async 
       lensId: 'all'
     });
 
+    assert.deepEqual(lensModel.body, {
+      type: 'facts',
+      facts: lensModel.facts
+    });
     assert.deepEqual(
       lensModel.facts.map((fact) => ({
         displayRelationDirection: fact.displayRelationDirection,

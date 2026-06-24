@@ -109,12 +109,20 @@ const lensDefinitions = new Map([
   [
     'context_facts',
     {
-      presenter: ({ model, state, lens }) => ({
-        facts: filterFactsForLens(
+      presenter: ({ model, state, lens }) => {
+        const facts = filterFactsForLens(
           visibleFactsForContext(model, state.lensContextDirectory ?? state.currentContextDirectory),
           lens
-        )
-      })
+        );
+
+        return {
+          body: {
+            type: 'facts',
+            facts
+          },
+          facts
+        };
+      }
     }
   ]
 ]);
