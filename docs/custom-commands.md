@@ -56,7 +56,7 @@ Supported actions:
 Supported argument types:
 
 - `context`: a workspace context path. Supports completion.
-- `fact`: a numbered fact from the current visible list. Completion matches visible fact titles and inserts the matching item number.
+- `fact`: a fact from the current visible list. Numbered facts still work, and completion matches visible fact titles.
 - `lens`: a lens id. Supports completion.
 - `enum`: a string value from `.gatherbrain/enums.json`. Supports completion.
 - `factType`: a type string starting with a letter and containing only letters, numbers, `_`, or `-`. If `enum` is set, those enum values are offered as completions and may include spaces.
@@ -150,7 +150,7 @@ Add a shorter command for setting type:
 
 This adds `:mark todo 3` without removing `:type`.
 
-For `fact` arguments, the command still receives the visible item number. Completion lets the user search by title first. For example, if item 3 is titled `Call Steve`, typing `:edit Call` and pressing `Tab` completes the argument to `3`.
+For `fact` arguments, completion lets the user search by title. For example, if a visible fact is titled `Call Steve`, typing `:edit Call` and pressing `Tab` completes the argument to `Call Steve`. Commands still accept visible item numbers such as `:edit 3`.
 
 Use an enum argument when the command should only accept configured values:
 

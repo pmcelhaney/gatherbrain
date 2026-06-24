@@ -187,7 +187,7 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
   const parsedArguments = {};
   let remainingArgs = args.trim();
 
-  for (const argument of commandDefinition.arguments) {
+  for (const [argumentIndex, argument] of commandDefinition.arguments.entries()) {
     if (remainingArgs.length === 0) {
       if (promptForMissing) {
         return promptForArgument(commandDefinition, parsedArguments, argument);
@@ -199,7 +199,11 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
       };
     }
 
-    const argumentValue = readArgumentValue(argument, remainingArgs, { enumRegistry, dateToday });
+    const argumentValue = readArgumentValue(argument, remainingArgs, {
+      enumRegistry,
+      dateToday,
+      isLastArgument: argumentIndex === commandDefinition.arguments.length - 1
+    });
     const value = argumentValue?.value;
 
     if (!value) {
@@ -235,7 +239,8 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
 function readArgumentValue(argument, remainingArgs, options = {}) {
   const {
     enumRegistry = null,
-    dateToday = null
+    dateToday = null,
+    isLastArgument = false
   } = options;
 
   if (argument.consume === 'rest') {
@@ -273,6 +278,22 @@ function readArgumentValue(argument, remainingArgs, options = {}) {
     }
   }
 
+  if (argument.type === 'fact' && isLastArgument) {
+    const numberedPrefix = remainingArgs.match(new RegExp(`^${itemNumberPattern}\\s+`, 'u'));
+
+    if (numberedPrefix) {
+      return {
+        value: remainingArgs.match(/^\S+/u)[0],
+        remainingArgs: remainingArgs.slice(numberedPrefix[0].trimEnd().length).trim()
+      };
+    }
+
+    return {
+      value: remainingArgs,
+      remainingArgs: ''
+    };
+  }
+
   const match = remainingArgs.match(/^(?<value>\S+)(?:\s+(?<remaining>.*))?$/u);
 
   return match
@@ -301,8 +322,14 @@ function parseArgumentValue(argument, value, options = {}) {
 
   if (argument.type === 'fact') {
     return new RegExp(`^${itemNumberPattern}$`, 'u').test(value)
-      ? positiveItemNumber(value)
-      : null;
+      ? {
+        kind: 'number',
+        value: positiveItemNumber(value)
+      }
+      : {
+        kind: 'title',
+        value
+      };
   }
 
   if (argument.type === 'factType') {
@@ -397,17 +424,23 @@ function buildCommandAction(commandDefinition, values) {
   }
 
   if (commandDefinition.action === 'edit_fact') {
-    return { type: 'edit_fact', itemNumber: values.item };
+    return {
+      type: 'edit_fact',
+      ...factSelectorProperties(values.item)
+    };
   }
 
   if (commandDefinition.action === 'delete_fact') {
-    return { type: 'delete_fact', itemNumber: values.item };
+    return {
+      type: 'delete_fact',
+      ...factSelectorProperties(values.item)
+    };
   }
 
   if (commandDefinition.action === 'relate_fact') {
     return {
       type: 'relate_fact',
-      itemNumber: values.item,
+      ...factSelectorProperties(values.item),
       contextReference: values.context
     };
   }
@@ -416,20 +449,26 @@ function buildCommandAction(commandDefinition, values) {
     return {
       type: 'set_fact_type',
       factType: values.type,
-      itemNumber: values.item
+      ...factSelectorProperties(values.item)
     };
   }
 
   if (commandDefinition.action === 'set_fact_property') {
     return {
       type: 'set_fact_property',
-      itemNumber: values.item,
+      ...factSelectorProperties(values.item),
       property: commandDefinition.property ?? values.property,
       value: values.value
     };
   }
 
   throw new Error(`unsupported command action ${commandDefinition.action}`);
+}
+
+function factSelectorProperties(selector) {
+  return selector.kind === 'number'
+    ? { itemNumber: selector.value }
+    : { itemTitle: selector.value };
 }
 
 export function parseEntry(entry, registry = defaultCommandRegistry) {

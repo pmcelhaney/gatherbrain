@@ -209,7 +209,12 @@ test('continues prompted commands', () => {
   assert.deepEqual(continuePromptedCommand(parseEntry(':relate'), '4'), {
     type: 'prompt_command_argument',
     commandName: 'relate',
-    values: { item: 4 },
+    values: {
+      item: {
+        kind: 'number',
+        value: 4
+      }
+    },
     argument: {
       name: 'context',
       type: 'context',
@@ -224,8 +229,8 @@ test('continues prompted commands', () => {
     type: 'relate_fact'
   });
   assert.deepEqual(continuePromptedCommand(parseEntry(':edit'), 'nope'), {
-    message: 'usage: :edit <item>',
-    type: 'usage_error'
+    itemTitle: 'nope',
+    type: 'edit_fact'
   });
 });
 
@@ -363,6 +368,11 @@ test('parses enum command arguments from configured values', () => {
   assert.deepEqual(parseEntry(':mark in progress 3', registry), {
     factType: 'in progress',
     itemNumber: 3,
+    type: 'set_fact_type'
+  });
+  assert.deepEqual(parseEntry(':mark todo Call Steve', registry), {
+    factType: 'todo',
+    itemTitle: 'Call Steve',
     type: 'set_fact_type'
   });
   assert.deepEqual(parseEntry(':mark done 3', registry), {

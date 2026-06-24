@@ -326,6 +326,44 @@ async function visibleFactAtIndex(state, index) {
   return fact;
 }
 
+async function visibleFactForSelector(state, selector) {
+  if (Number.isInteger(selector.itemNumber)) {
+    const fact = await visibleFactAtIndex(state, selector.itemNumber);
+
+    return {
+      fact,
+      itemLabel: String(selector.itemNumber),
+      itemNumber: selector.itemNumber
+    };
+  }
+
+  if (typeof selector.itemTitle === 'string' && selector.itemTitle.length > 0) {
+    const facts = await visibleFactsForState(state);
+    const matches = facts
+      .map((fact, index) => ({
+        fact,
+        itemNumber: index + 1
+      }))
+      .filter((candidate) => candidate.fact.title === selector.itemTitle);
+
+    if (matches.length === 0) {
+      throw new Error(`fact ${selector.itemTitle} does not exist`);
+    }
+
+    if (matches.length > 1) {
+      throw new Error(`fact ${selector.itemTitle} is ambiguous`);
+    }
+
+    return {
+      fact: matches[0].fact,
+      itemLabel: selector.itemTitle,
+      itemNumber: matches[0].itemNumber
+    };
+  }
+
+  throw new Error('item selector is required');
+}
+
 function visibleLength(line) {
   return line.replace(ansiCodePattern, '').length;
 }
@@ -924,12 +962,10 @@ async function matchingFactCompletions(partialTitle, state) {
   const facts = await visibleFactsForState(state);
 
   return facts
-    .map((fact, index) => ({
-      itemNumber: String(index + 1),
-      title: fact.title ?? ''
-    }))
-    .filter((completion) => completion.title.startsWith(partialTitle))
-    .map((completion) => completion.itemNumber);
+    .map((fact) => fact.title ?? '')
+    .filter((title) => title.length > 0)
+    .filter((title, index, titles) => titles.indexOf(title) === index)
+    .filter((title) => title.startsWith(partialTitle));
 }
 
 async function matchingContextCompletions(partialContext, state) {
@@ -1195,14 +1231,15 @@ export async function handleEntry(entry, state) {
 
   if (parsedEntry.type === 'edit_fact') {
     try {
-      const fact = await visibleFactAtIndex(state, parsedEntry.itemNumber);
+      const { fact, itemLabel, itemNumber } = await visibleFactForSelector(state, parsedEntry);
       state.statusMessage = '';
       clearTemporaryBody(state);
 
       return {
         action: 'edit',
         filePath: fact.path,
-        itemNumber: parsedEntry.itemNumber
+        itemLabel,
+        itemNumber
       };
     } catch (error) {
       state.statusMessage = error.message;
@@ -1216,8 +1253,13 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'delete_fact') {
+    let itemLabel;
+
     try {
-      const fact = await visibleFactAtIndex(state, parsedEntry.itemNumber);
+      const resolvedFact = await visibleFactForSelector(state, parsedEntry);
+      itemLabel = resolvedFact.itemLabel;
+      const { fact } = resolvedFact;
+
       await deleteFact(fact.path);
       removeFact(await ensureModel(state), fact.path);
     } catch (error) {
@@ -1230,7 +1272,7 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    const message = `trashed item ${parsedEntry.itemNumber}`;
+    const message = `trashed item ${itemLabel}`;
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);
@@ -1243,12 +1285,12 @@ export async function handleEntry(entry, state) {
 
   if (parsedEntry.type === 'relate_fact') {
     try {
-      const fact = await visibleFactAtIndex(state, parsedEntry.itemNumber);
+      const { fact, itemLabel } = await visibleFactForSelector(state, parsedEntry);
       const relation = await relationForContextReference(parsedEntry.contextReference, state);
       await addFactRelation(fact.path, relation);
       await refreshFact(await ensureModel(state), fact.path);
 
-      const message = `related item ${parsedEntry.itemNumber} to ${relation}`;
+      const message = `related item ${itemLabel} to ${relation}`;
       state.statusMessage = '';
       clearTemporaryBody(state);
 
@@ -1278,8 +1320,13 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'set_fact_type') {
+    let itemLabel;
+
     try {
-      const fact = await visibleFactAtIndex(state, parsedEntry.itemNumber);
+      const resolvedFact = await visibleFactForSelector(state, parsedEntry);
+      itemLabel = resolvedFact.itemLabel;
+      const { fact } = resolvedFact;
+
       await updateFactType(fact.path, parsedEntry.factType);
       await refreshFact(await ensureModel(state), fact.path);
     } catch (error) {
@@ -1292,7 +1339,7 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    const message = `set item ${parsedEntry.itemNumber} type to ${parsedEntry.factType}`;
+    const message = `set item ${itemLabel} type to ${parsedEntry.factType}`;
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);
@@ -1304,8 +1351,13 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'set_fact_property') {
+    let itemLabel;
+
     try {
-      const fact = await visibleFactAtIndex(state, parsedEntry.itemNumber);
+      const resolvedFact = await visibleFactForSelector(state, parsedEntry);
+      itemLabel = resolvedFact.itemLabel;
+      const { fact } = resolvedFact;
+
       await updateFactProperty(fact.path, parsedEntry.property, parsedEntry.value);
       await refreshFact(await ensureModel(state), fact.path);
     } catch (error) {
@@ -1318,7 +1370,7 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    const message = `set item ${parsedEntry.itemNumber} ${parsedEntry.property} to ${parsedEntry.value}`;
+    const message = `set item ${itemLabel} ${parsedEntry.property} to ${parsedEntry.value}`;
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);
@@ -1512,7 +1564,7 @@ async function main() {
         try {
           await openEditor(result.filePath);
           await refreshEditedFact(state, result.filePath);
-          state.statusMessage = `edited item ${result.itemNumber}`;
+          state.statusMessage = `edited item ${result.itemLabel}`;
         } catch (error) {
           state.statusMessage = error.message;
         } finally {

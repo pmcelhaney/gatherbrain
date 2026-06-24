@@ -1275,6 +1275,7 @@ test('/e command returns an edit action for a listed item', async () => {
       {
         action: 'edit',
         filePath: secondFactPath,
+        itemLabel: '2',
         itemNumber: 2
       }
     );
@@ -1308,6 +1309,7 @@ test('/e command targets the active lens list', async () => {
     assert.deepEqual(await handleEntry('/e 2', state), {
       action: 'edit',
       filePath: waitingPath,
+      itemLabel: '2',
       itemNumber: 2
     });
   } finally {
@@ -1824,11 +1826,11 @@ test('completes fact arguments by visible fact title', async () => {
 
     assert.deepEqual(
       await completeEntry(':edit Cal', state),
-      [['1'], 'Cal']
+      [['Call Steve'], 'Cal']
     );
     assert.deepEqual(
       await completeEntry(':delete Email', state),
-      [['2'], 'Email']
+      [['Email Alex'], 'Email']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -1850,7 +1852,36 @@ test('completes prompted fact arguments by visible fact title', async () => {
     });
     assert.deepEqual(
       await completeEntry('Email', state),
-      [['2'], 'Email']
+      [['Email Alex'], 'Email']
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('executes commands with fact titles completed as final arguments', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await handleEntry('Call Steve', state);
+
+    assert.deepEqual(await handleEntry(':type task Call Steve', state), {
+      action: 'continue',
+      message: 'set item Call Steve type to task'
+    });
+    assert.deepEqual(
+      (await visibleFactsForState(state)).map((fact) => ({
+        title: fact.title,
+        type: fact.type
+      })),
+      [
+        {
+          title: 'Call Steve',
+          type: 'task'
+        }
+      ]
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
