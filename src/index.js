@@ -412,18 +412,6 @@ function wrapPlainText(text, columns) {
   return lines;
 }
 
-function displayType(type, includeColor) {
-  if (type === 'fact') {
-    return '';
-  }
-
-  if (includeColor) {
-    return `${ansiTypeColor}${type}${ansiResetColor} `;
-  }
-
-  return `${type} `;
-}
-
 function markdownLinksInText(text) {
   return [...text.matchAll(/\[([^\]]+)\]\([^)]+\)/gu)]
     .map((match) => match[1]);
@@ -478,15 +466,12 @@ function displayRelationSuffix(suffix, includeColor) {
     : suffix;
 }
 
-function factBlocksForDisplay(facts, options = {}) {
+function factViewModelsForDisplay(facts, options = {}) {
   const {
     columns = 80,
-    includeColor = false
+    includeColor = false,
+    template = 'facts'
   } = options;
-
-  if (facts.length === 0) {
-    return [['No facts yet.']];
-  }
 
   const numberWidth = Math.max(2, String(facts.length).length);
   const continuationPrefix = '    ';
@@ -497,11 +482,10 @@ function factBlocksForDisplay(facts, options = {}) {
     const displayLines = lines.length > 0 ? lines : [''];
     const type = fact.type ?? 'fact';
     const relationSuffix = relationSuffixText(displayRelationsForFact(fact), fact.displayRelationDirection);
-    const firstPrefix = `${String(factIndex + 1).padStart(numberWidth)}. ${displayType(type, includeColor)}`;
+    const displayType = type === 'fact' ? '' : type;
+    const firstPrefix = `${String(factIndex + 1).padStart(numberWidth)}. ${displayType ? `${displayType} ` : ''}`;
     const firstColumns = Math.max(columns - visibleLength(firstPrefix), 1);
-
-    return displayLines.flatMap((line, lineIndex) => {
-      const prefix = lineIndex === 0 ? firstPrefix : continuationPrefix;
+    const bodyLines = displayLines.flatMap((line, lineIndex) => {
       const linkLabels = markdownLinksInText(line);
       const plainLine = plainTextWithMarkdownLinks(line);
       const displayLine = lineIndex === displayLines.length - 1
@@ -518,11 +502,27 @@ function factBlocksForDisplay(facts, options = {}) {
           ? `${linkLine.slice(0, -relationSuffix.length)}${displayRelationSuffix(relationSuffix, includeColor)}`
           : linkLine;
 
-        return wrappedLineIndex === 0
-          ? `${prefix}${displayedLine}`
+        return lineIndex === 0 && wrappedLineIndex === 0
+          ? displayedLine
           : `${continuationPrefix}${displayedLine}`;
       });
     });
+
+    const viewModel = {
+      number: String(factIndex + 1).padStart(numberWidth),
+      type: displayType,
+      body: bodyLines.join('\n')
+    };
+
+    return {
+      ...viewModel,
+      blockLines: renderTemplateLines(template, {
+        emptyText: 'No facts yet.',
+        facts: [viewModel],
+        hasFacts: true,
+        includeColor
+      })
+    };
   });
 }
 
@@ -532,7 +532,8 @@ export function buildPagedFactLines(options = {}) {
     includeColor = false,
     facts = [],
     pageStartIndex = 0,
-    rows = 0
+    rows = 0,
+    template = 'facts'
   } = options;
   const factRows = Math.max(rows, 0);
 
@@ -544,51 +545,71 @@ export function buildPagedFactLines(options = {}) {
     };
   }
 
-  const factBlocks = factBlocksForDisplay(facts, { columns, includeColor });
-
   if (facts.length === 0) {
+    const lines = renderTemplateLines(template, {
+      emptyText: 'No facts yet.',
+      facts: [],
+      hasFacts: false,
+      includeColor
+    });
+
     return {
-      lines: factBlocks[0].slice(0, factRows),
+      lines: lines.slice(0, factRows),
       nextPageStartIndex: null,
       previousPageStartIndex: null
     };
   }
 
+  const factViewModels = factViewModelsForDisplay(facts, { columns, includeColor, template });
   const startIndex = Math.min(Math.max(pageStartIndex, 0), facts.length - 1);
   const lines = [];
+  const pageFacts = [];
   let nextPageStartIndex = null;
+  let renderPageTemplate = true;
 
-  for (let factIndex = startIndex; factIndex < factBlocks.length; factIndex += 1) {
-    const block = factBlocks[factIndex];
-    const hasMoreAfter = factIndex < factBlocks.length - 1;
-    const rowsNeeded = block.length + (hasMoreAfter ? 1 : 0);
+  for (let factIndex = startIndex; factIndex < factViewModels.length; factIndex += 1) {
+    const fact = factViewModels[factIndex];
+    const hasMoreAfter = factIndex < factViewModels.length - 1;
+    const rowsNeeded = fact.blockLines.length + (hasMoreAfter ? 1 : 0);
 
     if (lines.length > 0 && lines.length + rowsNeeded > factRows) {
-      lines.push('...');
       nextPageStartIndex = factIndex;
       break;
     }
 
-    if (lines.length === 0 && block.length > factRows) {
-      lines.push(...block.slice(0, Math.max(factRows - 1, 0)));
+    if (lines.length === 0 && fact.blockLines.length > factRows) {
+      lines.push(...fact.blockLines.slice(0, Math.max(factRows - 1, 0)));
       lines.push('...');
-      nextPageStartIndex = factIndex + 1 < factBlocks.length ? factIndex + 1 : null;
+      nextPageStartIndex = factIndex + 1 < factViewModels.length ? factIndex + 1 : null;
+      renderPageTemplate = false;
       break;
     }
 
-    if (lines.length + block.length > factRows) {
-      lines.push('...');
+    if (lines.length + fact.blockLines.length > factRows) {
       nextPageStartIndex = factIndex;
       break;
     }
 
-    lines.push(...block);
+    pageFacts.push(fact);
+    lines.push(...fact.blockLines);
   }
 
   const previousPageStartIndex = startIndex > 0 ? Math.max(startIndex - 1, 0) : null;
+  const pageLines = renderPageTemplate
+    ? renderTemplateLines(template, {
+      emptyText: 'No facts yet.',
+      facts: pageFacts,
+      hasFacts: pageFacts.length > 0,
+      includeColor
+    })
+    : lines;
+
+  if (nextPageStartIndex !== null && renderPageTemplate) {
+    pageLines.push('...');
+  }
 
   return {
-    lines,
+    lines: pageLines,
     nextPageStartIndex,
     previousPageStartIndex
   };
@@ -604,16 +625,11 @@ function buildTemporaryBodyLines(lines, rows, columns) {
   };
 }
 
-function renderBodyLines(body, lines) {
-  const template = body?.template ?? body?.type ?? 'facts';
-
-  return renderTemplateLines(template, { lines });
-}
-
 export function pageNavigationForFacts(options = {}) {
   const {
     columns = 80,
     includeColor = false,
+    body = null,
     facts = [],
     pageStartIndex = 0,
     rows = 0
@@ -621,7 +637,8 @@ export function pageNavigationForFacts(options = {}) {
   const currentPage = buildPagedFactLines({
     columns,
     includeColor,
-    facts,
+    facts: body ? factsForBody(body) : facts,
+    template: body?.template ?? 'facts',
     pageStartIndex,
     rows
   });
@@ -632,7 +649,8 @@ export function pageNavigationForFacts(options = {}) {
     const candidatePage = buildPagedFactLines({
       columns,
       includeColor,
-      facts,
+      facts: body ? factsForBody(body) : facts,
+      template: body?.template ?? 'facts',
       pageStartIndex: candidateStartIndex,
       rows
     });
@@ -657,7 +675,7 @@ export function pageNavigationForFacts(options = {}) {
 export function pageNavigationForBody(options = {}) {
   return pageNavigationForFacts({
     ...options,
-    facts: factsForBody(options.body)
+    body: options.body
   });
 }
 
@@ -686,17 +704,14 @@ export function buildTuiLines(options = {}) {
       columns,
       includeColor,
       facts: bodyFacts,
+      template: body?.template ?? 'facts',
       pageStartIndex: state.pageStartIndex ?? 0,
       rows: factRows
     });
-  const renderedBodyLines = state.temporaryBodyLines
-    ? bodyLines
-    : renderBodyLines(body ?? { type: 'facts', template: 'facts' }, bodyLines);
-
   return [
     header,
     separator,
-    ...renderedBodyLines.slice(0, factRows)
+    ...bodyLines.slice(0, factRows)
   ];
 }
 

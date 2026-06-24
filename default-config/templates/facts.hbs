@@ -1,2 +1,2 @@
-{{#each lines}}{{this}}{{#unless @last}}
-{{/unless}}{{/each}}
+{{#if hasFacts}}{{#each facts}}{{number}}. {{#if type}}{{type | color: "cyan"}} {{/if}}{{body}}{{#unless @last}}
+{{/unless}}{{/each}}{{else}}{{emptyText}}{{/if}}

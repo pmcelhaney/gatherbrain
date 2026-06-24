@@ -44,7 +44,29 @@ Presenters return a body view model. The current renderer supports:
 - `body.template: "facts"`
 - `body.facts`: the ordered fact list to render
 
-The default body template lives at `default-config/templates/facts.hbs`. It is rendered with Handlebars after the app has prepared the terminal-ready body lines.
+The default body template lives at `default-config/templates/facts.hbs`. It is rendered with Handlebars after the app has prepared fact view models for the terminal.
+
+The facts template receives:
+
+- `hasFacts`: whether there are facts to render.
+- `emptyText`: text to show when no facts are visible.
+- `facts`: the rendered fact rows.
+- `includeColor`: whether ANSI color should be emitted.
+
+Each item in `facts` has:
+
+- `number`: the 1-based visible number, already padded for alignment.
+- `type`: the fact type label, or an empty string for plain facts.
+- `body`: the wrapped fact text, including any relation suffixes.
+
+Templates should loop over facts and render fact properties directly:
+
+```hbs
+{{#if hasFacts}}{{#each facts}}{{number}}. {{#if type}}{{type | color: "cyan"}} {{/if}}{{body}}{{#unless @last}}
+{{/unless}}{{/each}}{{else}}{{emptyText}}{{/if}}
+```
+
+The app supports pipe-style filters for simple formatting. For example, `{{type | color: "cyan"}}` colors the fact type when terminal color is enabled. Supported colors are `blue`, `cyan`, and `magenta`.
 
 ## Filters
 

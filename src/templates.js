@@ -11,6 +11,22 @@ const defaultTemplateDirectory = path.resolve(
 );
 
 const compiledTemplates = new Map();
+const colorCodes = new Map([
+  ['blue', '\x1b[34m'],
+  ['cyan', '\x1b[36m'],
+  ['magenta', '\x1b[35m']
+]);
+const ansiResetColor = '\x1b[39m';
+
+Handlebars.registerHelper('color', (value, colorName, options) => {
+  if (!options.data.root.includeColor) {
+    return value;
+  }
+
+  const colorCode = colorCodes.get(colorName);
+
+  return colorCode ? `${colorCode}${value}${ansiResetColor}` : value;
+});
 
 function templatePathForName(name) {
   if (!/^[A-Za-z][A-Za-z0-9_-]*$/u.test(name)) {
@@ -25,13 +41,25 @@ function compiledTemplate(name) {
     return compiledTemplates.get(name);
   }
 
-  const template = Handlebars.compile(readFileSync(templatePathForName(name), 'utf8'), {
-    noEscape: true,
-    strict: true
-  });
+  const template = Handlebars.compile(
+    transformFilterSyntax(readFileSync(templatePathForName(name), 'utf8')),
+    {
+      noEscape: true,
+      strict: true
+    }
+  );
 
   compiledTemplates.set(name, template);
   return template;
+}
+
+function transformFilterSyntax(template) {
+  return template.replace(
+    /\{\{\s*(?<value>[A-Za-z0-9_.-]+)\s*\|\s*(?<filter>[A-Za-z][A-Za-z0-9_-]*)\s*:\s*"(?<argument>[^"]+)"\s*\}\}/gu,
+    (_match, _value, _filter, _argument, _offset, _template, groups) => (
+      `{{${groups.filter} ${groups.value} "${groups.argument}"}}`
+    )
+  );
 }
 
 export function renderTemplate(name, viewModel) {
