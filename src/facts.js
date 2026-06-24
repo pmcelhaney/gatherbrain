@@ -3,7 +3,8 @@ import path from 'node:path';
 
 const pad = (value, width = 2) => String(value).padStart(width, '0');
 const factTypePattern = /^[A-Za-z][A-Za-z0-9_-]*$/u;
-const recycleDirectoryName = '.recycle-bin';
+const trashDirectoryName = '.trash';
+const relatedContextsField = 'relatedContexts';
 
 export function timestampForFilename(date = new Date()) {
   const timezoneOffsetMinutes = -date.getTimezoneOffset();
@@ -33,8 +34,32 @@ export function timestampForFilename(date = new Date()) {
   ].join('');
 }
 
-export function buildFactMarkdown(text, options = {}) {
-  return `---\ntype: fact\n---\n\n${markdownWithContextLinks(text, options)}\n`;
+export function slugifyTitle(title) {
+  const slug = title
+    .trim()
+    .toLowerCase()
+    .replace(/['"]/gu, '')
+    .replace(/[^a-z0-9]+/gu, '-')
+    .replace(/^-+|-+$/gu, '');
+
+  return slug.length > 0 ? slug : 'fact';
+}
+
+export function buildFactMarkdown(title, options = {}) {
+  const {
+    body = '',
+    type = 'fact'
+  } = options;
+
+  return [
+    '---',
+    `title: ${quoteFrontMatterScalar(title)}`,
+    `type: ${quoteFrontMatterScalar(type)}`,
+    '---',
+    '',
+    body,
+    ''
+  ].join('\n');
 }
 
 export function markdownWithContextLinks(text, options = {}) {
@@ -58,16 +83,57 @@ function matchFrontMatter(markdown) {
   return markdown.match(/^---\r?\n(?<frontMatter>[\s\S]*?)\r?\n---\r?\n?/u);
 }
 
+function unquoteFrontMatterScalar(value) {
+  const trimmedValue = value.trim();
+
+  if (
+    (trimmedValue.startsWith('"') && trimmedValue.endsWith('"'))
+    || (trimmedValue.startsWith("'") && trimmedValue.endsWith("'"))
+  ) {
+    return trimmedValue
+      .slice(1, -1)
+      .replaceAll('\\"', '"')
+      .replaceAll('\\\\', '\\');
+  }
+
+  return trimmedValue;
+}
+
+function frontMatterScalar(frontMatter, key) {
+  return frontMatter.match(new RegExp(`^${escapeRegExp(key)}:\\s*(?<value>.+?)\\s*$`, 'mu'))
+    ?.groups.value;
+}
+
+function quoteFrontMatterScalar(value) {
+  const stringValue = String(value);
+
+  if (/^[A-Za-z0-9_-]+$/u.test(stringValue)) {
+    return stringValue;
+  }
+
+  return quoteFrontMatterString(stringValue);
+}
+
+function markdownFrontMatter(markdown) {
+  return matchFrontMatter(markdown)?.groups.frontMatter ?? '';
+}
+
+export function factTitleFromMarkdown(markdown) {
+  const title = frontMatterScalar(markdownFrontMatter(markdown), 'title');
+
+  return title ? unquoteFrontMatterScalar(title) : null;
+}
+
 export function factTypeFromMarkdown(markdown) {
-  const frontMatter = matchFrontMatter(markdown)?.groups.frontMatter;
+  const frontMatter = markdownFrontMatter(markdown);
 
   if (!frontMatter) {
     return null;
   }
 
-  const type = frontMatter.match(/^type:\s*(?<type>.+?)\s*$/mu)?.groups.type;
+  const type = frontMatterScalar(frontMatter, 'type');
 
-  return type ?? null;
+  return type ? unquoteFrontMatterScalar(type) : null;
 }
 
 export function factTextFromMarkdown(markdown) {
@@ -111,33 +177,33 @@ function quoteFrontMatterString(value) {
   return `"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
 }
 
-function relationsFromFrontMatter(frontMatter) {
-  const relations = frontMatter.match(/^relations:\s*\[(?<relations>.*?)\]\s*$/mu)
-    ?.groups.relations;
+function frontMatterStringList(frontMatter, key) {
+  const inlineValues = frontMatter.match(new RegExp(`^${escapeRegExp(key)}:\\s*\\[(?<values>.*?)\\]\\s*$`, 'mu'))
+    ?.groups.values;
 
-  if (relations === undefined) {
+  if (inlineValues !== undefined) {
+    return [...inlineValues.matchAll(/"(?<value>(?:\\.|[^"\\])*)"|'(?<singleValue>(?:\\.|[^'\\])*)'|(?<bareValue>[^,\s][^,]*)/gu)]
+      .map((match) => match.groups.value ?? match.groups.singleValue ?? match.groups.bareValue)
+      .map((value) => unquoteFrontMatterScalar(value.trim()))
+      .filter((value) => value.length > 0);
+  }
+
+  const blockValues = frontMatter.match(new RegExp(`^${escapeRegExp(key)}:\\s*\\r?\\n(?<values>(?:\\s+-\\s+.+\\r?\\n?)*)`, 'mu'))
+    ?.groups.values;
+
+  if (!blockValues) {
     return [];
   }
 
-  return [...relations.matchAll(/"(?<relation>(?:\\.|[^"\\])*)"/gu)]
-    .map((match) => match.groups.relation
-      .replaceAll('\\"', '"')
-      .replaceAll('\\\\', '\\'));
-}
-
-function relationsFromBody(body) {
-  return [...body.matchAll(/\[[^\]]+\]\((?<relation>[^)]+)\)/gu)]
-    .map((match) => match.groups.relation.trim())
-    .filter((relation) => relation.startsWith('/'));
+  return blockValues
+    .split(/\r?\n/u)
+    .map((line) => line.match(/^\s+-\s+(?<value>.+?)\s*$/u)?.groups.value)
+    .filter((value) => value !== undefined)
+    .map(unquoteFrontMatterScalar);
 }
 
 export function factRelationsFromMarkdown(markdown) {
-  const frontMatter = matchFrontMatter(markdown)?.groups.frontMatter;
-  const body = factTextFromMarkdown(markdown);
-  const relations = [
-    ...(frontMatter ? relationsFromFrontMatter(frontMatter) : []),
-    ...relationsFromBody(body)
-  ];
+  const relations = frontMatterStringList(markdownFrontMatter(markdown), relatedContextsField);
 
   return [...new Set(relations)];
 }
@@ -148,7 +214,7 @@ export function markdownWithRelation(markdown, relation) {
   if (!frontMatterMatch) {
     return [
       '---',
-      `relations: [${quoteFrontMatterString(relation)}]`,
+      `${relatedContextsField}: [${quoteFrontMatterString(relation)}]`,
       '---',
       '',
       markdown
@@ -156,13 +222,14 @@ export function markdownWithRelation(markdown, relation) {
   }
 
   const frontMatter = frontMatterMatch.groups.frontMatter;
-  const relations = relationsFromFrontMatter(frontMatter);
+  const relations = factRelationsFromMarkdown(markdown);
   const nextRelations = relations.includes(relation)
     ? relations
     : [...relations, relation];
-  const relationLine = `relations: [${nextRelations.map(quoteFrontMatterString).join(', ')}]`;
-  const nextFrontMatter = /^relations:\s*\[.*?\]\s*$/mu.test(frontMatter)
-    ? frontMatter.replace(/^relations:\s*\[.*?\]\s*$/mu, relationLine)
+  const relationLine = `${relatedContextsField}: [${nextRelations.map(quoteFrontMatterString).join(', ')}]`;
+  const relationPattern = new RegExp(`^${relatedContextsField}:\\s*\\[.*?\\]\\s*$`, 'mu');
+  const nextFrontMatter = relationPattern.test(frontMatter)
+    ? frontMatter.replace(relationPattern, relationLine)
     : `${frontMatter.trimEnd()}\n${relationLine}`;
   const body = markdown.slice(frontMatterMatch[0].length);
 
@@ -202,12 +269,6 @@ export function resolveContextDirectory(contextName, options = {}) {
   return contextDirectory;
 }
 
-export async function ensureContextDirectory(contextName, options = {}) {
-  const contextDirectory = resolveContextDirectory(contextName, options);
-  await mkdir(contextDirectory, { recursive: true });
-  return contextDirectory;
-}
-
 export async function listFacts(options = {}) {
   const { notesDirectory } = options;
 
@@ -239,7 +300,7 @@ export async function listFacts(options = {}) {
           : entry.name;
         const filePath = path.join(directory, entry.name);
 
-        if (entry.isDirectory() && entry.name !== recycleDirectoryName) {
+        if (entry.isDirectory() && !entry.name.startsWith('.')) {
           await visit(filePath, relativePath);
           return;
         }
@@ -266,13 +327,16 @@ export async function listFacts(options = {}) {
         const filePath = path.join(notesDirectory, filename);
         const markdown = await readFile(filePath, 'utf8');
         const relations = factRelationsFromMarkdown(markdown);
+        const title = factTitleFromMarkdown(markdown) ?? path.basename(filename, '.md');
+        const body = factTextFromMarkdown(markdown);
 
         return {
           filename,
           path: filePath,
           ...(relations.length > 0 ? { relations } : {}),
+          title,
           type: factTypeFromMarkdown(markdown) ?? 'note',
-          text: factTextFromMarkdown(markdown)
+          text: body.length > 0 ? body : title
         };
       })
   );
@@ -301,7 +365,7 @@ export async function listContextDirectories(options = {}) {
     }
 
     const directories = entries
-      .filter((entry) => entry.isDirectory() && entry.name !== recycleDirectoryName)
+      .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
       .map((entry) => entry.name)
       .sort();
 
@@ -377,17 +441,17 @@ export async function addFactRelation(filePath, relation) {
 }
 
 export async function deleteFact(filePath) {
-  const recycleDirectory = path.join(path.dirname(filePath), recycleDirectoryName);
-  await mkdir(recycleDirectory, { recursive: true });
+  const trashDirectory = path.join(path.dirname(filePath), trashDirectoryName);
+  await mkdir(trashDirectory, { recursive: true });
 
   const extension = path.extname(filePath);
   const basename = path.basename(filePath, extension);
-  let destination = path.join(recycleDirectory, path.basename(filePath));
+  let destination = path.join(trashDirectory, path.basename(filePath));
 
   for (let attempt = 1;; attempt += 1) {
     try {
       await access(destination);
-      destination = path.join(recycleDirectory, `${basename}-${attempt}${extension}`);
+      destination = path.join(trashDirectory, `${basename}-${attempt}${extension}`);
     } catch (error) {
       if (error.code !== 'ENOENT') {
         throw error;
@@ -401,9 +465,9 @@ export async function deleteFact(filePath) {
 
 export async function saveFact(text, options = {}) {
   const {
-    contextLinks = [],
+    title = text,
+    type = 'fact',
     notesDirectory,
-    now = () => new Date()
   } = options;
 
   if (!notesDirectory) {
@@ -412,12 +476,14 @@ export async function saveFact(text, options = {}) {
 
   await mkdir(notesDirectory, { recursive: true });
 
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const filename = `${timestampForFilename(now())}.md`;
+  const slug = slugifyTitle(title);
+
+  for (let attempt = 0; attempt < 1000; attempt += 1) {
+    const filename = `${attempt === 0 ? slug : `${slug}-${attempt + 1}`}.md`;
     const filePath = path.join(notesDirectory, filename);
 
     try {
-      await writeFile(filePath, buildFactMarkdown(text, { contextLinks }), { flag: 'wx' });
+      await writeFile(filePath, buildFactMarkdown(title, { type }), { flag: 'wx' });
       return filePath;
     } catch (error) {
       if (error.code !== 'EEXIST') {
@@ -426,5 +492,5 @@ export async function saveFact(text, options = {}) {
     }
   }
 
-  throw new Error('Could not create a unique timestamped note filename');
+  throw new Error('Could not create a unique slug filename');
 }

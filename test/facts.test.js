@@ -7,6 +7,7 @@ import {
   buildFactMarkdown,
   factAtIndex,
   factRelationsFromMarkdown,
+  factTitleFromMarkdown,
   factTypeFromMarkdown,
   factTextFromMarkdown,
   listContextDirectories,
@@ -16,14 +17,22 @@ import {
   markdownWithFactType,
   resolveContextDirectory,
   saveFact,
+  slugifyTitle,
   timestampForFilename,
   updateFactTypeAtIndex
 } from '../src/facts.js';
 
 test('builds fact Markdown with the requested front matter', () => {
   assert.equal(
-    buildFactMarkdown('The sky is blue.'),
-    '---\ntype: fact\n---\n\nThe sky is blue.\n'
+    buildFactMarkdown('The sky is blue.', { type: 'note' }),
+    '---\ntitle: "The sky is blue."\ntype: note\n---\n\n\n'
+  );
+});
+
+test('extracts fact title from Markdown front matter', () => {
+  assert.equal(
+    factTitleFromMarkdown('---\ntitle: "The sky is blue."\ntype: fact\n---\n\n'),
+    'The sky is blue.'
   );
 });
 
@@ -41,26 +50,26 @@ test('extracts fact type from Markdown front matter', () => {
   );
 });
 
-test('extracts fact relations from Markdown front matter', () => {
+test('extracts related contexts from Markdown front matter', () => {
   assert.deepEqual(
-    factRelationsFromMarkdown('---\ntype: fact\nrelations: ["/people/Steve Ma"]\n---\n\nThe sky is blue.\n'),
-    ['/people/Steve Ma']
+    factRelationsFromMarkdown('---\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nThe sky is blue.\n'),
+    ['people/Steve Ma']
   );
 });
 
-test('extracts fact relations from Markdown body links', () => {
+test('extracts block related contexts from Markdown front matter', () => {
   assert.deepEqual(
-    factRelationsFromMarkdown('---\ntype: fact\n---\n\nTalk to [Steve Ma](/people/Steve Ma).\n'),
-    ['/people/Steve Ma']
+    factRelationsFromMarkdown('---\ntype: fact\nrelatedContexts:\n  - people/Steve Ma\n  - projects/gatherbrain\n---\n\n'),
+    ['people/Steve Ma', 'projects/gatherbrain']
   );
 });
 
-test('deduplicates front matter and Markdown body link relations', () => {
+test('deduplicates related contexts', () => {
   assert.deepEqual(
     factRelationsFromMarkdown(
-      '---\ntype: fact\nrelations: ["/people/Steve Ma"]\n---\n\nTalk to [Steve Ma](/people/Steve Ma).\n'
+      '---\ntype: fact\nrelatedContexts: ["people/Steve Ma", "people/Steve Ma"]\n---\n\n'
     ),
-    ['/people/Steve Ma']
+    ['people/Steve Ma']
   );
 });
 
@@ -82,18 +91,18 @@ test('updates fact type in Markdown front matter', () => {
 
 test('adds a relation to Markdown front matter', () => {
   assert.equal(
-    markdownWithRelation('---\ntype: fact\n---\n\nThe sky is blue.\n', '/people/Steve Ma'),
-    '---\ntype: fact\nrelations: ["/people/Steve Ma"]\n---\n\nThe sky is blue.\n'
+    markdownWithRelation('---\ntype: fact\n---\n\nThe sky is blue.\n', 'people/Steve Ma'),
+    '---\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nThe sky is blue.\n'
   );
 });
 
 test('appends a relation to Markdown front matter', () => {
   assert.equal(
     markdownWithRelation(
-      '---\ntype: fact\nrelations: ["/people/Ada"]\n---\n\nThe sky is blue.\n',
-      '/people/Steve Ma'
+      '---\ntype: fact\nrelatedContexts: ["people/Ada"]\n---\n\nThe sky is blue.\n',
+      'people/Steve Ma'
     ),
-    '---\ntype: fact\nrelations: ["/people/Ada", "/people/Steve Ma"]\n---\n\nThe sky is blue.\n'
+    '---\ntype: fact\nrelatedContexts: ["people/Ada", "people/Steve Ma"]\n---\n\nThe sky is blue.\n'
   );
 });
 
@@ -114,20 +123,23 @@ test('formats timestamps as filesystem-safe local time', () => {
   );
 });
 
-test('saves a fact to a timestamp-named Markdown file', async () => {
+test('slugifies fact titles for filenames', () => {
+  assert.equal(slugifyTitle('Captured from the prompt.'), 'captured-from-the-prompt');
+});
+
+test('saves a fact to a slug-named Markdown file', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
 
   try {
     const savedPath = await saveFact('Captured from the prompt.', {
-      notesDirectory: directory,
-      now: () => new Date(2026, 5, 23, 9, 4, 7, 12)
+      notesDirectory: directory
     });
 
     assert.equal(path.extname(savedPath), '.md');
-    assert.match(path.basename(savedPath), /^2026-06-23T09-04-07\.012[+-]\d{2}-\d{2}\.md$/);
+    assert.equal(path.basename(savedPath), 'captured-from-the-prompt.md');
     assert.equal(
       await readFile(savedPath, 'utf8'),
-      '---\ntype: fact\n---\n\nCaptured from the prompt.\n'
+      '---\ntitle: "Captured from the prompt."\ntype: fact\n---\n\n\n'
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -172,12 +184,14 @@ test('lists facts in a notes directory', async () => {
         {
           filename: '2026-06-23T09-04-07.012-04-00.md',
           path: path.join(directory, '2026-06-23T09-04-07.012-04-00.md'),
+          title: 'First fact.',
           type: 'fact',
           text: 'First fact.'
         },
         {
           filename: '2026-06-23T09-05-07.012-04-00.md',
           path: path.join(directory, '2026-06-23T09-05-07.012-04-00.md'),
+          title: 'Second fact.',
           type: 'fact',
           text: 'Second fact.'
         }
@@ -223,25 +237,50 @@ test('lists facts in nested notes directories', async () => {
   }
 });
 
-test('lists fact relations', async () => {
+test('ignores Markdown files and contexts in hidden directories', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
 
   try {
-    await writeFile(
-      path.join(directory, '2026-06-23T09-04-07.012-04-00.md'),
-      '---\ntype: fact\nrelations: ["/people/Steve Ma"]\n---\n\nFirst fact.\n'
-    );
+    await mkdir(path.join(directory, '.trash'), { recursive: true });
+    await mkdir(path.join(directory, '.gatherbrain'), { recursive: true });
+    await mkdir(path.join(directory, '.hidden', 'deep'), { recursive: true });
+    await mkdir(path.join(directory, 'project'), { recursive: true });
+    await writeFile(path.join(directory, '.trash', 'trashed.md'), buildFactMarkdown('Trashed fact.'));
+    await writeFile(path.join(directory, '.hidden', 'hidden.md'), buildFactMarkdown('Hidden fact.'));
+    await writeFile(path.join(directory, 'project', 'visible.md'), buildFactMarkdown('Visible fact.'));
 
     assert.deepEqual(
-      (await listFacts({ notesDirectory: directory })).map((fact) => fact.relations),
-      [['/people/Steve Ma']]
+      (await listFacts({ notesDirectory: directory })).map((fact) => fact.filename),
+      [path.join('project', 'visible.md')]
+    );
+    assert.deepEqual(
+      await listContextDirectories({ notesDirectory: directory }),
+      ['project']
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
 });
 
-test('lists fact relations from Markdown body links', async () => {
+test('lists related contexts', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
+
+  try {
+    await writeFile(
+      path.join(directory, '2026-06-23T09-04-07.012-04-00.md'),
+      '---\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nFirst fact.\n'
+    );
+
+    assert.deepEqual(
+      (await listFacts({ notesDirectory: directory })).map((fact) => fact.relations),
+      [['people/Steve Ma']]
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('ignores Markdown body links as relationships', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
 
   try {
@@ -252,7 +291,7 @@ test('lists fact relations from Markdown body links', async () => {
 
     assert.deepEqual(
       (await listFacts({ notesDirectory: directory })).map((fact) => fact.relations),
-      [['/people/Steve Ma']]
+      [undefined]
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -280,7 +319,7 @@ test('updates a fact type by one-based index', async () => {
     );
     assert.equal(
       await readFile(targetPath, 'utf8'),
-      '---\ntype: task\n---\n\nSecond fact.\n'
+      '---\ntitle: "Second fact."\ntype: task\n---\n\n\n'
     );
   } finally {
     await rm(directory, { recursive: true, force: true });

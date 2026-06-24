@@ -29,6 +29,7 @@ test('/s switches context without creating a note', async () => {
 
   try {
     const state = createPromptState({ appDirectory, notesDirectory });
+    await mkdir(path.join(notesDirectory, 'my-cool-project'), { recursive: true });
 
     const switchResult = await handleEntry('/s my-cool-project', state);
 
@@ -54,14 +55,14 @@ test('/s switches context without creating a note', async () => {
     assert.equal(files.length, 1);
     assert.equal(
       await readFile(path.join(state.activeNotesDirectory, files[0]), 'utf8'),
-      '---\ntype: fact\n---\n\nCaptured in context.\n'
+      '---\ntitle: "Captured in context."\ntype: fact\n---\n\n\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
 });
 
-test('saves context mentions as Markdown links', async () => {
+test('saves typed text as a titled fact without deriving relationships from gaze or mentions', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const notesDirectory = path.join(appDirectory, 'notes');
 
@@ -76,7 +77,7 @@ test('saves context mentions as Markdown links', async () => {
     const noteFile = files.find((file) => path.extname(file) === '.md');
     assert.equal(
       await readFile(path.join(notesDirectory, noteFile), 'utf8'),
-      '---\ntype: fact\n---\n\nTalk to [Steve Ma](/people/Steve Ma).\n'
+      '---\ntitle: "Talk to @Steve Ma."\ntype: fact\n---\n\n\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -221,6 +222,14 @@ test('formats key debug lines', () => {
       'shift: false'
     ]
   );
+});
+
+test('uses a supplied root directory as the workspace', () => {
+  const rootDirectory = path.join(tmpdir(), 'gatherbrain-workspace');
+  const state = createPromptState({ rootDirectory });
+
+  assert.equal(state.notesDirectory, rootDirectory);
+  assert.equal(state.activeNotesDirectory, rootDirectory);
 });
 
 test('builds TUI lines with the current context and note contents', () => {
@@ -613,6 +622,8 @@ test('view history navigates context and lens changes', async () => {
 
   try {
     const state = createPromptState({ appDirectory, notesDirectory });
+    await mkdir(path.join(notesDirectory, 'gatherbrain'), { recursive: true });
+    await mkdir(path.join(notesDirectory, 'people'), { recursive: true });
 
     await handleEntry('/s gatherbrain', state);
     await handleEntry('/l todo', state);
@@ -756,7 +767,7 @@ test('commands show source folders for notes related to the active context', asy
     );
     await writeFile(
       relatedPath,
-      '---\ntype: fact\nrelations: ["/people/Steve Ma"]\n---\n\nRelated fact.\n'
+      '---\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nRelated fact.\n'
     );
     await writeFile(
       path.join(notesDirectory, 'projects', '2026-06-23T09-06-07.012-04-00.md'),
@@ -795,7 +806,7 @@ test('commands show source folders for notes related to the active context', asy
     });
     assert.equal(
       await readFile(relatedPath, 'utf8'),
-      '---\ntype: todo\nrelations: ["/people/Steve Ma"]\n---\n\nRelated fact.\n'
+      '---\ntype: todo\nrelatedContexts: ["people/Steve Ma"]\n---\n\nRelated fact.\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -814,7 +825,7 @@ test('commands show outbound relations for direct notes in the active context', 
     await mkdir(contextDirectory, { recursive: true });
     await writeFile(
       path.join(contextDirectory, '2026-06-23T09-04-07.012-04-00.md'),
-      '---\ntype: done\nrelations: ["/people/Steve Ma"]\n---\n\nTurn the app into a TUI.\n'
+      '---\ntype: done\nrelatedContexts: ["people/Steve Ma"]\n---\n\nTurn the app into a TUI.\n'
     );
 
     const visibleFacts = await visibleFactsForState(state);
@@ -953,7 +964,7 @@ test('/e command reports missing item', async () => {
   }
 });
 
-test('/d command recycles a listed item', async () => {
+test('/d command trashes a listed item', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const notesDirectory = path.join(appDirectory, 'notes');
   const firstNotePath = path.join(notesDirectory, '2026-06-23T09-04-07.012-04-00.md');
@@ -973,15 +984,15 @@ test('/d command recycles a listed item', async () => {
 
     assert.deepEqual(await handleEntry('/d 2', state), {
       action: 'continue',
-      message: 'recycled item 2'
+      message: 'trashed item 2'
     });
     assert.deepEqual((await readdir(notesDirectory)).sort(), [
-      '.recycle-bin',
+      '.trash',
       path.basename(firstNotePath)
     ]);
     await assert.rejects(readFile(secondNotePath, 'utf8'), { code: 'ENOENT' });
     assert.equal(
-      await readFile(path.join(notesDirectory, '.recycle-bin', path.basename(secondNotePath)), 'utf8'),
+      await readFile(path.join(notesDirectory, '.trash', path.basename(secondNotePath)), 'utf8'),
       '---\ntype: fact\n---\n\nSecond fact.\n'
     );
     assert.deepEqual(
@@ -1019,15 +1030,15 @@ test('/d command targets the active lens list', async () => {
 
     assert.deepEqual(await handleEntry('/d 2', state), {
       action: 'continue',
-      message: 'recycled item 2'
+      message: 'trashed item 2'
     });
     assert.deepEqual((await readdir(notesDirectory)).sort(), [
-      '.recycle-bin',
+      '.trash',
       path.basename(factPath),
       path.basename(todoPath)
     ]);
     assert.equal(
-      await readFile(path.join(notesDirectory, '.recycle-bin', path.basename(waitingPath)), 'utf8'),
+      await readFile(path.join(notesDirectory, '.trash', path.basename(waitingPath)), 'utf8'),
       '---\ntype: waiting\n---\n\nWaiting item.\n'
     );
   } finally {
@@ -1069,11 +1080,11 @@ test('/r command relates a listed item to a context', async () => {
 
     assert.deepEqual(await handleEntry('/r 1 Steve Ma', state), {
       action: 'continue',
-      message: 'related item 1 to /people/Steve Ma'
+      message: 'related item 1 to people/Steve Ma'
     });
     assert.equal(
       await readFile(notePath, 'utf8'),
-      '---\ntype: fact\nrelations: ["/people/Steve Ma"]\n---\n\nFirst fact.\n'
+      '---\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nFirst fact.\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -1095,7 +1106,7 @@ test('/r command accepts full context paths', async () => {
 
     assert.deepEqual(await handleEntry('/r 1 /people/Steve Ma', state), {
       action: 'continue',
-      message: 'related item 1 to /people/Steve Ma'
+      message: 'related item 1 to people/Steve Ma'
     });
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

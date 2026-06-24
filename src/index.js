@@ -9,9 +9,9 @@ import { env as processEnv, stdin as input, stdout as output } from 'node:proces
 import {
   addFactRelation,
   deleteFact,
-  ensureContextDirectory,
   listContextDirectories,
   listFacts,
+  resolveContextDirectory,
   saveFact,
   updateFactType
 } from './facts.js';
@@ -38,7 +38,7 @@ const commandHelp = [
 
 export function createPromptState(options = {}) {
   const appDirectory = options.appDirectory ?? defaultAppDirectory;
-  const notesDirectory = options.notesDirectory ?? path.join(appDirectory, 'notes');
+  const notesDirectory = options.rootDirectory ?? options.notesDirectory ?? path.join(appDirectory, 'notes');
 
   return {
     appDirectory,
@@ -238,9 +238,7 @@ function relationForActiveContext(state) {
     state.activeNotesDirectory
   );
 
-  return relativeContext.length > 0
-    ? `/${relativeContext.split(path.sep).join('/')}`
-    : '/';
+  return relativeContext.length > 0 ? relativeContext.split(path.sep).join('/') : '';
 }
 
 function folderNameForFact(fact, state) {
@@ -254,7 +252,7 @@ function folderNameForFact(fact, state) {
 }
 
 function folderNameForRelation(relation) {
-  return relation.replace(/^\/+/u, '').split('/').at(-1) ?? relation;
+  return relation.split('/').at(-1) ?? relation;
 }
 
 export function filterNotesForLens(notes, lens = defaultLens) {
@@ -270,7 +268,8 @@ export async function visibleFactsForState(state) {
   const facts = (await listFacts({ notesDirectory: state.notesDirectory }))
     .flatMap((fact) => {
       const insideContext = pathIsInside(state.activeNotesDirectory, fact.path);
-      const relatedToContext = fact.relations?.includes(contextRelation) ?? false;
+      const relatedToContext = contextRelation.length > 0
+        && (fact.relations?.includes(contextRelation) ?? false);
 
       if (!insideContext && !relatedToContext) {
         return [];
@@ -744,17 +743,6 @@ async function matchingContextCompletions(partialContext, state) {
     });
 }
 
-async function contextLinksForNotes(state) {
-  const contexts = await listContextDirectories({
-    notesDirectory: state.notesDirectory
-  });
-
-  return contexts.map((contextName) => ({
-    folder: contextName.split('/').at(-1) ?? contextName,
-    name: contextName
-  }));
-}
-
 export function createReadlineCompleter(state) {
   return (line) => completeEntry(line, state)
     .catch(() => [[], line]);
@@ -829,7 +817,7 @@ async function relationForContextReference(contextReference, state) {
     throw new Error(`context ${requestedContext} is ambiguous`);
   }
 
-  return `/${matches[0]}`;
+  return matches[0];
 }
 
 export async function handleEntry(entry, state) {
@@ -884,9 +872,20 @@ export async function handleEntry(entry, state) {
     let nextNotesDirectory;
 
     try {
-      nextNotesDirectory = await ensureContextDirectory(contextName, {
+      nextNotesDirectory = resolveContextDirectory(contextName, {
         notesDirectory: state.notesDirectory
       });
+      const contexts = await listContextDirectories({
+        notesDirectory: state.notesDirectory
+      });
+      const normalizedContext = path
+        .relative(state.notesDirectory, nextNotesDirectory)
+        .split(path.sep)
+        .join('/');
+
+      if (!contexts.includes(normalizedContext)) {
+        throw new Error(`context ${contextName} does not exist`);
+      }
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);
@@ -990,7 +989,7 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    const message = `recycled item ${itemNumber}`;
+    const message = `trashed item ${itemNumber}`;
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);
@@ -1080,7 +1079,6 @@ export async function handleEntry(entry, state) {
   }
 
   const savedPath = await saveFact(entry, {
-    contextLinks: await contextLinksForNotes(state),
     notesDirectory: state.activeNotesDirectory
   });
   const message = `saved ${path.relative(state.appDirectory, savedPath)}`;
@@ -1095,7 +1093,8 @@ export async function handleEntry(entry, state) {
 }
 
 async function main() {
-  const state = createPromptState();
+  const rootDirectory = process.argv[2] ? path.resolve(process.argv[2]) : undefined;
+  const state = createPromptState({ rootDirectory });
   let notes = [];
   let editorOpen = false;
   const terminal = readline.createInterface({
