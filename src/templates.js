@@ -87,3 +87,29 @@ export function renderTemplateLines(name, viewModel, options = {}) {
 
   return rendered.length > 0 ? rendered.split(/\r?\n/u) : [];
 }
+
+export function clearTemplateCache(options = {}) {
+  const { rootDirectory = null } = options;
+
+  if (!rootDirectory) {
+    compiledTemplates.clear();
+    return;
+  }
+
+  const localTemplateRoot = path.join(rootDirectory, workspaceTemplateDirectory);
+
+  for (const templatePath of compiledTemplates.keys()) {
+    const relativeTemplatePath = path.relative(localTemplateRoot, templatePath);
+
+    if (
+      relativeTemplatePath.length === 0
+      || (
+        !relativeTemplatePath.startsWith(`..${path.sep}`)
+        && relativeTemplatePath !== '..'
+        && !path.isAbsolute(relativeTemplatePath)
+      )
+    ) {
+      compiledTemplates.delete(templatePath);
+    }
+  }
+}

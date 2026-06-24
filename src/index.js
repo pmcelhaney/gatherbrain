@@ -6,6 +6,7 @@ import path from 'node:path';
 import { emitKeypressEvents } from 'node:readline';
 import readline from 'node:readline/promises';
 import { env as processEnv, stdin as input, stdout as output } from 'node:process';
+import { watchWorkspaceConfig } from './config-watch.js';
 import {
   commandArgumentValues,
   commandArguments,
@@ -39,7 +40,10 @@ import {
   loadLensRegistry,
   presentLens
 } from './lenses.js';
-import { renderTemplateLines } from './templates.js';
+import {
+  clearTemplateCache,
+  renderTemplateLines
+} from './templates.js';
 
 const defaultAppDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -1056,6 +1060,16 @@ export async function refreshEditedFact(state, filePath) {
   await refreshFact(await ensureModel(state), filePath);
 }
 
+export async function reloadWorkspaceConfig(state) {
+  clearTemplateCache({ rootDirectory: state.rootDirectory });
+  state.commandRegistry = await loadCommandRegistry({
+    rootDirectory: state.rootDirectory
+  });
+  state.lensRegistry = await loadLensRegistry({
+    rootDirectory: state.rootDirectory
+  });
+}
+
 async function relationForContextReference(contextReference, state) {
   const requestedContext = contextReference.trim();
 
@@ -1548,6 +1562,26 @@ async function main() {
       }
     }
   });
+  const configWatcher = watchWorkspaceConfig({
+    rootDirectory: state.rootDirectory,
+    onChange: async () => {
+      await reloadWorkspaceConfig(state);
+      body = await visibleBodyForState(state);
+
+      if (!editorOpen) {
+        renderCurrentScreen();
+        redrawPrompt();
+      }
+    },
+    onError: (error) => {
+      state.statusMessage = error.message;
+
+      if (!editorOpen) {
+        renderCurrentScreen();
+        redrawPrompt();
+      }
+    }
+  });
 
   terminal.on('SIGINT', () => {
     output.write('\n');
@@ -1596,6 +1630,7 @@ async function main() {
       }
     }
   } finally {
+    configWatcher.close();
     modelWatcher.close();
     input.off('keypress', onKeypress);
 

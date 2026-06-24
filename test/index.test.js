@@ -19,6 +19,7 @@ import {
   pageNavigationForBody,
   pageNavigationForKey,
   pageNavigationForFacts,
+  reloadWorkspaceConfig,
   refreshEditedFact,
   renderTui,
   visibleBodyForState,
@@ -1932,6 +1933,92 @@ test('readline completer returns /s completions', async () => {
     const completer = createReadlineCompleter(state);
 
     assert.deepEqual(await completer('/s my'), [['my-cool-project'], 'my']);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('reloads workspace command and lens configuration', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, '.gatherbrain'), { recursive: true });
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(await completeEntry(':ju', state), [[], ':ju']);
+
+    await writeFile(
+      path.join(rootDirectory, '.gatherbrain', 'commands.json'),
+      JSON.stringify({
+        commands: [
+          {
+            name: 'jump',
+            action: 'switch_context',
+            arguments: [
+              {
+                name: 'context',
+                type: 'context',
+                consume: 'rest',
+                prompt: 'Jump where?'
+              }
+            ]
+          }
+        ]
+      })
+    );
+    await writeFile(
+      path.join(rootDirectory, '.gatherbrain', 'lenses.json'),
+      JSON.stringify({
+        lenses: [
+          {
+            id: 'tasks',
+            presenter: 'context_facts',
+            template: 'facts',
+            filter: {
+              types: ['todo']
+            }
+          }
+        ]
+      })
+    );
+
+    await reloadWorkspaceConfig(state);
+
+    assert.deepEqual(await completeEntry(':ju', state), [[':jump '], ':ju']);
+    assert.deepEqual(await completeEntry(':lens ta', state), [['tasks'], 'ta']);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('reloads workspace-local templates', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, '.gatherbrain', 'templates'), { recursive: true });
+    const templatePath = path.join(rootDirectory, '.gatherbrain', 'templates', 'compact.hbs');
+    const state = createPromptState({ appDirectory, rootDirectory });
+    const body = {
+      type: 'facts',
+      template: 'compact',
+      facts: [{ type: 'fact', title: 'First fact', text: 'First fact.' }]
+    };
+
+    await writeFile(templatePath, '{{#each facts}}OLD {{body}}{{/each}}');
+    assert.deepEqual(
+      buildTuiLines({ state, body, rows: 5, columns: 80 }).at(2),
+      'OLD First fact.'
+    );
+
+    await writeFile(templatePath, '{{#each facts}}NEW {{body}}{{/each}}');
+    await reloadWorkspaceConfig(state);
+
+    assert.deepEqual(
+      buildTuiLines({ state, body, rows: 5, columns: 80 }).at(2),
+      'NEW First fact.'
+    );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
