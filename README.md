@@ -24,6 +24,27 @@ Use `:relate 3 people/alex` to add a workspace-relative context path to the thir
 
 Use `:type task 3` to change the third listed fact's front matter type to `task`. The type name can be any letter-starting word with letters, numbers, `_`, or `-`.
 
+The named command list can be replaced by a workspace-local `.gatherbrain/commands.json` file:
+
+```json
+{
+  "commands": [
+    {
+      "name": "jump",
+      "action": "switch_context",
+      "arguments": [
+        {
+          "name": "context",
+          "type": "context",
+          "consume": "rest",
+          "prompt": "Jump where?"
+        }
+      ]
+    }
+  ]
+}
+```
+
 The older slash shortcuts still work:
 
 Use `/s my-cool-project` to switch to an existing context. Subsequent facts are written to that directory. Press `Tab` after `/s` to complete existing context folders.

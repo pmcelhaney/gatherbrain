@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -6,6 +9,7 @@ import {
   commandHelp,
   commandHelpText,
   continuePromptedCommand,
+  loadCommandRegistry,
   parseEntry,
   shortcutHelp
 } from '../src/commands.js';
@@ -199,6 +203,56 @@ test('continues prompted commands', () => {
     message: 'usage: :edit <item>',
     type: 'usage_error'
   });
+});
+
+test('loads workspace command definitions from config', async () => {
+  const rootDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-commands-'));
+
+  try {
+    await mkdir(path.join(rootDirectory, '.gatherbrain'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, '.gatherbrain', 'commands.json'),
+      JSON.stringify({
+        commands: [
+          {
+            name: 'jump',
+            action: 'switch_context',
+            arguments: [
+              {
+                name: 'context',
+                type: 'context',
+                consume: 'rest',
+                prompt: 'Jump where?'
+              }
+            ]
+          }
+        ]
+      })
+    );
+
+    const registry = await loadCommandRegistry({ rootDirectory });
+
+    assert.deepEqual(commandNames(registry), ['jump']);
+    assert.deepEqual(commandHelp(registry), [':jump <context>']);
+    assert.deepEqual(parseEntry(':jump people/alex', registry), {
+      context: 'people/alex',
+      type: 'switch_context'
+    });
+    assert.deepEqual(parseEntry(':jump', registry), {
+      type: 'prompt_command_argument',
+      commandName: 'jump',
+      values: {},
+      argument: {
+        name: 'context',
+        type: 'context',
+        consume: 'rest',
+        prompt: 'Jump where?'
+      },
+      prompt: 'Jump where?'
+    });
+  } finally {
+    await rm(rootDirectory, { recursive: true, force: true });
+  }
 });
 
 test('parses unknown commands and fact creation', () => {

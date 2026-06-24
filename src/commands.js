@@ -1,72 +1,70 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+
 const itemNumberPattern = '[1-9]\\d*';
 const typeNamePattern = '[A-Za-z][A-Za-z0-9_-]*';
+const commandConfigPath = path.join('.gatherbrain', 'commands.json');
 
-const commandDefinitions = [
+const builtInCommandDefinitions = [
   {
     name: 'switch',
+    action: 'switch_context',
     arguments: [
       { name: 'context', type: 'context', consume: 'rest', prompt: 'Switch to which context?' }
-    ],
-    build: ({ context }) => ({ type: 'switch_context', context })
+    ]
   },
   {
     name: 'gaze',
+    action: 'change_gaze',
     arguments: [
       { name: 'context', type: 'context', consume: 'rest', prompt: 'Gaze at which context?' }
-    ],
-    build: ({ context }) => ({ type: 'change_gaze', context })
+    ]
   },
   {
     name: 'clear-gaze',
-    arguments: [],
-    build: () => ({ type: 'clear_gaze' })
+    action: 'clear_gaze',
+    arguments: []
   },
   {
     name: 'lens',
+    action: 'switch_lens',
     arguments: [
       { name: 'lens', type: 'lens', prompt: 'Use which lens?' }
-    ],
-    build: ({ lens }) => ({ type: 'switch_lens', lens })
+    ]
   },
   {
     name: 'edit',
+    action: 'edit_fact',
     arguments: [
       { name: 'item', type: 'fact', prompt: 'Edit which fact?' }
-    ],
-    build: ({ item }) => ({ type: 'edit_fact', itemNumber: item })
+    ]
   },
   {
     name: 'delete',
+    action: 'delete_fact',
     arguments: [
       { name: 'item', type: 'fact', prompt: 'Delete which fact?' }
-    ],
-    build: ({ item }) => ({ type: 'delete_fact', itemNumber: item })
+    ]
   },
   {
     name: 'relate',
+    action: 'relate_fact',
     arguments: [
       { name: 'item', type: 'fact', prompt: 'Relate which fact?' },
       { name: 'context', type: 'context', consume: 'rest', prompt: 'Relate it to which context?' }
-    ],
-    build: ({ item, context }) => ({
-      type: 'relate_fact',
-      itemNumber: item,
-      contextReference: context
-    })
+    ]
   },
   {
     name: 'type',
+    action: 'set_fact_type',
     arguments: [
       { name: 'type', type: 'factType', prompt: 'Set which type?' },
       { name: 'item', type: 'fact', prompt: 'Change which fact?' }
-    ],
-    build: ({ item, type }) => ({
-      type: 'set_fact_type',
-      factType: type,
-      itemNumber: item
-    })
+    ]
   }
 ];
+
+const defaultCommandRegistry = createCommandRegistry(builtInCommandDefinitions);
 
 const shortcutUsages = [
   '/s <context>',
@@ -92,20 +90,69 @@ function usageForCommandDefinition(commandDefinition) {
     : `:${commandDefinition.name}`;
 }
 
-export function commandHelp() {
-  return commandDefinitions.map(usageForCommandDefinition);
+export function createCommandRegistry(commandDefinitions = builtInCommandDefinitions) {
+  return {
+    definitions: commandDefinitions.map(normalizeCommandDefinition)
+  };
 }
 
-export function commandHelpText() {
-  return commandHelp().join(' | ');
+export async function loadCommandRegistry(options = {}) {
+  const { rootDirectory } = options;
+
+  if (!rootDirectory) {
+    return defaultCommandRegistry;
+  }
+
+  const configFilePath = path.join(rootDirectory, commandConfigPath);
+  let config;
+
+  try {
+    config = JSON.parse(await readFile(configFilePath, 'utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return defaultCommandRegistry;
+    }
+
+    throw error;
+  }
+
+  if (!config || !Array.isArray(config.commands)) {
+    throw new Error(`${commandConfigPath} must contain a commands array`);
+  }
+
+  return createCommandRegistry(config.commands);
 }
 
-export function commandNames() {
-  return commandDefinitions.map((commandDefinition) => commandDefinition.name);
+function commandDefinitionsFor(registry = defaultCommandRegistry) {
+  return (registry ?? defaultCommandRegistry).definitions;
 }
 
-export function commandArguments(commandName) {
-  const commandDefinition = commandDefinitions.find((candidate) => candidate.name === commandName);
+function normalizeCommandDefinition(commandDefinition) {
+  if (!commandDefinition?.name || !commandDefinition.action) {
+    throw new Error('command definitions require name and action');
+  }
+
+  return {
+    name: commandDefinition.name,
+    action: commandDefinition.action,
+    arguments: (commandDefinition.arguments ?? []).map((argument) => ({ ...argument }))
+  };
+}
+
+export function commandHelp(registry = defaultCommandRegistry) {
+  return commandDefinitionsFor(registry).map(usageForCommandDefinition);
+}
+
+export function commandHelpText(registry = defaultCommandRegistry) {
+  return commandHelp(registry).join(' | ');
+}
+
+export function commandNames(registry = defaultCommandRegistry) {
+  return commandDefinitionsFor(registry).map((commandDefinition) => commandDefinition.name);
+}
+
+export function commandArguments(commandName, registry = defaultCommandRegistry) {
+  const commandDefinition = commandDefinitionsFor(registry).find((candidate) => candidate.name === commandName);
 
   return commandDefinition?.arguments.map((argument) => ({ ...argument })) ?? null;
 }
@@ -114,7 +161,7 @@ export function shortcutHelp() {
   return shortcutUsages;
 }
 
-function parseNamedCommand(command) {
+function parseNamedCommand(command, registry) {
   const match = command.match(/^:(?<name>[A-Za-z][A-Za-z0-9_-]*)(?:\s+(?<args>.*))?$/u);
 
   if (!match) {
@@ -123,7 +170,7 @@ function parseNamedCommand(command) {
 
   const name = match.groups.name;
   const args = match.groups.args?.trim() ?? '';
-  const commandDefinition = commandDefinitions.find((candidate) => candidate.name === name);
+  const commandDefinition = commandDefinitionsFor(registry).find((candidate) => candidate.name === name);
 
   if (commandDefinition) {
     return parseCommandArguments(commandDefinition, args, { promptForMissing: true });
@@ -185,7 +232,7 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
     };
   }
 
-  return commandDefinition.build(parsedArguments);
+  return buildCommandAction(commandDefinition, parsedArguments);
 }
 
 function promptForArgument(commandDefinition, values, argument) {
@@ -215,7 +262,8 @@ function parseArgumentValue(argument, value) {
 }
 
 export function continuePromptedCommand(pendingCommand, value) {
-  const commandDefinition = commandDefinitions.find((candidate) => candidate.name === pendingCommand?.commandName);
+  const registry = pendingCommand?.registry ?? defaultCommandRegistry;
+  const commandDefinition = commandDefinitionsFor(registry).find((candidate) => candidate.name === pendingCommand?.commandName);
   const argument = pendingCommand?.argument;
 
   if (!commandDefinition || !argument) {
@@ -250,10 +298,54 @@ export function continuePromptedCommand(pendingCommand, value) {
     return promptForArgument(commandDefinition, values, nextArgument);
   }
 
-  return commandDefinition.build(values);
+  return buildCommandAction(commandDefinition, values);
 }
 
-export function parseEntry(entry) {
+function buildCommandAction(commandDefinition, values) {
+  if (commandDefinition.action === 'switch_context') {
+    return { type: 'switch_context', context: values.context };
+  }
+
+  if (commandDefinition.action === 'change_gaze') {
+    return { type: 'change_gaze', context: values.context };
+  }
+
+  if (commandDefinition.action === 'clear_gaze') {
+    return { type: 'clear_gaze' };
+  }
+
+  if (commandDefinition.action === 'switch_lens') {
+    return { type: 'switch_lens', lens: values.lens };
+  }
+
+  if (commandDefinition.action === 'edit_fact') {
+    return { type: 'edit_fact', itemNumber: values.item };
+  }
+
+  if (commandDefinition.action === 'delete_fact') {
+    return { type: 'delete_fact', itemNumber: values.item };
+  }
+
+  if (commandDefinition.action === 'relate_fact') {
+    return {
+      type: 'relate_fact',
+      itemNumber: values.item,
+      contextReference: values.context
+    };
+  }
+
+  if (commandDefinition.action === 'set_fact_type') {
+    return {
+      type: 'set_fact_type',
+      factType: values.type,
+      itemNumber: values.item
+    };
+  }
+
+  throw new Error(`unsupported command action ${commandDefinition.action}`);
+}
+
+export function parseEntry(entry, registry = defaultCommandRegistry) {
   const command = entry.trim();
 
   if (command.length === 0) {
@@ -276,7 +368,7 @@ export function parseEntry(entry) {
     return { type: 'debug_keys' };
   }
 
-  const namedCommand = parseNamedCommand(command);
+  const namedCommand = parseNamedCommand(command, registry);
 
   if (namedCommand) {
     return namedCommand;

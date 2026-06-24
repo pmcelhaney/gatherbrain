@@ -23,6 +23,7 @@ import {
   visibleFactsForState,
   lensNavigationForKey
 } from '../src/index.js';
+import { createCommandRegistry } from '../src/commands.js';
 
 test('/s switches context without creating a fact', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
@@ -137,6 +138,43 @@ test('named commands prompt for missing arguments', async () => {
       message: 'context my-cool-project'
     });
     assert.equal(state.pendingCommand, null);
+    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'my-cool-project'));
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('uses custom command registry for completion and execution', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const commandRegistry = createCommandRegistry([
+    {
+      name: 'jump',
+      action: 'switch_context',
+      arguments: [
+        {
+          name: 'context',
+          type: 'context',
+          consume: 'rest',
+          prompt: 'Jump where?'
+        }
+      ]
+    }
+  ]);
+
+  try {
+    const state = createPromptState({ appDirectory, commandRegistry, rootDirectory });
+    await mkdir(path.join(rootDirectory, 'my-cool-project'), { recursive: true });
+
+    assert.deepEqual(await completeEntry(':', state), [[':jump '], ':']);
+    assert.deepEqual(await handleEntry(':jump', state), {
+      action: 'continue',
+      message: 'Jump where?'
+    });
+    assert.deepEqual(await handleEntry('my-cool-project', state), {
+      action: 'continue',
+      message: 'context my-cool-project'
+    });
     assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'my-cool-project'));
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

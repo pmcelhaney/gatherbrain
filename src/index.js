@@ -12,6 +12,7 @@ import {
   commandHelp,
   commandHelpText,
   continuePromptedCommand,
+  loadCommandRegistry,
   parseEntry
 } from './commands.js';
 import {
@@ -51,6 +52,7 @@ export function createPromptState(options = {}) {
     rootDirectory,
     currentContextDirectory: rootDirectory,
     gazeContextDirectory: null,
+    commandRegistry: options.commandRegistry ?? null,
     currentLensId: defaultLensId,
     model: options.model ?? null,
     pageStartIndex: 0,
@@ -695,7 +697,7 @@ export async function completeEntry(line, state) {
 
   if (commandCompletion) {
     const partialCommand = commandCompletion.groups.partial;
-    const matches = commandNames()
+    const matches = commandNames(state.commandRegistry)
       .filter((commandName) => commandName.startsWith(partialCommand))
       .map((commandName) => `:${commandName} `);
 
@@ -706,8 +708,8 @@ export async function completeEntry(line, state) {
 
   if (
     namedContextCompletion
-    && commandArguments(namedContextCompletion.groups.commandName)?.length === 1
-    && commandArguments(namedContextCompletion.groups.commandName)?.at(0)?.type === 'context'
+    && commandArguments(namedContextCompletion.groups.commandName, state.commandRegistry)?.length === 1
+    && commandArguments(namedContextCompletion.groups.commandName, state.commandRegistry)?.at(0)?.type === 'context'
   ) {
     const partialContext = namedContextCompletion.groups.partial ?? '';
     const matches = await matchingContextCompletions(partialContext, state);
@@ -719,8 +721,8 @@ export async function completeEntry(line, state) {
 
   if (
     namedRelationCompletion
-    && commandArguments(namedRelationCompletion.groups.commandName)?.length > 1
-    && commandArguments(namedRelationCompletion.groups.commandName)?.at(-1)?.type === 'context'
+    && commandArguments(namedRelationCompletion.groups.commandName, state.commandRegistry)?.length > 1
+    && commandArguments(namedRelationCompletion.groups.commandName, state.commandRegistry)?.at(-1)?.type === 'context'
   ) {
     const partialContext = namedRelationCompletion.groups.partial ?? '';
     const matches = await matchingContextCompletions(partialContext, state);
@@ -733,7 +735,7 @@ export async function completeEntry(line, state) {
 
   const namedLensCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+(?<partial>.*)$/u);
 
-  if (namedLensCompletion && commandArguments(namedLensCompletion.groups.commandName)?.at(-1)?.type === 'lens') {
+  if (namedLensCompletion && commandArguments(namedLensCompletion.groups.commandName, state.commandRegistry)?.at(-1)?.type === 'lens') {
     const partialLens = namedLensCompletion.groups.partial ?? '';
     const matches = lensIds().filter((lensId) => lensId.startsWith(partialLens));
 
@@ -813,7 +815,7 @@ function showCommandHelp(state, message = null) {
   state.temporaryBodyLines = [
     ...(message ? [message, ''] : []),
     'Commands:',
-    ...commandHelp()
+    ...commandHelp(state.commandRegistry)
   ];
 }
 
@@ -895,7 +897,7 @@ async function resolveExistingContextDirectory(contextReference, state) {
 export async function handleEntry(entry, state) {
   const parsedEntry = state.pendingCommand
     ? continuePromptedCommand(state.pendingCommand, entry)
-    : parseEntry(entry);
+    : parseEntry(entry, state.commandRegistry);
   state.pendingCommand = null;
 
   if (parsedEntry.type === 'quit') {
@@ -914,13 +916,14 @@ export async function handleEntry(entry, state) {
 
     return {
       action: 'continue',
-      message: commandHelpText()
+      message: commandHelpText(state.commandRegistry)
     };
   }
 
   if (parsedEntry.type === 'prompt_command_argument') {
     state.pendingCommand = {
       commandName: parsedEntry.commandName,
+      ...(state.commandRegistry ? { registry: state.commandRegistry } : {}),
       values: parsedEntry.values,
       argument: parsedEntry.argument
     };
@@ -1120,7 +1123,7 @@ export async function handleEntry(entry, state) {
 
     return {
       action: 'continue',
-      message: `${message}; ${commandHelpText()}`
+      message: `${message}; ${commandHelpText(state.commandRegistry)}`
     };
   }
 
@@ -1170,10 +1173,14 @@ export async function handleEntry(entry, state) {
 
 async function main() {
   const rootDirectory = process.argv[2] ? path.resolve(process.argv[2]) : undefined;
+  const effectiveRootDirectory = rootDirectory ?? path.join(defaultAppDirectory, 'notes');
   const state = createPromptState({
     rootDirectory,
+    commandRegistry: await loadCommandRegistry({
+      rootDirectory: effectiveRootDirectory
+    }),
     model: await loadWorkspaceModel({
-      rootDirectory: rootDirectory ?? path.join(defaultAppDirectory, 'notes')
+      rootDirectory: effectiveRootDirectory
     })
   });
   let facts = [];
