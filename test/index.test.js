@@ -841,7 +841,7 @@ test('type command changes a listed item type', async () => {
       '---\ntype: fact\n---\n\nThird fact.\n'
     );
 
-    const result = await handleEntry(':foo 3', state);
+    const result = await handleEntry(':type foo 3', state);
     const files = await readdir(rootDirectory);
     const thirdFact = await readFile(path.join(rootDirectory, files.sort()[2]), 'utf8');
 
@@ -880,7 +880,7 @@ test('type command targets the active lens list', async () => {
       '---\ntype: todo\n---\n\nTodo item.\n'
     );
 
-    assert.deepEqual(await handleEntry(':done 2', state), {
+    assert.deepEqual(await handleEntry(':type done 2', state), {
       action: 'continue',
       message: 'set item 2 type to done'
     });
@@ -947,7 +947,7 @@ test('commands show source folders for facts related to the active context', asy
         ' 2. Related fact. <projects'
       ]
     );
-    assert.deepEqual(await handleEntry(':todo 2', state), {
+    assert.deepEqual(await handleEntry(':type todo 2', state), {
       action: 'continue',
       message: 'set item 2 type to todo'
     });
@@ -1019,7 +1019,7 @@ test('type command reports missing item', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(
-      await handleEntry(':foo 3', state),
+      await handleEntry(':type foo 3', state),
       {
         action: 'continue',
         message: 'item 3 does not exist'

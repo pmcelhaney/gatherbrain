@@ -112,11 +112,6 @@ test('parses fact commands', () => {
     message: 'usage: /r <item> <context>',
     type: 'usage_error'
   });
-  assert.deepEqual(parseEntry(':done 5'), {
-    factType: 'done',
-    itemNumber: 5,
-    type: 'set_fact_type'
-  });
   assert.deepEqual(parseEntry(':edit 2'), {
     itemNumber: 2,
     type: 'edit_fact'
@@ -144,6 +139,10 @@ test('parses unknown commands and fact creation', () => {
   });
   assert.deepEqual(parseEntry(':wat now'), {
     commandName: ':wat',
+    type: 'unknown_command'
+  });
+  assert.deepEqual(parseEntry(':done 5'), {
+    commandName: ':done',
     type: 'unknown_command'
   });
   assert.deepEqual(parseEntry('Capture this fact.'), {

@@ -129,16 +129,6 @@ function parseNamedCommand(command) {
     return commandDefinition.parse(args);
   }
 
-  const typeShortcut = command.match(new RegExp(`^:(${typeNamePattern})\\s+(${itemNumberPattern})$`, 'u'));
-
-  if (typeShortcut) {
-    return {
-      itemNumber: positiveItemNumber(typeShortcut[2]),
-      factType: typeShortcut[1],
-      type: 'set_fact_type'
-    };
-  }
-
   return {
     commandName: `:${name}`,
     type: 'unknown_command'

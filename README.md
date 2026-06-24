@@ -38,8 +38,6 @@ Use `/d 3` to move the third listed fact to `.trash` inside its context director
 
 Use `/r 3 people/alex` to add a workspace-relative context path to the third listed fact's reserved `relatedContexts` front matter field.
 
-Use `:task 3` as a shortcut for `:type task 3`.
-
 Each saved file uses this front matter:
 
 ```markdown
