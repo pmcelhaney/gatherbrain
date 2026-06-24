@@ -12,9 +12,11 @@ import {
   createPromptState,
   filterNotesForLens,
   handleEntry,
+  keyDebugLines,
   navigateViewBack,
   navigateViewForward,
   openEditor,
+  pageNavigationForKey,
   pageNavigationForNotes,
   renderTui,
   visibleFactsForState,
@@ -110,13 +112,13 @@ test('/ lists commands without saving a note', async () => {
 
     assert.deepEqual(await handleEntry('/', state), {
       action: 'continue',
-      message: '/s <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context>'
+      message: '/s <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         notes: [{ type: 'fact', text: 'Existing note.' }],
-        rows: 9,
+        rows: 10,
         columns: 80
       }),
       [
@@ -127,7 +129,8 @@ test('/ lists commands without saving a note', async () => {
         '/l <lens>',
         '/e <item>',
         '/d <item>',
-        '/r <item> <context>'
+        '/r <item> <context>',
+        '/debug keys'
       ]
     );
     await assert.rejects(readdir(notesDirectory), { code: 'ENOENT' });
@@ -145,13 +148,13 @@ test('unknown slash commands show an error and list commands', async () => {
 
     assert.deepEqual(await handleEntry('/wat now', state), {
       action: 'continue',
-      message: 'unknown command /wat; /s <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context>'
+      message: 'unknown command /wat; /s <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         notes: [{ type: 'fact', text: 'Existing note.' }],
-        rows: 11,
+        rows: 12,
         columns: 80
       }),
       [
@@ -164,13 +167,60 @@ test('unknown slash commands show an error and list commands', async () => {
         '/l <lens>',
         '/e <item>',
         '/d <item>',
-        '/r <item> <context>'
+        '/r <item> <context>',
+        '/debug keys'
       ]
     );
     await assert.rejects(readdir(notesDirectory), { code: 'ENOENT' });
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
+});
+
+test('/debug keys toggles key debugging', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+
+    assert.deepEqual(await handleEntry('/debug keys', state), {
+      action: 'continue',
+      message: 'key debug on'
+    });
+    assert.equal(state.debugKeys, true);
+
+    assert.deepEqual(await handleEntry('/debug keys', state), {
+      action: 'continue',
+      message: 'key debug off'
+    });
+    assert.equal(state.debugKeys, false);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('formats key debug lines', () => {
+  assert.deepEqual(
+    keyDebugLines('\x1b[A', {
+      ctrl: false,
+      meta: true,
+      name: 'up',
+      sequence: '\x1b[A',
+      shift: false
+    }),
+    [
+      'Key debug:',
+      'value: "\\u001b[A"',
+      'value code points: [1b, 5b, 41]',
+      'name: "up"',
+      'sequence: "\\u001b[A"',
+      'sequence code points: [1b, 5b, 41]',
+      'ctrl: false',
+      'meta: true',
+      'shift: false'
+    ]
+  );
 });
 
 test('builds TUI lines with the current context and note contents', () => {
@@ -308,6 +358,31 @@ test('navigates note pages', () => {
       previousPageStartIndex: 0
     }
   );
+});
+
+test('maps page and alt-arrow keys to page navigation directions', () => {
+  assert.equal(pageNavigationForKey({ name: 'pagedown' }), 'down');
+  assert.equal(pageNavigationForKey({ name: 'pageup' }), 'up');
+  assert.equal(pageNavigationForKey({ meta: true, name: 'down' }), 'down');
+  assert.equal(pageNavigationForKey({ meta: true, name: 'up' }), 'up');
+  assert.equal(pageNavigationForKey({ sequence: '\x1b[1;3B' }), 'down');
+  assert.equal(pageNavigationForKey({ sequence: '\x1b[3B' }), 'down');
+  assert.equal(pageNavigationForKey({ ctrl: true, name: 'down', sequence: '\x1b[1;5B' }), 'down');
+  assert.equal(pageNavigationForKey({ sequence: '\x1b[1;5B' }), 'down');
+  assert.equal(pageNavigationForKey({ sequence: '\x1b[5B' }), 'down');
+  assert.equal(pageNavigationForKey({ sequence: '\x1b[1;9B' }), 'down');
+  assert.equal(pageNavigationForKey({ sequence: '\x1b[9B' }), 'down');
+  assert.equal(pageNavigationForKey({ sequence: '\x1b\x1b[B' }), 'down');
+  assert.equal(pageNavigationForKey({ sequence: '\x1b[1;3A' }), 'up');
+  assert.equal(pageNavigationForKey({ sequence: '\x1b[3A' }), 'up');
+  assert.equal(pageNavigationForKey({ ctrl: true, name: 'up', sequence: '\x1b[1;5A' }), 'up');
+  assert.equal(pageNavigationForKey({ sequence: '\x1b[1;5A' }), 'up');
+  assert.equal(pageNavigationForKey({ sequence: '\x1b[5A' }), 'up');
+  assert.equal(pageNavigationForKey({ sequence: '\x1b[1;9A' }), 'up');
+  assert.equal(pageNavigationForKey({ sequence: '\x1b[9A' }), 'up');
+  assert.equal(pageNavigationForKey({ sequence: '\x1b\x1b[A' }), 'up');
+  assert.equal(pageNavigationForKey({ name: 'down' }), null);
+  assert.equal(pageNavigationForKey({ name: 'left', meta: true }), null);
 });
 
 test('colors non-fact note types in the TUI', () => {

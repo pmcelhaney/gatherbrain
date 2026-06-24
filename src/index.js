@@ -32,7 +32,8 @@ const commandHelp = [
   '/l <lens>',
   '/e <item>',
   '/d <item>',
-  '/r <item> <context>'
+  '/r <item> <context>',
+  '/debug keys'
 ];
 
 export function createPromptState(options = {}) {
@@ -48,6 +49,7 @@ export function createPromptState(options = {}) {
     temporaryBodyLines: null,
     viewBackStack: [],
     viewForwardStack: [],
+    debugKeys: false,
     statusMessage: ''
   };
 }
@@ -153,6 +155,70 @@ export function viewNavigationForKey(key) {
   }
 
   return null;
+}
+
+export function pageNavigationForKey(key) {
+  if (!key) {
+    return null;
+  }
+
+  if (
+    key.name === 'pagedown'
+    || ((key.meta || key.alt) && key.name === 'down')
+    || (key.ctrl && key.name === 'down' && key.sequence === '\x1b[1;5B')
+  ) {
+    return 'down';
+  }
+
+  if (
+    key.name === 'pageup'
+    || ((key.meta || key.alt) && key.name === 'up')
+    || (key.ctrl && key.name === 'up' && key.sequence === '\x1b[1;5A')
+  ) {
+    return 'up';
+  }
+
+  if (
+    typeof key.sequence === 'string'
+    && /^(?:\x1b\[(?:1;[359]B|[359]B)|\x1b\x1b\[B)$/u.test(key.sequence)
+  ) {
+    return 'down';
+  }
+
+  if (
+    typeof key.sequence === 'string'
+    && /^(?:\x1b\[(?:1;[359]A|[359]A)|\x1b\x1b\[A)$/u.test(key.sequence)
+  ) {
+    return 'up';
+  }
+
+  return null;
+}
+
+function visibleKeyValue(value) {
+  return JSON.stringify(value ?? null);
+}
+
+function keyCodePoints(value) {
+  if (typeof value !== 'string') {
+    return '[]';
+  }
+
+  return `[${[...value].map((character) => character.codePointAt(0).toString(16).padStart(2, '0')).join(', ')}]`;
+}
+
+export function keyDebugLines(value, key) {
+  return [
+    'Key debug:',
+    `value: ${visibleKeyValue(value)}`,
+    `value code points: ${keyCodePoints(value)}`,
+    `name: ${visibleKeyValue(key?.name)}`,
+    `sequence: ${visibleKeyValue(key?.sequence)}`,
+    `sequence code points: ${keyCodePoints(key?.sequence)}`,
+    `ctrl: ${String(key?.ctrl ?? false)}`,
+    `meta: ${String(key?.meta ?? false)}`,
+    `shift: ${String(key?.shift ?? false)}`
+  ];
 }
 
 function pathIsInside(directory, filePath) {
@@ -789,6 +855,17 @@ export async function handleEntry(entry, state) {
     };
   }
 
+  if (command === '/debug keys') {
+    state.debugKeys = !state.debugKeys;
+    state.statusMessage = `key debug ${state.debugKeys ? 'on' : 'off'}`;
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message: state.statusMessage
+    };
+  }
+
   const contextSwitch = command.match(/^\/s(?:\s+(.*))?$/u);
 
   if (contextSwitch) {
@@ -1084,9 +1161,14 @@ async function main() {
     emitKeypressEvents(input, terminal);
   }
 
-  const onKeypress = (_value, key) => {
+  const onKeypress = (value, key) => {
     if (editorOpen) {
       return;
+    }
+
+    if (state.debugKeys) {
+      state.statusMessage = 'key debug on';
+      state.temporaryBodyLines = keyDebugLines(value, key);
     }
 
     const viewNavigation = viewNavigationForKey(key);
@@ -1096,13 +1178,16 @@ async function main() {
       return;
     }
 
-    if (key?.name === 'pagedown') {
-      changePage('down');
+    const pageNavigation = pageNavigationForKey(key);
+
+    if (pageNavigation) {
+      changePage(pageNavigation);
       return;
     }
 
-    if (key?.name === 'pageup') {
-      changePage('up');
+    if (state.debugKeys) {
+      renderCurrentScreen();
+      redrawPrompt();
     }
   };
 
