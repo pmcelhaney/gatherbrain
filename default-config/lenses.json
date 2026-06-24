@@ -2,11 +2,13 @@
   "lenses": [
     {
       "id": "all",
-      "presenter": "context_facts"
+      "presenter": "context_facts",
+      "template": "facts"
     },
     {
       "id": "todo",
       "presenter": "context_facts",
+      "template": "facts",
       "filter": {
         "types": ["fact", "todo", "waiting", "in progress"]
       }

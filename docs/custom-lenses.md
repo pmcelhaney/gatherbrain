@@ -18,6 +18,7 @@ The app loads default lenses first, then loads workspace lenses. A workspace len
     {
       "id": "tasks",
       "presenter": "context_facts",
+      "template": "facts",
       "filter": {
         "types": ["todo", "waiting", "in progress"]
       }
@@ -30,6 +31,7 @@ Each lens has:
 
 - `id`: the value used by `:lens`.
 - `presenter`: the built-in presenter function to use.
+- `template`: optional body template name. Defaults to `facts`.
 - `filter`: optional presenter configuration.
 
 ## Presenters
@@ -41,7 +43,7 @@ Supported presenters:
 Presenters return a body view model. The current renderer supports:
 
 - `body.type: "facts"`
-- `body.template: "facts"`
+- `body.template`: the configured template name, defaulting to `"facts"`
 - `body.facts`: the ordered fact list to render
 
 The default body template lives at `default-config/templates/facts.hbs`. It is rendered with Handlebars after the app has prepared fact view models for the terminal.
@@ -86,6 +88,7 @@ Add a task-focused lens:
     {
       "id": "tasks",
       "presenter": "context_facts",
+      "template": "facts",
       "filter": {
         "types": ["todo", "waiting", "in progress"]
       }
@@ -102,6 +105,7 @@ Override the default `todo` lens:
     {
       "id": "todo",
       "presenter": "context_facts",
+      "template": "facts",
       "filter": {
         "types": ["todo", "waiting"]
       }

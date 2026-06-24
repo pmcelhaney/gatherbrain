@@ -6,6 +6,7 @@ import path from 'node:path';
 export const defaultLensId = 'all';
 
 const lensConfigPath = path.join('.gatherbrain', 'lenses.json');
+const templateNamePattern = /^[A-Za-z][A-Za-z0-9_-]*$/u;
 const defaultLensConfigPath = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -118,7 +119,7 @@ const lensDefinitions = new Map([
         return {
           body: {
             type: 'facts',
-            template: 'facts',
+            template: lens.template ?? 'facts',
             facts
           },
           facts
@@ -164,9 +165,14 @@ function normalizeLensDefinition(lensDefinition) {
     throw new Error(`unsupported lens presenter ${lensDefinition.presenter}`);
   }
 
+  if (lensDefinition.template && !templateNamePattern.test(lensDefinition.template)) {
+    throw new Error(`unsupported lens template ${lensDefinition.template}`);
+  }
+
   return {
     id: lensDefinition.id,
     presenter: lensDefinition.presenter,
+    ...(lensDefinition.template ? { template: lensDefinition.template } : {}),
     ...(lensDefinition.filter ? { filter: { ...lensDefinition.filter } } : {})
   };
 }

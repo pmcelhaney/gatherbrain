@@ -60,6 +60,7 @@ test('loads workspace lens definitions over defaults', async () => {
           {
             id: 'tasks',
             presenter: 'context_facts',
+            template: 'facts',
             filter: {
               types: ['todo', 'waiting']
             }
@@ -190,4 +191,48 @@ test('configured lens filters by front matter type', async () => {
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('configured lenses can select a body template', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-lenses-'));
+
+  try {
+    await writeFile(path.join(directory, 'todo.md'), '---\ntype: todo\n---\n\nTodo.\n');
+
+    const model = await loadWorkspaceModel({ rootDirectory: directory });
+    const lensRegistry = createLensRegistry([
+      {
+        id: 'compact',
+        presenter: 'context_facts',
+        template: 'compact-facts'
+      }
+    ]);
+    const lensModel = presentLens({
+      lensId: 'compact',
+      lensRegistry,
+      model,
+      state: { currentContextDirectory: directory }
+    });
+
+    assert.equal(lensModel.body.template, 'compact-facts');
+    assert.deepEqual(
+      lensModel.facts.map((fact) => fact.text),
+      ['Todo.']
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('rejects unsupported lens template names', () => {
+  assert.throws(
+    () => createLensRegistry([
+      {
+        id: 'bad',
+        presenter: 'context_facts',
+        template: '../facts'
+      }
+    ]),
+    /unsupported lens template/
+  );
 });
