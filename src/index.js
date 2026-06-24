@@ -7,6 +7,11 @@ import { emitKeypressEvents } from 'node:readline';
 import readline from 'node:readline/promises';
 import { env as processEnv, stdin as input, stdout as output } from 'node:process';
 import {
+  commandHelp,
+  commandHelpText,
+  parseEntry
+} from './commands.js';
+import {
   addFactRelation,
   deleteFact,
   resolveContextDirectory,
@@ -22,7 +27,6 @@ import {
 
 const defaultAppDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const quitCommands = new Set([':q', ':quit', ':exit']);
 const ansiTypeColor = '\x1b[36m';
 const ansiLinkColor = '\x1b[34m';
 const ansiRelationColor = '\x1b[35m';
@@ -31,15 +35,6 @@ const ansiCodePattern = /\x1b\[[0-9;]*m/gu;
 const defaultLens = 'all';
 const lensNames = new Set([defaultLens, 'todo']);
 const todoLensTypes = new Set(['todo', 'waiting', 'in progress', 'fact']);
-const commandHelp = [
-  '/s <context>',
-  '/l <lens>',
-  '/e <item>',
-  '/d <item>',
-  '/r <item> <context>',
-  '/debug keys'
-];
-
 export function createPromptState(options = {}) {
   const appDirectory = options.appDirectory ?? defaultAppDirectory;
   const notesDirectory = options.rootDirectory ?? options.notesDirectory ?? path.join(appDirectory, 'notes');
@@ -786,7 +781,7 @@ function showCommandHelp(state, message = null) {
   state.temporaryBodyLines = [
     ...(message ? [message, ''] : []),
     'Commands:',
-    ...commandHelp
+    ...commandHelp()
   ];
 }
 
@@ -852,29 +847,29 @@ async function relationForContextReference(contextReference, state) {
 }
 
 export async function handleEntry(entry, state) {
-  const command = entry.trim();
+  const parsedEntry = parseEntry(entry);
 
-  if (quitCommands.has(command)) {
+  if (parsedEntry.type === 'quit') {
     return { action: 'quit' };
   }
 
-  if (command.length === 0) {
+  if (parsedEntry.type === 'empty') {
     state.statusMessage = '';
     clearTemporaryBody(state);
 
     return { action: 'continue' };
   }
 
-  if (command === '/') {
+  if (parsedEntry.type === 'help') {
     showCommandHelp(state);
 
     return {
       action: 'continue',
-      message: commandHelp.join(' | ')
+      message: commandHelpText()
     };
   }
 
-  if (command === '/debug keys') {
+  if (parsedEntry.type === 'debug_keys') {
     state.debugKeys = !state.debugKeys;
     state.statusMessage = `key debug ${state.debugKeys ? 'on' : 'off'}`;
     clearTemporaryBody(state);
@@ -885,25 +880,21 @@ export async function handleEntry(entry, state) {
     };
   }
 
-  const contextSwitch = command.match(/^\/s(?:\s+(.*))?$/u);
+  if (parsedEntry.type === 'usage_error') {
+    state.statusMessage = parsedEntry.message;
+    clearTemporaryBody(state);
 
-  if (contextSwitch) {
-    const contextName = contextSwitch[1]?.trim() ?? '';
+    return {
+      action: 'continue',
+      message: state.statusMessage
+    };
+  }
 
-    if (contextName.length === 0) {
-      state.statusMessage = 'usage: /s <context>';
-      clearTemporaryBody(state);
-
-      return {
-        action: 'continue',
-        message: state.statusMessage
-      };
-    }
-
+  if (parsedEntry.type === 'switch_context') {
     let nextNotesDirectory;
 
     try {
-      nextNotesDirectory = resolveContextDirectory(contextName, {
+      nextNotesDirectory = resolveContextDirectory(parsedEntry.context, {
         notesDirectory: state.notesDirectory
       });
       const normalizedContext = path
@@ -913,7 +904,7 @@ export async function handleEntry(entry, state) {
       const contexts = await contextIdsForState(state);
 
       if (!contexts.includes(normalizedContext)) {
-        throw new Error(`context ${contextName} does not exist`);
+        throw new Error(`context ${parsedEntry.context} does not exist`);
       }
     } catch (error) {
       state.statusMessage = error.message;
@@ -938,23 +929,9 @@ export async function handleEntry(entry, state) {
     };
   }
 
-  const lensSwitch = command.match(/^\/l(?:\s+(.*))?$/u);
-
-  if (lensSwitch) {
-    const lensName = lensSwitch[1]?.trim() ?? '';
-
-    if (lensName.length === 0) {
-      state.statusMessage = 'usage: /l <lens>';
-      clearTemporaryBody(state);
-
-      return {
-        action: 'continue',
-        message: state.statusMessage
-      };
-    }
-
-    if (!lensNames.has(lensName)) {
-      state.statusMessage = `unknown lens ${lensName}`;
+  if (parsedEntry.type === 'switch_lens') {
+    if (!lensNames.has(parsedEntry.lens)) {
+      state.statusMessage = `unknown lens ${parsedEntry.lens}`;
       clearTemporaryBody(state);
 
       return {
@@ -965,29 +942,25 @@ export async function handleEntry(entry, state) {
 
     changeView(state, {
       ...currentView(state),
-      activeLens: lensName
+      activeLens: parsedEntry.lens
     });
 
     return {
       action: 'continue',
-      message: `lens ${lensName}`
+      message: `lens ${parsedEntry.lens}`
     };
   }
 
-  const editCommand = command.match(/^\/e\s+([1-9]\d*)$/u);
-
-  if (editCommand) {
-    const [, itemNumber] = editCommand;
-
+  if (parsedEntry.type === 'edit_fact') {
     try {
-      const fact = await visibleFactAtIndex(state, Number(itemNumber));
+      const fact = await visibleFactAtIndex(state, parsedEntry.itemNumber);
       state.statusMessage = '';
       clearTemporaryBody(state);
 
       return {
         action: 'edit',
         filePath: fact.path,
-        itemNumber: Number(itemNumber)
+        itemNumber: parsedEntry.itemNumber
       };
     } catch (error) {
       state.statusMessage = error.message;
@@ -1000,13 +973,9 @@ export async function handleEntry(entry, state) {
     }
   }
 
-  const deleteCommand = command.match(/^\/d\s+([1-9]\d*)$/u);
-
-  if (deleteCommand) {
-    const [, itemNumber] = deleteCommand;
-
+  if (parsedEntry.type === 'delete_fact') {
     try {
-      const fact = await visibleFactAtIndex(state, Number(itemNumber));
+      const fact = await visibleFactAtIndex(state, parsedEntry.itemNumber);
       await deleteFact(fact.path);
       removeFact(await ensureModel(state), fact.path);
     } catch (error) {
@@ -1019,7 +988,7 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    const message = `trashed item ${itemNumber}`;
+    const message = `trashed item ${parsedEntry.itemNumber}`;
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);
@@ -1030,18 +999,14 @@ export async function handleEntry(entry, state) {
     };
   }
 
-  const relationCommand = command.match(/^\/r\s+([1-9]\d*)\s+(.+)$/u);
-
-  if (relationCommand) {
-    const [, itemNumber, contextReference] = relationCommand;
-
+  if (parsedEntry.type === 'relate_fact') {
     try {
-      const fact = await visibleFactAtIndex(state, Number(itemNumber));
-      const relation = await relationForContextReference(contextReference, state);
+      const fact = await visibleFactAtIndex(state, parsedEntry.itemNumber);
+      const relation = await relationForContextReference(parsedEntry.contextReference, state);
       await addFactRelation(fact.path, relation);
       await refreshFact(await ensureModel(state), fact.path);
 
-      const message = `related item ${itemNumber} to ${relation}`;
+      const message = `related item ${parsedEntry.itemNumber} to ${relation}`;
       state.statusMessage = '';
       clearTemporaryBody(state);
 
@@ -1060,34 +1025,20 @@ export async function handleEntry(entry, state) {
     }
   }
 
-  if (/^\/r(?:\s|$)/u.test(command)) {
-    state.statusMessage = 'usage: /r <item> <context>';
-    clearTemporaryBody(state);
-
-    return {
-      action: 'continue',
-      message: state.statusMessage
-    };
-  }
-
-  if (command.startsWith('/')) {
-    const message = `unknown command ${command.split(/\s/u)[0]}`;
+  if (parsedEntry.type === 'unknown_command') {
+    const message = `unknown command ${parsedEntry.commandName}`;
     showCommandHelp(state, message);
 
     return {
       action: 'continue',
-      message: `${message}; ${commandHelp.join(' | ')}`
+      message: `${message}; ${commandHelpText()}`
     };
   }
 
-  const typeChange = command.match(/^:([A-Za-z][A-Za-z0-9_-]*)\s+([1-9]\d*)$/u);
-
-  if (typeChange) {
-    const [, type, itemNumber] = typeChange;
-
+  if (parsedEntry.type === 'set_fact_type') {
     try {
-      const fact = await visibleFactAtIndex(state, Number(itemNumber));
-      await updateFactType(fact.path, type);
+      const fact = await visibleFactAtIndex(state, parsedEntry.itemNumber);
+      await updateFactType(fact.path, parsedEntry.factType);
       await refreshFact(await ensureModel(state), fact.path);
     } catch (error) {
       state.statusMessage = error.message;
@@ -1099,7 +1050,7 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    const message = `set item ${itemNumber} type to ${type}`;
+    const message = `set item ${parsedEntry.itemNumber} type to ${parsedEntry.factType}`;
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);
@@ -1110,7 +1061,7 @@ export async function handleEntry(entry, state) {
     };
   }
 
-  const savedPath = await saveFact(entry, {
+  const savedPath = await saveFact(parsedEntry.title, {
     notesDirectory: state.activeNotesDirectory
   });
   await refreshContext(await ensureModel(state), state.activeNotesDirectory);
