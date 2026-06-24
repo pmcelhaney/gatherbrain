@@ -24,26 +24,7 @@ Use `:relate 3 people/alex` to add a workspace-relative context path to the thir
 
 Use `:type task 3` to change the third listed fact's front matter type to `task`. The type name can be any letter-starting word with letters, numbers, `_`, or `-`.
 
-Default commands are defined in `default-config/commands.json`. A workspace-local `.gatherbrain/commands.json` can add commands or override defaults with the same command name:
-
-```json
-{
-  "commands": [
-    {
-      "name": "jump",
-      "action": "switch_context",
-      "arguments": [
-        {
-          "name": "context",
-          "type": "context",
-          "consume": "rest",
-          "prompt": "Jump where?"
-        }
-      ]
-    }
-  ]
-}
-```
+Default commands are defined in `default-config/commands.json`. A workspace-local `.gatherbrain/commands.json` can add commands or override defaults with the same command name. See [Custom Commands](docs/custom-commands.md).
 
 The older slash shortcuts still work:
 
