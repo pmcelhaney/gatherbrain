@@ -18,6 +18,7 @@ import {
   openEditor,
   pageNavigationForKey,
   pageNavigationForNotes,
+  refreshEditedFact,
   renderTui,
   visibleFactsForState,
   viewNavigationForKey
@@ -56,6 +57,10 @@ test('/s switches context without creating a note', async () => {
     assert.equal(
       await readFile(path.join(state.activeNotesDirectory, files[0]), 'utf8'),
       '---\ntitle: "Captured in context."\ntype: fact\n---\n\n\n'
+    );
+    assert.equal(
+      state.model.facts.get(path.join('my-cool-project', files[0])).title,
+      'Captured in context.'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -742,6 +747,10 @@ test('type command targets the active lens list', async () => {
       message: 'set item 2 type to done'
     });
     assert.equal(
+      state.model.facts.get(path.basename(waitingPath)).type,
+      'done'
+    );
+    assert.equal(
       await readFile(waitingPath, 'utf8'),
       '---\ntype: done\n---\n\nWaiting item.\n'
     );
@@ -999,6 +1008,7 @@ test('/d command trashes a listed item', async () => {
       (await visibleFactsForState(state)).map((fact) => fact.text),
       ['First fact.']
     );
+    assert.equal(state.model.facts.has(path.basename(secondNotePath)), false);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -1085,6 +1095,10 @@ test('/r command relates a listed item to a context', async () => {
     assert.equal(
       await readFile(notePath, 'utf8'),
       '---\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nFirst fact.\n'
+    );
+    assert.deepEqual(
+      state.model.facts.get(path.basename(notePath)).relations,
+      ['people/Steve Ma']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -1183,6 +1197,33 @@ test('reports missing EDITOR when opening a note', async () => {
     openEditor('/tmp/note.md', { editor: '' }),
     /EDITOR is not set/
   );
+});
+
+test('refreshes the model after an edited fact changes on disk', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const notePath = path.join(notesDirectory, 'fact.md');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+    await mkdir(notesDirectory, { recursive: true });
+    await writeFile(notePath, '---\ntitle: Before\ntype: fact\n---\n\nBefore body.\n');
+    assert.equal((await visibleFactsForState(state))[0].text, 'Before body.');
+
+    await writeFile(notePath, '---\ntitle: After\ntype: task\n---\n\nAfter body.\n');
+    await refreshEditedFact(state, notePath);
+
+    assert.deepEqual(
+      (await visibleFactsForState(state)).map((fact) => ({
+        text: fact.text,
+        title: fact.title,
+        type: fact.type
+      })),
+      [{ text: 'After body.', title: 'After', type: 'task' }]
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
 });
 
 test('renders the prompt target on the bottom row', () => {

@@ -9,12 +9,16 @@ import { env as processEnv, stdin as input, stdout as output } from 'node:proces
 import {
   addFactRelation,
   deleteFact,
-  listContextDirectories,
-  listFacts,
   resolveContextDirectory,
   saveFact,
   updateFactType
 } from './facts.js';
+import {
+  loadWorkspaceModel,
+  refreshContext,
+  refreshFact,
+  removeFact
+} from './model.js';
 
 const defaultAppDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -45,6 +49,7 @@ export function createPromptState(options = {}) {
     notesDirectory,
     activeNotesDirectory: notesDirectory,
     activeLens: defaultLens,
+    model: options.model ?? null,
     pageStartIndex: 0,
     temporaryBodyLines: null,
     viewBackStack: [],
@@ -255,6 +260,31 @@ function folderNameForRelation(relation) {
   return relation.split('/').at(-1) ?? relation;
 }
 
+async function ensureModel(state) {
+  if (!state.model) {
+    state.model = await loadWorkspaceModel({ rootDirectory: state.notesDirectory });
+  }
+
+  return state.model;
+}
+
+async function contextIdsForState(state) {
+  const model = await ensureModel(state);
+
+  return [...model.contexts.keys()].filter((contextId) => contextId !== '').sort();
+}
+
+function factsForModel(model) {
+  return [...model.facts.values()]
+    .sort((left, right) => {
+      const filenameComparison = path.basename(left.filename).localeCompare(path.basename(right.filename));
+
+      return filenameComparison === 0
+        ? left.filename.localeCompare(right.filename)
+        : filenameComparison;
+    });
+}
+
 export function filterNotesForLens(notes, lens = defaultLens) {
   if (lens === 'todo') {
     return notes.filter((note) => todoLensTypes.has(note.type));
@@ -264,8 +294,9 @@ export function filterNotesForLens(notes, lens = defaultLens) {
 }
 
 export async function visibleFactsForState(state) {
+  const model = await ensureModel(state);
   const contextRelation = relationForActiveContext(state);
-  const facts = (await listFacts({ notesDirectory: state.notesDirectory }))
+  const facts = factsForModel(model)
     .flatMap((fact) => {
       const insideContext = pathIsInside(state.activeNotesDirectory, fact.path);
       const relatedToContext = contextRelation.length > 0
@@ -723,9 +754,7 @@ export async function completeEntry(line, state) {
 }
 
 async function matchingContextCompletions(partialContext, state) {
-  const contexts = await listContextDirectories({
-    notesDirectory: state.notesDirectory
-  });
+  const contexts = await contextIdsForState(state);
 
   return contexts
     .map((contextName) => ({
@@ -791,6 +820,10 @@ export function openEditor(filePath, options = {}) {
   });
 }
 
+export async function refreshEditedFact(state, filePath) {
+  await refreshFact(await ensureModel(state), filePath);
+}
+
 async function relationForContextReference(contextReference, state) {
   const requestedContext = contextReference.trim();
 
@@ -799,9 +832,7 @@ async function relationForContextReference(contextReference, state) {
   }
 
   const normalizedContext = requestedContext.replace(/^\/+/u, '');
-  const contexts = await listContextDirectories({
-    notesDirectory: state.notesDirectory
-  });
+  const contexts = await contextIdsForState(state);
   const matches = contexts.filter((contextName) => {
     const contextFolder = contextName.split('/').at(-1) ?? contextName;
 
@@ -875,13 +906,11 @@ export async function handleEntry(entry, state) {
       nextNotesDirectory = resolveContextDirectory(contextName, {
         notesDirectory: state.notesDirectory
       });
-      const contexts = await listContextDirectories({
-        notesDirectory: state.notesDirectory
-      });
       const normalizedContext = path
         .relative(state.notesDirectory, nextNotesDirectory)
         .split(path.sep)
         .join('/');
+      const contexts = await contextIdsForState(state);
 
       if (!contexts.includes(normalizedContext)) {
         throw new Error(`context ${contextName} does not exist`);
@@ -979,6 +1008,7 @@ export async function handleEntry(entry, state) {
     try {
       const fact = await visibleFactAtIndex(state, Number(itemNumber));
       await deleteFact(fact.path);
+      removeFact(await ensureModel(state), fact.path);
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);
@@ -1009,6 +1039,7 @@ export async function handleEntry(entry, state) {
       const fact = await visibleFactAtIndex(state, Number(itemNumber));
       const relation = await relationForContextReference(contextReference, state);
       await addFactRelation(fact.path, relation);
+      await refreshFact(await ensureModel(state), fact.path);
 
       const message = `related item ${itemNumber} to ${relation}`;
       state.statusMessage = '';
@@ -1057,6 +1088,7 @@ export async function handleEntry(entry, state) {
     try {
       const fact = await visibleFactAtIndex(state, Number(itemNumber));
       await updateFactType(fact.path, type);
+      await refreshFact(await ensureModel(state), fact.path);
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);
@@ -1081,6 +1113,7 @@ export async function handleEntry(entry, state) {
   const savedPath = await saveFact(entry, {
     notesDirectory: state.activeNotesDirectory
   });
+  await refreshContext(await ensureModel(state), state.activeNotesDirectory);
   const message = `saved ${path.relative(state.appDirectory, savedPath)}`;
   state.pageStartIndex = 0;
   state.statusMessage = '';
@@ -1094,7 +1127,12 @@ export async function handleEntry(entry, state) {
 
 async function main() {
   const rootDirectory = process.argv[2] ? path.resolve(process.argv[2]) : undefined;
-  const state = createPromptState({ rootDirectory });
+  const state = createPromptState({
+    rootDirectory,
+    model: await loadWorkspaceModel({
+      rootDirectory: rootDirectory ?? path.join(defaultAppDirectory, 'notes')
+    })
+  });
   let notes = [];
   let editorOpen = false;
   const terminal = readline.createInterface({
@@ -1222,6 +1260,7 @@ async function main() {
 
         try {
           await openEditor(result.filePath);
+          await refreshEditedFact(state, result.filePath);
           state.statusMessage = `edited item ${result.itemNumber}`;
         } catch (error) {
           state.statusMessage = error.message;
