@@ -509,7 +509,8 @@ function factViewModelsForDisplay(facts, options = {}) {
   const {
     columns = 80,
     includeColor = false,
-    template = 'facts'
+    template = 'facts',
+    templateRootDirectory = null
   } = options;
 
   const numberWidth = Math.max(2, String(facts.length).length);
@@ -560,6 +561,8 @@ function factViewModelsForDisplay(facts, options = {}) {
         facts: [viewModel],
         hasFacts: true,
         includeColor
+      }, {
+        rootDirectory: templateRootDirectory
       })
     };
   });
@@ -572,7 +575,8 @@ export function buildPagedFactLines(options = {}) {
     facts = [],
     pageStartIndex = 0,
     rows = 0,
-    template = 'facts'
+    template = 'facts',
+    templateRootDirectory = null
   } = options;
   const factRows = Math.max(rows, 0);
 
@@ -590,6 +594,8 @@ export function buildPagedFactLines(options = {}) {
       facts: [],
       hasFacts: false,
       includeColor
+    }, {
+      rootDirectory: templateRootDirectory
     });
 
     return {
@@ -599,7 +605,12 @@ export function buildPagedFactLines(options = {}) {
     };
   }
 
-  const factViewModels = factViewModelsForDisplay(facts, { columns, includeColor, template });
+  const factViewModels = factViewModelsForDisplay(facts, {
+    columns,
+    includeColor,
+    template,
+    templateRootDirectory
+  });
   const startIndex = Math.min(Math.max(pageStartIndex, 0), facts.length - 1);
   const lines = [];
   const pageFacts = [];
@@ -640,6 +651,8 @@ export function buildPagedFactLines(options = {}) {
       facts: pageFacts,
       hasFacts: pageFacts.length > 0,
       includeColor
+    }, {
+      rootDirectory: templateRootDirectory
     })
     : lines;
 
@@ -671,6 +684,7 @@ export function pageNavigationForFacts(options = {}) {
     body = null,
     facts = [],
     pageStartIndex = 0,
+    templateRootDirectory = null,
     rows = 0
   } = options;
   const currentPage = buildPagedFactLines({
@@ -678,6 +692,7 @@ export function pageNavigationForFacts(options = {}) {
     includeColor,
     facts: body ? factsForBody(body) : facts,
     template: body?.template ?? 'facts',
+    templateRootDirectory,
     pageStartIndex,
     rows
   });
@@ -690,6 +705,7 @@ export function pageNavigationForFacts(options = {}) {
       includeColor,
       facts: body ? factsForBody(body) : facts,
       template: body?.template ?? 'facts',
+      templateRootDirectory,
       pageStartIndex: candidateStartIndex,
       rows
     });
@@ -744,6 +760,7 @@ export function buildTuiLines(options = {}) {
       includeColor,
       facts: bodyFacts,
       template: body?.template ?? 'facts',
+      templateRootDirectory: state.rootDirectory,
       pageStartIndex: state.pageStartIndex ?? 0,
       rows: factRows
     });
@@ -1450,6 +1467,7 @@ async function main() {
       columns: terminalColumns(),
       includeColor: output.isTTY,
       pageStartIndex: state.pageStartIndex ?? 0,
+      templateRootDirectory: state.rootDirectory,
       rows: factRows()
     });
     const nextPageStartIndex = direction === 'down'

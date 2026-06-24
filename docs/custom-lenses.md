@@ -46,7 +46,15 @@ Presenters return a body view model. The current renderer supports:
 - `body.template`: the configured template name, defaulting to `"facts"`
 - `body.facts`: the ordered fact list to render
 
-The default body template lives at `default-config/templates/facts.hbs`. It is rendered with Handlebars after the app has prepared fact view models for the terminal.
+The default body template lives at `default-config/templates/facts.hbs`. Workspace-local templates live in:
+
+```text
+.gatherbrain/templates
+```
+
+A workspace-local template with the same name as a default template overrides the default. For example, `.gatherbrain/templates/facts.hbs` replaces `default-config/templates/facts.hbs` for that workspace.
+
+Templates are rendered with Handlebars after the app has prepared fact view models for the terminal.
 
 The facts template receives:
 
@@ -69,6 +77,8 @@ Templates should loop over facts and render fact properties directly:
 ```
 
 The app supports pipe-style filters for simple formatting. For example, `{{type | color: "cyan"}}` colors the fact type when terminal color is enabled. Supported colors are `blue`, `cyan`, and `magenta`.
+
+Template names must start with a letter and may contain only letters, numbers, `_`, and `-`. The `template` field in a lens uses the filename without `.hbs`.
 
 ## Filters
 

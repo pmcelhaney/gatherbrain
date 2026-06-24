@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -59,6 +62,62 @@ test('renders empty facts template', () => {
     }),
     ['No facts yet.']
   );
+});
+
+test('renders workspace-local templates', async () => {
+  const rootDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-templates-'));
+
+  try {
+    await mkdir(path.join(rootDirectory, '.gatherbrain', 'templates'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, '.gatherbrain', 'templates', 'compact.hbs'),
+      '{{#each facts}}{{number}}|{{body}}{{#unless @last}}\n{{/unless}}{{/each}}'
+    );
+
+    assert.equal(
+      renderTemplate('compact', {
+        emptyText: 'No facts yet.',
+        facts: [
+          { number: ' 1', type: '', body: 'First fact.' }
+        ],
+        hasFacts: true,
+        includeColor: false
+      }, {
+        rootDirectory
+      }),
+      ' 1|First fact.'
+    );
+  } finally {
+    await rm(rootDirectory, { recursive: true, force: true });
+  }
+});
+
+test('workspace-local templates override default templates', async () => {
+  const rootDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-templates-'));
+
+  try {
+    await mkdir(path.join(rootDirectory, '.gatherbrain', 'templates'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, '.gatherbrain', 'templates', 'facts.hbs'),
+      '{{#if hasFacts}}LOCAL {{#each facts}}{{body}}{{/each}}{{else}}{{emptyText}}{{/if}}'
+    );
+
+    assert.equal(
+      renderTemplate('facts', {
+        emptyText: 'No facts yet.',
+        facts: [
+          { number: ' 1', type: '', body: 'First fact.' }
+        ],
+        hasFacts: true,
+        includeColor: false
+      }, {
+        rootDirectory
+      }),
+      'LOCAL First fact.'
+    );
+  } finally {
+    await rm(rootDirectory, { recursive: true, force: true });
+  }
 });
 
 test('rejects unsupported template names', () => {

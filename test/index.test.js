@@ -416,6 +416,40 @@ test('builds TUI lines from a body view model', () => {
   );
 });
 
+test('builds TUI lines with a workspace-local body template', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, '.gatherbrain', 'templates'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, '.gatherbrain', 'templates', 'compact.hbs'),
+      '{{#each facts}}{{number}}|{{body}}{{#unless @last}}\n{{/unless}}{{/each}}'
+    );
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        body: {
+          type: 'facts',
+          template: 'compact',
+          facts: [{ type: 'fact', title: 'First fact', text: 'First fact.' }]
+        },
+        rows: 5,
+        columns: 80
+      }),
+      [
+        'facts',
+        '--------------------------------------------------------------------------------',
+        ' 1|First fact.'
+      ]
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('wraps fact lines and indents continuations by four spaces', () => {
   const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
   const rootDirectory = path.join(appDirectory, 'facts');

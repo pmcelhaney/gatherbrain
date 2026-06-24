@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import Handlebars from 'handlebars';
@@ -11,6 +11,7 @@ const defaultTemplateDirectory = path.resolve(
 );
 
 const compiledTemplates = new Map();
+const workspaceTemplateDirectory = path.join('.gatherbrain', 'templates');
 const colorCodes = new Map([
   ['blue', '\x1b[34m'],
   ['cyan', '\x1b[36m'],
@@ -28,28 +29,43 @@ Handlebars.registerHelper('color', (value, colorName, options) => {
   return colorCode ? `${colorCode}${value}${ansiResetColor}` : value;
 });
 
-function templatePathForName(name) {
+function validateTemplateName(name) {
   if (!/^[A-Za-z][A-Za-z0-9_-]*$/u.test(name)) {
     throw new Error(`unsupported template ${name}`);
+  }
+}
+
+function templatePathForName(name, rootDirectory = null) {
+  validateTemplateName(name);
+
+  if (rootDirectory) {
+    const localTemplatePath = path.join(rootDirectory, workspaceTemplateDirectory, `${name}.hbs`);
+
+    if (existsSync(localTemplatePath)) {
+      return localTemplatePath;
+    }
   }
 
   return path.join(defaultTemplateDirectory, `${name}.hbs`);
 }
 
-function compiledTemplate(name) {
-  if (compiledTemplates.has(name)) {
-    return compiledTemplates.get(name);
+function compiledTemplate(name, options = {}) {
+  const { rootDirectory = null } = options;
+  const templatePath = templatePathForName(name, rootDirectory);
+
+  if (compiledTemplates.has(templatePath)) {
+    return compiledTemplates.get(templatePath);
   }
 
   const template = Handlebars.compile(
-    transformFilterSyntax(readFileSync(templatePathForName(name), 'utf8')),
+    transformFilterSyntax(readFileSync(templatePath, 'utf8')),
     {
       noEscape: true,
       strict: true
     }
   );
 
-  compiledTemplates.set(name, template);
+  compiledTemplates.set(templatePath, template);
   return template;
 }
 
@@ -62,12 +78,12 @@ function transformFilterSyntax(template) {
   );
 }
 
-export function renderTemplate(name, viewModel) {
-  return compiledTemplate(name)(viewModel).replace(/\r?\n$/u, '');
+export function renderTemplate(name, viewModel, options = {}) {
+  return compiledTemplate(name, options)(viewModel).replace(/\r?\n$/u, '');
 }
 
-export function renderTemplateLines(name, viewModel) {
-  const rendered = renderTemplate(name, viewModel);
+export function renderTemplateLines(name, viewModel, options = {}) {
+  const rendered = renderTemplate(name, viewModel, options);
 
   return rendered.length > 0 ? rendered.split(/\r?\n/u) : [];
 }
