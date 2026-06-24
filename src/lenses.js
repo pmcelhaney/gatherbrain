@@ -1,8 +1,17 @@
+import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 export const defaultLensId = 'all';
 
-const todoLensTypes = new Set(['todo', 'waiting', 'in progress', 'fact']);
+const lensConfigPath = path.join('.gatherbrain', 'lenses.json');
+const defaultLensConfigPath = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'default-config',
+  'lenses.json'
+);
 
 function pathIsInside(directory, filePath) {
   const relativePath = path.relative(directory, filePath);
@@ -77,9 +86,20 @@ function visibleFactsForContext(model, contextPath) {
     });
 }
 
-export function filterFactsForLens(facts, lensId = defaultLensId) {
-  if (lensId === 'todo') {
-    return facts.filter((fact) => todoLensTypes.has(fact.type));
+function lensDefinitionForId(lensId, registry = defaultLensRegistry) {
+  return lensDefinitionsFor(registry).find((lensDefinition) => lensDefinition.id === lensId);
+}
+
+export function filterFactsForLens(facts, lens = defaultLensId) {
+  const lensDefinition = typeof lens === 'string'
+    ? lensDefinitionForId(lens)
+    : lens;
+  const types = lensDefinition?.filter?.types;
+
+  if (Array.isArray(types)) {
+    const allowedTypes = new Set(types);
+
+    return facts.filter((fact) => allowedTypes.has(fact.type));
   }
 
   return facts;
@@ -87,38 +107,117 @@ export function filterFactsForLens(facts, lensId = defaultLensId) {
 
 const lensDefinitions = new Map([
   [
-    'all',
+    'context_facts',
     {
-      id: 'all',
-      presenter: ({ model, state }) => ({
-        facts: visibleFactsForContext(model, state.lensContextDirectory ?? state.currentContextDirectory)
-      })
-    }
-  ],
-  [
-    'todo',
-    {
-      id: 'todo',
-      presenter: ({ model, state }) => ({
+      presenter: ({ model, state, lens }) => ({
         facts: filterFactsForLens(
           visibleFactsForContext(model, state.lensContextDirectory ?? state.currentContextDirectory),
-          'todo'
+          lens
         )
       })
     }
   ]
 ]);
 
-export function lensIds() {
-  return [...lensDefinitions.keys()];
+function readLensConfigSync(configFilePath) {
+  const config = JSON.parse(readFileSync(configFilePath, 'utf8'));
+
+  if (!config || !Array.isArray(config.lenses)) {
+    throw new Error(`${configFilePath} must contain a lenses array`);
+  }
+
+  return config;
 }
 
-export function hasLens(lensId) {
-  return lensDefinitions.has(lensId);
+function mergeLensDefinitions(defaultLenses, localLenses) {
+  const mergedLenses = defaultLenses.map((lensDefinition) => ({ ...lensDefinition }));
+  const indexesById = new Map(mergedLenses.map((lensDefinition, index) => [lensDefinition.id, index]));
+
+  for (const localLens of localLenses) {
+    if (indexesById.has(localLens.id)) {
+      mergedLenses[indexesById.get(localLens.id)] = localLens;
+      continue;
+    }
+
+    indexesById.set(localLens.id, mergedLenses.length);
+    mergedLenses.push(localLens);
+  }
+
+  return mergedLenses;
+}
+
+function normalizeLensDefinition(lensDefinition) {
+  if (!lensDefinition?.id || !lensDefinition.presenter) {
+    throw new Error('lens definitions require id and presenter');
+  }
+
+  if (!lensDefinitions.has(lensDefinition.presenter)) {
+    throw new Error(`unsupported lens presenter ${lensDefinition.presenter}`);
+  }
+
+  return {
+    id: lensDefinition.id,
+    presenter: lensDefinition.presenter,
+    ...(lensDefinition.filter ? { filter: { ...lensDefinition.filter } } : {})
+  };
+}
+
+function lensDefinitionsFor(registry = defaultLensRegistry) {
+  return (registry ?? defaultLensRegistry).definitions;
+}
+
+export function createLensRegistry(lensConfigDefinitions) {
+  return {
+    definitions: lensConfigDefinitions.map(normalizeLensDefinition)
+  };
+}
+
+const defaultLensRegistry = createLensRegistry(readLensConfigSync(defaultLensConfigPath).lenses);
+
+export async function loadLensRegistry(options = {}) {
+  const { rootDirectory } = options;
+  const defaultLenses = readLensConfigSync(defaultLensConfigPath).lenses;
+
+  if (!rootDirectory) {
+    return createLensRegistry(defaultLenses);
+  }
+
+  const configFilePath = path.join(rootDirectory, lensConfigPath);
+  let localConfig;
+
+  try {
+    localConfig = JSON.parse(await readFile(configFilePath, 'utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return createLensRegistry(defaultLenses);
+    }
+
+    throw error;
+  }
+
+  if (!localConfig || !Array.isArray(localConfig.lenses)) {
+    throw new Error(`${lensConfigPath} must contain a lenses array`);
+  }
+
+  return createLensRegistry(mergeLensDefinitions(defaultLenses, localConfig.lenses));
+}
+
+export function lensIds(registry = defaultLensRegistry) {
+  return lensDefinitionsFor(registry).map((lensDefinition) => lensDefinition.id);
+}
+
+export function hasLens(lensId, registry = defaultLensRegistry) {
+  return lensDefinitionsFor(registry).some((lensDefinition) => lensDefinition.id === lensId);
 }
 
 export function presentLens(input) {
-  const lens = lensDefinitions.get(input.lensId ?? defaultLensId) ?? lensDefinitions.get(defaultLensId);
+  const definitions = lensDefinitionsFor(input.lensRegistry);
+  const lens = definitions.find((candidate) => candidate.id === (input.lensId ?? defaultLensId))
+    ?? definitions.find((candidate) => candidate.id === defaultLensId);
+  const presenter = lensDefinitions.get(lens.presenter).presenter;
 
-  return lens.presenter(input);
+  return presenter({
+    ...input,
+    lens
+  });
 }

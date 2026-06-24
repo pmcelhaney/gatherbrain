@@ -24,6 +24,7 @@ import {
   lensNavigationForKey
 } from '../src/index.js';
 import { createCommandRegistry } from '../src/commands.js';
+import { createLensRegistry } from '../src/lenses.js';
 
 test('/s switches context without creating a fact', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
@@ -1637,6 +1638,20 @@ test('completes named command arguments', async () => {
     assert.deepEqual(
       await completeEntry(':lens t', state),
       [['todo'], 't']
+    );
+
+    state.lensRegistry = createLensRegistry([
+      {
+        id: 'tasks',
+        presenter: 'context_facts',
+        filter: {
+          types: ['todo']
+        }
+      }
+    ]);
+    assert.deepEqual(
+      await completeEntry(':lens ta', state),
+      [['tasks'], 'ta']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

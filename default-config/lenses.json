@@ -1,0 +1,15 @@
+{
+  "lenses": [
+    {
+      "id": "all",
+      "presenter": "context_facts"
+    },
+    {
+      "id": "todo",
+      "presenter": "context_facts",
+      "filter": {
+        "types": ["fact", "todo", "waiting", "in progress"]
+      }
+    }
+  ]
+}

@@ -5,9 +5,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadWorkspaceModel } from '../src/model.js';
 import {
+  createLensRegistry,
   defaultLensId,
   filterFactsForLens,
   hasLens,
+  loadLensRegistry,
   presentLens,
   lensIds
 } from '../src/lenses.js';
@@ -36,6 +38,43 @@ test('filters facts for the todo lens', () => {
       { type: 'in progress', text: 'Doing' }
     ]
   );
+});
+
+test('loads default lens definitions', async () => {
+  const registry = await loadLensRegistry();
+
+  assert.deepEqual(lensIds(registry), ['all', 'todo']);
+  assert.equal(hasLens('all', registry), true);
+  assert.equal(hasLens('todo', registry), true);
+});
+
+test('loads workspace lens definitions over defaults', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-lenses-'));
+
+  try {
+    await mkdir(path.join(directory, '.gatherbrain'), { recursive: true });
+    await writeFile(
+      path.join(directory, '.gatherbrain', 'lenses.json'),
+      JSON.stringify({
+        lenses: [
+          {
+            id: 'tasks',
+            presenter: 'context_facts',
+            filter: {
+              types: ['todo', 'waiting']
+            }
+          }
+        ]
+      })
+    );
+
+    const registry = await loadLensRegistry({ rootDirectory: directory });
+
+    assert.deepEqual(lensIds(registry), ['all', 'todo', 'tasks']);
+    assert.equal(hasLens('tasks', registry), true);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test('all lens presents direct and related facts for the active context', async () => {
@@ -108,6 +147,40 @@ test('todo lens presents only todo-compatible facts', async () => {
     assert.deepEqual(
       lensModel.facts.map((fact) => fact.text),
       ['Fact.', 'Todo.']
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('configured lens filters by front matter type', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-lenses-'));
+
+  try {
+    await writeFile(path.join(directory, 'todo.md'), '---\ntype: todo\n---\n\nTodo.\n');
+    await writeFile(path.join(directory, 'waiting.md'), '---\ntype: waiting\n---\n\nWaiting.\n');
+    await writeFile(path.join(directory, 'done.md'), '---\ntype: done\n---\n\nDone.\n');
+
+    const model = await loadWorkspaceModel({ rootDirectory: directory });
+    const lensRegistry = createLensRegistry([
+      {
+        id: 'tasks',
+        presenter: 'context_facts',
+        filter: {
+          types: ['todo', 'waiting']
+        }
+      }
+    ]);
+    const lensModel = presentLens({
+      lensId: 'tasks',
+      lensRegistry,
+      model,
+      state: { currentContextDirectory: directory }
+    });
+
+    assert.deepEqual(
+      lensModel.facts.map((fact) => fact.text),
+      ['Todo.', 'Waiting.']
     );
   } finally {
     await rm(directory, { recursive: true, force: true });

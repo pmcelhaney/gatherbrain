@@ -26,6 +26,8 @@ Use `:type task 3` to change the third listed fact's front matter type to `task`
 
 Default commands are defined in `default-config/commands.json`. A workspace-local `.gatherbrain/commands.json` can add commands or override defaults with the same command name. See [Custom Commands](docs/custom-commands.md).
 
+Default lenses are defined in `default-config/lenses.json`. A workspace-local `.gatherbrain/lenses.json` can add lenses or override defaults with the same lens id. See [Custom Lenses](docs/custom-lenses.md).
+
 The older slash shortcuts still work:
 
 Use `/s my-cool-project` to switch to an existing context. Subsequent facts are written to that directory. Press `Tab` after `/s` to complete existing context folders.

@@ -33,6 +33,7 @@ import {
   filterFactsForLens,
   hasLens,
   lensIds,
+  loadLensRegistry,
   presentLens
 } from './lenses.js';
 
@@ -53,6 +54,7 @@ export function createPromptState(options = {}) {
     currentContextDirectory: rootDirectory,
     gazeContextDirectory: null,
     commandRegistry: options.commandRegistry ?? null,
+    lensRegistry: options.lensRegistry ?? null,
     currentLensId: defaultLensId,
     model: options.model ?? null,
     pageStartIndex: 0,
@@ -284,6 +286,7 @@ export async function visibleFactsForState(state) {
       ...state,
       lensContextDirectory: lensContextDirectoryForState(state)
     },
+    lensRegistry: state.lensRegistry,
     lensId: currentLensIdForState(state)
   });
 
@@ -688,7 +691,7 @@ export async function completeEntry(line, state) {
   }
 
   if (state.pendingCommand?.argument?.type === 'lens') {
-    const matches = lensIds().filter((lensId) => lensId.startsWith(line));
+    const matches = lensIds(state.lensRegistry).filter((lensId) => lensId.startsWith(line));
 
     return [matches, line];
   }
@@ -737,7 +740,7 @@ export async function completeEntry(line, state) {
 
   if (namedLensCompletion && commandArguments(namedLensCompletion.groups.commandName, state.commandRegistry)?.at(-1)?.type === 'lens') {
     const partialLens = namedLensCompletion.groups.partial ?? '';
-    const matches = lensIds().filter((lensId) => lensId.startsWith(partialLens));
+    const matches = lensIds(state.lensRegistry).filter((lensId) => lensId.startsWith(partialLens));
 
     return [matches, partialLens];
   }
@@ -1022,7 +1025,7 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'switch_lens') {
-    if (!hasLens(parsedEntry.lens)) {
+    if (!hasLens(parsedEntry.lens, state.lensRegistry)) {
       state.statusMessage = `unknown lens ${parsedEntry.lens}`;
       clearTemporaryBody(state);
 
@@ -1177,6 +1180,9 @@ async function main() {
   const state = createPromptState({
     rootDirectory,
     commandRegistry: await loadCommandRegistry({
+      rootDirectory: effectiveRootDirectory
+    }),
+    lensRegistry: await loadLensRegistry({
       rootDirectory: effectiveRootDirectory
     }),
     model: await loadWorkspaceModel({
