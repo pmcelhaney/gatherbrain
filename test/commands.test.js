@@ -1,13 +1,39 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  commandNames,
   commandHelp,
   commandHelpText,
-  parseEntry
+  parseEntry,
+  shortcutHelp
 } from '../src/commands.js';
 
 test('lists built-in command help', () => {
   assert.deepEqual(commandHelp(), [
+    ':switch <context>',
+    ':gaze <context>',
+    ':clear-gaze',
+    ':lens <lens>',
+    ':edit <item>',
+    ':delete <item>',
+    ':relate <item> <context>',
+    ':type <type> <item>'
+  ]);
+  assert.equal(
+    commandHelpText(),
+    ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item>'
+  );
+  assert.deepEqual(commandNames(), [
+    'switch',
+    'gaze',
+    'clear-gaze',
+    'lens',
+    'edit',
+    'delete',
+    'relate',
+    'type'
+  ]);
+  assert.deepEqual(shortcutHelp(), [
     '/s <context>',
     '/g <context>',
     '/l <lens>',
@@ -16,10 +42,6 @@ test('lists built-in command help', () => {
     '/r <item> <context>',
     '/debug keys'
   ]);
-  assert.equal(
-    commandHelpText(),
-    '/s <context> | /g <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
-  );
 });
 
 test('parses control entries', () => {
@@ -27,6 +49,7 @@ test('parses control entries', () => {
   assert.deepEqual(parseEntry('   '), { type: 'empty' });
   assert.deepEqual(parseEntry(':q'), { type: 'quit' });
   assert.deepEqual(parseEntry('/'), { type: 'help' });
+  assert.deepEqual(parseEntry(':help'), { type: 'help' });
   assert.deepEqual(parseEntry('/debug keys'), { type: 'debug_keys' });
 });
 
@@ -54,6 +77,21 @@ test('parses context and lens commands', () => {
     message: 'usage: /l <lens>',
     type: 'usage_error'
   });
+  assert.deepEqual(parseEntry(':switch people/alex'), {
+    context: 'people/alex',
+    type: 'switch_context'
+  });
+  assert.deepEqual(parseEntry(':gaze people/alex'), {
+    context: 'people/alex',
+    type: 'change_gaze'
+  });
+  assert.deepEqual(parseEntry(':clear-gaze'), {
+    type: 'clear_gaze'
+  });
+  assert.deepEqual(parseEntry(':lens todo'), {
+    lens: 'todo',
+    type: 'switch_lens'
+  });
 });
 
 test('parses fact commands', () => {
@@ -79,11 +117,33 @@ test('parses fact commands', () => {
     itemNumber: 5,
     type: 'set_fact_type'
   });
+  assert.deepEqual(parseEntry(':edit 2'), {
+    itemNumber: 2,
+    type: 'edit_fact'
+  });
+  assert.deepEqual(parseEntry(':delete 3'), {
+    itemNumber: 3,
+    type: 'delete_fact'
+  });
+  assert.deepEqual(parseEntry(':relate 4 people/alex'), {
+    contextReference: 'people/alex',
+    itemNumber: 4,
+    type: 'relate_fact'
+  });
+  assert.deepEqual(parseEntry(':type done 5'), {
+    factType: 'done',
+    itemNumber: 5,
+    type: 'set_fact_type'
+  });
 });
 
 test('parses unknown commands and fact creation', () => {
   assert.deepEqual(parseEntry('/wat now'), {
     commandName: '/wat',
+    type: 'unknown_command'
+  });
+  assert.deepEqual(parseEntry(':wat now'), {
+    commandName: ':wat',
     type: 'unknown_command'
   });
   assert.deepEqual(parseEntry('Capture this fact.'), {

@@ -118,26 +118,27 @@ test('/ lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry('/', state), {
       action: 'continue',
-      message: '/s <context> | /g <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
+      message: ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item>'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         facts: [{ type: 'fact', text: 'Existing fact.' }],
-        rows: 11,
+        rows: 12,
         columns: 80
       }),
       [
         'facts',
         '--------------------------------------------------------------------------------',
         'Commands:',
-        '/s <context>',
-        '/g <context>',
-        '/l <lens>',
-        '/e <item>',
-        '/d <item>',
-        '/r <item> <context>',
-        '/debug keys'
+        ':switch <context>',
+        ':gaze <context>',
+        ':clear-gaze',
+        ':lens <lens>',
+        ':edit <item>',
+        ':delete <item>',
+        ':relate <item> <context>',
+        ':type <type> <item>'
       ]
     );
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
@@ -155,13 +156,13 @@ test('unknown slash commands show an error and list commands', async () => {
 
     assert.deepEqual(await handleEntry('/wat now', state), {
       action: 'continue',
-      message: 'unknown command /wat; /s <context> | /g <context> | /l <lens> | /e <item> | /d <item> | /r <item> <context> | /debug keys'
+      message: 'unknown command /wat; :switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item>'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         facts: [{ type: 'fact', text: 'Existing fact.' }],
-        rows: 13,
+        rows: 14,
         columns: 80
       }),
       [
@@ -170,13 +171,14 @@ test('unknown slash commands show an error and list commands', async () => {
         'unknown command /wat',
         '',
         'Commands:',
-        '/s <context>',
-        '/g <context>',
-        '/l <lens>',
-        '/e <item>',
-        '/d <item>',
-        '/r <item> <context>',
-        '/debug keys'
+        ':switch <context>',
+        ':gaze <context>',
+        ':clear-gaze',
+        ':lens <lens>',
+        ':edit <item>',
+        ':delete <item>',
+        ':relate <item> <context>',
+        ':type <type> <item>'
       ]
     );
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
@@ -1476,6 +1478,58 @@ test('only completes context commands', async () => {
     assert.deepEqual(await completeEntry('/s', state), [['/s '], '/s']);
     assert.deepEqual(await completeEntry('/g', state), [['/g '], '/g']);
     assert.deepEqual(await completeEntry('regular fact', state), [[], 'regular fact']);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('completes colon command names', async () => {
+  const state = createPromptState({
+    appDirectory: path.join(tmpdir(), 'gatherbrain-app'),
+    rootDirectory: path.join(tmpdir(), 'gatherbrain-app', 'facts')
+  });
+
+  assert.deepEqual(await completeEntry(':sw', state), [[':switch '], ':sw']);
+  assert.deepEqual(
+    await completeEntry(':', state),
+    [[
+      ':switch ',
+      ':gaze ',
+      ':clear-gaze ',
+      ':lens ',
+      ':edit ',
+      ':delete ',
+      ':relate ',
+      ':type '
+    ], ':']
+  );
+});
+
+test('completes named command arguments', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(
+      await completeEntry(':switch gather', state),
+      [['projects/gatherbrain'], 'gather']
+    );
+    assert.deepEqual(
+      await completeEntry(':gaze Steve', state),
+      [['people/Steve Ma'], 'Steve']
+    );
+    assert.deepEqual(
+      await completeEntry(':relate 1 /people/S', state),
+      [['/people/Steve Ma'], '/people/S']
+    );
+    assert.deepEqual(
+      await completeEntry(':lens t', state),
+      [['todo'], 't']
+    );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

@@ -7,6 +7,7 @@ import { emitKeypressEvents } from 'node:readline';
 import readline from 'node:readline/promises';
 import { env as processEnv, stdin as input, stdout as output } from 'node:process';
 import {
+  commandNames,
   commandHelp,
   commandHelpText,
   parseEntry
@@ -28,6 +29,7 @@ import {
   defaultLensId,
   filterFactsForLens,
   hasLens,
+  lensIds,
   presentLens
 } from './lenses.js';
 
@@ -674,6 +676,47 @@ export function renderTui(options = {}) {
 }
 
 export async function completeEntry(line, state) {
+  const commandCompletion = line.match(/^:(?<partial>[A-Za-z0-9_-]*)$/u);
+
+  if (commandCompletion) {
+    const partialCommand = commandCompletion.groups.partial;
+    const matches = commandNames()
+      .filter((commandName) => commandName.startsWith(partialCommand))
+      .map((commandName) => `:${commandName} `);
+
+    return [matches, line];
+  }
+
+  const namedContextCompletion = line.match(/^:(?:switch|gaze)\s+(.*)$/u);
+
+  if (namedContextCompletion) {
+    const partialContext = namedContextCompletion[1] ?? '';
+    const matches = await matchingContextCompletions(partialContext, state);
+
+    return [matches.map((context) => context.name), partialContext];
+  }
+
+  const namedRelationCompletion = line.match(/^:relate\s+[1-9]\d*\s+(.*)$/u);
+
+  if (namedRelationCompletion) {
+    const partialContext = namedRelationCompletion[1] ?? '';
+    const matches = await matchingContextCompletions(partialContext, state);
+    const relationCompletions = partialContext.includes('/')
+      ? matches.map((context) => `/${context.name}`)
+      : matches.map((context) => context.folder);
+
+    return [relationCompletions, partialContext];
+  }
+
+  const namedLensCompletion = line.match(/^:lens\s+(.*)$/u);
+
+  if (namedLensCompletion) {
+    const partialLens = namedLensCompletion[1] ?? '';
+    const matches = lensIds().filter((lensId) => lensId.startsWith(partialLens));
+
+    return [matches, partialLens];
+  }
+
   const contextCompletion = line.match(/^\/([sg])(?:(\s+)(.*))?$/u);
 
   if (contextCompletion) {
