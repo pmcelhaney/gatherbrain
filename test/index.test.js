@@ -109,6 +109,40 @@ test('/s without a context does not save a fact', async () => {
   }
 });
 
+test('named commands prompt for missing arguments', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(path.join(rootDirectory, 'my-cool-project'), { recursive: true });
+
+    assert.deepEqual(await handleEntry(':switch', state), {
+      action: 'continue',
+      message: 'Switch to which context?'
+    });
+    assert.deepEqual(state.pendingCommand, {
+      commandName: 'switch',
+      values: {},
+      argument: {
+        name: 'context',
+        type: 'context',
+        consume: 'rest',
+        prompt: 'Switch to which context?'
+      }
+    });
+    assert.deepEqual(await completeEntry('my', state), [['my-cool-project'], 'my']);
+    assert.deepEqual(await handleEntry('my-cool-project', state), {
+      action: 'continue',
+      message: 'context my-cool-project'
+    });
+    assert.equal(state.pendingCommand, null);
+    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'my-cool-project'));
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('/ lists commands without saving a fact', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -1238,6 +1272,42 @@ test('/r command relates a listed item to a context', async () => {
       state.model.facts.get(path.basename(factPath)).relations,
       ['people/Steve Ma']
     );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('named relate prompts for item and context', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const factPath = path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await writeFile(
+      factPath,
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+
+    assert.deepEqual(await handleEntry(':relate', state), {
+      action: 'continue',
+      message: 'Relate which fact?'
+    });
+    assert.deepEqual(await handleEntry('1', state), {
+      action: 'continue',
+      message: 'Relate it to which context?'
+    });
+    assert.deepEqual(await completeEntry('Steve', state), [['people/Steve Ma'], 'Steve']);
+    assert.deepEqual(await handleEntry('Steve Ma', state), {
+      action: 'continue',
+      message: 'related item 1 to people/Steve Ma'
+    });
+    assert.equal(
+      await readFile(factPath, 'utf8'),
+      '---\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nFirst fact.\n'
+    );
+    assert.equal(state.pendingCommand, null);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

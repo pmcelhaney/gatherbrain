@@ -5,14 +5,14 @@ const commandDefinitions = [
   {
     name: 'switch',
     arguments: [
-      { name: 'context', type: 'context', consume: 'rest' }
+      { name: 'context', type: 'context', consume: 'rest', prompt: 'Switch to which context?' }
     ],
     build: ({ context }) => ({ type: 'switch_context', context })
   },
   {
     name: 'gaze',
     arguments: [
-      { name: 'context', type: 'context', consume: 'rest' }
+      { name: 'context', type: 'context', consume: 'rest', prompt: 'Gaze at which context?' }
     ],
     build: ({ context }) => ({ type: 'change_gaze', context })
   },
@@ -24,29 +24,29 @@ const commandDefinitions = [
   {
     name: 'lens',
     arguments: [
-      { name: 'lens', type: 'lens' }
+      { name: 'lens', type: 'lens', prompt: 'Use which lens?' }
     ],
     build: ({ lens }) => ({ type: 'switch_lens', lens })
   },
   {
     name: 'edit',
     arguments: [
-      { name: 'item', type: 'fact' }
+      { name: 'item', type: 'fact', prompt: 'Edit which fact?' }
     ],
     build: ({ item }) => ({ type: 'edit_fact', itemNumber: item })
   },
   {
     name: 'delete',
     arguments: [
-      { name: 'item', type: 'fact' }
+      { name: 'item', type: 'fact', prompt: 'Delete which fact?' }
     ],
     build: ({ item }) => ({ type: 'delete_fact', itemNumber: item })
   },
   {
     name: 'relate',
     arguments: [
-      { name: 'item', type: 'fact' },
-      { name: 'context', type: 'context', consume: 'rest' }
+      { name: 'item', type: 'fact', prompt: 'Relate which fact?' },
+      { name: 'context', type: 'context', consume: 'rest', prompt: 'Relate it to which context?' }
     ],
     build: ({ item, context }) => ({
       type: 'relate_fact',
@@ -57,8 +57,8 @@ const commandDefinitions = [
   {
     name: 'type',
     arguments: [
-      { name: 'type', type: 'factType' },
-      { name: 'item', type: 'fact' }
+      { name: 'type', type: 'factType', prompt: 'Set which type?' },
+      { name: 'item', type: 'fact', prompt: 'Change which fact?' }
     ],
     build: ({ item, type }) => ({
       type: 'set_fact_type',
@@ -126,7 +126,7 @@ function parseNamedCommand(command) {
   const commandDefinition = commandDefinitions.find((candidate) => candidate.name === name);
 
   if (commandDefinition) {
-    return parseCommandArguments(commandDefinition, args);
+    return parseCommandArguments(commandDefinition, args, { promptForMissing: true });
   }
 
   return {
@@ -135,12 +135,17 @@ function parseNamedCommand(command) {
   };
 }
 
-function parseCommandArguments(commandDefinition, args) {
+function parseCommandArguments(commandDefinition, args, options = {}) {
+  const { promptForMissing = false } = options;
   const parsedArguments = {};
   let remainingArgs = args.trim();
 
   for (const argument of commandDefinition.arguments) {
     if (remainingArgs.length === 0) {
+      if (promptForMissing) {
+        return promptForArgument(commandDefinition, parsedArguments, argument);
+      }
+
       return {
         type: 'usage_error',
         message: `usage: ${usageForCommandDefinition(commandDefinition)}`
@@ -183,6 +188,16 @@ function parseCommandArguments(commandDefinition, args) {
   return commandDefinition.build(parsedArguments);
 }
 
+function promptForArgument(commandDefinition, values, argument) {
+  return {
+    type: 'prompt_command_argument',
+    commandName: commandDefinition.name,
+    values: { ...values },
+    argument: { ...argument },
+    prompt: argument.prompt ?? `${argument.name}?`
+  };
+}
+
 function parseArgumentValue(argument, value) {
   if (argument.type === 'fact') {
     return new RegExp(`^${itemNumberPattern}$`, 'u').test(value)
@@ -197,6 +212,45 @@ function parseArgumentValue(argument, value) {
   }
 
   return value;
+}
+
+export function continuePromptedCommand(pendingCommand, value) {
+  const commandDefinition = commandDefinitions.find((candidate) => candidate.name === pendingCommand?.commandName);
+  const argument = pendingCommand?.argument;
+
+  if (!commandDefinition || !argument) {
+    return {
+      type: 'usage_error',
+      message: 'no command is waiting for an argument'
+    };
+  }
+
+  const trimmedValue = value.trim();
+
+  if (trimmedValue.length === 0) {
+    return promptForArgument(commandDefinition, pendingCommand.values ?? {}, argument);
+  }
+
+  const parsedValue = parseArgumentValue(argument, trimmedValue);
+
+  if (parsedValue === null) {
+    return {
+      type: 'usage_error',
+      message: `usage: ${usageForCommandDefinition(commandDefinition)}`
+    };
+  }
+
+  const values = {
+    ...(pendingCommand.values ?? {}),
+    [argument.name]: parsedValue
+  };
+  const nextArgument = commandDefinition.arguments.find((candidate) => values[candidate.name] === undefined);
+
+  if (nextArgument) {
+    return promptForArgument(commandDefinition, values, nextArgument);
+  }
+
+  return commandDefinition.build(values);
 }
 
 export function parseEntry(entry) {

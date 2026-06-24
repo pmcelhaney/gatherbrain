@@ -11,6 +11,7 @@ import {
   commandNames,
   commandHelp,
   commandHelpText,
+  continuePromptedCommand,
   parseEntry
 } from './commands.js';
 import {
@@ -53,6 +54,7 @@ export function createPromptState(options = {}) {
     currentLensId: defaultLensId,
     model: options.model ?? null,
     pageStartIndex: 0,
+    pendingCommand: null,
     temporaryBodyLines: null,
     lensBackStack: [],
     lensForwardStack: [],
@@ -677,6 +679,18 @@ export function renderTui(options = {}) {
 }
 
 export async function completeEntry(line, state) {
+  if (state.pendingCommand?.argument?.type === 'context') {
+    const matches = await matchingContextCompletions(line, state);
+
+    return [matches.map((context) => context.name), line];
+  }
+
+  if (state.pendingCommand?.argument?.type === 'lens') {
+    const matches = lensIds().filter((lensId) => lensId.startsWith(line));
+
+    return [matches, line];
+  }
+
   const commandCompletion = line.match(/^:(?<partial>[A-Za-z0-9_-]*)$/u);
 
   if (commandCompletion) {
@@ -879,7 +893,10 @@ async function resolveExistingContextDirectory(contextReference, state) {
 }
 
 export async function handleEntry(entry, state) {
-  const parsedEntry = parseEntry(entry);
+  const parsedEntry = state.pendingCommand
+    ? continuePromptedCommand(state.pendingCommand, entry)
+    : parseEntry(entry);
+  state.pendingCommand = null;
 
   if (parsedEntry.type === 'quit') {
     return { action: 'quit' };
@@ -898,6 +915,21 @@ export async function handleEntry(entry, state) {
     return {
       action: 'continue',
       message: commandHelpText()
+    };
+  }
+
+  if (parsedEntry.type === 'prompt_command_argument') {
+    state.pendingCommand = {
+      commandName: parsedEntry.commandName,
+      values: parsedEntry.values,
+      argument: parsedEntry.argument
+    };
+    state.statusMessage = parsedEntry.prompt;
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message: parsedEntry.prompt
     };
   }
 

@@ -5,6 +5,7 @@ import {
   commandNames,
   commandHelp,
   commandHelpText,
+  continuePromptedCommand,
   parseEntry,
   shortcutHelp
 } from '../src/commands.js';
@@ -44,8 +45,8 @@ test('lists built-in command help', () => {
     '/debug keys'
   ]);
   assert.deepEqual(commandArguments('relate'), [
-    { name: 'item', type: 'fact' },
-    { name: 'context', type: 'context', consume: 'rest' }
+    { name: 'item', type: 'fact', prompt: 'Relate which fact?' },
+    { name: 'context', type: 'context', consume: 'rest', prompt: 'Relate it to which context?' }
   ]);
   assert.equal(commandArguments('missing'), null);
 });
@@ -86,6 +87,18 @@ test('parses context and lens commands', () => {
   assert.deepEqual(parseEntry(':switch people/alex'), {
     context: 'people/alex',
     type: 'switch_context'
+  });
+  assert.deepEqual(parseEntry(':switch'), {
+    type: 'prompt_command_argument',
+    commandName: 'switch',
+    values: {},
+    argument: {
+      name: 'context',
+      type: 'context',
+      consume: 'rest',
+      prompt: 'Switch to which context?'
+    },
+    prompt: 'Switch to which context?'
   });
   assert.deepEqual(parseEntry(':gaze people/alex'), {
     context: 'people/alex',
@@ -136,11 +149,53 @@ test('parses fact commands', () => {
     itemNumber: 5,
     type: 'set_fact_type'
   });
+  assert.deepEqual(parseEntry(':type done'), {
+    type: 'prompt_command_argument',
+    commandName: 'type',
+    values: { type: 'done' },
+    argument: {
+      name: 'item',
+      type: 'fact',
+      prompt: 'Change which fact?'
+    },
+    prompt: 'Change which fact?'
+  });
   assert.deepEqual(parseEntry(':type bad:type 5'), {
     message: 'usage: :type <type> <item>',
     type: 'usage_error'
   });
   assert.deepEqual(parseEntry(':edit 2 extra'), {
+    message: 'usage: :edit <item>',
+    type: 'usage_error'
+  });
+});
+
+test('continues prompted commands', () => {
+  const pendingType = parseEntry(':type done');
+
+  assert.deepEqual(continuePromptedCommand(pendingType, '5'), {
+    factType: 'done',
+    itemNumber: 5,
+    type: 'set_fact_type'
+  });
+  assert.deepEqual(continuePromptedCommand(parseEntry(':relate'), '4'), {
+    type: 'prompt_command_argument',
+    commandName: 'relate',
+    values: { item: 4 },
+    argument: {
+      name: 'context',
+      type: 'context',
+      consume: 'rest',
+      prompt: 'Relate it to which context?'
+    },
+    prompt: 'Relate it to which context?'
+  });
+  assert.deepEqual(continuePromptedCommand(continuePromptedCommand(parseEntry(':relate'), '4'), 'people/alex'), {
+    contextReference: 'people/alex',
+    itemNumber: 4,
+    type: 'relate_fact'
+  });
+  assert.deepEqual(continuePromptedCommand(parseEntry(':edit'), 'nope'), {
     message: 'usage: :edit <item>',
     type: 'usage_error'
   });

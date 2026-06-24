@@ -8,7 +8,7 @@ The top of the screen shows the current context, existing facts in that context 
 
 When facts do not fit on one screen, complete items are paged with an ellipsis. Use `Page Up` and `Page Down` to move between pages.
 
-Commands use colon-prefixed names. Press `Tab` after `:` to complete command names.
+Commands use colon-prefixed names. Press `Tab` after `:` to complete command names. If a command is missing an argument, the prompt asks for the next argument.
 
 Use `:switch my-cool-project` to switch to an existing context. Subsequent facts are written to that directory.
 
