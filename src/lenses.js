@@ -2,10 +2,6 @@ import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import {
-  enumValues,
-  loadEnumRegistry
-} from './enums.js';
 
 export const defaultLensId = 'all';
 
@@ -94,24 +90,11 @@ function lensDefinitionForId(lensId, registry = defaultLensRegistry) {
   return lensDefinitionsFor(registry).find((lensDefinition) => lensDefinition.id === lensId);
 }
 
-function filterTypesForLens(lensDefinition, enumRegistry = null) {
-  if (Array.isArray(lensDefinition?.filter?.types)) {
-    return lensDefinition.filter.types;
-  }
-
-  if (lensDefinition?.filter?.enum) {
-    return enumValues(lensDefinition.filter.enum, enumRegistry);
-  }
-
-  return [];
-}
-
-export function filterFactsForLens(facts, lens = defaultLensId, options = {}) {
-  const { enumRegistry = null } = options;
+export function filterFactsForLens(facts, lens = defaultLensId) {
   const lensDefinition = typeof lens === 'string'
     ? lensDefinitionForId(lens)
     : lens;
-  const types = filterTypesForLens(lensDefinition, enumRegistry);
+  const types = lensDefinition?.filter?.types ?? [];
 
   if (types.length > 0) {
     const allowedTypes = new Set(types);
@@ -129,8 +112,7 @@ const lensDefinitions = new Map([
       presenter: ({ model, state, lens }) => ({
         facts: filterFactsForLens(
           visibleFactsForContext(model, state.lensContextDirectory ?? state.currentContextDirectory),
-          lens,
-          { enumRegistry: state.enumRegistry }
+          lens
         )
       })
     }
@@ -184,10 +166,9 @@ function lensDefinitionsFor(registry = defaultLensRegistry) {
   return (registry ?? defaultLensRegistry).definitions;
 }
 
-export function createLensRegistry(lensConfigDefinitions, options = {}) {
+export function createLensRegistry(lensConfigDefinitions) {
   return {
-    definitions: lensConfigDefinitions.map(normalizeLensDefinition),
-    enumRegistry: options.enumRegistry ?? null
+    definitions: lensConfigDefinitions.map(normalizeLensDefinition)
   };
 }
 
@@ -196,10 +177,9 @@ const defaultLensRegistry = createLensRegistry(readLensConfigSync(defaultLensCon
 export async function loadLensRegistry(options = {}) {
   const { rootDirectory } = options;
   const defaultLenses = readLensConfigSync(defaultLensConfigPath).lenses;
-  const enumRegistry = options.enumRegistry ?? await loadEnumRegistry({ rootDirectory });
 
   if (!rootDirectory) {
-    return createLensRegistry(defaultLenses, { enumRegistry });
+    return createLensRegistry(defaultLenses);
   }
 
   const configFilePath = path.join(rootDirectory, lensConfigPath);
@@ -209,7 +189,7 @@ export async function loadLensRegistry(options = {}) {
     localConfig = JSON.parse(await readFile(configFilePath, 'utf8'));
   } catch (error) {
     if (error.code === 'ENOENT') {
-      return createLensRegistry(defaultLenses, { enumRegistry });
+      return createLensRegistry(defaultLenses);
     }
 
     throw error;
@@ -219,7 +199,7 @@ export async function loadLensRegistry(options = {}) {
     throw new Error(`${lensConfigPath} must contain a lenses array`);
   }
 
-  return createLensRegistry(mergeLensDefinitions(defaultLenses, localConfig.lenses), { enumRegistry });
+  return createLensRegistry(mergeLensDefinitions(defaultLenses, localConfig.lenses));
 }
 
 export function lensIds(registry = defaultLensRegistry) {
@@ -238,10 +218,6 @@ export function presentLens(input) {
 
   return presenter({
     ...input,
-    state: {
-      ...input.state,
-      enumRegistry: input.lensRegistry?.enumRegistry
-    },
     lens
   });
 }

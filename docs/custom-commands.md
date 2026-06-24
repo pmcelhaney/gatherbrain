@@ -58,13 +58,13 @@ Supported argument types:
 - `fact`: a numbered fact from the current visible list.
 - `lens`: a lens id. Supports completion.
 - `enum`: a string value from `.gatherbrain/enums.json`. Supports completion.
-- `factType`: a type string starting with a letter and containing only letters, numbers, `_`, or `-`.
+- `factType`: a type string starting with a letter and containing only letters, numbers, `_`, or `-`. If `enum` is set, those enum values are offered as completions.
 
 Argument fields:
 
 - `name`: value name used by the action.
 - `type`: one of the supported argument types.
-- `enum`: required when `type` is `enum`. Names the configured enum to use.
+- `enum`: required when `type` is `enum`; optional when `type` is `factType`. Names the configured enum to use for values or completions.
 - `prompt`: text shown when the user omits this argument.
 - `consume`: optional. Use `"rest"` when the argument may contain spaces or slashes and should consume the rest of the command line.
 
@@ -124,6 +124,7 @@ Add a shorter command for setting type:
         {
           "name": "type",
           "type": "factType",
+          "enum": "factType",
           "prompt": "Set which type?"
         },
         {
@@ -139,7 +140,7 @@ Add a shorter command for setting type:
 
 This adds `:mark todo 3` without removing `:type`.
 
-Use an enum to restrict allowed type values:
+Use an enum argument when the command should only accept configured values:
 
 ```json
 {

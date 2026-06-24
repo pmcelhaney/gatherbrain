@@ -8,7 +8,7 @@
       "id": "todo",
       "presenter": "context_facts",
       "filter": {
-        "enum": "todoFactTypes"
+        "types": ["fact", "todo", "waiting", "in progress"]
       }
     }
   ]

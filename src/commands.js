@@ -232,7 +232,7 @@ function readArgumentValue(argument, remainingArgs, options = {}) {
     };
   }
 
-  if (argument.type === 'enum' && argument.enum) {
+  if (['enum', 'factType'].includes(argument.type) && argument.enum) {
     const matchingValue = enumValues(argument.enum, enumRegistry)
       .toSorted((left, right) => right.length - left.length)
       .find((value) => remainingArgs === value || remainingArgs.startsWith(`${value} `));
@@ -275,6 +275,10 @@ function parseArgumentValue(argument, value, options = {}) {
   }
 
   if (argument.type === 'factType') {
+    if (argument.enum && hasEnumValue(argument.enum, value, enumRegistry)) {
+      return value;
+    }
+
     return new RegExp(`^${typeNamePattern}$`, 'u').test(value)
       ? value
       : null;
@@ -290,7 +294,7 @@ function parseArgumentValue(argument, value, options = {}) {
 }
 
 export function commandArgumentValues(argument, registry = defaultCommandRegistry) {
-  if (argument?.type !== 'enum' || !argument.enum) {
+  if (!['enum', 'factType'].includes(argument?.type) || !argument.enum) {
     return [];
   }
 

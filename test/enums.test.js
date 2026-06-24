@@ -25,7 +25,7 @@ test('creates enum registries from string values', () => {
 test('loads default enum definitions from config', async () => {
   const registry = await loadEnumRegistry();
 
-  assert.deepEqual(enumValues('todoFactTypes', registry), ['fact', 'todo', 'waiting', 'in progress']);
+  assert.deepEqual(enumValues('factType', registry), ['fact', 'todo', 'waiting', 'in progress', 'done']);
 });
 
 test('loads workspace enum definitions over defaults', async () => {

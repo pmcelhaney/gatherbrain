@@ -19,7 +19,7 @@ The app loads default lenses first, then loads workspace lenses. A workspace len
       "id": "tasks",
       "presenter": "context_facts",
       "filter": {
-        "enum": "taskTypes"
+        "types": ["todo", "waiting", "in progress"]
       }
     }
   ]
@@ -42,7 +42,6 @@ Supported presenters:
 
 The `context_facts` presenter supports:
 
-- `filter.enum`: only include facts whose front matter `type` is one of the values in the named enum.
 - `filter.types`: only include facts whose front matter `type` is one of these strings.
 
 If no filter is set, the lens shows all visible facts.
@@ -58,14 +57,12 @@ Add a task-focused lens:
       "id": "tasks",
       "presenter": "context_facts",
       "filter": {
-        "enum": "taskTypes"
+        "types": ["todo", "waiting", "in progress"]
       }
     }
   ]
 }
 ```
-
-The `taskTypes` enum values come from `.gatherbrain/enums.json`. See [Custom Enums](custom-enums.md).
 
 Override the default `todo` lens:
 
@@ -76,7 +73,7 @@ Override the default `todo` lens:
       "id": "todo",
       "presenter": "context_facts",
       "filter": {
-        "enum": "todoFactTypes"
+        "types": ["todo", "waiting"]
       }
     }
   ]

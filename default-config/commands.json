@@ -86,6 +86,7 @@
         {
           "name": "type",
           "type": "factType",
+          "enum": "factType",
           "prompt": "Set which type?"
         },
         {

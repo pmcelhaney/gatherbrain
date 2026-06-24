@@ -1,7 +1,7 @@
 {
   "enums": {
-    "todoFactTypes": {
-      "values": ["fact", "todo", "waiting", "in progress"]
+    "factType": {
+      "values": ["fact", "todo", "waiting", "in progress", "done"]
     }
   }
 }

@@ -1,6 +1,6 @@
 # Custom Enums
 
-Enums are configured with JSON. They define reusable string value lists for command arguments.
+Enums are configured with JSON. They define reusable string value lists for command argument completion and enum argument validation.
 
 To customize enums for a workspace, create this file inside the workspace root:
 
@@ -57,3 +57,5 @@ Command arguments use enums by setting `type` to `enum` and `enum` to the enum n
 ```
 
 This allows commands such as `:status todo 3` and rejects values that are not in the enum.
+
+The built-in `:type` command uses the `factType` enum for autocomplete. Because its argument type is `factType`, it still accepts any syntactically valid fact type even when that value is not listed in the enum.

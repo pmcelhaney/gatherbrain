@@ -1683,6 +1683,10 @@ test('completes named command arguments', async () => {
       await completeEntry(':lens t', state),
       [['todo'], 't']
     );
+    assert.deepEqual(
+      await completeEntry(':type wa', state),
+      [['waiting'], 'wa']
+    );
 
     state.lensRegistry = createLensRegistry([
       {

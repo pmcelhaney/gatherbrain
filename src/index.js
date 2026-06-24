@@ -697,7 +697,7 @@ export async function completeEntry(line, state) {
     return [matches, line];
   }
 
-  if (state.pendingCommand?.argument?.type === 'enum') {
+  if (enumCompletableArgument(state.pendingCommand?.argument)) {
     const matches = commandArgumentValues(state.pendingCommand.argument, state.commandRegistry)
       .filter((value) => value.startsWith(line));
 
@@ -817,7 +817,7 @@ function matchingNamedEnumArgument(line, state) {
   const argumentIndex = args.endsWith(' ') ? tokens.length : Math.max(tokens.length - 1, 0);
   const argument = argumentsDefinition[argumentIndex];
 
-  if (argument?.type !== 'enum') {
+  if (!enumCompletableArgument(argument)) {
     return null;
   }
 
@@ -826,6 +826,10 @@ function matchingNamedEnumArgument(line, state) {
     .filter((value) => value.startsWith(partialValue));
 
   return [matches, partialValue];
+}
+
+function enumCompletableArgument(argument) {
+  return ['enum', 'factType'].includes(argument?.type) && Boolean(argument.enum);
 }
 
 async function matchingContextCompletions(partialContext, state) {

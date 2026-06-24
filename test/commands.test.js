@@ -55,6 +55,10 @@ test('lists built-in command help', () => {
     { name: 'item', type: 'fact', prompt: 'Relate which fact?' },
     { name: 'context', type: 'context', consume: 'rest', prompt: 'Relate it to which context?' }
   ]);
+  assert.deepEqual(commandArguments('type'), [
+    { name: 'type', type: 'factType', enum: 'factType', prompt: 'Set which type?' },
+    { name: 'item', type: 'fact', prompt: 'Change which fact?' }
+  ]);
   assert.equal(commandArguments('missing'), null);
 });
 
@@ -153,6 +157,11 @@ test('parses fact commands', () => {
   });
   assert.deepEqual(parseEntry(':type done 5'), {
     factType: 'done',
+    itemNumber: 5,
+    type: 'set_fact_type'
+  });
+  assert.deepEqual(parseEntry(':type in progress 5'), {
+    factType: 'in progress',
     itemNumber: 5,
     type: 'set_fact_type'
   });
