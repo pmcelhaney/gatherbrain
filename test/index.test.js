@@ -24,6 +24,7 @@ import {
   lensNavigationForKey
 } from '../src/index.js';
 import { createCommandRegistry } from '../src/commands.js';
+import { createEnumRegistry } from '../src/enums.js';
 import { createLensRegistry } from '../src/lenses.js';
 
 test('/s switches context without creating a fact', async () => {
@@ -177,6 +178,49 @@ test('uses custom command registry for completion and execution', async () => {
       message: 'context my-cool-project'
     });
     assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'my-cool-project'));
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('completes enum command arguments', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const commandRegistry = createCommandRegistry([
+    {
+      name: 'mark',
+      action: 'set_fact_type',
+      arguments: [
+        {
+          name: 'type',
+          type: 'enum',
+          enum: 'status',
+          prompt: 'Set which status?'
+        },
+        {
+          name: 'item',
+          type: 'fact',
+          prompt: 'Mark which fact?'
+        }
+      ]
+    }
+  ], {
+    enumRegistry: createEnumRegistry({
+      status: {
+        values: ['todo', 'waiting']
+      }
+    })
+  });
+
+  try {
+    const state = createPromptState({ appDirectory, commandRegistry, rootDirectory });
+
+    assert.deepEqual(await completeEntry(':mark t', state), [['todo'], 't']);
+    assert.deepEqual(await handleEntry(':mark', state), {
+      action: 'continue',
+      message: 'Set which status?'
+    });
+    assert.deepEqual(await completeEntry('w', state), [['waiting'], 'w']);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

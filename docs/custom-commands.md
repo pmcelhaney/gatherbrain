@@ -57,12 +57,14 @@ Supported argument types:
 - `context`: a workspace context path. Supports completion.
 - `fact`: a numbered fact from the current visible list.
 - `lens`: a lens id. Supports completion.
+- `enum`: a string value from `.gatherbrain/enums.json`. Supports completion.
 - `factType`: a type string starting with a letter and containing only letters, numbers, `_`, or `-`.
 
 Argument fields:
 
 - `name`: value name used by the action.
 - `type`: one of the supported argument types.
+- `enum`: required when `type` is `enum`. Names the configured enum to use.
 - `prompt`: text shown when the user omits this argument.
 - `consume`: optional. Use `"rest"` when the argument may contain spaces or slashes and should consume the rest of the command line.
 
@@ -136,3 +138,31 @@ Add a shorter command for setting type:
 ```
 
 This adds `:mark todo 3` without removing `:type`.
+
+Use an enum to restrict allowed type values:
+
+```json
+{
+  "commands": [
+    {
+      "name": "status",
+      "action": "set_fact_type",
+      "arguments": [
+        {
+          "name": "type",
+          "type": "enum",
+          "enum": "status",
+          "prompt": "Set which status?"
+        },
+        {
+          "name": "item",
+          "type": "fact",
+          "prompt": "Change which fact?"
+        }
+      ]
+    }
+  ]
+}
+```
+
+The `status` enum values come from `.gatherbrain/enums.json`. See [Custom Enums](custom-enums.md).

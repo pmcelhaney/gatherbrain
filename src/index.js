@@ -7,6 +7,7 @@ import { emitKeypressEvents } from 'node:readline';
 import readline from 'node:readline/promises';
 import { env as processEnv, stdin as input, stdout as output } from 'node:process';
 import {
+  commandArgumentValues,
   commandArguments,
   commandNames,
   commandHelp,
@@ -696,6 +697,13 @@ export async function completeEntry(line, state) {
     return [matches, line];
   }
 
+  if (state.pendingCommand?.argument?.type === 'enum') {
+    const matches = commandArgumentValues(state.pendingCommand.argument, state.commandRegistry)
+      .filter((value) => value.startsWith(line));
+
+    return [matches, line];
+  }
+
   const commandCompletion = line.match(/^:(?<partial>[A-Za-z0-9_-]*)$/u);
 
   if (commandCompletion) {
@@ -705,6 +713,12 @@ export async function completeEntry(line, state) {
       .map((commandName) => `:${commandName} `);
 
     return [matches, line];
+  }
+
+  const namedEnumCompletion = matchingNamedEnumArgument(line, state);
+
+  if (namedEnumCompletion) {
+    return namedEnumCompletion;
   }
 
   const namedContextCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+(?<partial>.*)$/u);
@@ -783,6 +797,35 @@ export async function completeEntry(line, state) {
   }
 
   return [[], line];
+}
+
+function matchingNamedEnumArgument(line, state) {
+  const match = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)(?:\s+(?<args>.*))?$/u);
+
+  if (!match) {
+    return null;
+  }
+
+  const args = match.groups.args ?? '';
+  const argumentsDefinition = commandArguments(match.groups.commandName, state.commandRegistry);
+
+  if (!argumentsDefinition || argumentsDefinition.length === 0) {
+    return null;
+  }
+
+  const tokens = args.length > 0 ? args.split(/\s+/u) : [];
+  const argumentIndex = args.endsWith(' ') ? tokens.length : Math.max(tokens.length - 1, 0);
+  const argument = argumentsDefinition[argumentIndex];
+
+  if (argument?.type !== 'enum') {
+    return null;
+  }
+
+  const partialValue = args.endsWith(' ') ? '' : (tokens.at(-1) ?? '');
+  const matches = commandArgumentValues(argument, state.commandRegistry)
+    .filter((value) => value.startsWith(partialValue));
+
+  return [matches, partialValue];
 }
 
 async function matchingContextCompletions(partialContext, state) {

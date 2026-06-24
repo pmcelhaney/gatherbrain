@@ -2,6 +2,11 @@ import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import {
+  enumValues,
+  hasEnumValue,
+  loadEnumRegistry
+} from './enums.js';
 
 const itemNumberPattern = '[1-9]\\d*';
 const typeNamePattern = '[A-Za-z][A-Za-z0-9_-]*';
@@ -39,18 +44,20 @@ function usageForCommandDefinition(commandDefinition) {
     : `:${commandDefinition.name}`;
 }
 
-export function createCommandRegistry(commandDefinitions = defaultCommandRegistry.definitions) {
+export function createCommandRegistry(commandDefinitions = defaultCommandRegistry.definitions, options = {}) {
   return {
-    definitions: commandDefinitions.map(normalizeCommandDefinition)
+    definitions: commandDefinitions.map(normalizeCommandDefinition),
+    enumRegistry: options.enumRegistry ?? null
   };
 }
 
 export async function loadCommandRegistry(options = {}) {
   const { rootDirectory } = options;
   const defaultCommands = readCommandConfigSync(defaultCommandConfigPath).commands;
+  const enumRegistry = options.enumRegistry ?? await loadEnumRegistry({ rootDirectory });
 
   if (!rootDirectory) {
-    return createCommandRegistry(defaultCommands);
+    return createCommandRegistry(defaultCommands, { enumRegistry });
   }
 
   const configFilePath = path.join(rootDirectory, commandConfigPath);
@@ -60,7 +67,7 @@ export async function loadCommandRegistry(options = {}) {
     localConfig = JSON.parse(await readFile(configFilePath, 'utf8'));
   } catch (error) {
     if (error.code === 'ENOENT') {
-      return createCommandRegistry(defaultCommands);
+      return createCommandRegistry(defaultCommands, { enumRegistry });
     }
 
     throw error;
@@ -70,7 +77,7 @@ export async function loadCommandRegistry(options = {}) {
     throw new Error(`${commandConfigPath} must contain a commands array`);
   }
 
-  return createCommandRegistry(mergeCommandDefinitions(defaultCommands, localConfig.commands));
+  return createCommandRegistry(mergeCommandDefinitions(defaultCommands, localConfig.commands), { enumRegistry });
 }
 
 function readCommandConfigSync(configFilePath) {
@@ -150,7 +157,10 @@ function parseNamedCommand(command, registry) {
   const commandDefinition = commandDefinitionsFor(registry).find((candidate) => candidate.name === name);
 
   if (commandDefinition) {
-    return parseCommandArguments(commandDefinition, args, { promptForMissing: true });
+    return parseCommandArguments(commandDefinition, args, {
+      enumRegistry: registry?.enumRegistry,
+      promptForMissing: true
+    });
   }
 
   return {
@@ -160,7 +170,10 @@ function parseNamedCommand(command, registry) {
 }
 
 function parseCommandArguments(commandDefinition, args, options = {}) {
-  const { promptForMissing = false } = options;
+  const {
+    enumRegistry = null,
+    promptForMissing = false
+  } = options;
   const parsedArguments = {};
   let remainingArgs = args.trim();
 
@@ -176,9 +189,8 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
       };
     }
 
-    const value = argument.consume === 'rest'
-      ? remainingArgs
-      : remainingArgs.match(/^(?<value>\S+)(?:\s+(?<remaining>.*))?$/u)?.groups.value;
+    const argumentValue = readArgumentValue(argument, remainingArgs, { enumRegistry });
+    const value = argumentValue?.value;
 
     if (!value) {
       return {
@@ -187,7 +199,7 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
       };
     }
 
-    const parsedValue = parseArgumentValue(argument, value);
+    const parsedValue = parseArgumentValue(argument, value, { enumRegistry });
 
     if (parsedValue === null) {
       return {
@@ -197,9 +209,7 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
     }
 
     parsedArguments[argument.name] = parsedValue;
-    remainingArgs = argument.consume === 'rest'
-      ? ''
-      : (remainingArgs.match(/^\S+(?:\s+(?<remaining>.*))?$/u)?.groups.remaining ?? '').trim();
+    remainingArgs = argumentValue.remainingArgs;
   }
 
   if (remainingArgs.length > 0) {
@@ -212,6 +222,39 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
   return buildCommandAction(commandDefinition, parsedArguments);
 }
 
+function readArgumentValue(argument, remainingArgs, options = {}) {
+  const { enumRegistry = null } = options;
+
+  if (argument.consume === 'rest') {
+    return {
+      value: remainingArgs,
+      remainingArgs: ''
+    };
+  }
+
+  if (argument.type === 'enum' && argument.enum) {
+    const matchingValue = enumValues(argument.enum, enumRegistry)
+      .toSorted((left, right) => right.length - left.length)
+      .find((value) => remainingArgs === value || remainingArgs.startsWith(`${value} `));
+
+    if (matchingValue) {
+      return {
+        value: matchingValue,
+        remainingArgs: remainingArgs.slice(matchingValue.length).trim()
+      };
+    }
+  }
+
+  const match = remainingArgs.match(/^(?<value>\S+)(?:\s+(?<remaining>.*))?$/u);
+
+  return match
+    ? {
+      value: match.groups.value,
+      remainingArgs: (match.groups.remaining ?? '').trim()
+    }
+    : null;
+}
+
 function promptForArgument(commandDefinition, values, argument) {
   return {
     type: 'prompt_command_argument',
@@ -222,7 +265,9 @@ function promptForArgument(commandDefinition, values, argument) {
   };
 }
 
-function parseArgumentValue(argument, value) {
+function parseArgumentValue(argument, value, options = {}) {
+  const { enumRegistry = null } = options;
+
   if (argument.type === 'fact') {
     return new RegExp(`^${itemNumberPattern}$`, 'u').test(value)
       ? positiveItemNumber(value)
@@ -235,7 +280,21 @@ function parseArgumentValue(argument, value) {
       : null;
   }
 
+  if (argument.type === 'enum') {
+    return argument.enum && hasEnumValue(argument.enum, value, enumRegistry)
+      ? value
+      : null;
+  }
+
   return value;
+}
+
+export function commandArgumentValues(argument, registry = defaultCommandRegistry) {
+  if (argument?.type !== 'enum' || !argument.enum) {
+    return [];
+  }
+
+  return enumValues(argument.enum, registry?.enumRegistry);
 }
 
 export function continuePromptedCommand(pendingCommand, value) {
@@ -256,7 +315,9 @@ export function continuePromptedCommand(pendingCommand, value) {
     return promptForArgument(commandDefinition, pendingCommand.values ?? {}, argument);
   }
 
-  const parsedValue = parseArgumentValue(argument, trimmedValue);
+  const parsedValue = parseArgumentValue(argument, trimmedValue, {
+    enumRegistry: registry?.enumRegistry
+  });
 
   if (parsedValue === null) {
     return {

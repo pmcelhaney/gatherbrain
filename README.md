@@ -26,6 +26,8 @@ Use `:type task 3` to change the third listed fact's front matter type to `task`
 
 Default commands are defined in `default-config/commands.json`. A workspace-local `.gatherbrain/commands.json` can add commands or override defaults with the same command name. See [Custom Commands](docs/custom-commands.md).
 
+Command enum arguments can use workspace-local `.gatherbrain/enums.json` value lists. See [Custom Enums](docs/custom-enums.md).
+
 Default lenses are defined in `default-config/lenses.json`. A workspace-local `.gatherbrain/lenses.json` can add lenses or override defaults with the same lens id. See [Custom Lenses](docs/custom-lenses.md).
 
 The older slash shortcuts still work:

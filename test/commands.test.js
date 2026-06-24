@@ -4,15 +4,18 @@ import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  commandArgumentValues,
   commandArguments,
   commandNames,
   commandHelp,
   commandHelpText,
   continuePromptedCommand,
+  createCommandRegistry,
   loadCommandRegistry,
   parseEntry,
   shortcutHelp
 } from '../src/commands.js';
+import { createEnumRegistry } from '../src/enums.js';
 
 test('lists built-in command help', () => {
   assert.deepEqual(commandHelp(), [
@@ -263,6 +266,50 @@ test('loads workspace command definitions from config', async () => {
   } finally {
     await rm(rootDirectory, { recursive: true, force: true });
   }
+});
+
+test('parses enum command arguments from configured values', () => {
+  const registry = createCommandRegistry([
+    {
+      name: 'mark',
+      action: 'set_fact_type',
+      arguments: [
+        {
+          name: 'type',
+          type: 'enum',
+          enum: 'status',
+          prompt: 'Set which status?'
+        },
+        {
+          name: 'item',
+          type: 'fact',
+          prompt: 'Mark which fact?'
+        }
+      ]
+    }
+  ], {
+    enumRegistry: createEnumRegistry({
+      status: {
+        values: ['todo', 'waiting', 'in progress']
+      }
+    })
+  });
+
+  assert.deepEqual(commandArgumentValues(commandArguments('mark', registry).at(0), registry), ['todo', 'waiting', 'in progress']);
+  assert.deepEqual(parseEntry(':mark todo 3', registry), {
+    factType: 'todo',
+    itemNumber: 3,
+    type: 'set_fact_type'
+  });
+  assert.deepEqual(parseEntry(':mark in progress 3', registry), {
+    factType: 'in progress',
+    itemNumber: 3,
+    type: 'set_fact_type'
+  });
+  assert.deepEqual(parseEntry(':mark done 3', registry), {
+    message: 'usage: :mark <type> <item>',
+    type: 'usage_error'
+  });
 });
 
 test('workspace command config overrides default commands by name', async () => {
