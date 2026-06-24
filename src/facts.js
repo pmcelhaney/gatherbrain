@@ -237,10 +237,10 @@ export function markdownWithRelation(markdown, relation) {
 }
 
 export function resolveContextDirectory(contextName, options = {}) {
-  const { notesDirectory } = options;
+  const rootDirectory = options.rootDirectory ?? options.notesDirectory;
 
-  if (!notesDirectory) {
-    throw new Error('notesDirectory is required');
+  if (!rootDirectory) {
+    throw new Error('rootDirectory is required');
   }
 
   const trimmedContextName = contextName.trim();
@@ -253,9 +253,9 @@ export function resolveContextDirectory(contextName, options = {}) {
     throw new Error('context name must be relative');
   }
 
-  const notesRoot = path.resolve(notesDirectory);
-  const contextDirectory = path.resolve(notesRoot, trimmedContextName);
-  const relativeContextPath = path.relative(notesRoot, contextDirectory);
+  const rootPath = path.resolve(rootDirectory);
+  const contextDirectory = path.resolve(rootPath, trimmedContextName);
+  const relativeContextPath = path.relative(rootPath, contextDirectory);
 
   if (
     relativeContextPath.length === 0
@@ -263,17 +263,17 @@ export function resolveContextDirectory(contextName, options = {}) {
     || relativeContextPath.startsWith(`..${path.sep}`)
     || path.isAbsolute(relativeContextPath)
   ) {
-    throw new Error('context must be a folder inside notesDirectory');
+    throw new Error('context must be a folder inside rootDirectory');
   }
 
   return contextDirectory;
 }
 
 export async function listFacts(options = {}) {
-  const { notesDirectory } = options;
+  const rootDirectory = options.rootDirectory ?? options.notesDirectory;
 
-  if (!notesDirectory) {
-    throw new Error('notesDirectory is required');
+  if (!rootDirectory) {
+    throw new Error('rootDirectory is required');
   }
 
   const filenames = [];
@@ -312,7 +312,7 @@ export async function listFacts(options = {}) {
     );
   }
 
-  await visit(notesDirectory);
+  await visit(rootDirectory);
 
   return Promise.all(
     filenames
@@ -324,7 +324,7 @@ export async function listFacts(options = {}) {
           : filenameComparison;
       })
       .map(async (filename) => {
-        const filePath = path.join(notesDirectory, filename);
+        const filePath = path.join(rootDirectory, filename);
         const markdown = await readFile(filePath, 'utf8');
         const relations = factRelationsFromMarkdown(markdown);
         const title = factTitleFromMarkdown(markdown) ?? path.basename(filename, '.md');
@@ -335,7 +335,7 @@ export async function listFacts(options = {}) {
           path: filePath,
           ...(relations.length > 0 ? { relations } : {}),
           title,
-          type: factTypeFromMarkdown(markdown) ?? 'note',
+          type: factTypeFromMarkdown(markdown) ?? 'fact',
           text: body.length > 0 ? body : title
         };
       })
@@ -343,10 +343,10 @@ export async function listFacts(options = {}) {
 }
 
 export async function listContextDirectories(options = {}) {
-  const { notesDirectory } = options;
+  const rootDirectory = options.rootDirectory ?? options.notesDirectory;
 
-  if (!notesDirectory) {
-    throw new Error('notesDirectory is required');
+  if (!rootDirectory) {
+    throw new Error('rootDirectory is required');
   }
 
   const contexts = [];
@@ -382,25 +382,27 @@ export async function listContextDirectories(options = {}) {
     );
   }
 
-  await visit(notesDirectory);
+  await visit(rootDirectory);
   return contexts.sort();
 }
 
 export async function factAtIndex(options = {}) {
   const {
     index,
+    rootDirectory,
     notesDirectory
   } = options;
+  const workspaceRoot = rootDirectory ?? notesDirectory;
 
   if (!Number.isInteger(index) || index < 1) {
     throw new Error('item number must be a positive integer');
   }
 
-  if (!notesDirectory) {
-    throw new Error('notesDirectory is required');
+  if (!workspaceRoot) {
+    throw new Error('rootDirectory is required');
   }
 
-  const facts = await listFacts({ notesDirectory });
+  const facts = await listFacts({ rootDirectory: workspaceRoot });
   const fact = facts[index - 1];
 
   if (!fact) {
@@ -413,15 +415,17 @@ export async function factAtIndex(options = {}) {
 export async function updateFactTypeAtIndex(options = {}) {
   const {
     index,
+    rootDirectory,
     notesDirectory,
     type
   } = options;
+  const workspaceRoot = rootDirectory ?? notesDirectory;
 
   if (!type) {
     throw new Error('type is required');
   }
 
-  const fact = await factAtIndex({ index, notesDirectory });
+  const fact = await factAtIndex({ index, rootDirectory: workspaceRoot });
   await updateFactType(fact.path, type);
 
   return {
@@ -467,20 +471,22 @@ export async function saveFact(text, options = {}) {
   const {
     title = text,
     type = 'fact',
+    rootDirectory,
     notesDirectory,
   } = options;
+  const destinationDirectory = rootDirectory ?? notesDirectory;
 
-  if (!notesDirectory) {
-    throw new Error('notesDirectory is required');
+  if (!destinationDirectory) {
+    throw new Error('rootDirectory is required');
   }
 
-  await mkdir(notesDirectory, { recursive: true });
+  await mkdir(destinationDirectory, { recursive: true });
 
   const slug = slugifyTitle(title);
 
   for (let attempt = 0; attempt < 1000; attempt += 1) {
     const filename = `${attempt === 0 ? slug : `${slug}-${attempt + 1}`}.md`;
-    const filePath = path.join(notesDirectory, filename);
+    const filePath = path.join(destinationDirectory, filename);
 
     try {
       await writeFile(filePath, buildFactMarkdown(title, { type }), { flag: 'wx' });

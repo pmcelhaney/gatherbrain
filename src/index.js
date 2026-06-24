@@ -40,13 +40,13 @@ const ansiResetColor = '\x1b[39m';
 const ansiCodePattern = /\x1b\[[0-9;]*m/gu;
 export function createPromptState(options = {}) {
   const appDirectory = options.appDirectory ?? defaultAppDirectory;
-  const notesDirectory = options.rootDirectory ?? options.notesDirectory ?? path.join(appDirectory, 'notes');
+  const rootDirectory = options.rootDirectory ?? options.notesDirectory ?? path.join(appDirectory, 'notes');
 
   return {
     appDirectory,
-    notesDirectory,
-    activeNotesDirectory: notesDirectory,
-    activeLens: defaultViewId,
+    rootDirectory,
+    currentContextDirectory: rootDirectory,
+    currentViewId: defaultViewId,
     model: options.model ?? null,
     pageStartIndex: 0,
     temporaryBodyLines: null,
@@ -59,32 +59,32 @@ export function createPromptState(options = {}) {
 
 export function currentContextName(state) {
   const relativeContext = path.relative(
-    state.notesDirectory,
-    state.activeNotesDirectory
+    state.rootDirectory,
+    state.currentContextDirectory
   );
 
-  return relativeContext.length > 0 ? relativeContext : path.basename(state.notesDirectory);
+  return relativeContext.length > 0 ? relativeContext : path.basename(state.rootDirectory);
 }
 
-function currentLensName(state) {
-  return state.activeLens ?? defaultViewId;
+function currentViewIdForState(state) {
+  return state.currentViewId ?? defaultViewId;
 }
 
 function currentView(state) {
   return {
-    activeLens: currentLensName(state),
-    activeNotesDirectory: state.activeNotesDirectory
+    currentViewId: currentViewIdForState(state),
+    currentContextDirectory: state.currentContextDirectory
   };
 }
 
 function viewsAreEqual(left, right) {
-  return left.activeLens === right.activeLens
-    && path.resolve(left.activeNotesDirectory) === path.resolve(right.activeNotesDirectory);
+  return left.currentViewId === right.currentViewId
+    && path.resolve(left.currentContextDirectory) === path.resolve(right.currentContextDirectory);
 }
 
 function applyView(state, view) {
-  state.activeLens = view.activeLens;
-  state.activeNotesDirectory = view.activeNotesDirectory;
+  state.currentViewId = view.currentViewId;
+  state.currentContextDirectory = view.currentContextDirectory;
   state.pageStartIndex = 0;
   state.statusMessage = '';
   clearTemporaryBody(state);
@@ -226,7 +226,7 @@ export function keyDebugLines(value, key) {
 
 async function ensureModel(state) {
   if (!state.model) {
-    state.model = await loadWorkspaceModel({ rootDirectory: state.notesDirectory });
+    state.model = await loadWorkspaceModel({ rootDirectory: state.rootDirectory });
   }
 
   return state.model;
@@ -238,8 +238,8 @@ async function contextIdsForState(state) {
   return [...model.contexts.keys()].filter((contextId) => contextId !== '').sort();
 }
 
-export function filterNotesForLens(notes, lens = defaultViewId) {
-  return filterFactsForView(notes, lens);
+export function filterFactsForViewId(facts, view = defaultViewId) {
+  return filterFactsForView(facts, view);
 }
 
 export async function visibleFactsForState(state) {
@@ -247,7 +247,7 @@ export async function visibleFactsForState(state) {
   const viewModel = presentView({
     model,
     state,
-    viewId: currentLensName(state)
+    viewId: currentViewIdForState(state)
   });
 
   return viewModel.facts ?? [];
@@ -405,14 +405,14 @@ function relationSuffixText(relations, direction = '<') {
   return `${direction}${relations.join(', ')}`;
 }
 
-function displayRelationsForNote(note) {
-  if (note.displayRelationDirection !== '>' || !note.relations || !note.displayRelations) {
-    return note.displayRelations;
+function displayRelationsForFact(fact) {
+  if (fact.displayRelationDirection !== '>' || !fact.relations || !fact.displayRelations) {
+    return fact.displayRelations;
   }
 
-  const linkTargets = new Set(markdownLinkTargetsInText(note.text));
+  const linkTargets = new Set(markdownLinkTargetsInText(fact.text));
 
-  return note.displayRelations.filter((relation, index) => !linkTargets.has(note.relations[index]));
+  return fact.displayRelations.filter((relation, index) => !linkTargets.has(fact.relations[index]));
 }
 
 function displayRelationSuffix(suffix, includeColor) {
@@ -421,26 +421,26 @@ function displayRelationSuffix(suffix, includeColor) {
     : suffix;
 }
 
-function noteBlocksForDisplay(notes, options = {}) {
+function factBlocksForDisplay(facts, options = {}) {
   const {
     columns = 80,
     includeColor = false
   } = options;
 
-  if (notes.length === 0) {
-    return [['No notes yet.']];
+  if (facts.length === 0) {
+    return [['No facts yet.']];
   }
 
-  const numberWidth = Math.max(2, String(notes.length).length);
+  const numberWidth = Math.max(2, String(facts.length).length);
   const continuationPrefix = '    ';
   const continuationColumns = Math.max(columns - continuationPrefix.length, 1);
 
-  return notes.map((note, noteIndex) => {
-    const lines = note.text.split(/\r?\n/u);
+  return facts.map((fact, factIndex) => {
+    const lines = fact.text.split(/\r?\n/u);
     const displayLines = lines.length > 0 ? lines : [''];
-    const type = note.type ?? 'note';
-    const relationSuffix = relationSuffixText(displayRelationsForNote(note), note.displayRelationDirection);
-    const firstPrefix = `${String(noteIndex + 1).padStart(numberWidth)}. ${displayType(type, includeColor)}`;
+    const type = fact.type ?? 'fact';
+    const relationSuffix = relationSuffixText(displayRelationsForFact(fact), fact.displayRelationDirection);
+    const firstPrefix = `${String(factIndex + 1).padStart(numberWidth)}. ${displayType(type, includeColor)}`;
     const firstColumns = Math.max(columns - visibleLength(firstPrefix), 1);
 
     return displayLines.flatMap((line, lineIndex) => {
@@ -469,17 +469,17 @@ function noteBlocksForDisplay(notes, options = {}) {
   });
 }
 
-export function buildPagedNoteLines(options = {}) {
+export function buildPagedFactLines(options = {}) {
   const {
     columns = 80,
     includeColor = false,
-    notes = [],
+    facts = [],
     pageStartIndex = 0,
     rows = 0
   } = options;
-  const noteRows = Math.max(rows, 0);
+  const factRows = Math.max(rows, 0);
 
-  if (noteRows === 0) {
+  if (factRows === 0) {
     return {
       lines: [],
       nextPageStartIndex: null,
@@ -487,41 +487,41 @@ export function buildPagedNoteLines(options = {}) {
     };
   }
 
-  const noteBlocks = noteBlocksForDisplay(notes, { columns, includeColor });
+  const factBlocks = factBlocksForDisplay(facts, { columns, includeColor });
 
-  if (notes.length === 0) {
+  if (facts.length === 0) {
     return {
-      lines: noteBlocks[0].slice(0, noteRows),
+      lines: factBlocks[0].slice(0, factRows),
       nextPageStartIndex: null,
       previousPageStartIndex: null
     };
   }
 
-  const startIndex = Math.min(Math.max(pageStartIndex, 0), notes.length - 1);
+  const startIndex = Math.min(Math.max(pageStartIndex, 0), facts.length - 1);
   const lines = [];
   let nextPageStartIndex = null;
 
-  for (let noteIndex = startIndex; noteIndex < noteBlocks.length; noteIndex += 1) {
-    const block = noteBlocks[noteIndex];
-    const hasMoreAfter = noteIndex < noteBlocks.length - 1;
+  for (let factIndex = startIndex; factIndex < factBlocks.length; factIndex += 1) {
+    const block = factBlocks[factIndex];
+    const hasMoreAfter = factIndex < factBlocks.length - 1;
     const rowsNeeded = block.length + (hasMoreAfter ? 1 : 0);
 
-    if (lines.length > 0 && lines.length + rowsNeeded > noteRows) {
+    if (lines.length > 0 && lines.length + rowsNeeded > factRows) {
       lines.push('...');
-      nextPageStartIndex = noteIndex;
+      nextPageStartIndex = factIndex;
       break;
     }
 
-    if (lines.length === 0 && block.length > noteRows) {
-      lines.push(...block.slice(0, Math.max(noteRows - 1, 0)));
+    if (lines.length === 0 && block.length > factRows) {
+      lines.push(...block.slice(0, Math.max(factRows - 1, 0)));
       lines.push('...');
-      nextPageStartIndex = noteIndex + 1 < noteBlocks.length ? noteIndex + 1 : null;
+      nextPageStartIndex = factIndex + 1 < factBlocks.length ? factIndex + 1 : null;
       break;
     }
 
-    if (lines.length + block.length > noteRows) {
+    if (lines.length + block.length > factRows) {
       lines.push('...');
-      nextPageStartIndex = noteIndex;
+      nextPageStartIndex = factIndex;
       break;
     }
 
@@ -547,18 +547,18 @@ function buildTemporaryBodyLines(lines, rows, columns) {
   };
 }
 
-export function pageNavigationForNotes(options = {}) {
+export function pageNavigationForFacts(options = {}) {
   const {
     columns = 80,
     includeColor = false,
-    notes = [],
+    facts = [],
     pageStartIndex = 0,
     rows = 0
   } = options;
-  const currentPage = buildPagedNoteLines({
+  const currentPage = buildPagedFactLines({
     columns,
     includeColor,
-    notes,
+    facts,
     pageStartIndex,
     rows
   });
@@ -566,10 +566,10 @@ export function pageNavigationForNotes(options = {}) {
   let candidateStartIndex = 0;
 
   while (candidateStartIndex < pageStartIndex) {
-    const candidatePage = buildPagedNoteLines({
+    const candidatePage = buildPagedFactLines({
       columns,
       includeColor,
-      notes,
+      facts,
       pageStartIndex: candidateStartIndex,
       rows
     });
@@ -594,32 +594,32 @@ export function pageNavigationForNotes(options = {}) {
 export function buildTuiLines(options = {}) {
   const {
     state,
-    notes = [],
+    facts = [],
     rows = 24,
     columns = 80,
     includeColor = false
   } = options;
   const visibleRows = Math.max(rows - 1, 1);
-  const noteRows = Math.max(visibleRows - 2, 0);
-  const lens = currentLensName(state);
-  const lensText = lens === defaultViewId ? '' : ` | ${lens}`;
+  const factRows = Math.max(visibleRows - 2, 0);
+  const view = currentViewIdForState(state);
+  const viewText = view === defaultViewId ? '' : ` | ${view}`;
   const status = state.statusMessage ? ` | ${state.statusMessage}` : '';
-  const header = fitLine(`${currentContextName(state)}${lensText}${status}`, columns);
+  const header = fitLine(`${currentContextName(state)}${viewText}${status}`, columns);
   const separator = '-'.repeat(Math.max(columns, 0));
   const { lines: bodyLines } = state.temporaryBodyLines
-    ? buildTemporaryBodyLines(state.temporaryBodyLines, noteRows, columns)
-    : buildPagedNoteLines({
+    ? buildTemporaryBodyLines(state.temporaryBodyLines, factRows, columns)
+    : buildPagedFactLines({
       columns,
       includeColor,
-      notes,
+      facts,
       pageStartIndex: state.pageStartIndex ?? 0,
-      rows: noteRows
+      rows: factRows
     });
 
   return [
     header,
     separator,
-    ...bodyLines.slice(0, noteRows)
+    ...bodyLines.slice(0, factRows)
   ];
 }
 
@@ -823,14 +823,14 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'switch_context') {
-    let nextNotesDirectory;
+    let nextContextDirectory;
 
     try {
-      nextNotesDirectory = resolveContextDirectory(parsedEntry.context, {
-        notesDirectory: state.notesDirectory
+      nextContextDirectory = resolveContextDirectory(parsedEntry.context, {
+        rootDirectory: state.rootDirectory
       });
       const normalizedContext = path
-        .relative(state.notesDirectory, nextNotesDirectory)
+        .relative(state.rootDirectory, nextContextDirectory)
         .split(path.sep)
         .join('/');
       const contexts = await contextIdsForState(state);
@@ -850,10 +850,10 @@ export async function handleEntry(entry, state) {
 
     changeView(state, {
       ...currentView(state),
-      activeNotesDirectory: nextNotesDirectory
+      currentContextDirectory: nextContextDirectory
     });
 
-    const message = `context ${path.relative(state.notesDirectory, state.activeNotesDirectory)}`;
+    const message = `context ${path.relative(state.rootDirectory, state.currentContextDirectory)}`;
 
     return {
       action: 'continue',
@@ -861,9 +861,9 @@ export async function handleEntry(entry, state) {
     };
   }
 
-  if (parsedEntry.type === 'switch_lens') {
-    if (!hasView(parsedEntry.lens)) {
-      state.statusMessage = `unknown lens ${parsedEntry.lens}`;
+  if (parsedEntry.type === 'switch_view') {
+    if (!hasView(parsedEntry.view)) {
+      state.statusMessage = `unknown view ${parsedEntry.view}`;
       clearTemporaryBody(state);
 
       return {
@@ -874,12 +874,12 @@ export async function handleEntry(entry, state) {
 
     changeView(state, {
       ...currentView(state),
-      activeLens: parsedEntry.lens
+      currentViewId: parsedEntry.view
     });
 
     return {
       action: 'continue',
-      message: `lens ${parsedEntry.lens}`
+      message: `view ${parsedEntry.view}`
     };
   }
 
@@ -994,9 +994,9 @@ export async function handleEntry(entry, state) {
   }
 
   const savedPath = await saveFact(parsedEntry.title, {
-    notesDirectory: state.activeNotesDirectory
+    rootDirectory: state.currentContextDirectory
   });
-  await refreshContext(await ensureModel(state), state.activeNotesDirectory);
+  await refreshContext(await ensureModel(state), state.currentContextDirectory);
   const message = `saved ${path.relative(state.appDirectory, savedPath)}`;
   state.pageStartIndex = 0;
   state.statusMessage = '';
@@ -1016,7 +1016,7 @@ async function main() {
       rootDirectory: rootDirectory ?? path.join(defaultAppDirectory, 'notes')
     })
   });
-  let notes = [];
+  let facts = [];
   let editorOpen = false;
   const terminal = readline.createInterface({
     input,
@@ -1026,12 +1026,12 @@ async function main() {
   const useAlternateScreen = output.isTTY;
   const terminalRows = () => output.rows ?? 24;
   const terminalColumns = () => output.columns ?? 80;
-  const noteRows = () => Math.max(Math.max(terminalRows() - 1, 1) - 1, 0);
+  const factRows = () => Math.max(Math.max(terminalRows() - 1, 1) - 1, 0);
 
   function renderCurrentScreen() {
     output.write(renderTui({
       state,
-      notes,
+      facts,
       rows: terminalRows(),
       columns: terminalColumns(),
       includeAnsi: output.isTTY
@@ -1043,12 +1043,12 @@ async function main() {
   }
 
   function changePage(direction) {
-    const navigation = pageNavigationForNotes({
+    const navigation = pageNavigationForFacts({
       columns: terminalColumns(),
       includeColor: output.isTTY,
-      notes,
+      facts,
       pageStartIndex: state.pageStartIndex ?? 0,
-      rows: noteRows()
+      rows: factRows()
     });
     const nextPageStartIndex = direction === 'down'
       ? navigation.nextPageStartIndex
@@ -1072,7 +1072,7 @@ async function main() {
       return;
     }
 
-    notes = await visibleFactsForState(state);
+    facts = await visibleFactsForState(state);
     renderCurrentScreen();
     redrawPrompt();
   }
@@ -1123,7 +1123,7 @@ async function main() {
 
   try {
     while (true) {
-      notes = await visibleFactsForState(state);
+      facts = await visibleFactsForState(state);
       renderCurrentScreen();
 
       const entry = await terminal.question('> ');

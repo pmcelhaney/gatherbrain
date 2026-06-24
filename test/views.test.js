@@ -62,7 +62,7 @@ test('all view presents direct and related facts for the active context', async 
     const model = await loadWorkspaceModel({ rootDirectory: directory });
     const viewModel = presentView({
       model,
-      state: { activeNotesDirectory: activeContext },
+      state: { currentContextDirectory: activeContext },
       viewId: 'all'
     });
 
@@ -101,7 +101,7 @@ test('todo view presents only todo-compatible facts', async () => {
     const model = await loadWorkspaceModel({ rootDirectory: directory });
     const viewModel = presentView({
       model,
-      state: { activeNotesDirectory: directory },
+      state: { currentContextDirectory: directory },
       viewId: 'todo'
     });
 

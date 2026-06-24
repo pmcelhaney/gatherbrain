@@ -87,7 +87,7 @@ export async function readFact(rootPath, filePath) {
     filename: id,
     ...(relations.length > 0 ? { relations } : {}),
     title,
-    type: factTypeFromMarkdown(markdown) ?? 'note',
+    type: factTypeFromMarkdown(markdown) ?? 'fact',
     text: body.length > 0 ? body : title
   };
 }

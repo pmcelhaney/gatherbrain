@@ -1,6 +1,6 @@
 const commandUsages = [
   '/s <context>',
-  '/l <lens>',
+  '/l <view>',
   '/e <item>',
   '/d <item>',
   '/r <item> <context>',
@@ -51,14 +51,14 @@ export function parseEntry(entry) {
       : { type: 'switch_context', context };
   }
 
-  const lensCommand = command.match(/^\/l(?:\s+(.*))?$/u);
+  const viewCommand = command.match(/^\/l(?:\s+(.*))?$/u);
 
-  if (lensCommand) {
-    const lens = lensCommand[1]?.trim() ?? '';
+  if (viewCommand) {
+    const view = viewCommand[1]?.trim() ?? '';
 
-    return lens.length === 0
-      ? { type: 'usage_error', message: 'usage: /l <lens>' }
-      : { type: 'switch_lens', lens };
+    return view.length === 0
+      ? { type: 'usage_error', message: 'usage: /l <view>' }
+      : { type: 'switch_view', view };
   }
 
   const editCommand = command.match(new RegExp(`^/e\\s+(${itemNumberPattern})$`, 'u'));

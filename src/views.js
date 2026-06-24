@@ -91,7 +91,7 @@ const viewDefinitions = new Map([
     {
       id: 'all',
       presenter: ({ model, state }) => ({
-        facts: visibleFactsForContext(model, state.activeNotesDirectory)
+        facts: visibleFactsForContext(model, state.currentContextDirectory)
       })
     }
   ],
@@ -101,7 +101,7 @@ const viewDefinitions = new Map([
       id: 'todo',
       presenter: ({ model, state }) => ({
         facts: filterFactsForView(
-          visibleFactsForContext(model, state.activeNotesDirectory),
+          visibleFactsForContext(model, state.currentContextDirectory),
           'todo'
         )
       })

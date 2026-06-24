@@ -132,7 +132,7 @@ test('saves a fact to a slug-named Markdown file', async () => {
 
   try {
     const savedPath = await saveFact('Captured from the prompt.', {
-      notesDirectory: directory
+      rootDirectory: directory
     });
 
     assert.equal(path.extname(savedPath), '.md');
@@ -146,25 +146,25 @@ test('saves a fact to a slug-named Markdown file', async () => {
   }
 });
 
-test('resolves context directories inside the notes directory', () => {
-  const notesDirectory = path.join(tmpdir(), 'gatherbrain-notes');
+test('resolves context directories inside the root directory', () => {
+  const rootDirectory = path.join(tmpdir(), 'gatherbrain-root');
   const contextDirectory = resolveContextDirectory('my-cool-project', {
-    notesDirectory
+    rootDirectory
   });
 
-  assert.equal(contextDirectory, path.join(notesDirectory, 'my-cool-project'));
+  assert.equal(contextDirectory, path.join(rootDirectory, 'my-cool-project'));
 });
 
-test('rejects context directories outside the notes directory', () => {
-  const notesDirectory = path.join(tmpdir(), 'gatherbrain-notes');
+test('rejects context directories outside the root directory', () => {
+  const rootDirectory = path.join(tmpdir(), 'gatherbrain-root');
 
   assert.throws(
-    () => resolveContextDirectory('../outside', { notesDirectory }),
-    /context must be a folder inside notesDirectory/
+    () => resolveContextDirectory('../outside', { rootDirectory }),
+    /context must be a folder inside rootDirectory/
   );
 });
 
-test('lists facts in a notes directory', async () => {
+test('lists facts in a root directory', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
 
   try {
@@ -179,7 +179,7 @@ test('lists facts in a notes directory', async () => {
     await writeFile(path.join(directory, 'ignored.txt'), 'Not a note.');
 
     assert.deepEqual(
-      await listFacts({ notesDirectory: directory }),
+      await listFacts({ rootDirectory: directory }),
       [
         {
           filename: '2026-06-23T09-04-07.012-04-00.md',
@@ -202,7 +202,7 @@ test('lists facts in a notes directory', async () => {
   }
 });
 
-test('lists facts in nested notes directories', async () => {
+test('lists facts in nested root directories', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
 
   try {
@@ -217,7 +217,7 @@ test('lists facts in nested notes directories', async () => {
     );
 
     assert.deepEqual(
-      (await listFacts({ notesDirectory: directory })).map((fact) => ({
+      (await listFacts({ rootDirectory: directory })).map((fact) => ({
         filename: fact.filename,
         text: fact.text
       })),
@@ -250,11 +250,11 @@ test('ignores Markdown files and contexts in hidden directories', async () => {
     await writeFile(path.join(directory, 'project', 'visible.md'), buildFactMarkdown('Visible fact.'));
 
     assert.deepEqual(
-      (await listFacts({ notesDirectory: directory })).map((fact) => fact.filename),
+      (await listFacts({ rootDirectory: directory })).map((fact) => fact.filename),
       [path.join('project', 'visible.md')]
     );
     assert.deepEqual(
-      await listContextDirectories({ notesDirectory: directory }),
+      await listContextDirectories({ rootDirectory: directory }),
       ['project']
     );
   } finally {
@@ -272,7 +272,7 @@ test('lists related contexts', async () => {
     );
 
     assert.deepEqual(
-      (await listFacts({ notesDirectory: directory })).map((fact) => fact.relations),
+      (await listFacts({ rootDirectory: directory })).map((fact) => fact.relations),
       [['people/Steve Ma']]
     );
   } finally {
@@ -290,7 +290,7 @@ test('ignores Markdown body links as relationships', async () => {
     );
 
     assert.deepEqual(
-      (await listFacts({ notesDirectory: directory })).map((fact) => fact.relations),
+      (await listFacts({ rootDirectory: directory })).map((fact) => fact.relations),
       [undefined]
     );
   } finally {
@@ -312,7 +312,7 @@ test('updates a fact type by one-based index', async () => {
     assert.equal(
       (await updateFactTypeAtIndex({
         index: 2,
-        notesDirectory: directory,
+        rootDirectory: directory,
         type: 'task'
       })).type,
       'task'
@@ -342,7 +342,7 @@ test('gets a fact by one-based index', async () => {
     assert.equal(
       (await factAtIndex({
         index: 2,
-        notesDirectory: directory
+        rootDirectory: directory
       })).text,
       'Second fact.'
     );
@@ -360,7 +360,7 @@ test('lists context directories recursively', async () => {
     await writeFile(path.join(directory, '2026-06-23T09-04-07.012-04-00.md'), 'A note.');
 
     assert.deepEqual(
-      await listContextDirectories({ notesDirectory: directory }),
+      await listContextDirectories({ rootDirectory: directory }),
       [
         'alpha',
         'alpha/deep',
