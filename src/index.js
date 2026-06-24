@@ -20,6 +20,7 @@ const defaultAppDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.
 
 const quitCommands = new Set([':q', ':quit', ':exit']);
 const ansiTypeColor = '\x1b[36m';
+const ansiLinkColor = '\x1b[34m';
 const ansiRelationColor = '\x1b[35m';
 const ansiResetColor = '\x1b[39m';
 const ansiCodePattern = /\x1b\[[0-9;]*m/gu;
@@ -45,6 +46,8 @@ export function createPromptState(options = {}) {
     activeLens: defaultLens,
     pageStartIndex: 0,
     temporaryBodyLines: null,
+    viewBackStack: [],
+    viewForwardStack: [],
     statusMessage: ''
   };
 }
@@ -60,6 +63,96 @@ export function currentContextName(state) {
 
 function currentLensName(state) {
   return state.activeLens ?? defaultLens;
+}
+
+function currentView(state) {
+  return {
+    activeLens: currentLensName(state),
+    activeNotesDirectory: state.activeNotesDirectory
+  };
+}
+
+function viewsAreEqual(left, right) {
+  return left.activeLens === right.activeLens
+    && path.resolve(left.activeNotesDirectory) === path.resolve(right.activeNotesDirectory);
+}
+
+function applyView(state, view) {
+  state.activeLens = view.activeLens;
+  state.activeNotesDirectory = view.activeNotesDirectory;
+  state.pageStartIndex = 0;
+  state.statusMessage = '';
+  clearTemporaryBody(state);
+}
+
+function changeView(state, nextView) {
+  const previousView = currentView(state);
+
+  if (viewsAreEqual(previousView, nextView)) {
+    state.pageStartIndex = 0;
+    state.statusMessage = '';
+    clearTemporaryBody(state);
+    return false;
+  }
+
+  state.viewBackStack.push(previousView);
+  state.viewForwardStack = [];
+  applyView(state, nextView);
+  return true;
+}
+
+export function navigateViewBack(state) {
+  const previousView = state.viewBackStack.pop();
+
+  if (!previousView) {
+    return false;
+  }
+
+  state.viewForwardStack.push(currentView(state));
+  applyView(state, previousView);
+  return true;
+}
+
+export function navigateViewForward(state) {
+  const nextView = state.viewForwardStack.pop();
+
+  if (!nextView) {
+    return false;
+  }
+
+  state.viewBackStack.push(currentView(state));
+  applyView(state, nextView);
+  return true;
+}
+
+export function viewNavigationForKey(key) {
+  if (!key) {
+    return null;
+  }
+
+  if ((key.meta || key.alt) && key.name === 'left') {
+    return 'back';
+  }
+
+  if ((key.meta || key.alt) && key.name === 'right') {
+    return 'forward';
+  }
+
+  if (
+    typeof key.sequence === 'string'
+    && /^\x1b(?:b|\[(?:1;3D|3D))$/u.test(key.sequence)
+  ) {
+    return 'back';
+  }
+
+  if (
+    typeof key.sequence === 'string'
+    && /^\x1b(?:f|\[(?:1;3C|3C))$/u.test(key.sequence)
+  ) {
+    return 'forward';
+  }
+
+  return null;
 }
 
 function pathIsInside(directory, filePath) {
@@ -176,6 +269,7 @@ function truncateVisible(line, columns) {
 
   if (
     result.lastIndexOf(ansiTypeColor) > result.lastIndexOf(ansiResetColor)
+    || result.lastIndexOf(ansiLinkColor) > result.lastIndexOf(ansiResetColor)
     || result.lastIndexOf(ansiRelationColor) > result.lastIndexOf(ansiResetColor)
   ) {
     result += ansiResetColor;
@@ -250,12 +344,52 @@ function displayType(type, includeColor) {
   return `${type} `;
 }
 
+function markdownLinksInText(text) {
+  return [...text.matchAll(/\[([^\]]+)\]\([^)]+\)/gu)]
+    .map((match) => match[1]);
+}
+
+function markdownLinkTargetsInText(text) {
+  return [...text.matchAll(/\[[^\]]+\]\(([^)]+)\)/gu)]
+    .map((match) => match[1].trim());
+}
+
+function plainTextWithMarkdownLinks(text) {
+  return text.replace(/\[([^\]]+)\]\([^)]+\)/gu, '$1');
+}
+
+function displayMarkdownLinks(line, linkLabels, includeColor) {
+  if (!includeColor || linkLabels.length === 0) {
+    return line;
+  }
+
+  return linkLabels.reduce((nextLine, label) => {
+    const labelPattern = new RegExp(escapeRegExp(label), 'gu');
+
+    return nextLine.replace(labelPattern, `${ansiLinkColor}${label}${ansiResetColor}`);
+  }, line);
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[\\^$.*+?()[\]{}|]/gu, '\\$&');
+}
+
 function relationSuffixText(relations, direction = '<') {
   if (!relations || relations.length === 0) {
     return '';
   }
 
   return `${direction}${relations.join(', ')}`;
+}
+
+function displayRelationsForNote(note) {
+  if (note.displayRelationDirection !== '>' || !note.relations || !note.displayRelations) {
+    return note.displayRelations;
+  }
+
+  const linkTargets = new Set(markdownLinkTargetsInText(note.text));
+
+  return note.displayRelations.filter((relation, index) => !linkTargets.has(note.relations[index]));
 }
 
 function displayRelationSuffix(suffix, includeColor) {
@@ -282,24 +416,27 @@ function noteBlocksForDisplay(notes, options = {}) {
     const lines = note.text.split(/\r?\n/u);
     const displayLines = lines.length > 0 ? lines : [''];
     const type = note.type ?? 'note';
-    const relationSuffix = relationSuffixText(note.displayRelations, note.displayRelationDirection);
+    const relationSuffix = relationSuffixText(displayRelationsForNote(note), note.displayRelationDirection);
     const firstPrefix = `${String(noteIndex + 1).padStart(numberWidth)}. ${displayType(type, includeColor)}`;
     const firstColumns = Math.max(columns - visibleLength(firstPrefix), 1);
 
     return displayLines.flatMap((line, lineIndex) => {
       const prefix = lineIndex === 0 ? firstPrefix : continuationPrefix;
+      const linkLabels = markdownLinksInText(line);
+      const plainLine = plainTextWithMarkdownLinks(line);
       const displayLine = lineIndex === displayLines.length - 1
-        ? `${line}${relationSuffix ? ` ${relationSuffix}` : ''}`
-        : line;
+        ? `${plainLine}${relationSuffix ? ` ${relationSuffix}` : ''}`
+        : plainLine;
       const wrappedLines = wrapPlainText(
         displayLine,
         lineIndex === 0 ? firstColumns : continuationColumns
       );
 
       return wrappedLines.map((wrappedLine, wrappedLineIndex) => {
-        const displayedLine = relationSuffix && wrappedLine.endsWith(relationSuffix)
-          ? `${wrappedLine.slice(0, -relationSuffix.length)}${displayRelationSuffix(relationSuffix, includeColor)}`
-          : wrappedLine;
+        const linkLine = displayMarkdownLinks(wrappedLine, linkLabels, includeColor);
+        const displayedLine = relationSuffix && linkLine.endsWith(relationSuffix)
+          ? `${linkLine.slice(0, -relationSuffix.length)}${displayRelationSuffix(relationSuffix, includeColor)}`
+          : linkLine;
 
         return wrappedLineIndex === 0
           ? `${prefix}${displayedLine}`
@@ -497,17 +634,27 @@ export async function completeEntry(line, state) {
 
   const relationCompletion = line.match(/^\/r\s+[1-9]\d*\s+(.*)$/u);
 
-  if (!relationCompletion) {
-    return [[], line];
+  if (relationCompletion) {
+    const partialContext = relationCompletion[1] ?? '';
+    const matches = await matchingContextCompletions(partialContext, state);
+    const relationCompletions = partialContext.includes('/')
+      ? matches.map((context) => `/${context.name}`)
+      : matches.map((context) => context.folder);
+
+    return [relationCompletions, partialContext];
   }
 
-  const partialContext = relationCompletion[1] ?? '';
-  const matches = await matchingContextCompletions(partialContext, state);
-  const relationCompletions = partialContext.includes('/')
-    ? matches.map((context) => `/${context.name}`)
-    : matches.map((context) => context.folder);
+  const mentionCompletion = line.match(/(^|\s)(@[^\s]*)$/u);
 
-  return [relationCompletions, partialContext];
+  if (mentionCompletion) {
+    const partialMention = mentionCompletion[2];
+    const partialContext = partialMention.slice(1);
+    const matches = await matchingContextCompletions(partialContext, state);
+
+    return [matches.map((context) => `@${context.folder}`), partialMention];
+  }
+
+  return [[], line];
 }
 
 async function matchingContextCompletions(partialContext, state) {
@@ -529,6 +676,17 @@ async function matchingContextCompletions(partialContext, state) {
         || comparableName.startsWith(partialContext)
         || contextName.folder.startsWith(partialContext);
     });
+}
+
+async function contextLinksForNotes(state) {
+  const contexts = await listContextDirectories({
+    notesDirectory: state.notesDirectory
+  });
+
+  return contexts.map((contextName) => ({
+    folder: contextName.split('/').at(-1) ?? contextName,
+    name: contextName
+  }));
 }
 
 export function createReadlineCompleter(state) {
@@ -646,8 +804,10 @@ export async function handleEntry(entry, state) {
       };
     }
 
+    let nextNotesDirectory;
+
     try {
-      state.activeNotesDirectory = await ensureContextDirectory(contextName, {
+      nextNotesDirectory = await ensureContextDirectory(contextName, {
         notesDirectory: state.notesDirectory
       });
     } catch (error) {
@@ -660,10 +820,12 @@ export async function handleEntry(entry, state) {
       };
     }
 
+    changeView(state, {
+      ...currentView(state),
+      activeNotesDirectory: nextNotesDirectory
+    });
+
     const message = `context ${path.relative(state.notesDirectory, state.activeNotesDirectory)}`;
-    state.pageStartIndex = 0;
-    state.statusMessage = '';
-    clearTemporaryBody(state);
 
     return {
       action: 'continue',
@@ -696,10 +858,10 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    state.activeLens = lensName;
-    state.pageStartIndex = 0;
-    state.statusMessage = '';
-    clearTemporaryBody(state);
+    changeView(state, {
+      ...currentView(state),
+      activeLens: lensName
+    });
 
     return {
       action: 'continue',
@@ -841,6 +1003,7 @@ export async function handleEntry(entry, state) {
   }
 
   const savedPath = await saveFact(entry, {
+    contextLinks: await contextLinksForNotes(state),
     notesDirectory: state.activeNotesDirectory
   });
   const message = `saved ${path.relative(state.appDirectory, savedPath)}`;
@@ -903,12 +1066,33 @@ async function main() {
     redrawPrompt();
   }
 
+  async function changeView(direction) {
+    const changed = direction === 'forward'
+      ? navigateViewForward(state)
+      : navigateViewBack(state);
+
+    if (!changed) {
+      return;
+    }
+
+    notes = await visibleFactsForState(state);
+    renderCurrentScreen();
+    redrawPrompt();
+  }
+
   if (input.isTTY) {
     emitKeypressEvents(input, terminal);
   }
 
   const onKeypress = (_value, key) => {
     if (editorOpen) {
+      return;
+    }
+
+    const viewNavigation = viewNavigationForKey(key);
+
+    if (viewNavigation) {
+      void changeView(viewNavigation);
       return;
     }
 

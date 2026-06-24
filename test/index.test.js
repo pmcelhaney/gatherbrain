@@ -12,10 +12,13 @@ import {
   createPromptState,
   filterNotesForLens,
   handleEntry,
+  navigateViewBack,
+  navigateViewForward,
   openEditor,
   pageNavigationForNotes,
   renderTui,
-  visibleFactsForState
+  visibleFactsForState,
+  viewNavigationForKey
 } from '../src/index.js';
 
 test('/s switches context without creating a note', async () => {
@@ -50,6 +53,28 @@ test('/s switches context without creating a note', async () => {
     assert.equal(
       await readFile(path.join(state.activeNotesDirectory, files[0]), 'utf8'),
       '---\ntype: fact\n---\n\nCaptured in context.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('saves context mentions as Markdown links', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+    await mkdir(path.join(notesDirectory, 'people', 'Steve Ma'), { recursive: true });
+
+    const saveResult = await handleEntry('Talk to @Steve Ma.', state);
+
+    assert.equal(saveResult.action, 'continue');
+    const files = await readdir(notesDirectory);
+    const noteFile = files.find((file) => path.extname(file) === '.md');
+    assert.equal(
+      await readFile(path.join(notesDirectory, noteFile), 'utf8'),
+      '---\ntype: fact\n---\n\nTalk to [Steve Ma](/people/Steve Ma).\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -304,6 +329,46 @@ test('colors non-fact note types in the TUI', () => {
   );
 });
 
+test('renders Markdown links without syntax in the TUI', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const state = createPromptState({ appDirectory, notesDirectory });
+
+  assert.deepEqual(
+    buildTuiLines({
+      state,
+      notes: [
+        { type: 'fact', text: 'Talk to [Steve Ma](/people/Steve Ma).' }
+      ],
+      rows: 5,
+      columns: 80
+    }),
+    [
+      'notes',
+      '--------------------------------------------------------------------------------',
+      ' 1. Talk to Steve Ma.'
+    ]
+  );
+});
+
+test('colors Markdown link labels in the TUI', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const state = createPromptState({ appDirectory, notesDirectory });
+
+  assert.equal(
+    renderTui({
+      state,
+      notes: [
+        { type: 'fact', text: 'Talk to [Steve Ma](/people/Steve Ma).' }
+      ],
+      rows: 4,
+      columns: 80
+    }),
+    '\x1b[2J\x1b[Hnotes\n--------------------------------------------------------------------------------\n 1. Talk to \x1b[34mSteve Ma\x1b[39m.\x1b[4;1H'
+  );
+});
+
 test('shows related folder names after related notes', () => {
   const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
   const notesDirectory = path.join(appDirectory, 'notes');
@@ -379,6 +444,34 @@ test('shows outbound relation names after direct notes', () => {
   );
 });
 
+test('does not show outbound relation names already shown as Markdown links', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const notesDirectory = path.join(appDirectory, 'notes');
+  const state = createPromptState({ appDirectory, notesDirectory });
+
+  assert.deepEqual(
+    buildTuiLines({
+      state,
+      notes: [
+        {
+          displayRelationDirection: '>',
+          displayRelations: ['Steve Ma'],
+          relations: ['/people/Steve Ma'],
+          type: 'fact',
+          text: 'Talk to [Steve Ma](/people/Steve Ma)'
+        }
+      ],
+      rows: 5,
+      columns: 80
+    }),
+    [
+      'notes',
+      '--------------------------------------------------------------------------------',
+      ' 1. Talk to Steve Ma'
+    ]
+  );
+});
+
 test('filters notes for the todo lens', () => {
   assert.deepEqual(
     filterNotesForLens([
@@ -437,6 +530,49 @@ test('/l switches lenses', async () => {
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
+});
+
+test('view history navigates context and lens changes', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    const state = createPromptState({ appDirectory, notesDirectory });
+
+    await handleEntry('/s gatherbrain', state);
+    await handleEntry('/l todo', state);
+    assert.equal(state.activeNotesDirectory, path.join(notesDirectory, 'gatherbrain'));
+    assert.equal(state.activeLens, 'todo');
+
+    assert.equal(navigateViewBack(state), true);
+    assert.equal(state.activeNotesDirectory, path.join(notesDirectory, 'gatherbrain'));
+    assert.equal(state.activeLens, 'all');
+
+    assert.equal(navigateViewBack(state), true);
+    assert.equal(state.activeNotesDirectory, notesDirectory);
+    assert.equal(state.activeLens, 'all');
+
+    assert.equal(navigateViewForward(state), true);
+    assert.equal(state.activeNotesDirectory, path.join(notesDirectory, 'gatherbrain'));
+    assert.equal(state.activeLens, 'all');
+
+    await handleEntry('/s people', state);
+    assert.equal(state.activeNotesDirectory, path.join(notesDirectory, 'people'));
+    assert.equal(navigateViewForward(state), false);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('maps alt-arrow keys to view navigation directions', () => {
+  assert.equal(viewNavigationForKey({ meta: true, name: 'left' }), 'back');
+  assert.equal(viewNavigationForKey({ meta: true, name: 'right' }), 'forward');
+  assert.equal(viewNavigationForKey({ sequence: '\x1b[1;3D' }), 'back');
+  assert.equal(viewNavigationForKey({ sequence: '\x1bb' }), 'back');
+  assert.equal(viewNavigationForKey({ sequence: '\x1b[1;3C' }), 'forward');
+  assert.equal(viewNavigationForKey({ sequence: '\x1bf' }), 'forward');
+  assert.equal(viewNavigationForKey({ name: 'escape', sequence: '\x1b' }), null);
+  assert.equal(viewNavigationForKey({ name: 'pagedown' }), null);
 });
 
 test('/l reports unknown lenses', async () => {
@@ -1022,6 +1158,23 @@ test('completes /r context folder names', async () => {
     assert.deepEqual(
       await completeEntry('/r 1 /people/S', state),
       [['/people/Steve Ma'], '/people/S']
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('completes context mentions in note text', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const notesDirectory = path.join(appDirectory, 'notes');
+
+  try {
+    await mkdir(path.join(notesDirectory, 'people', 'Steve Ma'), { recursive: true });
+    const state = createPromptState({ appDirectory, notesDirectory });
+
+    assert.deepEqual(
+      await completeEntry('Talk to @St', state),
+      [['@Steve Ma'], '@St']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

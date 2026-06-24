@@ -33,8 +33,25 @@ export function timestampForFilename(date = new Date()) {
   ].join('');
 }
 
-export function buildFactMarkdown(text) {
-  return `---\ntype: fact\n---\n\n${text}\n`;
+export function buildFactMarkdown(text, options = {}) {
+  return `---\ntype: fact\n---\n\n${markdownWithContextLinks(text, options)}\n`;
+}
+
+export function markdownWithContextLinks(text, options = {}) {
+  const { contextLinks = [] } = options;
+
+  return contextLinks.reduce((nextText, contextLink) => {
+    const mentionPattern = new RegExp(`(^|\\s)@${escapeRegExp(contextLink.folder)}(?=$|\\s|[.,;:!?])`, 'gu');
+
+    return nextText.replace(
+      mentionPattern,
+      `$1[${contextLink.folder}](/${contextLink.name})`
+    );
+  }, text);
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[\\^$.*+?()[\]{}|]/gu, '\\$&');
 }
 
 function matchFrontMatter(markdown) {
@@ -108,14 +125,21 @@ function relationsFromFrontMatter(frontMatter) {
       .replaceAll('\\\\', '\\'));
 }
 
+function relationsFromBody(body) {
+  return [...body.matchAll(/\[[^\]]+\]\((?<relation>[^)]+)\)/gu)]
+    .map((match) => match.groups.relation.trim())
+    .filter((relation) => relation.startsWith('/'));
+}
+
 export function factRelationsFromMarkdown(markdown) {
   const frontMatter = matchFrontMatter(markdown)?.groups.frontMatter;
+  const body = factTextFromMarkdown(markdown);
+  const relations = [
+    ...(frontMatter ? relationsFromFrontMatter(frontMatter) : []),
+    ...relationsFromBody(body)
+  ];
 
-  if (!frontMatter) {
-    return [];
-  }
-
-  return relationsFromFrontMatter(frontMatter);
+  return [...new Set(relations)];
 }
 
 export function markdownWithRelation(markdown, relation) {
@@ -377,6 +401,7 @@ export async function deleteFact(filePath) {
 
 export async function saveFact(text, options = {}) {
   const {
+    contextLinks = [],
     notesDirectory,
     now = () => new Date()
   } = options;
@@ -392,7 +417,7 @@ export async function saveFact(text, options = {}) {
     const filePath = path.join(notesDirectory, filename);
 
     try {
-      await writeFile(filePath, buildFactMarkdown(text), { flag: 'wx' });
+      await writeFile(filePath, buildFactMarkdown(text, { contextLinks }), { flag: 'wx' });
       return filePath;
     } catch (error) {
       if (error.code !== 'EEXIST') {

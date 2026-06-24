@@ -11,6 +11,7 @@ import {
   factTextFromMarkdown,
   listContextDirectories,
   listFacts,
+  markdownWithContextLinks,
   markdownWithRelation,
   markdownWithFactType,
   resolveContextDirectory,
@@ -44,6 +45,31 @@ test('extracts fact relations from Markdown front matter', () => {
   assert.deepEqual(
     factRelationsFromMarkdown('---\ntype: fact\nrelations: ["/people/Steve Ma"]\n---\n\nThe sky is blue.\n'),
     ['/people/Steve Ma']
+  );
+});
+
+test('extracts fact relations from Markdown body links', () => {
+  assert.deepEqual(
+    factRelationsFromMarkdown('---\ntype: fact\n---\n\nTalk to [Steve Ma](/people/Steve Ma).\n'),
+    ['/people/Steve Ma']
+  );
+});
+
+test('deduplicates front matter and Markdown body link relations', () => {
+  assert.deepEqual(
+    factRelationsFromMarkdown(
+      '---\ntype: fact\nrelations: ["/people/Steve Ma"]\n---\n\nTalk to [Steve Ma](/people/Steve Ma).\n'
+    ),
+    ['/people/Steve Ma']
+  );
+});
+
+test('converts context mentions to Markdown links', () => {
+  assert.equal(
+    markdownWithContextLinks('Talk to @Steve Ma.', {
+      contextLinks: [{ folder: 'Steve Ma', name: 'people/Steve Ma' }]
+    }),
+    'Talk to [Steve Ma](/people/Steve Ma).'
   );
 });
 
@@ -204,6 +230,24 @@ test('lists fact relations', async () => {
     await writeFile(
       path.join(directory, '2026-06-23T09-04-07.012-04-00.md'),
       '---\ntype: fact\nrelations: ["/people/Steve Ma"]\n---\n\nFirst fact.\n'
+    );
+
+    assert.deepEqual(
+      (await listFacts({ notesDirectory: directory })).map((fact) => fact.relations),
+      [['/people/Steve Ma']]
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('lists fact relations from Markdown body links', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
+
+  try {
+    await writeFile(
+      path.join(directory, '2026-06-23T09-04-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nTalk to [Steve Ma](/people/Steve Ma).\n'
     );
 
     assert.deepEqual(
