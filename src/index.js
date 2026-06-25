@@ -837,17 +837,23 @@ function wrapPlainText(text, columns) {
 }
 
 function markdownLinksInText(text) {
-  return [...text.matchAll(/\[([^\]]+)\]\([^)]+\)/gu)]
-    .map((match) => match[1]);
+  return [
+    ...[...text.matchAll(/!\[[^\]]*\]\(([^)]+)\)/gu)]
+      .map((match) => path.basename(match[1].trim())),
+    ...[...text.matchAll(/(?<!!)\[([^\]]+)\]\([^)]+\)/gu)]
+      .map((match) => match[1])
+  ];
 }
 
 function markdownLinkTargetsInText(text) {
-  return [...text.matchAll(/\[[^\]]+\]\(([^)]+)\)/gu)]
+  return [...text.matchAll(/!?\[[^\]]*\]\(([^)]+)\)/gu)]
     .map((match) => match[1].trim());
 }
 
 function plainTextWithMarkdownLinks(text) {
-  return text.replace(/\[([^\]]+)\]\([^)]+\)/gu, '$1');
+  return text
+    .replace(/!\[[^\]]*\]\(([^)]+)\)/gu, (_match, target) => path.basename(target.trim()))
+    .replace(/(?<!!)\[([^\]]+)\]\([^)]+\)/gu, '$1');
 }
 
 function displayMarkdownLinks(line, linkLabels, includeColor) {
@@ -1886,8 +1892,9 @@ export async function handleEntry(entry, state) {
       }
 
       const pastedFilename = path.basename(pastedFilePath);
+      const pastedAltText = path.parse(pastedFilename).name;
       const factPath = await saveFact(factTitle, {
-        body: clipboardItem?.type === 'file' ? `![](${pastedFilename})` : '',
+        body: clipboardItem?.type === 'file' ? `1. ![${pastedAltText}](${pastedFilename})` : '',
         properties: {
           file: pastedFilename
         },

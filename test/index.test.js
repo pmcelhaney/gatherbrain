@@ -426,7 +426,7 @@ test(':paste writes clipboard image contents and embeds the image fact', async (
     );
     assert.equal(
       await readFile(path.join(currentContext, 'screenshot.md'), 'utf8'),
-      '---\ntitle: Screenshot\ntype: fact\nfile: "screenshot.png"\n---\n\n![](screenshot.png)\n'
+      '---\ntitle: Screenshot\ntype: fact\nfile: "screenshot.png"\n---\n\n1. ![screenshot](screenshot.png)\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -1232,6 +1232,28 @@ test('renders Markdown links without syntax in the TUI', () => {
       'facts',
       '--------------------------------------------------------------------------------',
       ' 1. Talk to Steve Ma.'
+    ]
+  );
+});
+
+test('renders Markdown image links as filenames in the TUI', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const state = createPromptState({ appDirectory, rootDirectory });
+
+  assert.deepEqual(
+    buildTuiLines({
+      state,
+      facts: [
+        { type: 'fact', text: '1. ![test](test.png)' }
+      ],
+      rows: 5,
+      columns: 80
+    }),
+    [
+      'facts',
+      '--------------------------------------------------------------------------------',
+      ' 1. 1. test.png'
     ]
   );
 });
