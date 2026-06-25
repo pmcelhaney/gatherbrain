@@ -26,6 +26,8 @@ Use `:new Follow up with Alex` to create a new fact. Typing a title without a co
 
 Use `:edit 3` to open the third listed fact in `$EDITOR`.
 
+Use `:open` to open the current context directory in the system file viewer. Use `:open 3` to open the file referenced by the third listed fact's `file` front matter property.
+
 Use `:delete 3` to move the third listed fact to `.trash` inside its context directory.
 
 Use `:relate 3 people/alex` to add a workspace-relative context path to the third listed fact's reserved `relatedContexts` front matter field.

@@ -26,7 +26,7 @@ function positiveItemNumber(value) {
 
 function usageForCommandDefinition(commandDefinition) {
   const argumentUsage = commandDefinition.arguments
-    .map((argument) => `<${argument.name}>`)
+    .map((argument) => (argument.optional ? `[${argument.name}]` : `<${argument.name}>`))
     .join(' ');
 
   return argumentUsage.length > 0
@@ -184,6 +184,10 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
 
   for (const [argumentIndex, argument] of commandDefinition.arguments.entries()) {
     if (remainingArgs.length === 0) {
+      if (argument.optional) {
+        continue;
+      }
+
       if (promptForMissing) {
         return promptForArgument(commandDefinition, parsedArguments, argument);
       }
@@ -432,6 +436,13 @@ function buildCommandAction(commandDefinition, values) {
 
   if (commandDefinition.action === 'paste_clipboard') {
     return { type: 'paste_clipboard' };
+  }
+
+  if (commandDefinition.action === 'open_reference') {
+    return {
+      type: 'open_reference',
+      ...(values.item ? factSelectorProperties(values.item) : {})
+    };
   }
 
   if (commandDefinition.action === 'switch_lens') {

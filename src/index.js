@@ -87,6 +87,7 @@ export function createPromptState(options = {}) {
     debugKeys: false,
     statusMessage: '',
     now: options.now ?? (() => new Date()),
+    openPath: options.openPath ?? openPath,
     readClipboard: options.readClipboard ?? readClipboard
   };
 }
@@ -344,6 +345,49 @@ export function restartAppProcess(options = {}) {
       reject(new Error(signal
         ? `restart exited with signal ${signal}`
         : `restart exited with code ${code}`));
+    });
+  });
+}
+
+function openCommandForPlatform(platform) {
+  if (platform === 'darwin') {
+    return { command: 'open', args: [] };
+  }
+
+  if (platform === 'win32') {
+    return { command: 'cmd.exe', args: ['/c', 'start', ''] };
+  }
+
+  return { command: 'xdg-open', args: [] };
+}
+
+export function openPath(filePath, options = {}) {
+  const {
+    platform = process.platform,
+    spawnProcess = spawn
+  } = options;
+  const { command, args } = openCommandForPlatform(platform);
+
+  return new Promise((resolve, reject) => {
+    const child = spawnProcess(command, [...args, filePath], {
+      stdio: 'ignore',
+      detached: true
+    });
+
+    child.on('error', reject);
+    child.on('spawn', () => {
+      child.unref?.();
+      resolve();
+    });
+    child.on('exit', (code, signal) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(new Error(signal
+        ? `${command} exited with signal ${signal}`
+        : `${command} exited with code ${code}`));
     });
   });
 }
@@ -679,6 +723,29 @@ async function visibleFactForSelector(state, selector) {
   }
 
   throw new Error('item selector is required');
+}
+
+async function openPathForReference(state, selector) {
+  if (!Number.isInteger(selector.itemNumber) && !selector.itemTitle) {
+    return {
+      itemLabel: null,
+      filePath: state.currentContextDirectory
+    };
+  }
+
+  const { fact, itemLabel } = await visibleFactForSelector(state, selector);
+  const referencedFile = fact.properties?.file;
+
+  if (!referencedFile) {
+    throw new Error(`item ${itemLabel} does not reference a file`);
+  }
+
+  return {
+    itemLabel,
+    filePath: path.isAbsolute(referencedFile)
+      ? referencedFile
+      : path.resolve(path.dirname(fact.path), referencedFile)
+  };
 }
 
 function visibleLength(line) {
@@ -1957,6 +2024,30 @@ export async function handleEntry(entry, state) {
         filePath: fact.path,
         itemLabel,
         itemNumber
+      };
+    } catch (error) {
+      state.statusMessage = error.message;
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
+  }
+
+  if (parsedEntry.type === 'open_reference') {
+    try {
+      const { filePath, itemLabel } = await openPathForReference(state, parsedEntry);
+      await state.openPath(filePath);
+      state.statusMessage = '';
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message: itemLabel
+          ? `opened item ${itemLabel} file`
+          : `opened ${path.relative(state.appDirectory, filePath)}`
       };
     } catch (error) {
       state.statusMessage = error.message;

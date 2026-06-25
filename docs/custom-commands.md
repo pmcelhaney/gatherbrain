@@ -47,6 +47,7 @@ Supported actions:
 - `switch_lens`: change lens. Requires `lens`.
 - `create_fact`: create a fact in the current context. Requires `title`.
 - `edit_fact`: open a fact in `$EDITOR`. Requires `item`.
+- `open_reference`: open the current context directory or a fact's referenced `file`. Accepts optional `item`.
 - `delete_fact`: move a fact to `.trash`. Requires `item`.
 - `relate_fact`: add a related context to a fact. Requires `item` and `context`.
 - `set_fact_type`: change a fact type. Requires `type` and `item`.

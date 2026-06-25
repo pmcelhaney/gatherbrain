@@ -64,6 +64,18 @@
       ]
     },
     {
+      "name": "open",
+      "action": "open_reference",
+      "arguments": [
+        {
+          "name": "item",
+          "type": "fact",
+          "optional": true,
+          "prompt": "Open which referenced file?"
+        }
+      ]
+    },
+    {
       "name": "delete",
       "action": "delete_fact",
       "arguments": [

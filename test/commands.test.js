@@ -24,6 +24,7 @@ test('lists built-in command help', () => {
     ':lens <lens>',
     ':new <title>',
     ':edit <item>',
+    ':open [item]',
     ':delete <item>',
     ':relate <item> <context>',
     ':type <type> <item>',
@@ -34,7 +35,7 @@ test('lists built-in command help', () => {
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :paste | :debug-keys | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :paste | :debug-keys | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -43,6 +44,7 @@ test('lists built-in command help', () => {
     'lens',
     'new',
     'edit',
+    'open',
     'delete',
     'relate',
     'type',
@@ -81,6 +83,7 @@ test('parses control entries', () => {
   assert.deepEqual(parseEntry(':debug-keys'), { type: 'debug_keys' });
   assert.deepEqual(parseEntry(':restart'), { type: 'restart_app' });
   assert.deepEqual(parseEntry(':paste'), { type: 'paste_clipboard' });
+  assert.deepEqual(parseEntry(':open'), { type: 'open_reference' });
 });
 
 test('parses context and lens commands', () => {
@@ -159,6 +162,14 @@ test('parses fact commands', () => {
   assert.deepEqual(parseEntry(':edit 2'), {
     itemNumber: 2,
     type: 'edit_fact'
+  });
+  assert.deepEqual(parseEntry(':open 2'), {
+    itemNumber: 2,
+    type: 'open_reference'
+  });
+  assert.deepEqual(parseEntry(':open Pasted file'), {
+    itemTitle: 'Pasted file',
+    type: 'open_reference'
   });
   assert.deepEqual(parseEntry(':delete 3'), {
     itemNumber: 3,
@@ -318,6 +329,7 @@ test('loads workspace command definitions from config', async () => {
       'lens',
       'new',
       'edit',
+      'open',
       'delete',
       'relate',
       'type',
@@ -437,6 +449,7 @@ test('workspace command config overrides default commands by name', async () => 
       'lens',
       'new',
       'edit',
+      'open',
       'delete',
       'relate',
       'type',

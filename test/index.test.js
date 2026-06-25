@@ -16,6 +16,7 @@ import {
   navigateLensBack,
   navigateLensForward,
   openEditor,
+  openPath,
   pageNavigationForBody,
   pageNavigationForKey,
   pageNavigationForFacts,
@@ -656,13 +657,13 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :paste | :debug-keys | :restart'
+      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :paste | :debug-keys | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         facts: [{ type: 'fact', text: 'Existing fact.' }],
-        rows: 17,
+        rows: 18,
         columns: 80
       }),
       [
@@ -675,6 +676,7 @@ test(':help lists commands without saving a fact', async () => {
         ':lens <lens>',
         ':new <title>',
         ':edit <item>',
+        ':open [item]',
         ':delete <item>',
         ':relate <item> <context>',
         ':type <type> <item>',
@@ -1948,6 +1950,79 @@ test(':edit command reports missing item', async () => {
   }
 });
 
+test(':open without an item opens the current context directory', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const openedPaths = [];
+
+  try {
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      openPath: async (filePath) => openedPaths.push(filePath)
+    });
+    await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
+    await handleEntry(':switch projects/gatherbrain', state);
+
+    assert.deepEqual(await handleEntry(':open', state), {
+      action: 'continue',
+      message: `opened ${path.join('facts', 'projects', 'gatherbrain')}`
+    });
+    assert.deepEqual(openedPaths, [path.join(rootDirectory, 'projects', 'gatherbrain')]);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':open with an item opens the referenced file', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const openedPaths = [];
+
+  try {
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      openPath: async (filePath) => openedPaths.push(filePath)
+    });
+    await mkdir(rootDirectory, { recursive: true });
+    await writeFile(path.join(rootDirectory, 'pasted.txt'), 'Pasted content.');
+    await writeFile(
+      path.join(rootDirectory, 'pasted.md'),
+      '---\ntitle: Pasted\ntype: fact\nfile: pasted.txt\n---\n\n'
+    );
+
+    assert.deepEqual(await handleEntry(':open 1', state), {
+      action: 'continue',
+      message: 'opened item 1 file'
+    });
+    assert.deepEqual(openedPaths, [path.join(rootDirectory, 'pasted.txt')]);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':open reports facts without referenced files', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(rootDirectory, { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'fact.md'),
+      '---\ntitle: Fact\ntype: fact\n---\n\n'
+    );
+
+    assert.deepEqual(await handleEntry(':open 1', state), {
+      action: 'continue',
+      message: 'item 1 does not reference a file'
+    });
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test(':delete command trashes a listed item', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -2208,6 +2283,35 @@ test('reports missing EDITOR when opening a fact', async () => {
     openEditor('/tmp/fact.md', { editor: '' }),
     /EDITOR is not set/
   );
+});
+
+test('opens a path with the platform opener', async () => {
+  const calls = [];
+  const child = new EventEmitter();
+  child.unref = () => calls.push({ unref: true });
+
+  const openPromise = openPath('/tmp/pasted.png', {
+    platform: 'darwin',
+    spawnProcess: (command, args, options) => {
+      calls.push({ command, args, options });
+      return child;
+    }
+  });
+
+  child.emit('spawn');
+  await openPromise;
+
+  assert.deepEqual(calls, [
+    {
+      command: 'open',
+      args: ['/tmp/pasted.png'],
+      options: {
+        stdio: 'ignore',
+        detached: true
+      }
+    },
+    { unref: true }
+  ]);
 });
 
 test('refreshes the model after an edited fact changes on disk', async () => {
@@ -2492,6 +2596,7 @@ test('completes colon command names', async () => {
       ':lens ',
       ':new ',
       ':edit ',
+      ':open ',
       ':delete ',
       ':relate ',
       ':type ',
