@@ -125,20 +125,74 @@ test('all lens presents direct and related facts for the active context', async 
       })),
       [
         {
-          displayRelationDirection: '>',
-          displayRelations: ['app'],
-          text: 'Direct fact.'
-        },
-        {
           displayRelationDirection: '<',
           displayRelations: ['projects'],
           text: 'Related fact.'
+        },
+        {
+          displayRelationDirection: '>',
+          displayRelations: ['app'],
+          text: 'Direct fact.'
         }
       ]
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('all lens presents newest-created facts first by default', () => {
+  const directory = path.join(tmpdir(), 'gatherbrain-lenses');
+  const model = {
+    rootPath: directory,
+    contexts: new Map([
+      ['', {
+        id: '',
+        path: directory,
+        name: 'gatherbrain-lenses',
+        parentId: null,
+        childContextIds: [],
+        factIds: ['old.md', 'new.md']
+      }]
+    ]),
+    facts: new Map([
+      ['old.md', {
+        id: 'old.md',
+        path: path.join(directory, 'old.md'),
+        contextId: '',
+        filename: 'old.md',
+        createdAt: '2026-06-24T12:00:00.000Z',
+        modifiedAt: '2026-06-24T12:00:00.000Z',
+        properties: {},
+        title: 'Old',
+        type: 'fact',
+        text: 'Old.'
+      }],
+      ['new.md', {
+        id: 'new.md',
+        path: path.join(directory, 'new.md'),
+        contextId: '',
+        filename: 'new.md',
+        createdAt: '2026-06-25T12:00:00.000Z',
+        modifiedAt: '2026-06-25T12:00:00.000Z',
+        properties: {},
+        title: 'New',
+        type: 'fact',
+        text: 'New.'
+      }]
+    ])
+  };
+
+  const lensModel = presentLens({
+    model,
+    state: { currentContextDirectory: directory },
+    lensId: 'all'
+  });
+
+  assert.deepEqual(
+    lensModel.facts.map((fact) => fact.text),
+    ['New.', 'Old.']
+  );
 });
 
 test('todo lens presents only todo-compatible facts', async () => {
@@ -158,7 +212,7 @@ test('todo lens presents only todo-compatible facts', async () => {
 
     assert.deepEqual(
       lensModel.facts.map((fact) => fact.text),
-      ['Fact.', 'Todo.']
+      ['Todo.', 'Fact.']
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -209,7 +263,7 @@ test('today lens presents overdue and due-today facts that are not done', async 
 
     assert.deepEqual(
       lensModel.facts.map((fact) => fact.text),
-      ['Overdue.', 'Today.']
+      ['Today.', 'Overdue.']
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -240,7 +294,7 @@ test('current lens includes today facts and done items modified today', async ()
 
     assert.deepEqual(
       lensModel.facts.map((fact) => fact.text),
-      ['Done today.', 'Today.']
+      ['Today.', 'Done today.']
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -274,7 +328,7 @@ test('configured lens filters by front matter type', async () => {
 
     assert.deepEqual(
       lensModel.facts.map((fact) => fact.text),
-      ['Todo.', 'Waiting.']
+      ['Waiting.', 'Todo.']
     );
   } finally {
     await rm(directory, { recursive: true, force: true });

@@ -103,6 +103,7 @@ export async function readFact(rootPath, filePath) {
     path: filePath,
     contextId,
     filename: id,
+    createdAt: fileStat.birthtime.toISOString(),
     modifiedAt: fileStat.mtime.toISOString(),
     properties,
     ...(relations.length > 0 ? { relations } : {}),

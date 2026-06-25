@@ -32,12 +32,14 @@ test('loads contexts and facts with workspace-relative ids', async () => {
     assert.deepEqual(model.contexts.get('people/alex').factIds, ['people/alex/follow-up.md']);
     const fact = model.facts.get('people/alex/follow-up.md');
 
+    assert.match(fact.createdAt, /^\d{4}-\d{2}-\d{2}T/u);
     assert.match(fact.modifiedAt, /^\d{4}-\d{2}-\d{2}T/u);
     assert.deepEqual(fact, {
       id: 'people/alex/follow-up.md',
       path: path.join(directory, 'people', 'alex', 'follow-up.md'),
       contextId: 'people/alex',
       filename: 'people/alex/follow-up.md',
+      createdAt: fact.createdAt,
       modifiedAt: fact.modifiedAt,
       properties: {},
       relations: ['projects/app'],
@@ -65,6 +67,7 @@ test('loads front matter properties and modified timestamps', async () => {
     const model = await loadWorkspaceModel({ rootDirectory: directory });
     const fact = model.facts.get('due.md');
 
+    assert.match(fact.createdAt, /^\d{4}-\d{2}-\d{2}T/u);
     assert.deepEqual(fact.properties, {
       due: '2026-06-24',
       priority: 'high'

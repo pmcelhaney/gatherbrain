@@ -1280,15 +1280,15 @@ test('type command changes a listed item type', async () => {
 
     const result = await handleEntry(':type foo 3', state);
     const files = await readdir(rootDirectory);
-    const thirdFact = await readFile(path.join(rootDirectory, files.sort()[2]), 'utf8');
+    const firstFact = await readFile(path.join(rootDirectory, files.sort()[0]), 'utf8');
 
     assert.deepEqual(result, {
       action: 'continue',
       message: 'set item 3 type to foo'
     });
     assert.equal(
-      thirdFact,
-      '---\ntype: foo\n---\n\nThird fact.\n'
+      firstFact,
+      '---\ntype: foo\n---\n\nFirst fact.\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -1366,8 +1366,8 @@ test('commands show source folders for facts related to the active context', asy
         text: fact.text
       })),
       [
-        { displayRelations: undefined, text: 'Direct fact.' },
-        { displayRelations: ['projects'], text: 'Related fact.' }
+        { displayRelations: ['projects'], text: 'Related fact.' },
+        { displayRelations: undefined, text: 'Direct fact.' }
       ]
     );
     assert.deepEqual(
@@ -1380,13 +1380,13 @@ test('commands show source folders for facts related to the active context', asy
       [
         'people/Steve Ma',
         '--------------------------------------------------------------------------------',
-        ' 1. Direct fact.',
-        ' 2. Related fact. <projects'
+        ' 1. Related fact. <projects',
+        ' 2. Direct fact.'
       ]
     );
-    assert.deepEqual(await handleEntry(':type todo 2', state), {
+    assert.deepEqual(await handleEntry(':type todo 1', state), {
       action: 'continue',
-      message: 'set item 2 type to todo'
+      message: 'set item 1 type to todo'
     });
     assert.equal(
       await readFile(relatedPath, 'utf8'),
@@ -1514,13 +1514,14 @@ test('due command sets a normalized due date property', async () => {
 test(':edit command returns an edit action for a listed item', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
+  const firstFactPath = path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md');
   const secondFactPath = path.join(rootDirectory, '2026-06-23T09-05-07.012-04-00.md');
 
   try {
     const state = createPromptState({ appDirectory, rootDirectory });
     await mkdir(rootDirectory, { recursive: true });
     await writeFile(
-      path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md'),
+      firstFactPath,
       '---\ntype: fact\n---\n\nFirst fact.\n'
     );
     await writeFile(
@@ -1532,7 +1533,7 @@ test(':edit command returns an edit action for a listed item', async () => {
       await handleEntry(':edit 2', state),
       {
         action: 'edit',
-        filePath: secondFactPath,
+        filePath: firstFactPath,
         itemLabel: '2',
         itemNumber: 2
       }
@@ -1618,18 +1619,18 @@ test(':delete command trashes a listed item', async () => {
     });
     assert.deepEqual((await readdir(rootDirectory)).sort(), [
       '.trash',
-      path.basename(firstFactPath)
+      path.basename(secondFactPath)
     ]);
-    await assert.rejects(readFile(secondFactPath, 'utf8'), { code: 'ENOENT' });
+    await assert.rejects(readFile(firstFactPath, 'utf8'), { code: 'ENOENT' });
     assert.equal(
-      await readFile(path.join(rootDirectory, '.trash', path.basename(secondFactPath)), 'utf8'),
-      '---\ntype: fact\n---\n\nSecond fact.\n'
+      await readFile(path.join(rootDirectory, '.trash', path.basename(firstFactPath)), 'utf8'),
+      '---\ntype: fact\n---\n\nFirst fact.\n'
     );
     assert.deepEqual(
       (await visibleFactsForState(state)).map((fact) => fact.text),
-      ['First fact.']
+      ['Second fact.']
     );
-    assert.equal(state.model.facts.has(path.basename(secondFactPath)), false);
+    assert.equal(state.model.facts.has(path.basename(firstFactPath)), false);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

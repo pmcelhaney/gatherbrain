@@ -49,10 +49,16 @@ function folderNameForRelation(relation) {
 function factsForModel(model) {
   return [...model.facts.values()]
     .sort((left, right) => {
-      const filenameComparison = path.basename(left.filename).localeCompare(path.basename(right.filename));
+      const createdComparison = (right.createdAt ?? '').localeCompare(left.createdAt ?? '');
+
+      if (createdComparison !== 0) {
+        return createdComparison;
+      }
+
+      const filenameComparison = path.basename(right.filename).localeCompare(path.basename(left.filename));
 
       return filenameComparison === 0
-        ? left.filename.localeCompare(right.filename)
+        ? right.filename.localeCompare(left.filename)
         : filenameComparison;
     });
 }
