@@ -138,20 +138,22 @@ test(':switch creates unix-relative missing contexts', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
     await handleEntry(':switch gatherbrain/sandbox', state);
 
+    const newChildDirectory = path.join(rootDirectory, 'gatherbrain', 'sandbox', 'new-child');
+
     assert.deepEqual(await handleEntry(':switch ./new-child', state), {
       action: 'continue',
-      message: 'context ./new-child does not exist. Create it? [y/N]'
+      message: `Create ${newChildDirectory}? [y/N]`
     });
     assert.deepEqual(state.pendingContextCreation, {
       context: './new-child',
-      directory: path.join(rootDirectory, 'gatherbrain', 'sandbox', 'new-child')
+      directory: newChildDirectory
     });
 
     assert.deepEqual(await handleEntry('yes', state), {
       action: 'continue',
       message: 'context gatherbrain/sandbox/new-child'
     });
-    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'gatherbrain', 'sandbox', 'new-child'));
+    assert.equal(state.currentContextDirectory, newChildDirectory);
     assert.equal(state.model.contexts.has('gatherbrain/sandbox/new-child'), true);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -165,13 +167,15 @@ test(':switch asks to create a missing context and switches after yes', async ()
   try {
     const state = createPromptState({ appDirectory, rootDirectory });
 
+    const newAppDirectory = path.join(rootDirectory, 'projects', 'new-app');
+
     assert.deepEqual(await handleEntry(':switch projects/new-app', state), {
       action: 'continue',
-      message: 'context projects/new-app does not exist. Create it? [y/N]'
+      message: `Create ${newAppDirectory}? [y/N]`
     });
     assert.deepEqual(state.pendingContextCreation, {
       context: 'projects/new-app',
-      directory: path.join(rootDirectory, 'projects', 'new-app')
+      directory: newAppDirectory
     });
     assert.deepEqual(
       buildTuiLines({
@@ -2086,10 +2090,10 @@ test('renders command mode prompt line with background color', () => {
           context: 'missing',
           directory: '/tmp/missing'
         },
-        statusMessage: 'context ./x does not exist. Create it? [y/N]'
+        statusMessage: 'Create /tmp/missing? [y/N]'
       }
     }),
-    '\x1b[48;5;236mcontext ./x does not exist. Create it? [y/N] > \x1b[K\x1b[0m'
+    '\x1b[48;5;236mCreate /tmp/missing? [y/N] > \x1b[K\x1b[0m'
   );
 });
 

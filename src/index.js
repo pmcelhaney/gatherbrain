@@ -1448,8 +1448,8 @@ function hiddenContextPathPart(contextDirectory, state) {
     .some((pathPart) => pathPart.startsWith('.'));
 }
 
-function contextCreationPrompt(contextReference) {
-  return `context ${contextReference} does not exist. Create it? [y/N]`;
+function contextCreationPrompt(contextDirectory) {
+  return `Create ${contextDirectory}? [y/N]`;
 }
 
 function parseConfirmation(value) {
@@ -1632,7 +1632,7 @@ export async function handleEntry(entry, state) {
         context: parsedEntry.context,
         directory: contextDirectory
       };
-      state.statusMessage = contextCreationPrompt(parsedEntry.context);
+      state.statusMessage = contextCreationPrompt(contextDirectory);
       clearTemporaryBody(state);
 
       return {
