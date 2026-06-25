@@ -36,6 +36,8 @@ Use `:due today 3` to set the third listed fact's `due` front matter property to
 
 Use `:debug-keys` to toggle key debugging output.
 
+Use `:restart` to restart the app process and restore the current context, gaze, lens, lens history, and page position.
+
 Default commands are defined in `default-config/commands.json`. A workspace-local `.gatherbrain/commands.json` can add commands or override defaults with the same command name. See [Custom Commands](docs/custom-commands.md).
 
 Command enum arguments can use workspace-local `.gatherbrain/enums.json` value lists. See [Custom Enums](docs/custom-enums.md).

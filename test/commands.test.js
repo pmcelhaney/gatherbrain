@@ -28,11 +28,12 @@ test('lists built-in command help', () => {
     ':relate <item> <context>',
     ':type <type> <item>',
     ':due <value> <item>',
-    ':debug-keys'
+    ':debug-keys',
+    ':restart'
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys'
+    ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -45,7 +46,8 @@ test('lists built-in command help', () => {
     'relate',
     'type',
     'due',
-    'debug-keys'
+    'debug-keys',
+    'restart'
   ]);
   assert.deepEqual(commandArguments('relate'), [
     { name: 'item', type: 'fact', prompt: 'Relate which fact?' },
@@ -75,6 +77,7 @@ test('parses control entries', () => {
   });
   assert.deepEqual(parseEntry(':help'), { type: 'help' });
   assert.deepEqual(parseEntry(':debug-keys'), { type: 'debug_keys' });
+  assert.deepEqual(parseEntry(':restart'), { type: 'restart_app' });
 });
 
 test('parses context and lens commands', () => {
@@ -308,6 +311,7 @@ test('loads workspace command definitions from config', async () => {
       'type',
       'due',
       'debug-keys',
+      'restart',
       'jump'
     ]);
     assert.deepEqual(commandHelp(registry).at(-1), ':jump <context>');
@@ -419,7 +423,8 @@ test('workspace command config overrides default commands by name', async () => 
       'relate',
       'type',
       'due',
-      'debug-keys'
+      'debug-keys',
+      'restart'
     ]);
     assert.deepEqual(parseEntry(':switch', registry), {
       type: 'prompt_command_argument',

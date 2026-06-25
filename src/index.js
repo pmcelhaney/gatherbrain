@@ -6,7 +6,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { emitKeypressEvents } from 'node:readline';
 import readline from 'node:readline/promises';
-import { env as processEnv, stdin as input, stdout as output } from 'node:process';
+import {
+  argv as processArgv,
+  env as processEnv,
+  execPath,
+  stdin as input,
+  stdout as output
+} from 'node:process';
 import { watchWorkspaceConfig } from './config-watch.js';
 import {
   commandArgumentValues,
@@ -55,6 +61,7 @@ const ansiResetColor = '\x1b[39m';
 const ansiCommandPromptBackground = '\x1b[48;5;236m';
 const ansiResetAll = '\x1b[0m';
 const ansiCodePattern = /\x1b\[[0-9;]*m/gu;
+const restartRestoreEnv = 'GATHERBRAIN_RESTORE';
 export function createPromptState(options = {}) {
   const appDirectory = options.appDirectory ?? defaultAppDirectory;
   const rootDirectory = options.rootDirectory ?? options.notesDirectory ?? path.join(appDirectory, 'notes');
@@ -110,6 +117,12 @@ function currentLens(state) {
     currentLensId: currentLensIdForState(state),
     currentContextDirectory: state.currentContextDirectory
   };
+}
+
+function contextDirectoryForId(state, contextId) {
+  return contextId === ''
+    ? state.rootDirectory
+    : path.join(state.rootDirectory, ...contextId.split('/'));
 }
 
 function lensesAreEqual(left, right) {
@@ -193,6 +206,101 @@ export function lensNavigationForKey(key) {
   }
 
   return null;
+}
+
+function serializeLens(lens, state) {
+  return {
+    currentLensId: lens.currentLensId,
+    currentContextId: contextIdForDirectory(state, lens.currentContextDirectory)
+  };
+}
+
+export function restartSnapshotForState(state) {
+  return {
+    currentContextId: contextIdForDirectory(state, state.currentContextDirectory),
+    gazeContextId: state.gazeContextDirectory
+      ? contextIdForDirectory(state, state.gazeContextDirectory)
+      : null,
+    currentLensId: currentLensIdForState(state),
+    lensBackStack: state.lensBackStack.map((lens) => serializeLens(lens, state)),
+    lensForwardStack: state.lensForwardStack.map((lens) => serializeLens(lens, state)),
+    pageStartIndex: state.pageStartIndex ?? 0
+  };
+}
+
+function restoredContextDirectory(state, contextId) {
+  return state.model?.contexts?.has(contextId)
+    ? contextDirectoryForId(state, contextId)
+    : null;
+}
+
+function restoredLensId(state, lensId) {
+  return hasLens(lensId, state.lensRegistry) ? lensId : defaultLensId;
+}
+
+function restoreLensStack(stack, state) {
+  return Array.isArray(stack)
+    ? stack.flatMap((lens) => {
+      if (!lens || typeof lens.currentContextId !== 'string') {
+        return [];
+      }
+
+      const currentContextDirectory = restoredContextDirectory(state, lens.currentContextId);
+
+      return currentContextDirectory
+        ? [{
+          currentLensId: restoredLensId(state, lens.currentLensId),
+          currentContextDirectory
+        }]
+        : [];
+    })
+    : [];
+}
+
+export function restorePromptState(state, snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') {
+    return state;
+  }
+
+  const currentContextDirectory = typeof snapshot.currentContextId === 'string'
+    ? restoredContextDirectory(state, snapshot.currentContextId)
+    : null;
+
+  if (currentContextDirectory) {
+    state.currentContextDirectory = currentContextDirectory;
+  }
+
+  const gazeContextDirectory = typeof snapshot.gazeContextId === 'string'
+    ? restoredContextDirectory(state, snapshot.gazeContextId)
+    : null;
+  state.gazeContextDirectory = gazeContextDirectory;
+  state.currentLensId = restoredLensId(state, snapshot.currentLensId);
+  state.lensBackStack = restoreLensStack(snapshot.lensBackStack, state);
+  state.lensForwardStack = restoreLensStack(snapshot.lensForwardStack, state);
+  state.pageStartIndex = Number.isInteger(snapshot.pageStartIndex) && snapshot.pageStartIndex >= 0
+    ? snapshot.pageStartIndex
+    : 0;
+
+  return state;
+}
+
+export function restartSnapshotFromEnv(env = processEnv) {
+  if (!env[restartRestoreEnv]) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(env[restartRestoreEnv]);
+  } catch {
+    return null;
+  }
+}
+
+export function restartEnvForState(state, env = processEnv) {
+  return {
+    ...env,
+    [restartRestoreEnv]: JSON.stringify(restartSnapshotForState(state))
+  };
 }
 
 export function pageNavigationForKey(key) {
@@ -1416,6 +1524,13 @@ export async function handleEntry(entry, state) {
     };
   }
 
+  if (parsedEntry.type === 'restart_app') {
+    return {
+      action: 'restart',
+      snapshot: restartSnapshotForState(state)
+    };
+  }
+
   if (parsedEntry.type === 'usage_error') {
     state.statusMessage = parsedEntry.message;
     clearTemporaryBody(state);
@@ -1705,7 +1820,7 @@ export async function handleEntry(entry, state) {
 }
 
 async function main() {
-  const rootDirectory = process.argv[2] ? path.resolve(process.argv[2]) : undefined;
+  const rootDirectory = processArgv[2] ? path.resolve(processArgv[2]) : undefined;
   const effectiveRootDirectory = rootDirectory ?? path.join(defaultAppDirectory, 'notes');
   const state = createPromptState({
     rootDirectory,
@@ -1719,12 +1834,14 @@ async function main() {
       rootDirectory: effectiveRootDirectory
     })
   });
+  restorePromptState(state, restartSnapshotFromEnv());
   let body = {
     type: 'facts',
     template: 'facts',
     facts: []
   };
   let editorOpen = false;
+  let restartEnv = null;
   const terminal = readline.createInterface({
     input,
     output,
@@ -1882,6 +1999,11 @@ async function main() {
         break;
       }
 
+      if (result.action === 'restart') {
+        restartEnv = restartEnvForState(state);
+        break;
+      }
+
       if (result.action === 'edit') {
         editorOpen = true;
         terminal.pause();
@@ -1917,10 +2039,18 @@ async function main() {
 
     terminal.close();
   }
+
+  if (restartEnv) {
+    const child = spawn(execPath, processArgv.slice(1), {
+      env: restartEnv,
+      stdio: 'inherit'
+    });
+    child.unref();
+  }
 }
 
-const invokedPath = process.argv[1]
-  ? pathToFileURL(path.resolve(process.argv[1])).href
+const invokedPath = processArgv[1]
+  ? pathToFileURL(path.resolve(processArgv[1])).href
   : null;
 
 if (import.meta.url === invokedPath) {

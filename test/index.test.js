@@ -21,6 +21,10 @@ import {
   pageNavigationForFacts,
   reloadWorkspaceConfig,
   refreshEditedFact,
+  restartEnvForState,
+  restartSnapshotForState,
+  restartSnapshotFromEnv,
+  restorePromptState,
   renderPromptLine,
   renderTui,
   visibleBodyForState,
@@ -471,13 +475,13 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys'
+      message: ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         facts: [{ type: 'fact', text: 'Existing fact.' }],
-        rows: 15,
+        rows: 16,
         columns: 80
       }),
       [
@@ -494,7 +498,8 @@ test(':help lists commands without saving a fact', async () => {
         ':relate <item> <context>',
         ':type <type> <item>',
         ':due <value> <item>',
-        ':debug-keys'
+        ':debug-keys',
+        ':restart'
       ]
     );
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
@@ -554,6 +559,104 @@ test(':debug-keys toggles key debugging', async () => {
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
+});
+
+test(':restart returns a restart action with restorable state', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    state.currentContextDirectory = path.join(rootDirectory, 'projects', 'gatherbrain');
+    state.gazeContextDirectory = path.join(rootDirectory, 'people', 'Alex');
+    state.currentLensId = 'today';
+    state.pageStartIndex = 5;
+    state.lensBackStack = [{
+      currentLensId: 'all',
+      currentContextDirectory: rootDirectory
+    }];
+    state.lensForwardStack = [{
+      currentLensId: 'todo',
+      currentContextDirectory: path.join(rootDirectory, 'people')
+    }];
+
+    assert.deepEqual(await handleEntry(':restart', state), {
+      action: 'restart',
+      snapshot: {
+        currentContextId: 'projects/gatherbrain',
+        gazeContextId: 'people/Alex',
+        currentLensId: 'today',
+        lensBackStack: [{
+          currentLensId: 'all',
+          currentContextId: ''
+        }],
+        lensForwardStack: [{
+          currentLensId: 'todo',
+          currentContextId: 'people'
+        }],
+        pageStartIndex: 5
+      }
+    });
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('restores restart state for existing contexts and lenses', () => {
+  const rootDirectory = path.join(tmpdir(), 'gatherbrain-app', 'facts');
+  const state = createPromptState({
+    rootDirectory,
+    lensRegistry: createLensRegistry([
+      { id: 'all', presenter: 'context_facts' },
+      { id: 'today', presenter: 'today_facts' },
+      { id: 'todo', presenter: 'context_facts' }
+    ]),
+    model: {
+      rootPath: rootDirectory,
+      contexts: new Map([
+        ['', { id: '', path: rootDirectory }],
+        ['projects/gatherbrain', { id: 'projects/gatherbrain', path: path.join(rootDirectory, 'projects', 'gatherbrain') }],
+        ['people/Alex', { id: 'people/Alex', path: path.join(rootDirectory, 'people', 'Alex') }],
+        ['people', { id: 'people', path: path.join(rootDirectory, 'people') }]
+      ]),
+      facts: new Map()
+    }
+  });
+  const snapshot = {
+    currentContextId: 'projects/gatherbrain',
+    gazeContextId: 'people/Alex',
+    currentLensId: 'today',
+    lensBackStack: [{ currentLensId: 'all', currentContextId: '' }],
+    lensForwardStack: [{ currentLensId: 'todo', currentContextId: 'people' }],
+    pageStartIndex: 7
+  };
+
+  restorePromptState(state, snapshot);
+
+  assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'projects', 'gatherbrain'));
+  assert.equal(state.gazeContextDirectory, path.join(rootDirectory, 'people', 'Alex'));
+  assert.equal(state.currentLensId, 'today');
+  assert.equal(state.pageStartIndex, 7);
+  assert.deepEqual(state.lensBackStack, [{
+    currentLensId: 'all',
+    currentContextDirectory: rootDirectory
+  }]);
+  assert.deepEqual(state.lensForwardStack, [{
+    currentLensId: 'todo',
+    currentContextDirectory: path.join(rootDirectory, 'people')
+  }]);
+});
+
+test('restart env serializes and parses restart snapshots', () => {
+  const rootDirectory = path.join(tmpdir(), 'gatherbrain-app', 'facts');
+  const state = createPromptState({ rootDirectory });
+  state.currentLensId = 'today';
+  const env = restartEnvForState(state, { EXISTING: '1' });
+  const snapshot = restartSnapshotFromEnv(env);
+
+  assert.equal(env.EXISTING, '1');
+  assert.deepEqual(snapshot, restartSnapshotForState(state));
+  assert.equal(restartSnapshotFromEnv({ GATHERBRAIN_RESTORE: '{bad json' }), null);
 });
 
 test('formats key debug lines', () => {
@@ -2102,7 +2205,8 @@ test('completes colon command names', async () => {
       ':relate ',
       ':type ',
       ':due ',
-      ':debug-keys '
+      ':debug-keys ',
+      ':restart '
     ], ':']
   );
 });

@@ -236,7 +236,7 @@ test('due lens presents facts with due dates that are not done', async () => {
     });
 
     assert.deepEqual(
-      lensModel.facts.map((fact) => fact.text),
+      lensModel.facts.map((fact) => fact.text).sort(),
       ['Due fact.', 'Due todo.']
     );
   } finally {

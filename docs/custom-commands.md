@@ -52,6 +52,7 @@ Supported actions:
 - `set_fact_type`: change a fact type. Requires `type` and `item`.
 - `set_fact_property`: change a front matter property on a fact. Requires `item` and `value`, plus either command-level `property` or a `property` argument.
 - `debug_keys`: toggle key debugging. Takes no arguments.
+- `restart_app`: restart the app process and restore stable UI state. Takes no arguments.
 
 ## Argument Types
 
