@@ -12,7 +12,7 @@ When facts do not fit on one screen, complete items are paged with an ellipsis. 
 
 Commands use colon-prefixed names. Press `Tab` after `:` to complete command names. If a command is missing an argument, the prompt asks for the next argument.
 
-Use `:switch my-cool-project` to switch to an existing context. Subsequent facts are written to that directory.
+Use `:switch my-cool-project` to switch to a context. If the context does not exist, the app asks whether to create it. Subsequent facts are written to that directory.
 
 Use `:gaze people/alex` to gaze at another context while staying in the current context. New facts are still written to the current context and get `relatedContexts` pointing at the gaze context. Use `:clear-gaze` to clear gaze.
 

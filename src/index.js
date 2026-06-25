@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { emitKeypressEvents } from 'node:readline';
@@ -67,6 +68,7 @@ export function createPromptState(options = {}) {
     model: options.model ?? null,
     pageStartIndex: 0,
     pendingCommand: null,
+    pendingContextCreation: null,
     temporaryBodyLines: null,
     lensBackStack: [],
     lensForwardStack: [],
@@ -794,6 +796,12 @@ export function renderTui(options = {}) {
 }
 
 export async function completeEntry(line, state) {
+  if (state.pendingContextCreation) {
+    const matches = ['yes', 'no'].filter((value) => value.startsWith(line.toLowerCase()));
+
+    return [matches, line];
+  }
+
   if (state.pendingCommand?.argument?.type === 'fact') {
     const matches = await matchingFactCompletions(line, state);
 
@@ -1084,7 +1092,94 @@ async function resolveExistingContextDirectory(contextReference, state) {
   return contextDirectory;
 }
 
+function hiddenContextPathPart(contextDirectory, state) {
+  return path
+    .relative(state.rootDirectory, contextDirectory)
+    .split(path.sep)
+    .some((pathPart) => pathPart.startsWith('.'));
+}
+
+function contextCreationPrompt(contextReference) {
+  return `context ${contextReference} does not exist. Create it? [y/N]`;
+}
+
+function parseConfirmation(value) {
+  const normalizedValue = value.trim().toLowerCase();
+
+  if (['y', 'yes'].includes(normalizedValue)) {
+    return true;
+  }
+
+  if (['', 'n', 'no'].includes(normalizedValue)) {
+    return false;
+  }
+
+  return null;
+}
+
+async function switchToContextDirectory(contextDirectory, state) {
+  changeLens(state, {
+    ...currentLens(state),
+    currentContextDirectory: contextDirectory
+  });
+  state.gazeContextDirectory = null;
+
+  return `context ${path.relative(state.rootDirectory, state.currentContextDirectory)}`;
+}
+
+async function handlePendingContextCreation(entry, state) {
+  const pendingContextCreation = state.pendingContextCreation;
+  state.pendingContextCreation = null;
+
+  const confirmation = parseConfirmation(entry);
+
+  if (confirmation === null) {
+    state.pendingContextCreation = pendingContextCreation;
+    state.statusMessage = 'please answer yes or no';
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message: state.statusMessage
+    };
+  }
+
+  if (!confirmation) {
+    state.statusMessage = `context ${pendingContextCreation.context} not created`;
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message: state.statusMessage
+    };
+  }
+
+  try {
+    await mkdir(pendingContextCreation.directory, { recursive: true });
+    await refreshContext(await ensureModel(state), pendingContextCreation.directory);
+  } catch (error) {
+    state.statusMessage = error.message;
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message: state.statusMessage
+    };
+  }
+
+  const message = await switchToContextDirectory(pendingContextCreation.directory, state);
+
+  return {
+    action: 'continue',
+    message
+  };
+}
+
 export async function handleEntry(entry, state) {
+  if (state.pendingContextCreation) {
+    return handlePendingContextCreation(entry, state);
+  }
+
   const parsedEntry = state.pendingCommand
     ? continuePromptedCommand(state.pendingCommand, entry)
     : parseEntry(entry, state.commandRegistry);
@@ -1153,7 +1248,37 @@ export async function handleEntry(entry, state) {
     try {
       nextContextDirectory = await resolveExistingContextDirectory(parsedEntry.context, state);
     } catch (error) {
-      state.statusMessage = error.message;
+      let contextDirectory;
+
+      try {
+        contextDirectory = resolveContextDirectory(parsedEntry.context, {
+          rootDirectory: state.rootDirectory
+        });
+      } catch (contextError) {
+        state.statusMessage = contextError.message;
+        clearTemporaryBody(state);
+
+        return {
+          action: 'continue',
+          message: state.statusMessage
+        };
+      }
+
+      if (hiddenContextPathPart(contextDirectory, state)) {
+        state.statusMessage = 'context cannot contain hidden folders';
+        clearTemporaryBody(state);
+
+        return {
+          action: 'continue',
+          message: state.statusMessage
+        };
+      }
+
+      state.pendingContextCreation = {
+        context: parsedEntry.context,
+        directory: contextDirectory
+      };
+      state.statusMessage = contextCreationPrompt(parsedEntry.context);
       clearTemporaryBody(state);
 
       return {
@@ -1162,13 +1287,7 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    changeLens(state, {
-      ...currentLens(state),
-      currentContextDirectory: nextContextDirectory
-    });
-    state.gazeContextDirectory = null;
-
-    const message = `context ${path.relative(state.rootDirectory, state.currentContextDirectory)}`;
+    const message = await switchToContextDirectory(nextContextDirectory, state);
 
     return {
       action: 'continue',

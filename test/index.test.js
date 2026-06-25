@@ -73,6 +73,101 @@ test(':switch switches context without creating a fact', async () => {
   }
 });
 
+test(':switch asks to create a missing context and switches after yes', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(await handleEntry(':switch projects/new-app', state), {
+      action: 'continue',
+      message: 'context projects/new-app does not exist. Create it? [y/N]'
+    });
+    assert.deepEqual(state.pendingContextCreation, {
+      context: 'projects/new-app',
+      directory: path.join(rootDirectory, 'projects', 'new-app')
+    });
+
+    assert.deepEqual(await handleEntry('yes', state), {
+      action: 'continue',
+      message: 'context projects/new-app'
+    });
+    assert.equal(state.pendingContextCreation, null);
+    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'projects', 'new-app'));
+    assert.deepEqual(await readdir(path.join(rootDirectory, 'projects')), ['new-app']);
+    assert.equal(state.model.contexts.has('projects/new-app'), true);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':switch does not create a missing context after no', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    await handleEntry(':switch projects/new-app', state);
+
+    assert.deepEqual(await handleEntry('no', state), {
+      action: 'continue',
+      message: 'context projects/new-app not created'
+    });
+    assert.equal(state.pendingContextCreation, null);
+    assert.equal(state.currentContextDirectory, rootDirectory);
+    await assert.rejects(readdir(path.join(rootDirectory, 'projects')), { code: 'ENOENT' });
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':switch keeps asking after an invalid context creation answer', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    await handleEntry(':switch projects/new-app', state);
+
+    assert.deepEqual(await handleEntry('maybe', state), {
+      action: 'continue',
+      message: 'please answer yes or no'
+    });
+    assert.deepEqual(state.pendingContextCreation, {
+      context: 'projects/new-app',
+      directory: path.join(rootDirectory, 'projects', 'new-app')
+    });
+    assert.deepEqual(await handleEntry('y', state), {
+      action: 'continue',
+      message: 'context projects/new-app'
+    });
+    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'projects', 'new-app'));
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':switch refuses to create hidden contexts', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(await handleEntry(':switch .hidden/context', state), {
+      action: 'continue',
+      message: 'context cannot contain hidden folders'
+    });
+    assert.equal(state.pendingContextCreation, null);
+    await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('saves typed text as a titled fact without deriving relationships from gaze or mentions', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
