@@ -333,6 +333,10 @@ test(':paste writes clipboard contents and a fact pointing to the file', async (
 
     assert.deepEqual(await handleEntry(':paste', state), {
       action: 'continue',
+      message: 'Name pasted item? [Pasted 2026-06-25T14-03-04.005-04-00]'
+    });
+    assert.deepEqual(await handleEntry('', state), {
+      action: 'continue',
       message: `pasted ${path.join('facts', 'projects', 'gatherbrain', 'pasted-2026-06-25T14-03-04.005-04-00.txt')} and ${path.join('facts', 'projects', 'gatherbrain', 'pasted-2026-06-25t14-03-04-005-04-00.md')}`
     });
     assert.equal(
@@ -376,17 +380,17 @@ test(':paste writes clipboard image contents and embeds the image fact', async (
     await mkdir(currentContext, { recursive: true });
     await handleEntry(':switch projects/gatherbrain', state);
 
-    assert.deepEqual(await handleEntry(':paste', state), {
+    assert.deepEqual(await handleEntry(':paste Screenshot', state), {
       action: 'continue',
-      message: `pasted ${path.join('facts', 'projects', 'gatherbrain', 'pasted-2026-06-25T14-03-04.005-04-00.png')} and ${path.join('facts', 'projects', 'gatherbrain', 'pasted-2026-06-25t14-03-04-005-04-00.md')}`
+      message: `pasted ${path.join('facts', 'projects', 'gatherbrain', 'pasted-2026-06-25T14-03-04.005-04-00.png')} and ${path.join('facts', 'projects', 'gatherbrain', 'screenshot.md')}`
     });
     assert.deepEqual(
       await readFile(path.join(currentContext, 'pasted-2026-06-25T14-03-04.005-04-00.png')),
       pngBytes
     );
     assert.equal(
-      await readFile(path.join(currentContext, 'pasted-2026-06-25t14-03-04-005-04-00.md'), 'utf8'),
-      '---\ntitle: "Pasted 2026-06-25T14-03-04.005-04-00"\ntype: fact\nfile: "pasted-2026-06-25T14-03-04.005-04-00.png"\n---\n\n![](pasted-2026-06-25T14-03-04.005-04-00.png)\n'
+      await readFile(path.join(currentContext, 'screenshot.md'), 'utf8'),
+      '---\ntitle: Screenshot\ntype: fact\nfile: "pasted-2026-06-25T14-03-04.005-04-00.png"\n---\n\n![](pasted-2026-06-25T14-03-04.005-04-00.png)\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -657,7 +661,7 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :paste | :debug-keys | :restart'
+      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :paste <title> | :debug-keys | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
@@ -681,7 +685,7 @@ test(':help lists commands without saving a fact', async () => {
         ':relate <item> <context>',
         ':type <type> <item>',
         ':due <value> <item>',
-        ':paste',
+        ':paste <title>',
         ':debug-keys',
         ':restart'
       ]

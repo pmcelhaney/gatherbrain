@@ -140,7 +140,14 @@
     {
       "name": "paste",
       "action": "paste_clipboard",
-      "arguments": []
+      "arguments": [
+        {
+          "name": "title",
+          "type": "text",
+          "consume": "rest",
+          "prompt": "Name pasted item?"
+        }
+      ]
     },
     {
       "name": "debug-keys",

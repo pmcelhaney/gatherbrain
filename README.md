@@ -36,7 +36,7 @@ Use `:type task 3` to change the third listed fact's front matter type to `task`
 
 Use `:due today 3` to set the third listed fact's `due` front matter property to a normalized date such as `2026-06-24`.
 
-Use `:paste` to save the current clipboard contents to a `.txt` file in the current context and create a `Pasted <timestamp>` fact whose `file` front matter property points to that file. On macOS, image clipboard contents such as screenshots are saved as `.png` files and embedded in the companion Markdown fact.
+Use `:paste` to name and save the current clipboard contents to a `.txt` file in the current context. Press Enter to accept the default `Pasted <timestamp>` name, or pass a name inline with `:paste My pasted item`. The companion fact's `file` front matter property points to the pasted file. On macOS, image clipboard contents such as screenshots are saved as `.png` files and embedded in the companion Markdown fact.
 
 Use `:debug-keys` to toggle key debugging output.
 

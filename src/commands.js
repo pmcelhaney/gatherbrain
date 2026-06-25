@@ -308,11 +308,16 @@ function readArgumentValue(argument, remainingArgs, options = {}) {
 }
 
 function promptForArgument(commandDefinition, values, argument) {
+  const defaultValue = argument.defaultValue ?? argument.default;
+
   return {
     type: 'prompt_command_argument',
     commandName: commandDefinition.name,
     values: { ...values },
-    argument: { ...argument },
+    argument: {
+      ...argument,
+      ...(defaultValue === undefined ? {} : { defaultValue })
+    },
     prompt: argument.prompt ?? `${argument.name}?`
   };
 }
@@ -383,12 +388,15 @@ export function continuePromptedCommand(pendingCommand, value) {
   }
 
   const trimmedValue = value.trim();
+  const valueToParse = trimmedValue.length === 0 && argument.defaultValue !== undefined
+    ? String(argument.defaultValue)
+    : trimmedValue;
 
-  if (trimmedValue.length === 0) {
+  if (valueToParse.length === 0) {
     return promptForArgument(commandDefinition, pendingCommand.values ?? {}, argument);
   }
 
-  const parsedValue = parseArgumentValue(argument, trimmedValue, {
+  const parsedValue = parseArgumentValue(argument, valueToParse, {
     dateToday: registry?.dateToday,
     enumRegistry: registry?.enumRegistry
   });
@@ -435,7 +443,11 @@ function buildCommandAction(commandDefinition, values) {
   }
 
   if (commandDefinition.action === 'paste_clipboard') {
-    return { type: 'paste_clipboard' };
+    return {
+      type: 'paste_clipboard',
+      title: values.title,
+      ...(values.timestamp ? { timestamp: values.timestamp } : {})
+    };
   }
 
   if (commandDefinition.action === 'open_reference') {

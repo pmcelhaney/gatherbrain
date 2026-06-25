@@ -52,7 +52,7 @@ Supported actions:
 - `relate_fact`: add a related context to a fact. Requires `item` and `context`.
 - `set_fact_type`: change a fact type. Requires `type` and `item`.
 - `set_fact_property`: change a front matter property on a fact. Requires `item` and `value`, plus either command-level `property` or a `property` argument.
-- `paste_clipboard`: save clipboard contents to a file and create a fact pointing to it. Takes no arguments.
+- `paste_clipboard`: save clipboard contents to a file and create a fact pointing to it. Requires `title`; the built-in command supplies a timestamped default when it prompts.
 - `debug_keys`: toggle key debugging. Takes no arguments.
 - `restart_app`: restart the app process and restore stable UI state. Takes no arguments.
 

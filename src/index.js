@@ -1126,6 +1126,37 @@ function promptQuestionForState(state = {}) {
   return state.statusMessage || state.pendingCommand?.argument?.prompt || '';
 }
 
+function promptLabelWithDefault(prompt, defaultValue) {
+  return defaultValue === undefined
+    ? prompt
+    : `${prompt} [${defaultValue}]`;
+}
+
+function pendingCommandForParsedEntry(parsedEntry, state) {
+  const values = { ...parsedEntry.values };
+  const argument = { ...parsedEntry.argument };
+  let prompt = parsedEntry.prompt;
+
+  if (parsedEntry.commandName === 'paste' && argument.name === 'title') {
+    const timestamp = timestampForFilename(state.now());
+    const defaultValue = `Pasted ${timestamp}`;
+
+    values.timestamp = timestamp;
+    argument.defaultValue = defaultValue;
+    prompt = promptLabelWithDefault(prompt, defaultValue);
+  }
+
+  return {
+    pendingCommand: {
+      commandName: parsedEntry.commandName,
+      ...(state.commandRegistry ? { registry: state.commandRegistry } : {}),
+      values,
+      argument
+    },
+    prompt
+  };
+}
+
 export function buildTuiLines(options = {}) {
   const {
     state,
@@ -1800,18 +1831,15 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'prompt_command_argument') {
-    state.pendingCommand = {
-      commandName: parsedEntry.commandName,
-      ...(state.commandRegistry ? { registry: state.commandRegistry } : {}),
-      values: parsedEntry.values,
-      argument: parsedEntry.argument
-    };
-    state.statusMessage = parsedEntry.prompt;
+    const promptState = pendingCommandForParsedEntry(parsedEntry, state);
+
+    state.pendingCommand = promptState.pendingCommand;
+    state.statusMessage = promptState.prompt;
     clearTemporaryBody(state);
 
     return {
       action: 'continue',
-      message: parsedEntry.prompt
+      message: promptState.prompt
     };
   }
 
@@ -1837,7 +1865,8 @@ export async function handleEntry(entry, state) {
     let reservedImagePath = null;
 
     try {
-      const timestamp = timestampForFilename(state.now());
+      const timestamp = parsedEntry.timestamp ?? timestampForFilename(state.now());
+      const factTitle = parsedEntry.title ?? `Pasted ${timestamp}`;
       const pastedFilenameBase = `pasted-${timestamp}`;
       reservedImagePath = await reserveUniqueFilePath(state.currentContextDirectory, pastedFilenameBase, '.png');
       const clipboardItem = normalizeClipboardItem(await state.readClipboard({ imagePath: reservedImagePath }));
@@ -1856,7 +1885,7 @@ export async function handleEntry(entry, state) {
       }
 
       const pastedFilename = path.basename(pastedFilePath);
-      const factPath = await saveFact(`Pasted ${timestamp}`, {
+      const factPath = await saveFact(factTitle, {
         body: clipboardItem?.type === 'file' ? `![](${pastedFilename})` : '',
         properties: {
           file: pastedFilename

@@ -29,13 +29,13 @@ test('lists built-in command help', () => {
     ':relate <item> <context>',
     ':type <type> <item>',
     ':due <value> <item>',
-    ':paste',
+    ':paste <title>',
     ':debug-keys',
     ':restart'
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :paste | :debug-keys | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :paste <title> | :debug-keys | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -68,6 +68,9 @@ test('lists built-in command help', () => {
   assert.deepEqual(commandArguments('new'), [
     { name: 'title', type: 'text', consume: 'rest', prompt: 'Title?' }
   ]);
+  assert.deepEqual(commandArguments('paste'), [
+    { name: 'title', type: 'text', consume: 'rest', prompt: 'Name pasted item?' }
+  ]);
   assert.equal(commandArguments('missing'), null);
 });
 
@@ -82,7 +85,17 @@ test('parses control entries', () => {
   assert.deepEqual(parseEntry(':help'), { type: 'help' });
   assert.deepEqual(parseEntry(':debug-keys'), { type: 'debug_keys' });
   assert.deepEqual(parseEntry(':restart'), { type: 'restart_app' });
-  assert.deepEqual(parseEntry(':paste'), { type: 'paste_clipboard' });
+  assert.deepEqual(parseEntry(':paste'), {
+    type: 'prompt_command_argument',
+    commandName: 'paste',
+    values: {},
+    argument: { name: 'title', type: 'text', consume: 'rest', prompt: 'Name pasted item?' },
+    prompt: 'Name pasted item?'
+  });
+  assert.deepEqual(parseEntry(':paste Project notes'), {
+    type: 'paste_clipboard',
+    title: 'Project notes'
+  });
   assert.deepEqual(parseEntry(':open'), { type: 'open_reference' });
 });
 
@@ -255,6 +268,18 @@ test('continues prompted commands', () => {
   assert.deepEqual(continuePromptedCommand(parseEntry(':edit'), 'nope'), {
     itemTitle: 'nope',
     type: 'edit_fact'
+  });
+  assert.deepEqual(continuePromptedCommand({
+    ...parseEntry(':paste'),
+    argument: {
+      ...parseEntry(':paste').argument,
+      defaultValue: 'Pasted 2026-06-25T14-03-04.005-04-00'
+    },
+    values: { timestamp: '2026-06-25T14-03-04.005-04-00' }
+  }, ''), {
+    type: 'paste_clipboard',
+    title: 'Pasted 2026-06-25T14-03-04.005-04-00',
+    timestamp: '2026-06-25T14-03-04.005-04-00'
   });
 });
 
