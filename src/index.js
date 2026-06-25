@@ -29,6 +29,7 @@ import {
   deleteFact,
   resolveContextDirectory,
   saveFact,
+  slugifyTitle,
   timestampForFilename,
   updateFactProperty,
   updateFactType
@@ -1867,7 +1868,7 @@ export async function handleEntry(entry, state) {
     try {
       const timestamp = parsedEntry.timestamp ?? timestampForFilename(state.now());
       const factTitle = parsedEntry.title ?? `Pasted ${timestamp}`;
-      const pastedFilenameBase = `pasted-${timestamp}`;
+      const pastedFilenameBase = slugifyTitle(factTitle);
       reservedImagePath = await reserveUniqueFilePath(state.currentContextDirectory, pastedFilenameBase, '.png');
       const clipboardItem = normalizeClipboardItem(await state.readClipboard({ imagePath: reservedImagePath }));
       let pastedFilePath;

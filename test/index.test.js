@@ -337,19 +337,55 @@ test(':paste writes clipboard contents and a fact pointing to the file', async (
     });
     assert.deepEqual(await handleEntry('', state), {
       action: 'continue',
-      message: `pasted ${path.join('facts', 'projects', 'gatherbrain', 'pasted-2026-06-25T14-03-04.005-04-00.txt')} and ${path.join('facts', 'projects', 'gatherbrain', 'pasted-2026-06-25t14-03-04-005-04-00.md')}`
+      message: `pasted ${path.join('facts', 'projects', 'gatherbrain', 'pasted-2026-06-25t14-03-04-005-04-00.txt')} and ${path.join('facts', 'projects', 'gatherbrain', 'pasted-2026-06-25t14-03-04-005-04-00.md')}`
     });
     assert.equal(
-      await readFile(path.join(currentContext, 'pasted-2026-06-25T14-03-04.005-04-00.txt'), 'utf8'),
+      await readFile(path.join(currentContext, 'pasted-2026-06-25t14-03-04-005-04-00.txt'), 'utf8'),
       'clipboard contents\nsecond line'
     );
     assert.equal(
       await readFile(path.join(currentContext, 'pasted-2026-06-25t14-03-04-005-04-00.md'), 'utf8'),
-      '---\ntitle: "Pasted 2026-06-25T14-03-04.005-04-00"\ntype: fact\nfile: "pasted-2026-06-25T14-03-04.005-04-00.txt"\n---\n\n\n'
+      '---\ntitle: "Pasted 2026-06-25T14-03-04.005-04-00"\ntype: fact\nfile: "pasted-2026-06-25t14-03-04-005-04-00.txt"\n---\n\n\n'
     );
     assert.equal(
       state.model.facts.get(path.join('projects', 'gatherbrain', 'pasted-2026-06-25t14-03-04-005-04-00.md')).properties.file,
-      'pasted-2026-06-25T14-03-04.005-04-00.txt'
+      'pasted-2026-06-25t14-03-04-005-04-00.txt'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':paste uses a typed prompted name for the companion fact', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const currentContext = path.join(rootDirectory, 'projects', 'gatherbrain');
+
+  try {
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      now: () => new Date(2026, 5, 25, 14, 3, 4, 5),
+      readClipboard: async () => 'clipboard contents'
+    });
+    await mkdir(currentContext, { recursive: true });
+    await handleEntry(':switch projects/gatherbrain', state);
+
+    assert.deepEqual(await handleEntry(':paste', state), {
+      action: 'continue',
+      message: 'Name pasted item? [Pasted 2026-06-25T14-03-04.005-04-00]'
+    });
+    assert.deepEqual(await handleEntry('Meeting notes', state), {
+      action: 'continue',
+      message: `pasted ${path.join('facts', 'projects', 'gatherbrain', 'meeting-notes.txt')} and ${path.join('facts', 'projects', 'gatherbrain', 'meeting-notes.md')}`
+    });
+    assert.equal(
+      await readFile(path.join(currentContext, 'meeting-notes.txt'), 'utf8'),
+      'clipboard contents'
+    );
+    assert.equal(
+      await readFile(path.join(currentContext, 'meeting-notes.md'), 'utf8'),
+      '---\ntitle: "Meeting notes"\ntype: fact\nfile: "meeting-notes.txt"\n---\n\n\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -382,15 +418,15 @@ test(':paste writes clipboard image contents and embeds the image fact', async (
 
     assert.deepEqual(await handleEntry(':paste Screenshot', state), {
       action: 'continue',
-      message: `pasted ${path.join('facts', 'projects', 'gatherbrain', 'pasted-2026-06-25T14-03-04.005-04-00.png')} and ${path.join('facts', 'projects', 'gatherbrain', 'screenshot.md')}`
+      message: `pasted ${path.join('facts', 'projects', 'gatherbrain', 'screenshot.png')} and ${path.join('facts', 'projects', 'gatherbrain', 'screenshot.md')}`
     });
     assert.deepEqual(
-      await readFile(path.join(currentContext, 'pasted-2026-06-25T14-03-04.005-04-00.png')),
+      await readFile(path.join(currentContext, 'screenshot.png')),
       pngBytes
     );
     assert.equal(
       await readFile(path.join(currentContext, 'screenshot.md'), 'utf8'),
-      '---\ntitle: Screenshot\ntype: fact\nfile: "pasted-2026-06-25T14-03-04.005-04-00.png"\n---\n\n![](pasted-2026-06-25T14-03-04.005-04-00.png)\n'
+      '---\ntitle: Screenshot\ntype: fact\nfile: "screenshot.png"\n---\n\n![](screenshot.png)\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
