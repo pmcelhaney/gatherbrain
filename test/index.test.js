@@ -271,7 +271,7 @@ test(':switch refuses to create hidden contexts', async () => {
   }
 });
 
-test('saves typed text as a titled fact without deriving relationships from gaze or mentions', async () => {
+test('saves typed text as a titled fact without deriving relationships from peek or mentions', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -551,7 +551,7 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys | :restart'
+      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
@@ -565,8 +565,8 @@ test(':help lists commands without saving a fact', async () => {
         '--------------------------------------------------------------------------------',
         'Commands:',
         ':switch <context>',
-        ':gaze <context>',
-        ':clear-gaze',
+        ':peek <context>',
+        ':clear-peek',
         ':lens <lens>',
         ':new <title>',
         ':edit <item>',
@@ -644,8 +644,9 @@ test(':restart returns a restart action with restorable state', async () => {
   try {
     const state = createPromptState({ appDirectory, rootDirectory });
     state.currentContextDirectory = path.join(rootDirectory, 'projects', 'gatherbrain');
-    state.gazeContextDirectory = path.join(rootDirectory, 'people', 'Alex');
+    state.peekContextDirectory = path.join(rootDirectory, 'people', 'Alex');
     state.currentLensId = 'today';
+    state.peekLensId = 'todo';
     state.pageStartIndex = 5;
     state.lensBackStack = [{
       currentLensId: 'all',
@@ -660,7 +661,8 @@ test(':restart returns a restart action with restorable state', async () => {
       action: 'restart',
       snapshot: {
         currentContextId: 'projects/gatherbrain',
-        gazeContextId: 'people/Alex',
+        peekContextId: 'people/Alex',
+        peekLensId: 'todo',
         currentLensId: 'today',
         lensBackStack: [{
           currentLensId: 'all',
@@ -700,7 +702,8 @@ test('restores restart state for existing contexts and lenses', () => {
   });
   const snapshot = {
     currentContextId: 'projects/gatherbrain',
-    gazeContextId: 'people/Alex',
+    peekContextId: 'people/Alex',
+    peekLensId: 'todo',
     currentLensId: 'today',
     lensBackStack: [{ currentLensId: 'all', currentContextId: '' }],
     lensForwardStack: [{ currentLensId: 'todo', currentContextId: 'people' }],
@@ -710,7 +713,8 @@ test('restores restart state for existing contexts and lenses', () => {
   restorePromptState(state, snapshot);
 
   assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'projects', 'gatherbrain'));
-  assert.equal(state.gazeContextDirectory, path.join(rootDirectory, 'people', 'Alex'));
+  assert.equal(state.peekContextDirectory, path.join(rootDirectory, 'people', 'Alex'));
+  assert.equal(state.peekLensId, 'todo');
   assert.equal(state.currentLensId, 'today');
   assert.equal(state.pageStartIndex, 7);
   assert.deepEqual(state.lensBackStack, [{
@@ -1265,6 +1269,38 @@ test(':lens switches lenses', async () => {
   }
 });
 
+test(':lens switches the peek lens without changing the current context lens', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(path.join(rootDirectory, 'people', 'Alex'), { recursive: true });
+
+    assert.deepEqual(await handleEntry(':lens todo', state), {
+      action: 'continue',
+      message: 'lens todo'
+    });
+    assert.equal(state.currentLensId, 'todo');
+    assert.equal(state.peekLensId, 'all');
+
+    assert.deepEqual(await handleEntry(':peek people/Alex', state), {
+      action: 'continue',
+      message: 'peek people/Alex'
+    });
+    assert.deepEqual(await handleEntry(':lens today', state), {
+      action: 'continue',
+      message: 'lens today'
+    });
+    assert.equal(state.currentLensId, 'todo');
+    assert.equal(state.peekLensId, 'today');
+    assert.equal(state.currentContextDirectory, rootDirectory);
+    assert.equal(state.peekContextDirectory, path.join(rootDirectory, 'people', 'Alex'));
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('lens history navigates context and lens changes', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -1327,38 +1363,38 @@ test(':lens reports unknown lenses', async () => {
   }
 });
 
-test(':gaze changes gaze without changing the current context', async () => {
+test(':peek changes peek without changing the current context', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const currentContext = path.join(rootDirectory, 'projects', 'gatherbrain');
-  const gazeContext = path.join(rootDirectory, 'people', 'Alex');
+  const peekContext = path.join(rootDirectory, 'people', 'Alex');
 
   try {
     const state = createPromptState({ appDirectory, rootDirectory });
     await mkdir(currentContext, { recursive: true });
-    await mkdir(gazeContext, { recursive: true });
+    await mkdir(peekContext, { recursive: true });
     await writeFile(
       path.join(currentContext, 'current.md'),
       '---\ntype: fact\n---\n\nCurrent context fact.\n'
     );
     await writeFile(
-      path.join(gazeContext, 'gaze.md'),
-      '---\ntype: fact\n---\n\nGaze context fact.\n'
+      path.join(peekContext, 'peek.md'),
+      '---\ntype: fact\n---\n\nPeek context fact.\n'
     );
 
     assert.deepEqual(await handleEntry(':switch projects/gatherbrain', state), {
       action: 'continue',
       message: 'context projects/gatherbrain'
     });
-    assert.deepEqual(await handleEntry(':gaze people/Alex', state), {
+    assert.deepEqual(await handleEntry(':peek people/Alex', state), {
       action: 'continue',
-      message: 'gaze people/Alex'
+      message: 'peek people/Alex'
     });
     assert.equal(state.currentContextDirectory, currentContext);
-    assert.equal(state.gazeContextDirectory, gazeContext);
+    assert.equal(state.peekContextDirectory, peekContext);
     assert.deepEqual(
       (await visibleFactsForState(state)).map((fact) => fact.text),
-      ['Gaze context fact.']
+      ['Peek context fact.']
     );
     const body = await visibleBodyForState(state);
 
@@ -1366,7 +1402,7 @@ test(':gaze changes gaze without changing the current context', async () => {
     assert.equal(body.template, 'facts');
     assert.deepEqual(
       body.facts.map((fact) => fact.text),
-      ['Gaze context fact.']
+      ['Peek context fact.']
     );
     assert.deepEqual(
       buildTuiLines({
@@ -1378,7 +1414,7 @@ test(':gaze changes gaze without changing the current context', async () => {
       [
         'projects/gatherbrain -> people/Alex',
         '--------------------------------------------------------------------------------',
-        ' 1. Gaze context fact.'
+        ' 1. Peek context fact.'
       ]
     );
   } finally {
@@ -1386,7 +1422,7 @@ test(':gaze changes gaze without changing the current context', async () => {
   }
 });
 
-test('saving while gazing creates in the current context and relates to gaze', async () => {
+test('saving while peeking creates in the current context and relates to peek', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const currentContext = path.join(rootDirectory, 'projects', 'gatherbrain');
@@ -1397,7 +1433,7 @@ test('saving while gazing creates in the current context and relates to gaze', a
     await mkdir(path.join(rootDirectory, 'people', 'Alex'), { recursive: true });
 
     await handleEntry(':switch projects/gatherbrain', state);
-    await handleEntry(':gaze people/Alex', state);
+    await handleEntry(':peek people/Alex', state);
     assert.deepEqual(await handleEntry('Follow up with Alex', state), {
       action: 'continue',
       message: `saved ${path.join('facts', 'projects', 'gatherbrain', 'follow-up-with-alex.md')}`
@@ -1430,7 +1466,7 @@ test('saving while gazing creates in the current context and relates to gaze', a
   }
 });
 
-test(':switch clears gaze', async () => {
+test(':switch clears peek', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -1439,17 +1475,17 @@ test(':switch clears gaze', async () => {
     await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'people', 'Alex'), { recursive: true });
 
-    await handleEntry(':gaze people/Alex', state);
-    assert.equal(state.gazeContextDirectory, path.join(rootDirectory, 'people', 'Alex'));
+    await handleEntry(':peek people/Alex', state);
+    assert.equal(state.peekContextDirectory, path.join(rootDirectory, 'people', 'Alex'));
     await handleEntry(':switch projects/gatherbrain', state);
     assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'projects', 'gatherbrain'));
-    assert.equal(state.gazeContextDirectory, null);
+    assert.equal(state.peekContextDirectory, null);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
 });
 
-test(':gaze clears gaze', async () => {
+test(':peek clears peek', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -1457,13 +1493,13 @@ test(':gaze clears gaze', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
     await mkdir(path.join(rootDirectory, 'people', 'Alex'), { recursive: true });
 
-    await handleEntry(':gaze people/Alex', state);
-    assert.equal(state.gazeContextDirectory, path.join(rootDirectory, 'people', 'Alex'));
-    assert.deepEqual(await handleEntry(':clear-gaze', state), {
+    await handleEntry(':peek people/Alex', state);
+    assert.equal(state.peekContextDirectory, path.join(rootDirectory, 'people', 'Alex'));
+    assert.deepEqual(await handleEntry(':clear-peek', state), {
       action: 'continue',
-      message: 'gaze cleared'
+      message: 'peek cleared'
     });
-    assert.equal(state.gazeContextDirectory, null);
+    assert.equal(state.peekContextDirectory, null);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -2111,6 +2147,23 @@ test('renders the prompt target on the bottom row', () => {
   );
 });
 
+test('renders peek mode with a screen background color', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const state = createPromptState({ appDirectory, rootDirectory });
+  state.peekContextDirectory = path.join(rootDirectory, 'people', 'Alex');
+
+  assert.equal(
+    renderTui({
+      state,
+      facts: [],
+      rows: 4,
+      columns: 40
+    }),
+    '\x1b[48;5;234m\x1b[2J\x1b[Hfacts -> people/Alex\n----------------------------------------\nNo facts yet.\x1b[4;1H\x1b[0m'
+  );
+});
+
 test('renders command mode prompt line with background color', () => {
   assert.equal(
     renderPromptLine(':switch', { includeAnsi: true }),
@@ -2228,7 +2281,7 @@ test('completes :switch context names', async () => {
   }
 });
 
-test('completes :gaze context names', async () => {
+test('completes :peek context names', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -2238,15 +2291,15 @@ test('completes :gaze context names', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(
-      await completeEntry(':gaze Al', state),
+      await completeEntry(':peek Al', state),
       [['people/Alex'], 'Al']
     );
     assert.deepEqual(
-      await completeEntry(':gaze al', state),
+      await completeEntry(':peek al', state),
       [['people/Alex'], 'al']
     );
     assert.deepEqual(
-      await completeEntry(':gaze ', state),
+      await completeEntry(':peek ', state),
       [['people', 'people/Alex', 'projects', 'projects/gatherbrain'], '']
     );
   } finally {
@@ -2328,8 +2381,8 @@ test('completes colon command names', async () => {
     await completeEntry(':', state),
     [[
       ':switch ',
-      ':gaze ',
-      ':clear-gaze ',
+      ':peek ',
+      ':clear-peek ',
       ':lens ',
       ':new ',
       ':edit ',
@@ -2357,7 +2410,7 @@ test('completes named command arguments', async () => {
       [['projects/gatherbrain'], 'gather']
     );
     assert.deepEqual(
-      await completeEntry(':gaze Steve', state),
+      await completeEntry(':peek Steve', state),
       [['people/Steve Ma'], 'Steve']
     );
     assert.deepEqual(

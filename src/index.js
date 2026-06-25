@@ -59,6 +59,7 @@ const ansiLinkColor = '\x1b[34m';
 const ansiRelationColor = '\x1b[35m';
 const ansiResetColor = '\x1b[39m';
 const ansiCommandPromptBackground = '\x1b[48;5;236m';
+const ansiPeekBackground = '\x1b[48;5;234m';
 const ansiResetAll = '\x1b[0m';
 const ansiCodePattern = /\x1b\[[0-9;]*m/gu;
 const restartRestoreEnv = 'GATHERBRAIN_RESTORE';
@@ -70,10 +71,11 @@ export function createPromptState(options = {}) {
     appDirectory,
     rootDirectory,
     currentContextDirectory: rootDirectory,
-    gazeContextDirectory: null,
+    peekContextDirectory: null,
     commandRegistry: options.commandRegistry ?? null,
     lensRegistry: options.lensRegistry ?? null,
     currentLensId: defaultLensId,
+    peekLensId: defaultLensId,
     model: options.model ?? null,
     pageStartIndex: 0,
     pendingCommand: null,
@@ -95,27 +97,29 @@ export function currentContextName(state) {
   return relativeContext.length > 0 ? relativeContext : path.basename(state.rootDirectory);
 }
 
-export function currentGazeName(state) {
-  if (!state.gazeContextDirectory) {
+export function currentPeekName(state) {
+  if (!state.peekContextDirectory) {
     return null;
   }
 
   const relativeContext = path.relative(
     state.rootDirectory,
-    state.gazeContextDirectory
+    state.peekContextDirectory
   );
 
   return relativeContext.length > 0 ? relativeContext : path.basename(state.rootDirectory);
 }
 
 function currentLensIdForState(state) {
-  return state.currentLensId ?? defaultLensId;
+  return state.peekContextDirectory
+    ? state.peekLensId ?? defaultLensId
+    : state.currentLensId ?? defaultLensId;
 }
 
 function currentLens(state) {
   return {
     currentLensId: currentLensIdForState(state),
-    currentContextDirectory: state.currentContextDirectory
+    currentContextDirectory: state.peekContextDirectory ?? state.currentContextDirectory
   };
 }
 
@@ -131,8 +135,13 @@ function lensesAreEqual(left, right) {
 }
 
 function applyLens(state, lens) {
-  state.currentLensId = lens.currentLensId;
-  state.currentContextDirectory = lens.currentContextDirectory;
+  if (state.peekContextDirectory) {
+    state.peekLensId = lens.currentLensId;
+    state.peekContextDirectory = lens.currentContextDirectory;
+  } else {
+    state.currentLensId = lens.currentLensId;
+    state.currentContextDirectory = lens.currentContextDirectory;
+  }
   state.pageStartIndex = 0;
   state.statusMessage = '';
   clearTemporaryBody(state);
@@ -218,10 +227,11 @@ function serializeLens(lens, state) {
 export function restartSnapshotForState(state) {
   return {
     currentContextId: contextIdForDirectory(state, state.currentContextDirectory),
-    gazeContextId: state.gazeContextDirectory
-      ? contextIdForDirectory(state, state.gazeContextDirectory)
+    peekContextId: state.peekContextDirectory
+      ? contextIdForDirectory(state, state.peekContextDirectory)
       : null,
-    currentLensId: currentLensIdForState(state),
+    peekLensId: state.peekLensId ?? defaultLensId,
+    currentLensId: state.currentLensId ?? defaultLensId,
     lensBackStack: state.lensBackStack.map((lens) => serializeLens(lens, state)),
     lensForwardStack: state.lensForwardStack.map((lens) => serializeLens(lens, state)),
     pageStartIndex: state.pageStartIndex ?? 0
@@ -270,10 +280,14 @@ export function restorePromptState(state, snapshot) {
     state.currentContextDirectory = currentContextDirectory;
   }
 
-  const gazeContextDirectory = typeof snapshot.gazeContextId === 'string'
-    ? restoredContextDirectory(state, snapshot.gazeContextId)
+  const snapshotPeekContextId = typeof snapshot.peekContextId === 'string'
+    ? snapshot.peekContextId
+    : snapshot.gazeContextId;
+  const peekContextDirectory = typeof snapshotPeekContextId === 'string'
+    ? restoredContextDirectory(state, snapshotPeekContextId)
     : null;
-  state.gazeContextDirectory = gazeContextDirectory;
+  state.peekContextDirectory = peekContextDirectory;
+  state.peekLensId = restoredLensId(state, snapshot.peekLensId);
   state.currentLensId = restoredLensId(state, snapshot.currentLensId);
   state.lensBackStack = restoreLensStack(snapshot.lensBackStack, state);
   state.lensForwardStack = restoreLensStack(snapshot.lensForwardStack, state);
@@ -419,7 +433,7 @@ function contextIdForDirectory(state, contextDirectory) {
 }
 
 function lensContextDirectoryForState(state) {
-  return state.gazeContextDirectory ?? state.currentContextDirectory;
+  return state.peekContextDirectory ?? state.currentContextDirectory;
 }
 
 export function filterFactsForLensId(facts, lens = defaultLensId) {
@@ -899,11 +913,11 @@ export function buildTuiLines(options = {}) {
   const promptQuestion = promptQuestionForState(state);
   const factRows = Math.max(visibleRows - 2, 0);
   const lens = currentLensIdForState(state);
-  const gaze = currentGazeName(state);
+  const peek = currentPeekName(state);
   const lensText = lens === defaultLensId ? '' : ` | ${lens}`;
-  const gazeText = gaze ? ` -> ${gaze}` : '';
+  const peekText = peek ? ` -> ${peek}` : '';
   const status = state.statusMessage && !promptQuestion ? ` | ${state.statusMessage}` : '';
-  const header = fitLine(`${currentContextName(state)}${gazeText}${lensText}${status}`, columns);
+  const header = fitLine(`${currentContextName(state)}${peekText}${lensText}${status}`, columns);
   const separator = '-'.repeat(Math.max(columns, 0));
   const bodyFacts = body ? factsForBody(body) : facts;
   const { lines: bodyLines } = state.temporaryBodyLines
@@ -939,7 +953,10 @@ export function renderTui(options = {}) {
     return `${screen}\n`;
   }
 
-  return `\x1b[2J\x1b[H${screen}\x1b[${rows};1H`;
+  const screenBackground = options.state?.peekContextDirectory ? ansiPeekBackground : '';
+  const resetBackground = screenBackground ? ansiResetAll : '';
+
+  return `${screenBackground}\x1b[2J\x1b[H${screen}\x1b[${rows};1H${resetBackground}`;
 }
 
 function commandModePromptActive(line, state = {}) {
@@ -1467,11 +1484,12 @@ function parseConfirmation(value) {
 }
 
 async function switchToContextDirectory(contextDirectory, state) {
+  state.peekContextDirectory = null;
+  state.peekLensId = defaultLensId;
   changeLens(state, {
     ...currentLens(state),
     currentContextDirectory: contextDirectory
   });
-  state.gazeContextDirectory = null;
 
   return `context ${path.relative(state.rootDirectory, state.currentContextDirectory)}`;
 }
@@ -1656,20 +1674,21 @@ export async function handleEntry(entry, state) {
     };
   }
 
-  if (parsedEntry.type === 'clear_gaze') {
-    state.gazeContextDirectory = null;
+  if (parsedEntry.type === 'clear_peek' || parsedEntry.type === 'clear_gaze') {
+    state.peekContextDirectory = null;
+    state.peekLensId = defaultLensId;
     state.statusMessage = '';
     clearTemporaryBody(state);
 
     return {
       action: 'continue',
-      message: 'gaze cleared'
+      message: 'peek cleared'
     };
   }
 
-  if (parsedEntry.type === 'change_gaze') {
+  if (parsedEntry.type === 'change_peek' || parsedEntry.type === 'change_gaze') {
     try {
-      state.gazeContextDirectory = await resolveExistingContextDirectory(parsedEntry.context, state);
+      state.peekContextDirectory = await resolveExistingContextDirectory(parsedEntry.context, state);
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);
@@ -1680,7 +1699,8 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    const message = `gaze ${contextIdForDirectory(state, state.gazeContextDirectory)}`;
+    const message = `peek ${contextIdForDirectory(state, state.peekContextDirectory)}`;
+    state.peekLensId = defaultLensId;
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);
@@ -1866,8 +1886,8 @@ export async function handleEntry(entry, state) {
   }
 
   const savedPath = await saveFact(parsedEntry.title, {
-    relations: state.gazeContextDirectory
-      ? [contextIdForDirectory(state, state.gazeContextDirectory)]
+    relations: state.peekContextDirectory
+      ? [contextIdForDirectory(state, state.peekContextDirectory)]
       : [],
     rootDirectory: state.currentContextDirectory
   });

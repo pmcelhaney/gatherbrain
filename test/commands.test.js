@@ -19,8 +19,8 @@ import { createEnumRegistry } from '../src/enums.js';
 test('lists built-in command help', () => {
   assert.deepEqual(commandHelp(), [
     ':switch <context>',
-    ':gaze <context>',
-    ':clear-gaze',
+    ':peek <context>',
+    ':clear-peek',
     ':lens <lens>',
     ':new <title>',
     ':edit <item>',
@@ -33,12 +33,12 @@ test('lists built-in command help', () => {
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
-    'gaze',
-    'clear-gaze',
+    'peek',
+    'clear-peek',
     'lens',
     'new',
     'edit',
@@ -89,12 +89,12 @@ test('parses context and lens commands', () => {
     context: 'people/alex',
     type: 'switch_context'
   });
-  assert.deepEqual(parseEntry(':gaze people/alex'), {
+  assert.deepEqual(parseEntry(':peek people/alex'), {
     context: 'people/alex',
-    type: 'change_gaze'
+    type: 'change_peek'
   });
-  assert.deepEqual(parseEntry(':clear-gaze'), {
-    type: 'clear_gaze'
+  assert.deepEqual(parseEntry(':clear-peek'), {
+    type: 'clear_peek'
   });
   assert.deepEqual(parseEntry(':lens todo'), {
     type: 'switch_lens',
@@ -112,12 +112,12 @@ test('parses context and lens commands', () => {
     },
     prompt: 'Switch to which context?'
   });
-  assert.deepEqual(parseEntry(':gaze people/alex'), {
+  assert.deepEqual(parseEntry(':peek people/alex'), {
     context: 'people/alex',
-    type: 'change_gaze'
+    type: 'change_peek'
   });
-  assert.deepEqual(parseEntry(':clear-gaze'), {
-    type: 'clear_gaze'
+  assert.deepEqual(parseEntry(':clear-peek'), {
+    type: 'clear_peek'
   });
   assert.deepEqual(parseEntry(':lens todo'), {
     lens: 'todo',
@@ -310,8 +310,8 @@ test('loads workspace command definitions from config', async () => {
 
     assert.deepEqual(commandNames(registry), [
       'switch',
-      'gaze',
-      'clear-gaze',
+      'peek',
+      'clear-peek',
       'lens',
       'new',
       'edit',
@@ -428,8 +428,8 @@ test('workspace command config overrides default commands by name', async () => 
 
     assert.deepEqual(commandNames(registry), [
       'switch',
-      'gaze',
-      'clear-gaze',
+      'peek',
+      'clear-peek',
       'lens',
       'new',
       'edit',

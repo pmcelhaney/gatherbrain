@@ -42,8 +42,8 @@ Each command has:
 Supported actions:
 
 - `switch_context`: change the current context. Requires `context`.
-- `change_gaze`: gaze at a context. Requires `context`.
-- `clear_gaze`: clear gaze. Takes no arguments.
+- `change_peek`: peek at a context. Requires `context`.
+- `clear_peek`: clear peek. Takes no arguments.
 - `switch_lens`: change lens. Requires `lens`.
 - `create_fact`: create a fact in the current context. Requires `title`.
 - `edit_fact`: open a fact in `$EDITOR`. Requires `item`.

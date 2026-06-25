@@ -13,20 +13,20 @@
       ]
     },
     {
-      "name": "gaze",
-      "action": "change_gaze",
+      "name": "peek",
+      "action": "change_peek",
       "arguments": [
         {
           "name": "context",
           "type": "context",
           "consume": "rest",
-          "prompt": "Gaze at which context?"
+          "prompt": "Peek at which context?"
         }
       ]
     },
     {
-      "name": "clear-gaze",
-      "action": "clear_gaze",
+      "name": "clear-peek",
+      "action": "clear_peek",
       "arguments": []
     },
     {

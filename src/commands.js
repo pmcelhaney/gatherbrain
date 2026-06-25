@@ -414,12 +414,12 @@ function buildCommandAction(commandDefinition, values) {
     return { type: 'switch_context', context: values.context };
   }
 
-  if (commandDefinition.action === 'change_gaze') {
-    return { type: 'change_gaze', context: values.context };
+  if (commandDefinition.action === 'change_peek' || commandDefinition.action === 'change_gaze') {
+    return { type: 'change_peek', context: values.context };
   }
 
-  if (commandDefinition.action === 'clear_gaze') {
-    return { type: 'clear_gaze' };
+  if (commandDefinition.action === 'clear_peek' || commandDefinition.action === 'clear_gaze') {
+    return { type: 'clear_peek' };
   }
 
   if (commandDefinition.action === 'debug_keys') {

@@ -38,7 +38,7 @@ Each lens has:
 
 Supported presenters:
 
-- `context_facts`: presents facts visible from the active context or gaze context. It includes facts inside that context and facts related to that context.
+- `context_facts`: presents facts visible from the active context or peek context. It includes facts inside that context and facts related to that context.
 - `due_facts`: presents visible facts that have a `due` front matter property and are not `type: done`.
 - `today_facts`: presents visible facts with `due` on or before today and are not `type: done`.
 - `current_facts`: presents `today_facts`, plus visible `type: done` facts whose file was last modified today.

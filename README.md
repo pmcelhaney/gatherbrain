@@ -16,7 +16,7 @@ Use `:switch my-cool-project` to switch to a context. If the context does not ex
 
 The `:switch` command also accepts Unix-style context paths: `./foo` is a child of the current context, `/foo` is under the workspace root, `../` is the parent, and `../foo` is a sibling.
 
-Use `:gaze people/alex` to gaze at another context while staying in the current context. New facts are still written to the current context and get `relatedContexts` pointing at the gaze context. Use `:clear-gaze` to clear gaze.
+Use `:peek people/alex` to peek at another context while staying in the current context. New facts are still written to the current context and get `relatedContexts` pointing at the peek context. The peeked context has its own lens, so changing lenses while peeking does not change the current context's lens. Use `:clear-peek` to clear peek.
 
 Use `:lens todo` to switch to the todo lens, which only shows facts with type `todo`, `waiting`, `in progress`, or `fact` (the default type). Use `:lens all` to show every fact again.
 
@@ -36,7 +36,7 @@ Use `:due today 3` to set the third listed fact's `due` front matter property to
 
 Use `:debug-keys` to toggle key debugging output.
 
-Use `:restart` to restart the app process and restore the current context, gaze, lens, lens history, and page position.
+Use `:restart` to restart the app process and restore the current context, peek, lens, lens history, and page position.
 
 Default commands are defined in `default-config/commands.json`. A workspace-local `.gatherbrain/commands.json` can add commands or override defaults with the same command name. See [Custom Commands](docs/custom-commands.md).
 
