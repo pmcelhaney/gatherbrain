@@ -45,6 +45,7 @@ Supported actions:
 - `change_gaze`: gaze at a context. Requires `context`.
 - `clear_gaze`: clear gaze. Takes no arguments.
 - `switch_lens`: change lens. Requires `lens`.
+- `create_fact`: create a fact in the current context. Requires `title`.
 - `edit_fact`: open a fact in `$EDITOR`. Requires `item`.
 - `delete_fact`: move a fact to `.trash`. Requires `item`.
 - `relate_fact`: add a related context to a fact. Requires `item` and `context`.
@@ -62,6 +63,7 @@ Supported argument types:
 - `enum`: a string value from `.gatherbrain/enums.json`. Supports completion.
 - `factType`: a type string starting with a letter and containing only letters, numbers, `_`, or `-`. If `enum` is set, those enum values are offered as completions and may include spaces.
 - `date`: a natural language date normalized to `YYYY-MM-DD`.
+- `text`: free text.
 
 Argument fields:
 
@@ -152,6 +154,29 @@ Add a shorter command for setting type:
 This adds `:mark todo 3` without removing `:type`.
 
 For `fact` arguments, completion lets the user search by title. For example, if a visible fact is titled `Call Steve`, typing `:edit Call` and pressing `Tab` completes the argument to `Call Steve`. Commands still accept visible item numbers such as `:edit 3`.
+
+Create facts through a named command:
+
+```json
+{
+  "commands": [
+    {
+      "name": "capture",
+      "action": "create_fact",
+      "arguments": [
+        {
+          "name": "title",
+          "type": "text",
+          "consume": "rest",
+          "prompt": "Capture what?"
+        }
+      ]
+    }
+  ]
+}
+```
+
+This adds `:capture Follow up with Alex`.
 
 Use an enum argument when the command should only accept configured values:
 

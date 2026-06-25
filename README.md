@@ -18,6 +18,8 @@ Use `:gaze people/alex` to gaze at another context while staying in the current 
 
 Use `:lens todo` to switch to the todo lens, which only shows facts with type `todo`, `waiting`, `in progress`, or `fact` (the default type). Use `:lens all` to show every fact again.
 
+Use `:new Follow up with Alex` to create a new fact. Typing a title without a colon also creates a fact.
+
 Use `:edit 3` to open the third listed fact in `$EDITOR`.
 
 Use `:delete 3` to move the third listed fact to `.trash` inside its context directory.

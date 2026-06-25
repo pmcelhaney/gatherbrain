@@ -413,6 +413,10 @@ function buildCommandAction(commandDefinition, values) {
     return { type: 'switch_lens', lens: values.lens };
   }
 
+  if (commandDefinition.action === 'create_fact') {
+    return { type: 'create_fact', title: values.title };
+  }
+
   if (commandDefinition.action === 'edit_fact') {
     return {
       type: 'edit_fact',

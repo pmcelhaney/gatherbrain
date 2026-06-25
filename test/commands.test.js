@@ -22,6 +22,7 @@ test('lists built-in command help', () => {
     ':gaze <context>',
     ':clear-gaze',
     ':lens <lens>',
+    ':new <title>',
     ':edit <item>',
     ':delete <item>',
     ':relate <item> <context>',
@@ -31,13 +32,14 @@ test('lists built-in command help', () => {
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys'
+    ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys'
   );
   assert.deepEqual(commandNames(), [
     'switch',
     'gaze',
     'clear-gaze',
     'lens',
+    'new',
     'edit',
     'delete',
     'relate',
@@ -56,6 +58,9 @@ test('lists built-in command help', () => {
   assert.deepEqual(commandArguments('due'), [
     { name: 'value', type: 'date', prompt: 'Due when?' },
     { name: 'item', type: 'fact', prompt: 'Set due date on which fact?' }
+  ]);
+  assert.deepEqual(commandArguments('new'), [
+    { name: 'title', type: 'text', consume: 'rest', prompt: 'Title?' }
   ]);
   assert.equal(commandArguments('missing'), null);
 });
@@ -125,6 +130,22 @@ test('parses context and lens commands', () => {
 });
 
 test('parses fact commands', () => {
+  assert.deepEqual(parseEntry(':new Call Steve'), {
+    title: 'Call Steve',
+    type: 'create_fact'
+  });
+  assert.deepEqual(parseEntry(':new'), {
+    type: 'prompt_command_argument',
+    commandName: 'new',
+    values: {},
+    argument: {
+      name: 'title',
+      type: 'text',
+      consume: 'rest',
+      prompt: 'Title?'
+    },
+    prompt: 'Title?'
+  });
   assert.deepEqual(parseEntry(':edit 2'), {
     itemNumber: 2,
     type: 'edit_fact'
@@ -280,6 +301,7 @@ test('loads workspace command definitions from config', async () => {
       'gaze',
       'clear-gaze',
       'lens',
+      'new',
       'edit',
       'delete',
       'relate',
@@ -391,6 +413,7 @@ test('workspace command config overrides default commands by name', async () => 
       'gaze',
       'clear-gaze',
       'lens',
+      'new',
       'edit',
       'delete',
       'relate',

@@ -95,6 +95,64 @@ test('saves typed text as a titled fact without deriving relationships from gaze
   }
 });
 
+test(':new saves a titled fact', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    const saveResult = await handleEntry(':new Follow up with Alex', state);
+
+    assert.equal(saveResult.action, 'continue');
+    const files = await readdir(rootDirectory);
+    const factFile = files.find((file) => path.extname(file) === '.md');
+    assert.equal(
+      await readFile(path.join(rootDirectory, factFile), 'utf8'),
+      '---\ntitle: "Follow up with Alex"\ntype: fact\n---\n\n\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':new prompts for a missing title', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(await handleEntry(':new', state), {
+      action: 'continue',
+      message: 'Title?'
+    });
+    assert.deepEqual(state.pendingCommand, {
+      commandName: 'new',
+      values: {},
+      argument: {
+        name: 'title',
+        type: 'text',
+        consume: 'rest',
+        prompt: 'Title?'
+      }
+    });
+
+    const saveResult = await handleEntry('Prompted capture', state);
+
+    assert.equal(saveResult.action, 'continue');
+    assert.equal(state.pendingCommand, null);
+    const files = await readdir(rootDirectory);
+    const factFile = files.find((file) => path.extname(file) === '.md');
+    assert.equal(
+      await readFile(path.join(rootDirectory, factFile), 'utf8'),
+      '---\ntitle: "Prompted capture"\ntype: fact\n---\n\n\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test(':switch without a context does not save a fact', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -238,13 +296,13 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys'
+      message: ':switch <context> | :gaze <context> | :clear-gaze | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         facts: [{ type: 'fact', text: 'Existing fact.' }],
-        rows: 14,
+        rows: 15,
         columns: 80
       }),
       [
@@ -255,6 +313,7 @@ test(':help lists commands without saving a fact', async () => {
         ':gaze <context>',
         ':clear-gaze',
         ':lens <lens>',
+        ':new <title>',
         ':edit <item>',
         ':delete <item>',
         ':relate <item> <context>',
@@ -1783,6 +1842,7 @@ test('completes colon command names', async () => {
       ':gaze ',
       ':clear-gaze ',
       ':lens ',
+      ':new ',
       ':edit ',
       ':delete ',
       ':relate ',
