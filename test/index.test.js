@@ -173,6 +173,23 @@ test(':switch asks to create a missing context and switches after yes', async ()
       context: 'projects/new-app',
       directory: path.join(rootDirectory, 'projects', 'new-app')
     });
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        facts: [{ type: 'fact', text: 'Existing fact.' }],
+        rows: 8,
+        columns: 80
+      }),
+      [
+        'facts',
+        '--------------------------------------------------------------------------------',
+        ' 1. Existing fact.',
+        '',
+        '',
+        '',
+        'context projects/new-app does not exist. Create it? [y/N]'
+      ]
+    );
     assert.deepEqual(await completeEntry('Y', state), [['yes'], 'Y']);
 
     assert.deepEqual(await handleEntry('yes', state), {

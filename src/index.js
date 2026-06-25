@@ -878,6 +878,14 @@ export function pageNavigationForBody(options = {}) {
   });
 }
 
+function promptQuestionForState(state = {}) {
+  if (!state.pendingCommand && !state.pendingContextCreation) {
+    return '';
+  }
+
+  return state.statusMessage || state.pendingCommand?.argument?.prompt || '';
+}
+
 export function buildTuiLines(options = {}) {
   const {
     state,
@@ -888,12 +896,14 @@ export function buildTuiLines(options = {}) {
     includeColor = false
   } = options;
   const visibleRows = Math.max(rows - 1, 1);
-  const factRows = Math.max(visibleRows - 2, 0);
+  const promptQuestion = promptQuestionForState(state);
+  const promptQuestionRows = promptQuestion ? 1 : 0;
+  const factRows = Math.max(visibleRows - 2 - promptQuestionRows, 0);
   const lens = currentLensIdForState(state);
   const gaze = currentGazeName(state);
   const lensText = lens === defaultLensId ? '' : ` | ${lens}`;
   const gazeText = gaze ? ` -> ${gaze}` : '';
-  const status = state.statusMessage ? ` | ${state.statusMessage}` : '';
+  const status = state.statusMessage && !promptQuestion ? ` | ${state.statusMessage}` : '';
   const header = fitLine(`${currentContextName(state)}${gazeText}${lensText}${status}`, columns);
   const separator = '-'.repeat(Math.max(columns, 0));
   const bodyFacts = body ? factsForBody(body) : facts;
@@ -908,10 +918,17 @@ export function buildTuiLines(options = {}) {
       pageStartIndex: state.pageStartIndex ?? 0,
       rows: factRows
     });
+  const visibleBodyLines = bodyLines.slice(0, factRows);
+  const promptPadding = promptQuestion
+    ? Array.from({ length: Math.max(factRows - visibleBodyLines.length, 0) }, () => '')
+    : [];
+
   return [
     header,
     separator,
-    ...bodyLines.slice(0, factRows)
+    ...visibleBodyLines,
+    ...promptPadding,
+    ...(promptQuestion ? [fitLine(promptQuestion, columns)] : [])
   ];
 }
 
