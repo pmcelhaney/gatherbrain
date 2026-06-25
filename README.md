@@ -34,6 +34,8 @@ Use `:type task 3` to change the third listed fact's front matter type to `task`
 
 Use `:due today 3` to set the third listed fact's `due` front matter property to a normalized date such as `2026-06-24`.
 
+Use `:paste` to save the current clipboard contents to a `.txt` file in the current context and create a `Pasted <timestamp>` fact whose `file` front matter property points to that file.
+
 Use `:debug-keys` to toggle key debugging output.
 
 Use `:restart` to restart the app process and restore the current context, peek, lens, lens history, and page position.

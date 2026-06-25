@@ -40,6 +40,17 @@ test('builds fact Markdown with related contexts', () => {
   );
 });
 
+test('builds fact Markdown with custom properties', () => {
+  assert.equal(
+    buildFactMarkdown('Pasted 2026-06-25T14-03-04.005-04-00', {
+      properties: {
+        file: 'pasted-2026-06-25T14-03-04.005-04-00.txt'
+      }
+    }),
+    '---\ntitle: "Pasted 2026-06-25T14-03-04.005-04-00"\ntype: fact\nfile: "pasted-2026-06-25T14-03-04.005-04-00.txt"\n---\n\n\n'
+  );
+});
+
 test('extracts fact title from Markdown front matter', () => {
   assert.equal(
     factTitleFromMarkdown('---\ntitle: "The sky is blue."\ntype: fact\n---\n\n'),

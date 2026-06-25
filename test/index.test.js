@@ -314,6 +314,42 @@ test(':new saves a titled fact', async () => {
   }
 });
 
+test(':paste writes clipboard contents and a fact pointing to the file', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const currentContext = path.join(rootDirectory, 'projects', 'gatherbrain');
+
+  try {
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      now: () => new Date(2026, 5, 25, 14, 3, 4, 5),
+      readClipboard: async () => 'clipboard contents\nsecond line'
+    });
+    await mkdir(currentContext, { recursive: true });
+    await handleEntry(':switch projects/gatherbrain', state);
+
+    assert.deepEqual(await handleEntry(':paste', state), {
+      action: 'continue',
+      message: `pasted ${path.join('facts', 'projects', 'gatherbrain', 'pasted-2026-06-25T14-03-04.005-04-00.txt')} and ${path.join('facts', 'projects', 'gatherbrain', 'pasted-2026-06-25t14-03-04-005-04-00.md')}`
+    });
+    assert.equal(
+      await readFile(path.join(currentContext, 'pasted-2026-06-25T14-03-04.005-04-00.txt'), 'utf8'),
+      'clipboard contents\nsecond line'
+    );
+    assert.equal(
+      await readFile(path.join(currentContext, 'pasted-2026-06-25t14-03-04-005-04-00.md'), 'utf8'),
+      '---\ntitle: "Pasted 2026-06-25T14-03-04.005-04-00"\ntype: fact\nfile: "pasted-2026-06-25T14-03-04.005-04-00.txt"\n---\n\n\n'
+    );
+    assert.equal(
+      state.model.facts.get(path.join('projects', 'gatherbrain', 'pasted-2026-06-25t14-03-04-005-04-00.md')).properties.file,
+      'pasted-2026-06-25T14-03-04.005-04-00.txt'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test(':new prompts for a missing title', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -551,13 +587,13 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys | :restart'
+      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :paste | :debug-keys | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         facts: [{ type: 'fact', text: 'Existing fact.' }],
-        rows: 16,
+        rows: 17,
         columns: 80
       }),
       [
@@ -574,6 +610,7 @@ test(':help lists commands without saving a fact', async () => {
         ':relate <item> <context>',
         ':type <type> <item>',
         ':due <value> <item>',
+        ':paste',
         ':debug-keys',
         ':restart'
       ]
@@ -2390,6 +2427,7 @@ test('completes colon command names', async () => {
       ':relate ',
       ':type ',
       ':due ',
+      ':paste ',
       ':debug-keys ',
       ':restart '
     ], ':']

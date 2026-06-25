@@ -126,6 +126,11 @@
       ]
     },
     {
+      "name": "paste",
+      "action": "paste_clipboard",
+      "arguments": []
+    },
+    {
       "name": "debug-keys",
       "action": "debug_keys",
       "arguments": []

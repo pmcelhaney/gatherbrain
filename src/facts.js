@@ -49,17 +49,26 @@ export function slugifyTitle(title) {
 export function buildFactMarkdown(title, options = {}) {
   const {
     body = '',
+    properties = {},
     relations = [],
     type = 'fact'
   } = options;
   const relationLines = relations.length > 0
     ? [`${relatedContextsField}: [${relations.map(quoteFrontMatterString).join(', ')}]`]
     : [];
+  const propertyLines = Object.entries(properties).map(([key, value]) => {
+    if (!frontMatterPropertyPattern.test(key)) {
+      throw new Error('property must start with a letter and contain only letters, numbers, _, or -');
+    }
+
+    return `${key}: ${quoteFrontMatterScalar(value)}`;
+  });
 
   return [
     '---',
     `title: ${quoteFrontMatterScalar(title)}`,
     `type: ${quoteFrontMatterScalar(type)}`,
+    ...propertyLines,
     ...relationLines,
     '---',
     '',
@@ -521,6 +530,7 @@ export async function deleteFact(filePath) {
 export async function saveFact(text, options = {}) {
   const {
     relations = [],
+    properties = {},
     title = text,
     type = 'fact',
     rootDirectory,
@@ -541,7 +551,7 @@ export async function saveFact(text, options = {}) {
     const filePath = path.join(destinationDirectory, filename);
 
     try {
-      await writeFile(filePath, buildFactMarkdown(title, { relations, type }), { flag: 'wx' });
+      await writeFile(filePath, buildFactMarkdown(title, { properties, relations, type }), { flag: 'wx' });
       return filePath;
     } catch (error) {
       if (error.code !== 'EEXIST') {

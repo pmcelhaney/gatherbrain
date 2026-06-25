@@ -430,6 +430,10 @@ function buildCommandAction(commandDefinition, values) {
     return { type: 'restart_app' };
   }
 
+  if (commandDefinition.action === 'paste_clipboard') {
+    return { type: 'paste_clipboard' };
+  }
+
   if (commandDefinition.action === 'switch_lens') {
     return { type: 'switch_lens', lens: values.lens };
   }

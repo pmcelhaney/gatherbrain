@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { emitKeypressEvents } from 'node:readline';
@@ -29,6 +29,7 @@ import {
   deleteFact,
   resolveContextDirectory,
   saveFact,
+  timestampForFilename,
   updateFactProperty,
   updateFactType
 } from './facts.js';
@@ -84,7 +85,9 @@ export function createPromptState(options = {}) {
     lensBackStack: [],
     lensForwardStack: [],
     debugKeys: false,
-    statusMessage: ''
+    statusMessage: '',
+    now: options.now ?? (() => new Date()),
+    readClipboard: options.readClipboard ?? readClipboard
   };
 }
 
@@ -343,6 +346,86 @@ export function restartAppProcess(options = {}) {
         : `restart exited with code ${code}`));
     });
   });
+}
+
+function clipboardCommandsForPlatform(platform) {
+  if (platform === 'darwin') {
+    return [{ command: 'pbpaste', args: [] }];
+  }
+
+  if (platform === 'win32') {
+    return [{ command: 'powershell.exe', args: ['-NoProfile', '-Command', 'Get-Clipboard'] }];
+  }
+
+  return [
+    { command: 'wl-paste', args: ['--no-newline'] },
+    { command: 'xclip', args: ['-selection', 'clipboard', '-out'] },
+    { command: 'xsel', args: ['--clipboard', '--output'] }
+  ];
+}
+
+function readClipboardWithCommand(command, args, spawnProcess) {
+  return new Promise((resolve, reject) => {
+    const child = spawnProcess(command, args, {
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    const stdoutChunks = [];
+    const stderrChunks = [];
+
+    child.stdout?.on('data', (chunk) => stdoutChunks.push(chunk));
+    child.stderr?.on('data', (chunk) => stderrChunks.push(chunk));
+    child.on('error', reject);
+    child.on('exit', (code, signal) => {
+      if (code === 0) {
+        resolve(Buffer.concat(stdoutChunks).toString('utf8'));
+        return;
+      }
+
+      const stderr = Buffer.concat(stderrChunks).toString('utf8').trim();
+      reject(new Error(signal
+        ? `${command} exited with signal ${signal}`
+        : stderr || `${command} exited with code ${code}`));
+    });
+  });
+}
+
+export async function readClipboard(options = {}) {
+  const {
+    platform = process.platform,
+    spawnProcess = spawn
+  } = options;
+  const commands = clipboardCommandsForPlatform(platform);
+  const errors = [];
+
+  for (const { command, args } of commands) {
+    try {
+      return await readClipboardWithCommand(command, args, spawnProcess);
+    } catch (error) {
+      errors.push(error.message);
+    }
+  }
+
+  throw new Error(`could not read clipboard: ${errors.join('; ')}`);
+}
+
+async function writeUniqueFile(directory, filenameBase, extension, contents) {
+  await mkdir(directory, { recursive: true });
+
+  for (let attempt = 0; attempt < 1000; attempt += 1) {
+    const filename = `${attempt === 0 ? filenameBase : `${filenameBase}-${attempt + 1}`}${extension}`;
+    const filePath = path.join(directory, filename);
+
+    try {
+      await writeFile(filePath, contents, { flag: 'wx' });
+      return filePath;
+    } catch (error) {
+      if (error.code !== 'EEXIST') {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error('Could not create a unique pasted file');
 }
 
 export function pageNavigationForKey(key) {
@@ -1605,6 +1688,43 @@ export async function handleEntry(entry, state) {
       action: 'restart',
       snapshot: restartSnapshotForState(state)
     };
+  }
+
+  if (parsedEntry.type === 'paste_clipboard') {
+    try {
+      const timestamp = timestampForFilename(state.now());
+      const pastedFilenameBase = `pasted-${timestamp}`;
+      const pastedFilePath = await writeUniqueFile(
+        state.currentContextDirectory,
+        pastedFilenameBase,
+        '.txt',
+        await state.readClipboard()
+      );
+      const pastedFilename = path.basename(pastedFilePath);
+      const factPath = await saveFact(`Pasted ${timestamp}`, {
+        properties: {
+          file: pastedFilename
+        },
+        rootDirectory: state.currentContextDirectory
+      });
+      await refreshContext(await ensureModel(state), state.currentContextDirectory);
+      state.pageStartIndex = 0;
+      state.statusMessage = '';
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message: `pasted ${path.relative(state.appDirectory, pastedFilePath)} and ${path.relative(state.appDirectory, factPath)}`
+      };
+    } catch (error) {
+      state.statusMessage = error.message;
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
   }
 
   if (parsedEntry.type === 'usage_error') {

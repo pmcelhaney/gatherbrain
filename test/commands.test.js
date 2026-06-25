@@ -28,12 +28,13 @@ test('lists built-in command help', () => {
     ':relate <item> <context>',
     ':type <type> <item>',
     ':due <value> <item>',
+    ':paste',
     ':debug-keys',
     ':restart'
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :debug-keys | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :paste | :debug-keys | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -46,6 +47,7 @@ test('lists built-in command help', () => {
     'relate',
     'type',
     'due',
+    'paste',
     'debug-keys',
     'restart'
   ]);
@@ -78,6 +80,7 @@ test('parses control entries', () => {
   assert.deepEqual(parseEntry(':help'), { type: 'help' });
   assert.deepEqual(parseEntry(':debug-keys'), { type: 'debug_keys' });
   assert.deepEqual(parseEntry(':restart'), { type: 'restart_app' });
+  assert.deepEqual(parseEntry(':paste'), { type: 'paste_clipboard' });
 });
 
 test('parses context and lens commands', () => {
@@ -319,6 +322,7 @@ test('loads workspace command definitions from config', async () => {
       'relate',
       'type',
       'due',
+      'paste',
       'debug-keys',
       'restart',
       'jump'
@@ -437,6 +441,7 @@ test('workspace command config overrides default commands by name', async () => 
       'relate',
       'type',
       'due',
+      'paste',
       'debug-keys',
       'restart'
     ]);
