@@ -896,6 +896,42 @@ function displayRelationSuffix(suffix, includeColor) {
     : suffix;
 }
 
+function formattedDisplayLines(text, options = {}) {
+  const {
+    columns,
+    continuationColumns,
+    continuationPrefix,
+    firstColumns,
+    includeColor,
+    relationSuffix = ''
+  } = options;
+  const lines = text.split(/\r?\n/u);
+  const displayLines = lines.length > 0 ? lines : [''];
+
+  return displayLines.flatMap((line, lineIndex) => {
+    const linkLabels = markdownLinksInText(line);
+    const plainLine = plainTextWithMarkdownLinks(line);
+    const displayLine = lineIndex === displayLines.length - 1
+      ? `${plainLine}${relationSuffix ? ` ${relationSuffix}` : ''}`
+      : plainLine;
+    const wrappedLines = wrapPlainText(
+      displayLine,
+      lineIndex === 0 ? firstColumns : continuationColumns
+    );
+
+    return wrappedLines.map((wrappedLine, wrappedLineIndex) => {
+      const linkLine = displayMarkdownLinks(wrappedLine, linkLabels, includeColor);
+      const displayedLine = relationSuffix && linkLine.endsWith(relationSuffix)
+        ? `${linkLine.slice(0, -relationSuffix.length)}${displayRelationSuffix(relationSuffix, includeColor)}`
+        : linkLine;
+
+      return lineIndex === 0 && wrappedLineIndex === 0
+        ? displayedLine
+        : `${continuationPrefix}${displayedLine}`;
+    });
+  });
+}
+
 function factViewModelsForDisplay(facts, options = {}) {
   const {
     columns = 80,
@@ -909,40 +945,35 @@ function factViewModelsForDisplay(facts, options = {}) {
   const continuationColumns = Math.max(columns - continuationPrefix.length, 1);
 
   return facts.map((fact, factIndex) => {
-    const lines = fact.text.split(/\r?\n/u);
-    const displayLines = lines.length > 0 ? lines : [''];
+    const bodyText = fact.text ?? '';
+    const titleText = fact.title?.trim() ?? '';
+    const displayText = titleText.length > 0 ? titleText : bodyText;
     const type = fact.type ?? 'fact';
     const relationSuffix = relationSuffixText(displayRelationsForFact(fact), fact.displayRelationDirection);
     const displayType = type === 'fact' ? '' : type;
     const firstPrefix = `${String(factIndex + 1).padStart(numberWidth)}. ${displayType ? `${displayType} ` : ''}`;
     const firstColumns = Math.max(columns - visibleLength(firstPrefix), 1);
-    const bodyLines = displayLines.flatMap((line, lineIndex) => {
-      const linkLabels = markdownLinksInText(line);
-      const plainLine = plainTextWithMarkdownLinks(line);
-      const displayLine = lineIndex === displayLines.length - 1
-        ? `${plainLine}${relationSuffix ? ` ${relationSuffix}` : ''}`
-        : plainLine;
-      const wrappedLines = wrapPlainText(
-        displayLine,
-        lineIndex === 0 ? firstColumns : continuationColumns
-      );
+    const displayOptions = {
+      columns,
+      continuationColumns,
+      continuationPrefix,
+      firstColumns,
+      includeColor,
+      relationSuffix
+    };
+    const bodyLines = formattedDisplayLines(bodyText, displayOptions);
+    const displayLines = formattedDisplayLines(displayText, displayOptions);
 
-      return wrappedLines.map((wrappedLine, wrappedLineIndex) => {
-        const linkLine = displayMarkdownLinks(wrappedLine, linkLabels, includeColor);
-        const displayedLine = relationSuffix && linkLine.endsWith(relationSuffix)
-          ? `${linkLine.slice(0, -relationSuffix.length)}${displayRelationSuffix(relationSuffix, includeColor)}`
-          : linkLine;
-
-        return lineIndex === 0 && wrappedLineIndex === 0
-          ? displayedLine
-          : `${continuationPrefix}${displayedLine}`;
-      });
-    });
+    if (bodyText.length === 0 && titleText.length > 0) {
+      bodyLines.splice(0, bodyLines.length, ...displayLines);
+    }
 
     const viewModel = {
       number: String(factIndex + 1).padStart(numberWidth),
       type: displayType,
-      body: bodyLines.join('\n')
+      title: titleText,
+      body: bodyLines.join('\n'),
+      display: displayLines.join('\n')
     };
 
     return {

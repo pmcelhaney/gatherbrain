@@ -1003,6 +1003,30 @@ test('builds TUI lines from a body view model', () => {
   );
 });
 
+test('builds TUI lines with titles before body text', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const state = createPromptState({ appDirectory, rootDirectory });
+
+  assert.deepEqual(
+    buildTuiLines({
+      state,
+      facts: [
+        { type: 'fact', title: 'Title first', text: 'Body fallback.' },
+        { type: 'fact', text: 'No title body.' }
+      ],
+      rows: 5,
+      columns: 80
+    }),
+    [
+      'facts',
+      '--------------------------------------------------------------------------------',
+      ' 1. Title first',
+      ' 2. No title body.'
+    ]
+  );
+});
+
 test('builds TUI lines with a workspace-local body template', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');

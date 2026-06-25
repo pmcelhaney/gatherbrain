@@ -95,7 +95,7 @@ export async function readFact(rootPath, filePath) {
   const contextId = contextIdForFactId(id);
   const relations = factRelationsFromMarkdown(markdown);
   const properties = factPropertiesFromMarkdown(markdown);
-  const title = factTitleFromMarkdown(markdown) ?? path.basename(filePath, '.md');
+  const title = factTitleFromMarkdown(markdown);
   const body = factTextFromMarkdown(markdown);
 
   return {
@@ -109,7 +109,7 @@ export async function readFact(rootPath, filePath) {
     ...(relations.length > 0 ? { relations } : {}),
     title,
     type: factTypeFromMarkdown(markdown) ?? 'fact',
-    text: body.length > 0 ? body : title
+    text: body.length > 0 ? body : title ?? ''
   };
 }
 

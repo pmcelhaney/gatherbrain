@@ -382,7 +382,7 @@ export async function listFacts(options = {}) {
         const filePath = path.join(rootDirectory, filename);
         const markdown = await readFile(filePath, 'utf8');
         const relations = factRelationsFromMarkdown(markdown);
-        const title = factTitleFromMarkdown(markdown) ?? path.basename(filename, '.md');
+        const title = factTitleFromMarkdown(markdown);
         const body = factTextFromMarkdown(markdown);
 
         return {
@@ -391,7 +391,7 @@ export async function listFacts(options = {}) {
           ...(relations.length > 0 ? { relations } : {}),
           title,
           type: factTypeFromMarkdown(markdown) ?? 'fact',
-          text: body.length > 0 ? body : title
+          text: body.length > 0 ? body : title ?? ''
         };
       })
   );
