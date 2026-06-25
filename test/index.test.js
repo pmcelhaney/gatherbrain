@@ -21,6 +21,7 @@ import {
   pageNavigationForFacts,
   reloadWorkspaceConfig,
   refreshEditedFact,
+  restartAppProcess,
   restartEnvForState,
   restartSnapshotForState,
   restartSnapshotFromEnv,
@@ -657,6 +658,37 @@ test('restart env serializes and parses restart snapshots', () => {
   assert.equal(env.EXISTING, '1');
   assert.deepEqual(snapshot, restartSnapshotForState(state));
   assert.equal(restartSnapshotFromEnv({ GATHERBRAIN_RESTORE: '{bad json' }), null);
+});
+
+test('restart process waits for the replacement app to exit', async () => {
+  const calls = [];
+  const child = new EventEmitter();
+  let resolved = false;
+  const restartPromise = restartAppProcess({
+    env: { GATHERBRAIN_RESTORE: '{}' },
+    nodePath: '/node',
+    args: ['/app/index.js', '/workspace'],
+    spawnProcess: (command, args, options) => {
+      calls.push({ command, args, options });
+      return child;
+    }
+  }).then(() => {
+    resolved = true;
+  });
+
+  await Promise.resolve();
+  assert.equal(resolved, false);
+  child.emit('exit', 0);
+  await restartPromise;
+  assert.equal(resolved, true);
+  assert.deepEqual(calls, [{
+    command: '/node',
+    args: ['/app/index.js', '/workspace'],
+    options: {
+      env: { GATHERBRAIN_RESTORE: '{}' },
+      stdio: 'inherit'
+    }
+  }]);
 });
 
 test('formats key debug lines', () => {

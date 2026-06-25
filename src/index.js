@@ -303,6 +303,34 @@ export function restartEnvForState(state, env = processEnv) {
   };
 }
 
+export function restartAppProcess(options = {}) {
+  const {
+    env,
+    nodePath = execPath,
+    args = processArgv.slice(1),
+    spawnProcess = spawn
+  } = options;
+
+  return new Promise((resolve, reject) => {
+    const child = spawnProcess(nodePath, args, {
+      env,
+      stdio: 'inherit'
+    });
+
+    child.on('error', reject);
+    child.on('exit', (code, signal) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(new Error(signal
+        ? `restart exited with signal ${signal}`
+        : `restart exited with code ${code}`));
+    });
+  });
+}
+
 export function pageNavigationForKey(key) {
   if (!key) {
     return null;
@@ -2041,11 +2069,7 @@ async function main() {
   }
 
   if (restartEnv) {
-    const child = spawn(execPath, processArgv.slice(1), {
-      env: restartEnv,
-      stdio: 'inherit'
-    });
-    child.unref();
+    await restartAppProcess({ env: restartEnv });
   }
 }
 
