@@ -817,9 +817,22 @@ export function renderPromptLine(line, options = {}) {
   return `${ansiCommandPromptBackground}${prompt}\x1b[K${ansiResetAll}`;
 }
 
+function startsWithCaseInsensitive(value, prefix) {
+  return value.toLowerCase().startsWith(prefix.toLowerCase());
+}
+
+function commandArgumentsForCompletion(commandName, state) {
+  const matchingCommandName = commandNames(state.commandRegistry)
+    .find((candidate) => candidate.toLowerCase() === commandName.toLowerCase());
+
+  return matchingCommandName
+    ? commandArguments(matchingCommandName, state.commandRegistry)
+    : null;
+}
+
 export async function completeEntry(line, state) {
   if (state.pendingContextCreation) {
-    const matches = ['yes', 'no'].filter((value) => value.startsWith(line.toLowerCase()));
+    const matches = ['yes', 'no'].filter((value) => startsWithCaseInsensitive(value, line));
 
     return [matches, line];
   }
@@ -837,14 +850,14 @@ export async function completeEntry(line, state) {
   }
 
   if (state.pendingCommand?.argument?.type === 'lens') {
-    const matches = lensIds(state.lensRegistry).filter((lensId) => lensId.startsWith(line));
+    const matches = lensIds(state.lensRegistry).filter((lensId) => startsWithCaseInsensitive(lensId, line));
 
     return [matches, line];
   }
 
   if (enumCompletableArgument(state.pendingCommand?.argument)) {
     const matches = commandArgumentValues(state.pendingCommand.argument, state.commandRegistry)
-      .filter((value) => value.startsWith(line));
+      .filter((value) => startsWithCaseInsensitive(value, line));
 
     return [matches, line];
   }
@@ -854,7 +867,7 @@ export async function completeEntry(line, state) {
   if (commandCompletion) {
     const partialCommand = commandCompletion.groups.partial;
     const matches = commandNames(state.commandRegistry)
-      .filter((commandName) => commandName.startsWith(partialCommand))
+      .filter((commandName) => startsWithCaseInsensitive(commandName, partialCommand))
       .map((commandName) => `:${commandName} `);
 
     return [matches, line];
@@ -873,14 +886,17 @@ export async function completeEntry(line, state) {
   }
 
   const namedContextCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+(?<partial>.*)$/u);
+  const namedContextArguments = namedContextCompletion
+    ? commandArgumentsForCompletion(namedContextCompletion.groups.commandName, state)
+    : null;
 
   if (
     namedContextCompletion
-    && commandArguments(namedContextCompletion.groups.commandName, state.commandRegistry)?.length === 1
-    && commandArguments(namedContextCompletion.groups.commandName, state.commandRegistry)?.at(0)?.type === 'context'
+    && namedContextArguments?.length === 1
+    && namedContextArguments.at(0)?.type === 'context'
   ) {
     const partialContext = namedContextCompletion.groups.partial ?? '';
-    const matches = namedContextCompletion.groups.commandName === 'switch'
+    const matches = namedContextCompletion.groups.commandName.toLowerCase() === 'switch'
       ? await matchingSwitchContextCompletions(partialContext, state)
       : await matchingContextCompletions(partialContext, state);
 
@@ -888,11 +904,14 @@ export async function completeEntry(line, state) {
   }
 
   const namedRelationCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+[1-9]\d*\s+(?<partial>.*)$/u);
+  const namedRelationArguments = namedRelationCompletion
+    ? commandArgumentsForCompletion(namedRelationCompletion.groups.commandName, state)
+    : null;
 
   if (
     namedRelationCompletion
-    && commandArguments(namedRelationCompletion.groups.commandName, state.commandRegistry)?.length > 1
-    && commandArguments(namedRelationCompletion.groups.commandName, state.commandRegistry)?.at(-1)?.type === 'context'
+    && namedRelationArguments?.length > 1
+    && namedRelationArguments.at(-1)?.type === 'context'
   ) {
     const partialContext = namedRelationCompletion.groups.partial ?? '';
     const matches = await matchingContextCompletions(partialContext, state);
@@ -904,10 +923,13 @@ export async function completeEntry(line, state) {
   }
 
   const namedLensCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+(?<partial>.*)$/u);
+  const namedLensArguments = namedLensCompletion
+    ? commandArgumentsForCompletion(namedLensCompletion.groups.commandName, state)
+    : null;
 
-  if (namedLensCompletion && commandArguments(namedLensCompletion.groups.commandName, state.commandRegistry)?.at(-1)?.type === 'lens') {
+  if (namedLensCompletion && namedLensArguments?.at(-1)?.type === 'lens') {
     const partialLens = namedLensCompletion.groups.partial ?? '';
-    const matches = lensIds(state.lensRegistry).filter((lensId) => lensId.startsWith(partialLens));
+    const matches = lensIds(state.lensRegistry).filter((lensId) => startsWithCaseInsensitive(lensId, partialLens));
 
     return [matches, partialLens];
   }
@@ -945,7 +967,7 @@ function matchingNamedEnumArgument(line, state) {
   }
 
   const matches = commandArgumentValues(argumentCompletion.argument, state.commandRegistry)
-    .filter((value) => value.startsWith(argumentCompletion.partialValue));
+    .filter((value) => startsWithCaseInsensitive(value, argumentCompletion.partialValue));
 
   return [matches, argumentCompletion.partialValue];
 }
@@ -958,7 +980,7 @@ function matchingNamedArgument(line, state) {
   }
 
   const args = match.groups.args ?? '';
-  const argumentsDefinition = commandArguments(match.groups.commandName, state.commandRegistry);
+  const argumentsDefinition = commandArgumentsForCompletion(match.groups.commandName, state);
 
   if (!argumentsDefinition || argumentsDefinition.length === 0) {
     return null;
@@ -991,7 +1013,7 @@ async function matchingFactCompletions(partialTitle, state) {
     .map((fact) => fact.title ?? '')
     .filter((title) => title.length > 0)
     .filter((title, index, titles) => titles.indexOf(title) === index)
-    .filter((title) => title.startsWith(partialTitle));
+    .filter((title) => startsWithCaseInsensitive(title, partialTitle));
 }
 
 async function matchingContextCompletions(partialContext, state) {
@@ -1007,9 +1029,9 @@ async function matchingContextCompletions(partialContext, state) {
         ? contextName.name
         : `/${contextName.name}`;
 
-      return contextName.name.startsWith(partialContext)
-        || comparableName.startsWith(partialContext)
-        || contextName.folder.startsWith(partialContext);
+      return startsWithCaseInsensitive(contextName.name, partialContext)
+        || startsWithCaseInsensitive(comparableName, partialContext)
+        || startsWithCaseInsensitive(contextName.folder, partialContext);
     });
 }
 
@@ -1072,7 +1094,7 @@ async function matchingSwitchContextCompletions(partialContext, state) {
     const partialId = contextReferenceParts(partialContext).join('/');
 
     return contexts
-      .filter((contextId) => contextId.startsWith(partialId))
+      .filter((contextId) => startsWithCaseInsensitive(contextId, partialId))
       .map((contextId) => ({ name: `/${contextId}` }));
   }
 
@@ -1081,7 +1103,7 @@ async function matchingSwitchContextCompletions(partialContext, state) {
     const prefix = currentContextId.length > 0 ? `${currentContextId}/` : '';
 
     return contexts
-      .filter((contextId) => contextId.startsWith(`${prefix}${childPartial}`))
+      .filter((contextId) => startsWithCaseInsensitive(contextId, `${prefix}${childPartial}`))
       .filter((contextId) => contextId !== currentContextId)
       .map((contextId) => ({ name: `./${contextId.slice(prefix.length)}` }));
   }
@@ -1100,7 +1122,7 @@ async function matchingSwitchContextCompletions(partialContext, state) {
     ].join('/');
 
     return contexts
-      .filter((contextId) => targetPrefix.length === 0 || contextId.startsWith(targetPrefix))
+      .filter((contextId) => targetPrefix.length === 0 || startsWithCaseInsensitive(contextId, targetPrefix))
       .filter((contextId) => contextId !== baseId)
       .map((contextId) => ({
         name: `${referencePrefix}${baseId.length === 0 ? contextId : contextId.slice(baseId.length + 1)}`

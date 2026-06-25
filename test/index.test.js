@@ -167,6 +167,7 @@ test(':switch asks to create a missing context and switches after yes', async ()
       context: 'projects/new-app',
       directory: path.join(rootDirectory, 'projects', 'new-app')
     });
+    assert.deepEqual(await completeEntry('Y', state), [['yes'], 'Y']);
 
     assert.deepEqual(await handleEntry('yes', state), {
       action: 'continue',
@@ -1945,6 +1946,10 @@ test('completes :switch context names', async () => {
       [['my-cool-project'], 'my']
     );
     assert.deepEqual(
+      await completeEntry(':SWITCH MY', state),
+      [['my-cool-project'], 'MY']
+    );
+    assert.deepEqual(
       await completeEntry(':switch deep', state),
       [['alpha/deep-project'], 'deep']
     );
@@ -1956,6 +1961,10 @@ test('completes :switch context names', async () => {
       await completeEntry(':switch /my', state),
       [['/my-cool-project'], '/my']
     );
+    assert.deepEqual(
+      await completeEntry(':switch /MY', state),
+      [['/my-cool-project'], '/MY']
+    );
 
     await handleEntry(':switch alpha/deep-project', state);
 
@@ -1964,8 +1973,16 @@ test('completes :switch context names', async () => {
       [['../sibling-project'], '../s']
     );
     assert.deepEqual(
+      await completeEntry(':switch ../S', state),
+      [['../sibling-project'], '../S']
+    );
+    assert.deepEqual(
       await completeEntry(':switch ./c', state),
       [['./child'], './c']
+    );
+    assert.deepEqual(
+      await completeEntry(':switch ./C', state),
+      [['./child'], './C']
     );
     assert.deepEqual(
       await completeEntry(':switch /other', state),
@@ -1990,6 +2007,10 @@ test('completes :gaze context names', async () => {
       [['people/Alex'], 'Al']
     );
     assert.deepEqual(
+      await completeEntry(':gaze al', state),
+      [['people/Alex'], 'al']
+    );
+    assert.deepEqual(
       await completeEntry(':gaze ', state),
       [['people', 'people/Alex', 'projects', 'projects/gatherbrain'], '']
     );
@@ -2012,6 +2033,10 @@ test('completes :relate context folder names', async () => {
       [['Steve Ma'], 'Steve']
     );
     assert.deepEqual(
+      await completeEntry(':relate 1 steve', state),
+      [['Steve Ma'], 'steve']
+    );
+    assert.deepEqual(
       await completeEntry(':relate 1 /people/S', state),
       [['/people/Steve Ma'], '/people/S']
     );
@@ -2031,6 +2056,10 @@ test('completes context mentions in fact text', async () => {
     assert.deepEqual(
       await completeEntry('Talk to @St', state),
       [['@Steve Ma'], '@St']
+    );
+    assert.deepEqual(
+      await completeEntry('Talk to @st', state),
+      [['@Steve Ma'], '@st']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -2059,6 +2088,7 @@ test('completes colon command names', async () => {
   });
 
   assert.deepEqual(await completeEntry(':sw', state), [[':switch '], ':sw']);
+  assert.deepEqual(await completeEntry(':SW', state), [[':switch '], ':SW']);
   assert.deepEqual(
     await completeEntry(':', state),
     [[
@@ -2103,8 +2133,16 @@ test('completes named command arguments', async () => {
       [['todo', 'today'], 't']
     );
     assert.deepEqual(
+      await completeEntry(':LENS T', state),
+      [['todo', 'today'], 'T']
+    );
+    assert.deepEqual(
       await completeEntry(':type wa', state),
       [['waiting'], 'wa']
+    );
+    assert.deepEqual(
+      await completeEntry(':type WA', state),
+      [['waiting'], 'WA']
     );
 
     state.lensRegistry = createLensRegistry([
@@ -2139,6 +2177,10 @@ test('completes fact arguments by visible fact title', async () => {
       [['Call Steve'], 'Cal']
     );
     assert.deepEqual(
+      await completeEntry(':edit cal', state),
+      [['Call Steve'], 'cal']
+    );
+    assert.deepEqual(
       await completeEntry(':delete Email', state),
       [['Email Alex'], 'Email']
     );
@@ -2163,6 +2205,10 @@ test('completes prompted fact arguments by visible fact title', async () => {
     assert.deepEqual(
       await completeEntry('Email', state),
       [['Email Alex'], 'Email']
+    );
+    assert.deepEqual(
+      await completeEntry('email', state),
+      [['Email Alex'], 'email']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
