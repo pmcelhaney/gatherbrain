@@ -3,6 +3,7 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import {
   factRelationsFromMarkdown,
+  factPropertiesFromMarkdown,
   factTextFromMarkdown,
   factTitleFromMarkdown,
   factTypeFromMarkdown
@@ -89,9 +90,11 @@ export function contextPathToId(model, contextPath) {
 
 export async function readFact(rootPath, filePath) {
   const markdown = await readFile(filePath, 'utf8');
+  const fileStat = await stat(filePath);
   const id = relativeId(rootPath, filePath);
   const contextId = contextIdForFactId(id);
   const relations = factRelationsFromMarkdown(markdown);
+  const properties = factPropertiesFromMarkdown(markdown);
   const title = factTitleFromMarkdown(markdown) ?? path.basename(filePath, '.md');
   const body = factTextFromMarkdown(markdown);
 
@@ -100,6 +103,8 @@ export async function readFact(rootPath, filePath) {
     path: filePath,
     contextId,
     filename: id,
+    modifiedAt: fileStat.mtime.toISOString(),
+    properties,
     ...(relations.length > 0 ? { relations } : {}),
     title,
     type: factTypeFromMarkdown(markdown) ?? 'fact',

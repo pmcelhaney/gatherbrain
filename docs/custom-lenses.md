@@ -39,6 +39,9 @@ Each lens has:
 Supported presenters:
 
 - `context_facts`: presents facts visible from the active context or gaze context. It includes facts inside that context and facts related to that context.
+- `due_facts`: presents visible facts that have a `due` front matter property and are not `type: done`.
+- `today_facts`: presents visible facts with `due` on or before today and are not `type: done`.
+- `current_facts`: presents `today_facts`, plus visible `type: done` facts whose file was last modified today.
 
 Presenters return a body view model. The current renderer supports:
 
@@ -87,6 +90,8 @@ The `context_facts` presenter supports:
 - `filter.types`: only include facts whose front matter `type` is one of these strings.
 
 If no filter is set, the lens shows all visible facts.
+
+The `due_facts`, `today_facts`, and `current_facts` presenters do not use `filter`. They all start from the same visible facts as `context_facts`.
 
 ## Examples
 

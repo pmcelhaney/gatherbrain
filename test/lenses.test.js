@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -16,9 +16,12 @@ import {
 
 test('exposes built-in lens ids', () => {
   assert.equal(defaultLensId, 'all');
-  assert.deepEqual(lensIds(), ['all', 'todo']);
+  assert.deepEqual(lensIds(), ['all', 'todo', 'due', 'today', 'current']);
   assert.equal(hasLens('all'), true);
   assert.equal(hasLens('todo'), true);
+  assert.equal(hasLens('due'), true);
+  assert.equal(hasLens('today'), true);
+  assert.equal(hasLens('current'), true);
   assert.equal(hasLens('missing'), false);
 });
 
@@ -43,9 +46,12 @@ test('filters facts for the todo lens', () => {
 test('loads default lens definitions', async () => {
   const registry = await loadLensRegistry();
 
-  assert.deepEqual(lensIds(registry), ['all', 'todo']);
+  assert.deepEqual(lensIds(registry), ['all', 'todo', 'due', 'today', 'current']);
   assert.equal(hasLens('all', registry), true);
   assert.equal(hasLens('todo', registry), true);
+  assert.equal(hasLens('due', registry), true);
+  assert.equal(hasLens('today', registry), true);
+  assert.equal(hasLens('current', registry), true);
 });
 
 test('loads workspace lens definitions over defaults', async () => {
@@ -71,7 +77,7 @@ test('loads workspace lens definitions over defaults', async () => {
 
     const registry = await loadLensRegistry({ rootDirectory: directory });
 
-    assert.deepEqual(lensIds(registry), ['all', 'todo', 'tasks']);
+    assert.deepEqual(lensIds(registry), ['all', 'todo', 'due', 'today', 'current', 'tasks']);
     assert.equal(hasLens('tasks', registry), true);
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -153,6 +159,88 @@ test('todo lens presents only todo-compatible facts', async () => {
     assert.deepEqual(
       lensModel.facts.map((fact) => fact.text),
       ['Fact.', 'Todo.']
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('due lens presents facts with due dates that are not done', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-lenses-'));
+
+  try {
+    await writeFile(path.join(directory, 'due-todo.md'), '---\ntype: todo\ndue: 2026-06-30\n---\n\nDue todo.\n');
+    await writeFile(path.join(directory, 'due-fact.md'), '---\ntype: fact\ndue: 2026-07-01\n---\n\nDue fact.\n');
+    await writeFile(path.join(directory, 'done.md'), '---\ntype: done\ndue: 2026-06-24\n---\n\nDone.\n');
+    await writeFile(path.join(directory, 'undated.md'), '---\ntype: todo\n---\n\nUndated.\n');
+
+    const model = await loadWorkspaceModel({ rootDirectory: directory });
+    const lensModel = presentLens({
+      model,
+      state: { currentContextDirectory: directory },
+      lensId: 'due'
+    });
+
+    assert.deepEqual(
+      lensModel.facts.map((fact) => fact.text),
+      ['Due fact.', 'Due todo.']
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('today lens presents overdue and due-today facts that are not done', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-lenses-'));
+
+  try {
+    await writeFile(path.join(directory, 'future.md'), '---\ntype: todo\ndue: 2026-06-25\n---\n\nFuture.\n');
+    await writeFile(path.join(directory, 'overdue.md'), '---\ntype: todo\ndue: 2026-06-23\n---\n\nOverdue.\n');
+    await writeFile(path.join(directory, 'today.md'), '---\ntype: todo\ndue: 2026-06-24\n---\n\nToday.\n');
+    await writeFile(path.join(directory, 'done.md'), '---\ntype: done\ndue: 2026-06-24\n---\n\nDone.\n');
+
+    const model = await loadWorkspaceModel({ rootDirectory: directory });
+    const lensModel = presentLens({
+      dateToday: new Date(2026, 5, 24, 12),
+      model,
+      state: { currentContextDirectory: directory },
+      lensId: 'today'
+    });
+
+    assert.deepEqual(
+      lensModel.facts.map((fact) => fact.text),
+      ['Overdue.', 'Today.']
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('current lens includes today facts and done items modified today', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-lenses-'));
+  const doneTodayPath = path.join(directory, 'done-today.md');
+  const doneYesterdayPath = path.join(directory, 'done-yesterday.md');
+  const modifiedToday = new Date(2026, 5, 24, 9);
+  const modifiedYesterday = new Date(2026, 5, 23, 17);
+
+  try {
+    await writeFile(path.join(directory, 'today.md'), '---\ntype: todo\ndue: 2026-06-24\n---\n\nToday.\n');
+    await writeFile(doneTodayPath, '---\ntype: done\ndue: 2026-06-20\n---\n\nDone today.\n');
+    await writeFile(doneYesterdayPath, '---\ntype: done\ndue: 2026-06-20\n---\n\nDone yesterday.\n');
+    await utimes(doneTodayPath, modifiedToday, modifiedToday);
+    await utimes(doneYesterdayPath, modifiedYesterday, modifiedYesterday);
+
+    const model = await loadWorkspaceModel({ rootDirectory: directory });
+    const lensModel = presentLens({
+      dateToday: new Date(2026, 5, 24, 12),
+      model,
+      state: { currentContextDirectory: directory },
+      lensId: 'current'
+    });
+
+    assert.deepEqual(
+      lensModel.facts.map((fact) => fact.text),
+      ['Done today.', 'Today.']
     );
   } finally {
     await rm(directory, { recursive: true, force: true });

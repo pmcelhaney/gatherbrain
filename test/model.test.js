@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -30,16 +30,46 @@ test('loads contexts and facts with workspace-relative ids', async () => {
     assert.deepEqual(model.contexts.get('').childContextIds, ['people']);
     assert.deepEqual(model.contexts.get('people').childContextIds, ['people/alex']);
     assert.deepEqual(model.contexts.get('people/alex').factIds, ['people/alex/follow-up.md']);
-    assert.deepEqual(model.facts.get('people/alex/follow-up.md'), {
+    const fact = model.facts.get('people/alex/follow-up.md');
+
+    assert.match(fact.modifiedAt, /^\d{4}-\d{2}-\d{2}T/u);
+    assert.deepEqual(fact, {
       id: 'people/alex/follow-up.md',
       path: path.join(directory, 'people', 'alex', 'follow-up.md'),
       contextId: 'people/alex',
       filename: 'people/alex/follow-up.md',
+      modifiedAt: fact.modifiedAt,
+      properties: {},
       relations: ['projects/app'],
       title: 'Follow up',
       type: 'task',
       text: 'Send the notes.'
     });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('loads front matter properties and modified timestamps', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-model-'));
+  const factPath = path.join(directory, 'due.md');
+  const modifiedAt = new Date(2026, 5, 24, 9);
+
+  try {
+    await writeFile(
+      factPath,
+      '---\ntitle: Due fact\ntype: todo\ndue: 2026-06-24\npriority: high\n---\n\nDue today.\n'
+    );
+    await utimes(factPath, modifiedAt, modifiedAt);
+
+    const model = await loadWorkspaceModel({ rootDirectory: directory });
+    const fact = model.facts.get('due.md');
+
+    assert.deepEqual(fact.properties, {
+      due: '2026-06-24',
+      priority: 'high'
+    });
+    assert.equal(fact.modifiedAt, modifiedAt.toISOString());
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

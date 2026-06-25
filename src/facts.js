@@ -142,6 +142,24 @@ export function factTypeFromMarkdown(markdown) {
   return type ? unquoteFrontMatterScalar(type) : null;
 }
 
+export function factPropertiesFromMarkdown(markdown) {
+  const frontMatter = markdownFrontMatter(markdown);
+  const properties = {};
+  const reservedKeys = new Set(['title', 'type', relatedContextsField]);
+
+  for (const line of frontMatter.split(/\r?\n/u)) {
+    const match = line.match(/^(?<key>[A-Za-z][A-Za-z0-9_-]*):\s*(?<value>.+?)\s*$/u);
+
+    if (!match || reservedKeys.has(match.groups.key)) {
+      continue;
+    }
+
+    properties[match.groups.key] = unquoteFrontMatterScalar(match.groups.value);
+  }
+
+  return properties;
+}
+
 export function factTextFromMarkdown(markdown) {
   if (!markdown.startsWith('---')) {
     return markdown.trimEnd();

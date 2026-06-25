@@ -18,6 +18,8 @@ Use `:gaze people/alex` to gaze at another context while staying in the current 
 
 Use `:lens todo` to switch to the todo lens, which only shows facts with type `todo`, `waiting`, `in progress`, or `fact` (the default type). Use `:lens all` to show every fact again.
 
+Use `:lens due` to show facts with a `due` date that are not `done`. Use `:lens today` to show not-done facts due on or before today. Use `:lens current` to show the today lens plus `done` facts last modified today.
+
 Use `:new Follow up with Alex` to create a new fact. Typing a title without a colon also creates a fact.
 
 Use `:edit 3` to open the third listed fact in `$EDITOR`.

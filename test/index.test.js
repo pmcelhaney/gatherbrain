@@ -1876,7 +1876,7 @@ test('completes named command arguments', async () => {
     );
     assert.deepEqual(
       await completeEntry(':lens t', state),
-      [['todo'], 't']
+      [['todo', 'today'], 't']
     );
     assert.deepEqual(
       await completeEntry(':type wa', state),

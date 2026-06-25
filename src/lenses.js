@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { formatDateArgument } from './dates.js';
 
 export const defaultLensId = 'all';
 
@@ -96,35 +97,113 @@ export function filterFactsForLens(facts, lens = defaultLensId) {
     ? lensDefinitionForId(lens)
     : lens;
   const types = lensDefinition?.filter?.types ?? [];
+  const filter = lensDefinition?.filter ?? {};
+  let nextFacts = facts;
 
   if (types.length > 0) {
     const allowedTypes = new Set(types);
 
-    return facts.filter((fact) => allowedTypes.has(fact.type));
+    nextFacts = nextFacts.filter((fact) => allowedTypes.has(fact.type));
   }
 
-  return facts;
+  if (filter.excludeTypes?.length > 0) {
+    const excludedTypes = new Set(filter.excludeTypes);
+
+    nextFacts = nextFacts.filter((fact) => !excludedTypes.has(fact.type));
+  }
+
+  if (filter.hasProperties?.length > 0) {
+    nextFacts = nextFacts.filter((fact) => (
+      filter.hasProperties.every((property) => Boolean(fact.properties?.[property]))
+    ));
+  }
+
+  return nextFacts;
+}
+
+function todayForInput(input) {
+  return formatDateArgument(input.dateToday ?? input.state?.dateToday ?? new Date());
+}
+
+function dateStringForModifiedAt(fact) {
+  return fact.modifiedAt ? formatDateArgument(new Date(fact.modifiedAt)) : null;
+}
+
+function hasDueDate(fact) {
+  return Boolean(fact.properties?.due);
+}
+
+function isDone(fact) {
+  return fact.type === 'done';
+}
+
+function isDueOnOrBefore(fact, dateString) {
+  const dueDate = fact.properties?.due;
+
+  return Boolean(dueDate) && dueDate <= dateString;
+}
+
+function dueFacts(facts) {
+  return facts.filter((fact) => hasDueDate(fact) && !isDone(fact));
+}
+
+function todayFacts(facts, dateString) {
+  return facts.filter((fact) => isDueOnOrBefore(fact, dateString) && !isDone(fact));
+}
+
+function currentFacts(facts, dateString) {
+  return facts.filter((fact) => (
+    (isDueOnOrBefore(fact, dateString) && !isDone(fact))
+    || (isDone(fact) && dateStringForModifiedAt(fact) === dateString)
+  ));
+}
+
+function contextFactsBody(facts, lens) {
+  return {
+    body: {
+      type: 'facts',
+      template: lens.template ?? 'facts',
+      facts
+    },
+    facts
+  };
+}
+
+function visibleFactsForLensInput(input) {
+  return visibleFactsForContext(input.model, input.state.lensContextDirectory ?? input.state.currentContextDirectory);
 }
 
 const lensDefinitions = new Map([
   [
     'context_facts',
     {
-      presenter: ({ model, state, lens }) => {
+      presenter: (input) => {
+        const { lens } = input;
         const facts = filterFactsForLens(
-          visibleFactsForContext(model, state.lensContextDirectory ?? state.currentContextDirectory),
+          visibleFactsForLensInput(input),
           lens
         );
 
-        return {
-          body: {
-            type: 'facts',
-            template: lens.template ?? 'facts',
-            facts
-          },
-          facts
-        };
+        return contextFactsBody(facts, lens);
       }
+    }
+  ],
+  [
+    'due_facts',
+    {
+      presenter: (input) => contextFactsBody(dueFacts(visibleFactsForLensInput(input)), input.lens)
+    }
+  ],
+  [
+    'today_facts',
+    {
+      presenter: (input) => contextFactsBody(todayFacts(visibleFactsForLensInput(input), todayForInput(input)), input.lens)
+    }
+  ],
+  [
+    'current_facts',
+    {
+      presenter: (input) => contextFactsBody(currentFacts(visibleFactsForLensInput(input), todayForInput(input)), input.lens)
     }
   ]
 ]);

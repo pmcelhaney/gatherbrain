@@ -12,6 +12,21 @@
       "filter": {
         "types": ["fact", "todo", "waiting", "in progress"]
       }
+    },
+    {
+      "id": "due",
+      "presenter": "due_facts",
+      "template": "facts"
+    },
+    {
+      "id": "today",
+      "presenter": "today_facts",
+      "template": "facts"
+    },
+    {
+      "id": "current",
+      "presenter": "current_facts",
+      "template": "facts"
     }
   ]
 }

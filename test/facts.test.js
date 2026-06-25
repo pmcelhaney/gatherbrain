@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {
   buildFactMarkdown,
   factAtIndex,
+  factPropertiesFromMarkdown,
   factRelationsFromMarkdown,
   factTitleFromMarkdown,
   factTypeFromMarkdown,
@@ -57,6 +58,16 @@ test('extracts fact type from Markdown front matter', () => {
   assert.equal(
     factTypeFromMarkdown('---\ntype: task\n---\n\nThe sky is blue.\n'),
     'task'
+  );
+});
+
+test('extracts non-reserved front matter properties', () => {
+  assert.deepEqual(
+    factPropertiesFromMarkdown('---\ntitle: Test\ntype: todo\ndue: 2026-06-24\npriority: "high value"\nrelatedContexts: ["projects/app"]\n---\n\nBody.\n'),
+    {
+      due: '2026-06-24',
+      priority: 'high value'
+    }
   );
 });
 
