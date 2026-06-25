@@ -19,6 +19,7 @@ import {
   pageNavigationForBody,
   pageNavigationForKey,
   pageNavigationForFacts,
+  readClipboard,
   reloadWorkspaceConfig,
   refreshEditedFact,
   restartAppProcess,
@@ -348,6 +349,74 @@ test(':paste writes clipboard contents and a fact pointing to the file', async (
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
+});
+
+test(':paste writes clipboard image contents and embeds the image fact', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const currentContext = path.join(rootDirectory, 'projects', 'gatherbrain');
+  const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+
+  try {
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      now: () => new Date(2026, 5, 25, 14, 3, 4, 5),
+      readClipboard: async ({ imagePath }) => {
+        await writeFile(imagePath, pngBytes);
+
+        return {
+          type: 'file',
+          extension: '.png',
+          filePath: imagePath
+        };
+      }
+    });
+    await mkdir(currentContext, { recursive: true });
+    await handleEntry(':switch projects/gatherbrain', state);
+
+    assert.deepEqual(await handleEntry(':paste', state), {
+      action: 'continue',
+      message: `pasted ${path.join('facts', 'projects', 'gatherbrain', 'pasted-2026-06-25T14-03-04.005-04-00.png')} and ${path.join('facts', 'projects', 'gatherbrain', 'pasted-2026-06-25t14-03-04-005-04-00.md')}`
+    });
+    assert.deepEqual(
+      await readFile(path.join(currentContext, 'pasted-2026-06-25T14-03-04.005-04-00.png')),
+      pngBytes
+    );
+    assert.equal(
+      await readFile(path.join(currentContext, 'pasted-2026-06-25t14-03-04-005-04-00.md'), 'utf8'),
+      '---\ntitle: "Pasted 2026-06-25T14-03-04.005-04-00"\ntype: fact\nfile: "pasted-2026-06-25T14-03-04.005-04-00.png"\n---\n\n![](pasted-2026-06-25T14-03-04.005-04-00.png)\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('readClipboard uses osascript for macOS image clipboard contents', async () => {
+  const calls = [];
+  const clipboardItem = await readClipboard({
+    platform: 'darwin',
+    imagePath: '/tmp/pasted.png',
+    spawnProcess: (command, args, options) => {
+      calls.push({ command, args, options });
+      const child = new EventEmitter();
+      child.stdout = new EventEmitter();
+      child.stderr = new EventEmitter();
+      queueMicrotask(() => child.emit('exit', 0));
+
+      return child;
+    }
+  });
+
+  assert.equal(clipboardItem.type, 'file');
+  assert.equal(clipboardItem.extension, '.png');
+  assert.equal(clipboardItem.filePath, '/tmp/pasted.png');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].command, 'osascript');
+  assert.equal(calls[0].args.at(-1), '/tmp/pasted.png');
+  assert.deepEqual(calls[0].options, {
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
 });
 
 test(':new prompts for a missing title', async () => {

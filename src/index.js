@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { emitKeypressEvents } from 'node:readline';
@@ -389,23 +389,99 @@ function readClipboardWithCommand(command, args, spawnProcess) {
   });
 }
 
+async function writeMacClipboardImage(imagePath, spawnProcess) {
+  const pngClass = '\u00abclass PNGf\u00bb';
+  const script = [
+    'on run argv',
+    'set outputPath to POSIX file (item 1 of argv)',
+    `set imageData to the clipboard as ${pngClass}`,
+    'set fileRef to open for access outputPath with write permission',
+    'try',
+    'set eof fileRef to 0',
+    'write imageData to fileRef',
+    'close access fileRef',
+    'on error errorMessage',
+    'try',
+    'close access fileRef',
+    'end try',
+    'error errorMessage',
+    'end try',
+    'end run'
+  ];
+
+  await readClipboardWithCommand(
+    'osascript',
+    script.flatMap((line) => ['-e', line]).concat(imagePath),
+    spawnProcess
+  );
+}
+
 export async function readClipboard(options = {}) {
   const {
+    imagePath = null,
     platform = process.platform,
     spawnProcess = spawn
   } = options;
   const commands = clipboardCommandsForPlatform(platform);
   const errors = [];
 
+  if (platform === 'darwin' && imagePath) {
+    try {
+      await writeMacClipboardImage(imagePath, spawnProcess);
+
+      return {
+        type: 'file',
+        extension: '.png',
+        filePath: imagePath
+      };
+    } catch (error) {
+      errors.push(error.message);
+    }
+  }
+
   for (const { command, args } of commands) {
     try {
-      return await readClipboardWithCommand(command, args, spawnProcess);
+      return {
+        type: 'text',
+        extension: '.txt',
+        contents: await readClipboardWithCommand(command, args, spawnProcess)
+      };
     } catch (error) {
       errors.push(error.message);
     }
   }
 
   throw new Error(`could not read clipboard: ${errors.join('; ')}`);
+}
+
+function normalizeClipboardItem(clipboardItem) {
+  return typeof clipboardItem === 'string'
+    ? {
+      type: 'text',
+      extension: '.txt',
+      contents: clipboardItem
+    }
+    : clipboardItem;
+}
+
+async function reserveUniqueFilePath(directory, filenameBase, extension) {
+  await mkdir(directory, { recursive: true });
+
+  for (let attempt = 0; attempt < 1000; attempt += 1) {
+    const filename = `${attempt === 0 ? filenameBase : `${filenameBase}-${attempt + 1}`}${extension}`;
+    const filePath = path.join(directory, filename);
+
+    try {
+      await writeFile(filePath, '', { flag: 'wx' });
+      return filePath;
+    } catch (error) {
+      if (error.code !== 'EEXIST') {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error('Could not reserve a unique pasted file');
 }
 
 async function writeUniqueFile(directory, filenameBase, extension, contents) {
@@ -1691,17 +1767,30 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'paste_clipboard') {
+    let reservedImagePath = null;
+
     try {
       const timestamp = timestampForFilename(state.now());
       const pastedFilenameBase = `pasted-${timestamp}`;
-      const pastedFilePath = await writeUniqueFile(
-        state.currentContextDirectory,
-        pastedFilenameBase,
-        '.txt',
-        await state.readClipboard()
-      );
+      reservedImagePath = await reserveUniqueFilePath(state.currentContextDirectory, pastedFilenameBase, '.png');
+      const clipboardItem = normalizeClipboardItem(await state.readClipboard({ imagePath: reservedImagePath }));
+      let pastedFilePath;
+
+      if (clipboardItem?.type === 'file') {
+        pastedFilePath = clipboardItem.filePath;
+      } else {
+        await rm(reservedImagePath, { force: true });
+        pastedFilePath = await writeUniqueFile(
+          state.currentContextDirectory,
+          pastedFilenameBase,
+          clipboardItem?.extension ?? '.txt',
+          clipboardItem?.contents ?? ''
+        );
+      }
+
       const pastedFilename = path.basename(pastedFilePath);
       const factPath = await saveFact(`Pasted ${timestamp}`, {
+        body: clipboardItem?.type === 'file' ? `![](${pastedFilename})` : '',
         properties: {
           file: pastedFilename
         },
@@ -1717,6 +1806,10 @@ export async function handleEntry(entry, state) {
         message: `pasted ${path.relative(state.appDirectory, pastedFilePath)} and ${path.relative(state.appDirectory, factPath)}`
       };
     } catch (error) {
+      if (reservedImagePath) {
+        await rm(reservedImagePath, { force: true });
+      }
+
       state.statusMessage = error.message;
       clearTemporaryBody(state);
 

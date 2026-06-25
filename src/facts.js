@@ -529,6 +529,7 @@ export async function deleteFact(filePath) {
 
 export async function saveFact(text, options = {}) {
   const {
+    body = '',
     relations = [],
     properties = {},
     title = text,
@@ -551,7 +552,7 @@ export async function saveFact(text, options = {}) {
     const filePath = path.join(destinationDirectory, filename);
 
     try {
-      await writeFile(filePath, buildFactMarkdown(title, { properties, relations, type }), { flag: 'wx' });
+      await writeFile(filePath, buildFactMarkdown(title, { body, properties, relations, type }), { flag: 'wx' });
       return filePath;
     } catch (error) {
       if (error.code !== 'EEXIST') {
