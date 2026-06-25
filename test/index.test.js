@@ -73,6 +73,84 @@ test(':switch switches context without creating a fact', async () => {
   }
 });
 
+test(':switch supports unix-like context identifiers', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'gatherbrain', 'sandbox', 'child'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'gatherbrain', 'sibling'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people'), { recursive: true });
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(await handleEntry(':switch gatherbrain/sandbox', state), {
+      action: 'continue',
+      message: 'context gatherbrain/sandbox'
+    });
+
+    assert.deepEqual(await handleEntry(':switch ./child', state), {
+      action: 'continue',
+      message: 'context gatherbrain/sandbox/child'
+    });
+    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'gatherbrain', 'sandbox', 'child'));
+
+    assert.deepEqual(await handleEntry(':switch ../', state), {
+      action: 'continue',
+      message: 'context gatherbrain/sandbox'
+    });
+    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'gatherbrain', 'sandbox'));
+
+    assert.deepEqual(await handleEntry(':switch ../sibling', state), {
+      action: 'continue',
+      message: 'context gatherbrain/sibling'
+    });
+    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'gatherbrain', 'sibling'));
+
+    assert.deepEqual(await handleEntry(':switch /people', state), {
+      action: 'continue',
+      message: 'context people'
+    });
+    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'people'));
+
+    assert.deepEqual(await handleEntry(':switch /../gatherbrain', state), {
+      action: 'continue',
+      message: 'context gatherbrain'
+    });
+    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'gatherbrain'));
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':switch creates unix-relative missing contexts', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'gatherbrain', 'sandbox'), { recursive: true });
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await handleEntry(':switch gatherbrain/sandbox', state);
+
+    assert.deepEqual(await handleEntry(':switch ./new-child', state), {
+      action: 'continue',
+      message: 'context ./new-child does not exist. Create it? [y/N]'
+    });
+    assert.deepEqual(state.pendingContextCreation, {
+      context: './new-child',
+      directory: path.join(rootDirectory, 'gatherbrain', 'sandbox', 'new-child')
+    });
+
+    assert.deepEqual(await handleEntry('yes', state), {
+      action: 'continue',
+      message: 'context gatherbrain/sandbox/new-child'
+    });
+    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'gatherbrain', 'sandbox', 'new-child'));
+    assert.equal(state.model.contexts.has('gatherbrain/sandbox/new-child'), true);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test(':switch asks to create a missing context and switches after yes', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -1825,7 +1903,8 @@ test('completes :switch context names', async () => {
   const rootDirectory = path.join(appDirectory, 'facts');
 
   try {
-    await mkdir(path.join(rootDirectory, 'alpha', 'deep-project'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'alpha', 'deep-project', 'child'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'alpha', 'sibling-project'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'my-cool-project'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'other-project'), { recursive: true });
     const state = createPromptState({ appDirectory, rootDirectory });
@@ -1840,7 +1919,26 @@ test('completes :switch context names', async () => {
     );
     assert.deepEqual(
       await completeEntry(':switch ', state),
-      [['alpha', 'alpha/deep-project', 'my-cool-project', 'other-project'], '']
+      [['alpha', 'alpha/deep-project', 'alpha/deep-project/child', 'alpha/sibling-project', 'my-cool-project', 'other-project'], '']
+    );
+    assert.deepEqual(
+      await completeEntry(':switch /my', state),
+      [['/my-cool-project'], '/my']
+    );
+
+    await handleEntry(':switch alpha/deep-project', state);
+
+    assert.deepEqual(
+      await completeEntry(':switch ../s', state),
+      [['../sibling-project'], '../s']
+    );
+    assert.deepEqual(
+      await completeEntry(':switch ./c', state),
+      [['./child'], './c']
+    );
+    assert.deepEqual(
+      await completeEntry(':switch /other', state),
+      [['/other-project'], '/other']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

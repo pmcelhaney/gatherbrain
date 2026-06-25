@@ -858,7 +858,9 @@ export async function completeEntry(line, state) {
     && commandArguments(namedContextCompletion.groups.commandName, state.commandRegistry)?.at(0)?.type === 'context'
   ) {
     const partialContext = namedContextCompletion.groups.partial ?? '';
-    const matches = await matchingContextCompletions(partialContext, state);
+    const matches = namedContextCompletion.groups.commandName === 'switch'
+      ? await matchingSwitchContextCompletions(partialContext, state)
+      : await matchingContextCompletions(partialContext, state);
 
     return [matches.map((context) => context.name), partialContext];
   }
@@ -989,6 +991,103 @@ async function matchingContextCompletions(partialContext, state) {
     });
 }
 
+function contextReferenceParts(contextReference) {
+  return contextReference.split('/').filter((pathPart) => pathPart.length > 0);
+}
+
+function normalizeContextReferenceParts(contextReference, initialParts = []) {
+  const parts = [...initialParts];
+
+  for (const part of contextReferenceParts(contextReference)) {
+    if (part === '.') {
+      continue;
+    }
+
+    if (part === '..') {
+      parts.pop();
+      continue;
+    }
+
+    parts.push(part);
+  }
+
+  return parts;
+}
+
+function contextIdRelativeToCurrent(contextReference, state) {
+  const relativeContext = path
+    .relative(state.rootDirectory, state.currentContextDirectory)
+    .split(path.sep)
+    .join('/');
+  const parts = normalizeContextReferenceParts(contextReference, contextReferenceParts(relativeContext));
+
+  return parts.join('/');
+}
+
+function contextIdForSwitchReference(contextReference, state) {
+  const requestedContext = contextReference.trim();
+
+  if (requestedContext.length === 0) {
+    throw new Error('context name is required');
+  }
+
+  if (requestedContext === '/') {
+    return '';
+  }
+
+  if (requestedContext.startsWith('/')) {
+    return normalizeContextReferenceParts(requestedContext).join('/');
+  }
+
+  return contextIdRelativeToCurrent(requestedContext, state);
+}
+
+async function matchingSwitchContextCompletions(partialContext, state) {
+  const contexts = await contextIdsForState(state);
+  const currentContextId = contextIdForDirectory(state, state.currentContextDirectory);
+
+  if (partialContext.startsWith('/')) {
+    const partialId = contextReferenceParts(partialContext).join('/');
+
+    return contexts
+      .filter((contextId) => contextId.startsWith(partialId))
+      .map((contextId) => ({ name: `/${contextId}` }));
+  }
+
+  if (partialContext.startsWith('./') || partialContext === '.') {
+    const childPartial = partialContext === '.' ? '' : partialContext.slice(2);
+    const prefix = currentContextId.length > 0 ? `${currentContextId}/` : '';
+
+    return contexts
+      .filter((contextId) => contextId.startsWith(`${prefix}${childPartial}`))
+      .filter((contextId) => contextId !== currentContextId)
+      .map((contextId) => ({ name: `./${contextId.slice(prefix.length)}` }));
+  }
+
+  if (partialContext.startsWith('../') || partialContext === '..') {
+    const pathParts = partialContext.split('/');
+    const partialName = partialContext.endsWith('/') ? '' : pathParts.at(-1);
+    const baseReference = partialContext.endsWith('/')
+      ? partialContext
+      : pathParts.slice(0, -1).join('/');
+    const referencePrefix = baseReference.endsWith('/') ? baseReference : `${baseReference}/`;
+    const baseId = contextIdForSwitchReference(referencePrefix, state);
+    const targetPrefix = [
+      ...(baseId.length > 0 ? [baseId] : []),
+      ...(partialName ? [partialName] : [])
+    ].join('/');
+
+    return contexts
+      .filter((contextId) => targetPrefix.length === 0 || contextId.startsWith(targetPrefix))
+      .filter((contextId) => contextId !== baseId)
+      .map((contextId) => ({
+        name: `${referencePrefix}${baseId.length === 0 ? contextId : contextId.slice(baseId.length + 1)}`
+      }));
+  }
+
+  return matchingContextCompletions(partialContext, state);
+}
+
 export function createReadlineCompleter(state) {
   return (line) => completeEntry(line, state)
     .catch(() => [[], line]);
@@ -1090,6 +1189,47 @@ async function resolveExistingContextDirectory(contextReference, state) {
   }
 
   return contextDirectory;
+}
+
+async function resolveExistingSwitchContextDirectory(contextReference, state) {
+  const contextId = contextIdForSwitchReference(contextReference, state);
+  const contextDirectory = contextId === ''
+    ? state.rootDirectory
+    : path.join(state.rootDirectory, ...contextId.split('/'));
+  const model = await ensureModel(state);
+
+  if (model.contexts.has(contextId)) {
+    return contextDirectory;
+  }
+
+  const requestedContext = contextReference.trim();
+
+  if (
+    !requestedContext.startsWith('/')
+    && !requestedContext.startsWith('./')
+    && !requestedContext.startsWith('../')
+    && requestedContext !== '.'
+    && requestedContext !== '..'
+  ) {
+    const rootRelativeContextDirectory = resolveContextDirectory(requestedContext, {
+      rootDirectory: state.rootDirectory
+    });
+    const rootRelativeContextId = contextIdForDirectory(state, rootRelativeContextDirectory);
+
+    if (model.contexts.has(rootRelativeContextId)) {
+      return rootRelativeContextDirectory;
+    }
+  }
+
+  throw new Error(`context ${contextReference} does not exist`);
+}
+
+function contextDirectoryForSwitchReference(contextReference, state) {
+  const contextId = contextIdForSwitchReference(contextReference, state);
+
+  return contextId === ''
+    ? state.rootDirectory
+    : path.join(state.rootDirectory, ...contextId.split('/'));
 }
 
 function hiddenContextPathPart(contextDirectory, state) {
@@ -1246,14 +1386,12 @@ export async function handleEntry(entry, state) {
     let nextContextDirectory;
 
     try {
-      nextContextDirectory = await resolveExistingContextDirectory(parsedEntry.context, state);
+      nextContextDirectory = await resolveExistingSwitchContextDirectory(parsedEntry.context, state);
     } catch (error) {
       let contextDirectory;
 
       try {
-        contextDirectory = resolveContextDirectory(parsedEntry.context, {
-          rootDirectory: state.rootDirectory
-        });
+        contextDirectory = contextDirectoryForSwitchReference(parsedEntry.context, state);
       } catch (contextError) {
         state.statusMessage = contextError.message;
         clearTemporaryBody(state);

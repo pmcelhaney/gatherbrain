@@ -14,6 +14,8 @@ Commands use colon-prefixed names. Press `Tab` after `:` to complete command nam
 
 Use `:switch my-cool-project` to switch to a context. If the context does not exist, the app asks whether to create it. Subsequent facts are written to that directory.
 
+The `:switch` command also accepts Unix-style context paths: `./foo` is a child of the current context, `/foo` is under the workspace root, `../` is the parent, and `../foo` is a sibling.
+
 Use `:gaze people/alex` to gaze at another context while staying in the current context. New facts are still written to the current context and get `relatedContexts` pointing at the gaze context. Use `:clear-gaze` to clear gaze.
 
 Use `:lens todo` to switch to the todo lens, which only shows facts with type `todo`, `waiting`, `in progress`, or `fact` (the default type). Use `:lens all` to show every fact again.
