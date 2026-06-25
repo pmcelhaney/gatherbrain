@@ -21,6 +21,7 @@ import {
   pageNavigationForFacts,
   reloadWorkspaceConfig,
   refreshEditedFact,
+  renderPromptLine,
   renderTui,
   visibleBodyForState,
   visibleFactsForState,
@@ -1895,6 +1896,35 @@ test('renders the prompt target on the bottom row', () => {
       columns: 40
     }),
     '\x1b[2J\x1b[Hfacts\n----------------------------------------\nNo facts yet.\x1b[4;1H'
+  );
+});
+
+test('renders command mode prompt line with background color', () => {
+  assert.equal(
+    renderPromptLine(':switch', { includeAnsi: true }),
+    '\x1b[48;5;236m> :switch\x1b[K\x1b[0m'
+  );
+  assert.equal(
+    renderPromptLine('my-context', {
+      includeAnsi: true,
+      state: {
+        pendingCommand: {
+          commandName: 'switch'
+        }
+      }
+    }),
+    '\x1b[48;5;236m> my-context\x1b[K\x1b[0m'
+  );
+});
+
+test('renders normal prompt line without background color', () => {
+  assert.equal(
+    renderPromptLine('new fact', { includeAnsi: true }),
+    '> new fact'
+  );
+  assert.equal(
+    renderPromptLine(':switch', { includeAnsi: false }),
+    '> :switch'
   );
 });
 

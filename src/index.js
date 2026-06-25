@@ -52,6 +52,8 @@ const ansiTypeColor = '\x1b[36m';
 const ansiLinkColor = '\x1b[34m';
 const ansiRelationColor = '\x1b[35m';
 const ansiResetColor = '\x1b[39m';
+const ansiCommandPromptBackground = '\x1b[48;5;236m';
+const ansiResetAll = '\x1b[0m';
 const ansiCodePattern = /\x1b\[[0-9;]*m/gu;
 export function createPromptState(options = {}) {
   const appDirectory = options.appDirectory ?? defaultAppDirectory;
@@ -793,6 +795,26 @@ export function renderTui(options = {}) {
   }
 
   return `\x1b[2J\x1b[H${screen}\x1b[${rows};1H`;
+}
+
+function commandModePromptActive(line, state = {}) {
+  return line.startsWith(':')
+    || Boolean(state.pendingCommand)
+    || Boolean(state.pendingContextCreation);
+}
+
+export function renderPromptLine(line, options = {}) {
+  const {
+    includeAnsi = true,
+    state = {}
+  } = options;
+  const prompt = `> ${line}`;
+
+  if (!includeAnsi || !commandModePromptActive(line, state)) {
+    return prompt;
+  }
+
+  return `${ansiCommandPromptBackground}${prompt}\x1b[K${ansiResetAll}`;
 }
 
 export async function completeEntry(line, state) {
@@ -1702,7 +1724,10 @@ async function main() {
   }
 
   function redrawPrompt() {
-    output.write(`> ${terminal.line}`);
+    output.write(renderPromptLine(terminal.line, {
+      includeAnsi: output.isTTY,
+      state
+    }));
   }
 
   function changePage(direction) {
