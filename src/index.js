@@ -953,6 +953,10 @@ export function renderPromptLine(line, options = {}) {
   return `${ansiCommandPromptBackground}${prompt}\x1b[K${ansiResetAll}`;
 }
 
+export function renderQuestionPrompt(options = {}) {
+  return renderPromptLine('', options);
+}
+
 function startsWithCaseInsensitive(value, prefix) {
   return value.toLowerCase().startsWith(prefix.toLowerCase());
 }
@@ -2020,7 +2024,10 @@ async function main() {
       body = await visibleBodyForState(state);
       renderCurrentScreen();
 
-      const entry = await terminal.question('> ');
+      const entry = await terminal.question(renderQuestionPrompt({
+        includeAnsi: output.isTTY,
+        state
+      }));
       const result = await handleEntry(entry, state);
 
       if (result.action === 'quit') {

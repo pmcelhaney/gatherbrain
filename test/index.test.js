@@ -26,6 +26,7 @@ import {
   restartSnapshotForState,
   restartSnapshotFromEnv,
   restorePromptState,
+  renderQuestionPrompt,
   renderPromptLine,
   renderTui,
   visibleBodyForState,
@@ -2051,6 +2052,30 @@ test('renders command mode prompt line with background color', () => {
       }
     }),
     '\x1b[48;5;236m> my-context\x1b[K\x1b[0m'
+  );
+  assert.equal(
+    renderPromptLine('yes', {
+      includeAnsi: true,
+      state: {
+        pendingContextCreation: {
+          context: 'missing',
+          directory: '/tmp/missing'
+        }
+      }
+    }),
+    '\x1b[48;5;236m> yes\x1b[K\x1b[0m'
+  );
+  assert.equal(
+    renderQuestionPrompt({
+      includeAnsi: true,
+      state: {
+        pendingContextCreation: {
+          context: 'missing',
+          directory: '/tmp/missing'
+        }
+      }
+    }),
+    '\x1b[48;5;236m> \x1b[K\x1b[0m'
   );
 });
 
