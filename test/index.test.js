@@ -183,11 +183,7 @@ test(':switch asks to create a missing context and switches after yes', async ()
       [
         'facts',
         '--------------------------------------------------------------------------------',
-        ' 1. Existing fact.',
-        '',
-        '',
-        '',
-        'context projects/new-app does not exist. Create it? [y/N]'
+        ' 1. Existing fact.'
       ]
     );
     assert.deepEqual(await completeEntry('Y', state), [['yes'], 'Y']);
@@ -2089,10 +2085,11 @@ test('renders command mode prompt line with background color', () => {
         pendingContextCreation: {
           context: 'missing',
           directory: '/tmp/missing'
-        }
+        },
+        statusMessage: 'context ./x does not exist. Create it? [y/N]'
       }
     }),
-    '\x1b[48;5;236m> \x1b[K\x1b[0m'
+    '\x1b[48;5;236mcontext ./x does not exist. Create it? [y/N] > \x1b[K\x1b[0m'
   );
 });
 

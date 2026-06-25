@@ -897,8 +897,7 @@ export function buildTuiLines(options = {}) {
   } = options;
   const visibleRows = Math.max(rows - 1, 1);
   const promptQuestion = promptQuestionForState(state);
-  const promptQuestionRows = promptQuestion ? 1 : 0;
-  const factRows = Math.max(visibleRows - 2 - promptQuestionRows, 0);
+  const factRows = Math.max(visibleRows - 2, 0);
   const lens = currentLensIdForState(state);
   const gaze = currentGazeName(state);
   const lensText = lens === defaultLensId ? '' : ` | ${lens}`;
@@ -918,17 +917,10 @@ export function buildTuiLines(options = {}) {
       pageStartIndex: state.pageStartIndex ?? 0,
       rows: factRows
     });
-  const visibleBodyLines = bodyLines.slice(0, factRows);
-  const promptPadding = promptQuestion
-    ? Array.from({ length: Math.max(factRows - visibleBodyLines.length, 0) }, () => '')
-    : [];
-
   return [
     header,
     separator,
-    ...visibleBodyLines,
-    ...promptPadding,
-    ...(promptQuestion ? [fitLine(promptQuestion, columns)] : [])
+    ...bodyLines.slice(0, factRows)
   ];
 }
 
@@ -971,7 +963,23 @@ export function renderPromptLine(line, options = {}) {
 }
 
 export function renderQuestionPrompt(options = {}) {
-  return renderPromptLine('', options);
+  const {
+    includeAnsi = true,
+    state = {}
+  } = options;
+  const question = promptQuestionForState(options.state);
+
+  if (!question) {
+    return renderPromptLine('', options);
+  }
+
+  const prompt = `${question} > `;
+
+  if (!includeAnsi || !commandModePromptActive('', state)) {
+    return prompt;
+  }
+
+  return `${ansiCommandPromptBackground}${prompt}\x1b[K${ansiResetAll}`;
 }
 
 function startsWithCaseInsensitive(value, prefix) {
