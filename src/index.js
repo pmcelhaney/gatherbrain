@@ -1529,8 +1529,9 @@ export async function handleEntry(entry, state) {
     return handlePendingContextCreation(entry, state);
   }
 
-  const parsedEntry = state.pendingCommand
-    ? continuePromptedCommand(state.pendingCommand, entry)
+  const pendingCommand = state.pendingCommand;
+  const parsedEntry = pendingCommand
+    ? continuePromptedCommand(pendingCommand, entry)
     : parseEntry(entry, state.commandRegistry);
   state.pendingCommand = null;
 
@@ -1589,7 +1590,13 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'usage_error') {
-    state.statusMessage = parsedEntry.message;
+    if (pendingCommand) {
+      state.pendingCommand = pendingCommand;
+    }
+
+    state.statusMessage = pendingCommand?.argument?.prompt
+      ? `${parsedEntry.message}. ${pendingCommand.argument.prompt}`
+      : parsedEntry.message;
     clearTemporaryBody(state);
 
     return {

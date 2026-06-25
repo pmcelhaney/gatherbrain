@@ -85,6 +85,10 @@ test('parses context and lens commands', () => {
     context: 'people/alex',
     type: 'switch_context'
   });
+  assert.deepEqual(parseEntry(':SWITCH people/alex'), {
+    context: 'people/alex',
+    type: 'switch_context'
+  });
   assert.deepEqual(parseEntry(':gaze people/alex'), {
     context: 'people/alex',
     type: 'change_gaze'
@@ -164,6 +168,11 @@ test('parses fact commands', () => {
   });
   assert.deepEqual(parseEntry(':type done 5'), {
     factType: 'done',
+    itemNumber: 5,
+    type: 'set_fact_type'
+  });
+  assert.deepEqual(parseEntry(':TYPE WAITING 5'), {
+    factType: 'waiting',
     itemNumber: 5,
     type: 'set_fact_type'
   });
@@ -382,6 +391,11 @@ test('parses enum command arguments from configured values', () => {
   assert.deepEqual(parseEntry(':mark done 3', registry), {
     message: 'usage: :mark <type> <item>',
     type: 'usage_error'
+  });
+  assert.deepEqual(parseEntry(':mark IN PROGRESS 3', registry), {
+    factType: 'in progress',
+    itemNumber: 3,
+    type: 'set_fact_type'
   });
 });
 

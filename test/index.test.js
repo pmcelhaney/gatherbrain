@@ -485,6 +485,63 @@ test('completes enum command arguments', async () => {
   }
 });
 
+test('keeps prompted commands active after invalid arguments', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const commandRegistry = createCommandRegistry([
+    {
+      name: 'mark',
+      action: 'set_fact_type',
+      arguments: [
+        {
+          name: 'type',
+          type: 'enum',
+          enum: 'status',
+          prompt: 'Set which status?'
+        },
+        {
+          name: 'item',
+          type: 'fact',
+          prompt: 'Mark which fact?'
+        }
+      ]
+    }
+  ], {
+    enumRegistry: createEnumRegistry({
+      status: {
+        values: ['todo', 'waiting']
+      }
+    })
+  });
+
+  try {
+    const state = createPromptState({ appDirectory, commandRegistry, rootDirectory });
+    assert.deepEqual(await handleEntry(':mark', state), {
+      action: 'continue',
+      message: 'Set which status?'
+    });
+
+    assert.deepEqual(await handleEntry('done', state), {
+      action: 'continue',
+      message: 'usage: :mark <type> <item>. Set which status?'
+    });
+    assert.deepEqual(state.pendingCommand, {
+      commandName: 'mark',
+      registry: commandRegistry,
+      values: {},
+      argument: {
+        name: 'type',
+        type: 'enum',
+        enum: 'status',
+        prompt: 'Set which status?'
+      }
+    });
+    assert.deepEqual(await completeEntry('w', state), [['waiting'], 'w']);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test(':help lists commands without saving a fact', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');

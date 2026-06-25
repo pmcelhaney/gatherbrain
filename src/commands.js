@@ -4,7 +4,6 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import {
   enumValues,
-  hasEnumValue,
   loadEnumRegistry
 } from './enums.js';
 import { parseDateArgument } from './dates.js';
@@ -108,6 +107,15 @@ function commandDefinitionsFor(registry = defaultCommandRegistry) {
   return (registry ?? defaultCommandRegistry).definitions;
 }
 
+function valuesAreEqualCaseInsensitive(left, right) {
+  return left.toLowerCase() === right.toLowerCase();
+}
+
+function matchingEnumValue(enumName, value, registry = defaultCommandRegistry) {
+  return enumValues(enumName, registry)
+    .find((candidate) => valuesAreEqualCaseInsensitive(candidate, value));
+}
+
 function normalizeCommandDefinition(commandDefinition) {
   if (!commandDefinition?.name || !commandDefinition.action) {
     throw new Error('command definitions require name and action');
@@ -148,7 +156,8 @@ function parseNamedCommand(command, registry) {
 
   const name = match.groups.name;
   const args = match.groups.args?.trim() ?? '';
-  const commandDefinition = commandDefinitionsFor(registry).find((candidate) => candidate.name === name);
+  const commandDefinition = commandDefinitionsFor(registry)
+    .find((candidate) => valuesAreEqualCaseInsensitive(candidate.name, name));
 
   if (commandDefinition) {
     return parseCommandArguments(commandDefinition, args, {
@@ -237,9 +246,13 @@ function readArgumentValue(argument, remainingArgs, options = {}) {
   }
 
   if (['enum', 'factType'].includes(argument.type) && argument.enum) {
+    const normalizedRemainingArgs = remainingArgs.toLowerCase();
     const matchingValue = enumValues(argument.enum, enumRegistry)
       .toSorted((left, right) => right.length - left.length)
-      .find((value) => remainingArgs === value || remainingArgs.startsWith(`${value} `));
+      .find((value) => (
+        normalizedRemainingArgs === value.toLowerCase()
+        || normalizedRemainingArgs.startsWith(`${value.toLowerCase()} `)
+      ));
 
     if (matchingValue) {
       return {
@@ -319,8 +332,12 @@ function parseArgumentValue(argument, value, options = {}) {
   }
 
   if (argument.type === 'factType') {
-    if (argument.enum && hasEnumValue(argument.enum, value, enumRegistry)) {
-      return value;
+    if (argument.enum) {
+      const enumValue = matchingEnumValue(argument.enum, value, enumRegistry);
+
+      if (enumValue) {
+        return enumValue;
+      }
     }
 
     return new RegExp(`^${typeNamePattern}$`, 'u').test(value)
@@ -329,8 +346,8 @@ function parseArgumentValue(argument, value, options = {}) {
   }
 
   if (argument.type === 'enum') {
-    return argument.enum && hasEnumValue(argument.enum, value, enumRegistry)
-      ? value
+    return argument.enum
+      ? matchingEnumValue(argument.enum, value, enumRegistry) ?? null
       : null;
   }
 
