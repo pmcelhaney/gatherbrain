@@ -15,7 +15,8 @@ So `gatherbrain` is built to:
 - preserve source and relationship cues,
 - let the same facts appear through multiple lenses,
 - reduce memory burden with visible lists, completion, and stable item numbers,
-- store everything in plain files so the system is inspectable and durable.
+- store everything in plain files so the system is inspectable and durable,
+- let users configure their own semantics through small DSLs.
 
 ## Memory Is Cue-Driven
 
@@ -105,6 +106,19 @@ Further reading:
 - [Information scent, Nielsen Norman Group](https://www.nngroup.com/articles/information-scent/)
 - [Pirolli and Card, Information Foraging](https://dl.acm.org/doi/10.1145/223904.223911)
 
+## Users Should Be Able To Build Their Own Semantics
+
+Many knowledge tools make the app's categories feel like facts about the world. `gatherbrain` treats them as user vocabulary.
+
+Commands, enums, lenses, and templates are configured through small JSON and Handlebars DSLs. That means a user can decide:
+
+- which commands exist,
+- which values are meaningful for command arguments,
+- which facts count as visible for a lens,
+- how a visible fact should be displayed.
+
+This matters because personal knowledge work is personal. A useful system for one person might distinguish `waiting`, `blocked`, and `delegated`; another might care about `source`, `claim`, and `question`. The core app provides stable primitives, while configuration lets users build local semantics on top.
+
 ## Recognition Beats Recall
 
 Interfaces are easier when they let people recognize options instead of forcing them to remember exact commands, names, or hidden state. Nielsen's usability heuristics phrase this as "recognition rather than recall."
@@ -141,6 +155,19 @@ Further reading:
 
 - [Shneiderman, Direct Manipulation: A Step Beyond Programming Languages](https://doi.org/10.1109/MC.1983.1654471)
 
+## Plain Text Keeps The System Open
+
+`gatherbrain` is intentionally plain text. The durable data is Markdown files, front matter, and directories.
+
+That choice is partly practical:
+
+- users can read and edit facts without the app,
+- `grep`, `ripgrep`, Git, backup tools, and shell scripts work naturally,
+- multiple apps can interact with the same data,
+- LLM tools can inspect, summarize, rewrite, classify, or link facts without a custom export path.
+
+It is also philosophical. Unix systems are powerful because small tools can cooperate through files and streams. `gatherbrain` borrows that spirit for personal knowledge: keep the stored representation simple enough that the app is not the only thing that can understand it.
+
 ## Why Not A Rich Database?
 
 A database can enforce more structure. But for this tool, strict structure is delayed until it earns its keep.
@@ -163,6 +190,7 @@ That simplicity is intentional. It lowers the cost of capture, makes data portab
 | Context is a memory cue | New facts are stored in the current directory context. |
 | Relationships should be explicit | Peek and `:relate` write `relatedContexts`. |
 | Views should not duplicate data | Lenses render facts without moving them. |
+| Semantics should be user-shaped | Commands, enums, lenses, and templates are configurable DSLs. |
 | Recognition should help recall | Completion, visible lists, and stable item numbers reduce command burden. |
-| Local files are part of the interface | Markdown and directories stay visible to the user and other tools. |
+| Plain text should stay open | Markdown and directories stay visible to editors, scripts, search tools, and LLMs. |
 | Source matters | Imports preserve source metadata at the fact level. |

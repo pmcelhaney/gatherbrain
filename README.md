@@ -17,6 +17,12 @@ Most note systems ask you to stop and organize your thought before you have fini
 
 The goal is not to build a perfect taxonomy. The goal is to make useful memory traces cheap to capture and easy to re-find.
 
+## Design Influences
+
+`gatherbrain` is influenced by Unix-style tools: keep the data plain, make the core model simple, and let other programs participate. A workspace is just directories, Markdown, and front matter. That means editors, scripts, search tools, importers, backup systems, and LLM-based tools can all inspect or transform the same data without going through a private database.
+
+The app also uses configurable DSLs for commands, enums, lenses, and templates. That lets users define their own working semantics: what commands exist, what values are meaningful, which facts appear in a view, and how those facts are rendered.
+
 ## The Basic Model
 
 - A **context** is where you are. It maps to a directory under the workspace root.
@@ -95,6 +101,8 @@ See [Usage](docs/usage.md) for the full command reference.
 ## Configure
 
 Defaults live in `default-config/`. Workspace-local configuration lives under `.gatherbrain/` in the workspace root and overrides or extends defaults.
+
+Configuration is part of the design, not an afterthought. Commands, enum-backed argument values, lenses, and templates form a small DSL for shaping the system around a user's own vocabulary and workflows.
 
 - [Custom Commands](docs/custom-commands.md)
 - [Custom Enums](docs/custom-enums.md)
