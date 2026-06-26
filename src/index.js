@@ -1425,6 +1425,32 @@ export async function completeEntry(line, state) {
     return [matches, line];
   }
 
+  const typedFactTypeCompletion = line.match(/^\.(?<partial>[^\s]*)$/u);
+
+  if (typedFactTypeCompletion) {
+    const partialType = typedFactTypeCompletion.groups.partial ?? '';
+    const matches = commandArgumentValues({
+      type: 'factType',
+      enum: factTypeEnumName
+    }, state.commandRegistry)
+      .filter((value) => startsWithCaseInsensitive(value, partialType))
+      .map((value) => `.${value} `);
+
+    return [matches, line];
+  }
+
+  const typedFactTypeItemCompletion = line.match(/^\.(?<type>[^\s]+(?:\s+[^\s]+)*)\s+(?<partial>.*)$/u);
+
+  if (typedFactTypeItemCompletion) {
+    const normalizedType = matchingFactTypeForState(typedFactTypeItemCompletion.groups.type, state);
+
+    if (normalizedType) {
+      const matches = await matchingFactCompletions(typedFactTypeItemCompletion.groups.partial ?? '', state);
+
+      return [matches, typedFactTypeItemCompletion.groups.partial ?? ''];
+    }
+  }
+
   const namedEnumCompletion = matchingNamedEnumArgument(line, state);
 
   if (namedEnumCompletion) {

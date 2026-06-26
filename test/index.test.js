@@ -1912,6 +1912,36 @@ test('type command targets the active lens list', async () => {
   }
 });
 
+test('typed fact type shorthand changes a listed item type', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const secondFactPath = path.join(rootDirectory, 'second-fact.md');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(rootDirectory, { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'first-fact.md'),
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+    await writeFile(
+      secondFactPath,
+      '---\ntype: waiting\n---\n\nSecond fact.\n'
+    );
+
+    assert.deepEqual(await handleEntry('.done 2', state), {
+      action: 'continue',
+      message: 'set item 2 type to done'
+    });
+    assert.equal(
+      await readFile(secondFactPath, 'utf8'),
+      '---\ntype: done\n---\n\nSecond fact.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('commands show source folders for facts related to the active context', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -2942,6 +2972,14 @@ test('completes named command arguments', async () => {
       [['waiting'], 'WA']
     );
     assert.deepEqual(
+      await completeEntry('.', state),
+      [['.fact ', '.todo ', '.waiting ', '.in progress ', '.done '], '.']
+    );
+    assert.deepEqual(
+      await completeEntry('.d', state),
+      [['.done '], '.d']
+    );
+    assert.deepEqual(
       await completeEntry('%', state),
       [['%fact ', '%todo ', '%waiting ', '%in progress ', '%done '], '%']
     );
@@ -2992,6 +3030,10 @@ test('completes fact arguments by visible fact title', async () => {
     assert.deepEqual(
       await completeEntry(':delete Email', state),
       [['Email Alex'], 'Email']
+    );
+    assert.deepEqual(
+      await completeEntry('.done Cal', state),
+      [['Call Steve'], 'Cal']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

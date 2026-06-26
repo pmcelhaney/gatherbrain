@@ -229,6 +229,36 @@ test('parses fact commands', () => {
     itemNumber: 5,
     type: 'set_fact_type'
   });
+  assert.deepEqual(parseEntry('.done 5'), {
+    factType: 'done',
+    itemNumber: 5,
+    type: 'set_fact_type'
+  });
+  assert.deepEqual(parseEntry('.WAITING 5'), {
+    factType: 'waiting',
+    itemNumber: 5,
+    type: 'set_fact_type'
+  });
+  assert.deepEqual(parseEntry('.in progress 5'), {
+    factType: 'in progress',
+    itemNumber: 5,
+    type: 'set_fact_type'
+  });
+  assert.deepEqual(parseEntry('.done'), {
+    type: 'prompt_command_argument',
+    commandName: 'type',
+    values: { type: 'done' },
+    argument: {
+      name: 'item',
+      type: 'fact',
+      prompt: 'Change which fact?'
+    },
+    prompt: 'Change which fact?'
+  });
+  assert.deepEqual(parseEntry('.bad:type 5'), {
+    message: 'usage: .<type> <item>',
+    type: 'usage_error'
+  });
   assert.deepEqual(parseEntry(':type done'), {
     type: 'prompt_command_argument',
     commandName: 'type',
@@ -260,6 +290,11 @@ test('continues prompted commands', () => {
   const pendingType = parseEntry(':type done');
 
   assert.deepEqual(continuePromptedCommand(pendingType, '5'), {
+    factType: 'done',
+    itemNumber: 5,
+    type: 'set_fact_type'
+  });
+  assert.deepEqual(continuePromptedCommand(parseEntry('.done'), '5'), {
     factType: 'done',
     itemNumber: 5,
     type: 'set_fact_type'

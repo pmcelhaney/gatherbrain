@@ -231,6 +231,68 @@ function parseTypedFactCommand(command, registry) {
   };
 }
 
+function parseTypedFactTypeCommand(command, registry) {
+  const match = command.match(/^\.(?<args>.*)$/u);
+
+  if (!match) {
+    return null;
+  }
+
+  const args = match.groups.args.trim();
+
+  if (args.length === 0) {
+    return {
+      type: 'usage_error',
+      message: 'usage: .<type> <item>'
+    };
+  }
+
+  const normalizedArgs = args.toLowerCase();
+  const matchingValue = enumValues(shorthandFactTypeEnum, registry?.enumRegistry)
+    .toSorted((left, right) => right.length - left.length)
+    .find((value) => (
+      normalizedArgs === value.toLowerCase()
+      || normalizedArgs.startsWith(`${value.toLowerCase()} `)
+    ));
+
+  if (matchingValue) {
+    const item = args.slice(matchingValue.length).trim();
+
+    if (item.length === 0) {
+      return promptForArgument({
+        name: 'type',
+        action: 'set_fact_type',
+        arguments: commandArguments('type', registry)
+      }, { type: matchingValue }, {
+        name: 'item',
+        type: 'fact',
+        prompt: 'Change which fact?'
+      });
+    }
+
+    const parsedItem = parseArgumentValue({ name: 'item', type: 'fact' }, item, {
+      enumRegistry: registry?.enumRegistry,
+      dateToday: registry?.dateToday
+    });
+
+    return parsedItem === null
+      ? {
+        type: 'usage_error',
+        message: 'usage: .<type> <item>'
+      }
+      : {
+        type: 'set_fact_type',
+        factType: matchingValue,
+        ...factSelectorProperties(parsedItem)
+      };
+  }
+
+  return {
+    type: 'usage_error',
+    message: 'usage: .<type> <item>'
+  };
+}
+
 function parseCommandArguments(commandDefinition, args, options = {}) {
   const {
     enumRegistry = null,
@@ -596,6 +658,12 @@ export function parseEntry(entry, registry = defaultCommandRegistry) {
 
   if (typedFactCommand) {
     return typedFactCommand;
+  }
+
+  const typedFactTypeCommand = parseTypedFactTypeCommand(command, registry);
+
+  if (typedFactTypeCommand) {
+    return typedFactTypeCommand;
   }
 
   if (command.startsWith('/')) {
