@@ -330,7 +330,7 @@ test('%type saves a fact with the matching type', async () => {
     });
     assert.equal(
       await readFile(path.join(rootDirectory, 'get-milk.md'), 'utf8'),
-      '---\ntitle: "Get Milk"\ntype: todo\n---\n\nGet Milk\n'
+      '---\ntitle: "Get milk"\ntype: todo\n---\n\nGet milk\n'
     );
     assert.equal(state.model.facts.get('get-milk.md').type, 'todo');
   } finally {
@@ -351,7 +351,7 @@ test('%type asks before adding an unknown fact type', async () => {
     });
     assert.deepEqual(state.pendingFactTypeConfirmation, {
       factType: 'blocked',
-      title: 'Get Milk'
+      title: 'Get milk'
     });
     assert.deepEqual(await completeEntry('y', state), [['yes'], 'y']);
     assert.deepEqual(await handleEntry('yes', state), {
@@ -361,7 +361,7 @@ test('%type asks before adding an unknown fact type', async () => {
     assert.equal(state.pendingFactTypeConfirmation, null);
     assert.equal(
       await readFile(path.join(rootDirectory, 'get-milk.md'), 'utf8'),
-      '---\ntitle: "Get Milk"\ntype: blocked\n---\n\nGet Milk\n'
+      '---\ntitle: "Get milk"\ntype: blocked\n---\n\nGet milk\n'
     );
     assert.deepEqual(
       enumValues('factType', state.commandRegistry.enumRegistry),

@@ -174,12 +174,6 @@ function parseNamedCommand(command, registry) {
   };
 }
 
-function titleCaseFactText(text) {
-  return text.replace(/\p{L}[\p{L}\p{N}'-]*/gu, (word) => (
-    word[0].toUpperCase() + word.slice(1)
-  ));
-}
-
 function parseTypedFactCommand(command, registry) {
   const match = command.match(/^%(?<args>.*)$/u);
 
@@ -209,7 +203,7 @@ function parseTypedFactCommand(command, registry) {
     return title.length > 0
       ? {
         type: 'create_fact',
-        title: titleCaseFactText(title),
+        title,
         factType: matchingValue
       }
       : {
@@ -231,7 +225,7 @@ function parseTypedFactCommand(command, registry) {
 
   return {
     type: 'create_fact',
-    title: titleCaseFactText(title),
+    title,
     factType,
     confirmFactType: true
   };
