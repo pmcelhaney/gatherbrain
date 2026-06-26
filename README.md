@@ -1,69 +1,116 @@
 # gatherbrain
 
-`gatherbrain` is a prompt-first second brain TUI. Type a fact title, press Enter, and it writes the entry to a slug-named Markdown file in the current context.
+`gatherbrain` is a local-first, prompt-first second brain for capturing small pieces of knowledge while you work.
 
-The app is launched with a workspace root. The root directory and every non-hidden subdirectory are contexts. Hidden directories, including `.trash` and `.gatherbrain`, are ignored.
+It runs in the terminal. You point it at a workspace directory, move through that directory tree as **contexts**, and save short **facts** as Markdown files. The app keeps an in-memory model of the workspace so it can render quickly, update after edits, and reflect external file changes while it is running.
 
-The workspace is loaded into an in-memory model at startup. Visible workspace directories are watched while the TUI is running, so external Markdown edits and newly created contexts are reflected in the model without restarting the app. Workspace configuration in `.gatherbrain` is also watched, so command, lens, enum, and template changes are reloaded while the app runs.
+## What Problem It Solves
 
-The top of the screen shows the current context, existing facts in that context and its subcontexts are listed below it, and the prompt stays on the bottom line.
+Most note systems ask you to stop and organize your thought before you have finished having it. That is expensive: you have to remember the thought, decide where it goes, choose metadata, and then get back to the work that triggered it.
 
-When facts do not fit on one screen, complete items are paged with an ellipsis. Use `Page Up` and `Page Down` to move between pages.
+`gatherbrain` is built around a smaller loop:
 
-Commands use colon-prefixed names. Press `Tab` after `:` to complete command names. If a command is missing an argument, the prompt asks for the next argument.
+1. Go to the context you are working in.
+2. Type the thing you want to remember.
+3. Let the app store it as a plain Markdown fact.
+4. Use lenses later to see the same facts through different questions.
 
-Use `:switch my-cool-project` to switch to a context. If the context does not exist, the app asks whether to create it. Subsequent facts are written to that directory.
+The goal is not to build a perfect taxonomy. The goal is to make useful memory traces cheap to capture and easy to re-find.
 
-The `:switch` command also accepts Unix-style context paths: `./foo` is a child of the current context, `/foo` is under the workspace root, `../` is the parent, and `../foo` is a sibling.
+## The Basic Model
 
-Use `:peek people/alex` to peek at another context while staying in the current context. New facts are still written to the current context and get `relatedContexts` pointing at the peek context. The peeked context has its own lens, so changing lenses while peeking does not change the current context's lens. Use `:clear-peek` to clear peek.
+- A **context** is where you are. It maps to a directory under the workspace root.
+- A **fact** is something you want to remember. It is stored as a Markdown file with front matter.
+- A **peek** is a context you are looking at without leaving the current context.
+- A **lens** is a view over visible facts, such as `all`, `todo`, `due`, `today`, or `current`.
 
-Use `:lens todo` to switch to the todo lens, which only shows facts with type `todo`, `waiting`, `in progress`, or `fact` (the default type). Use `:lens all` to show every fact again.
+New facts are always created in the current context. If you are peeking at another context, the fact is still created where you are, but it is related to the peeked context.
 
-Use `:lens due` to show facts with a `due` date that are not `done`. Use `:lens today` to show not-done facts due on or before today. Use `:lens current` to show the today lens plus `done` facts last modified today.
+## Why It Is Designed This Way
 
-Use `:new Follow up with Alex` to create a new fact. Typing a title without a colon also creates a fact.
+`gatherbrain` treats memory as something distributed between your head, your filesystem, and your current task. That design is grounded in a few ideas from cognitive science and human-computer interaction:
 
-Use `:edit 3` to open the third listed fact in `$EDITOR`.
+- Human working memory is limited, so capture should be fast and should not require much up-front categorization.
+- People remember better when retrieval cues match the context in which something was encoded, so facts live inside meaningful directory contexts.
+- Re-finding personal information often depends on partial cues like where something was, who it was about, or what task it belonged to.
+- Interfaces should reduce recall burden and support recognition, so commands use completion and visible item numbers.
+- Expert tools should preserve flow, so the TUI keeps navigation, capture, editing, and filtering close to the keyboard.
 
-Use `:open` to open the current context directory in the system file viewer. Use `:open 3` to open the file referenced by the third listed fact's `file` front matter property.
+See [Design Theory](docs/design-theory.md) for the plain-English research grounding behind these choices.
 
-Use `:delete 3` to move the third listed fact to `.trash` inside its context directory.
+## How It Stores Data
 
-Use `:relate 3 people/alex` to add a workspace-relative context path to the third listed fact's reserved `relatedContexts` front matter field.
+A workspace is just a directory tree.
 
-Use `:type task 3` to change the third listed fact's front matter type to `task`. The type name can be any letter-starting word with letters, numbers, `_`, or `-`; enum-listed values can also include spaces, such as `in progress`.
+```text
+workspace/
+  people/
+    alex/
+      follow-up.md
+  projects/
+    gatherbrain/
+      idea.md
+```
 
-Use `:due today 3` to set the third listed fact's `due` front matter property to a normalized date such as `2026-06-24`.
-
-Use `:paste` to name and save the current clipboard contents to a `.txt` file in the current context. Press Enter to accept the default `Pasted <timestamp>` name, or pass a name inline with `:paste My pasted item`. The chosen name is used for the pasted file and its companion fact. The companion fact's `file` front matter property points to the pasted file. On macOS, image clipboard contents such as screenshots are saved as `.png` files and embedded in the companion Markdown fact.
-
-Use `:debug-keys` to toggle key debugging output.
-
-Use `:restart` to restart the app process and restore the current context, peek, lens, lens history, and page position.
-
-Default commands are defined in `default-config/commands.json`. A workspace-local `.gatherbrain/commands.json` can add commands or override defaults with the same command name. See [Custom Commands](docs/custom-commands.md).
-
-Command enum arguments can use workspace-local `.gatherbrain/enums.json` value lists. See [Custom Enums](docs/custom-enums.md).
-
-Default lenses are defined in `default-config/lenses.json`. A workspace-local `.gatherbrain/lenses.json` can add lenses or override defaults with the same lens id. See [Custom Lenses](docs/custom-lenses.md).
-
-Each saved file uses this front matter:
+Each fact is a Markdown file:
 
 ```markdown
 ---
-title: Example fact
+title: Follow up with Alex about the prototype
 type: fact
+relatedContexts: ["people/alex"]
 ---
+
+Follow up with [Alex](/people/alex) about the prototype.
 ```
+
+The title is a plain-text preview capped at 80 characters. The full captured text is stored in the body. `@context` references in captured text are converted to Markdown links.
+
+Hidden directories are ignored, including `.trash`, `.gatherbrain`, and any directory whose name starts with `.`.
 
 ## Run
 
 ```sh
+npm install
 npm start -- /path/to/workspace
 ```
 
 Use `:q`, `:quit`, `:exit`, or `Ctrl+C` to leave the prompt.
+
+## Common Commands
+
+- Type plain text and press Enter to save a fact.
+- `:switch projects/gatherbrain` changes context.
+- `:peek people/alex` looks at another context without leaving the current one.
+- `:lens today` changes the current lens.
+- `:edit 3` opens the third visible fact in `$EDITOR`.
+- `:delete 3` moves the third visible fact to `.trash`.
+- `:paste` saves the current clipboard contents and creates a companion fact.
+- `:restart` restarts the app and restores the current UI state.
+
+Press `Tab` after `:` to complete command names. When a command needs more information, the prompt asks for arguments one at a time.
+
+See [Usage](docs/usage.md) for the full command reference.
+
+## Configure
+
+Defaults live in `default-config/`. Workspace-local configuration lives under `.gatherbrain/` in the workspace root and overrides or extends defaults.
+
+- [Custom Commands](docs/custom-commands.md)
+- [Custom Enums](docs/custom-enums.md)
+- [Custom Lenses](docs/custom-lenses.md)
+
+## Import People
+
+`gatherbrain` includes a Notion collaborators CSV importer that creates one context per person and one source-traceable fact per imported cell.
+
+```sh
+npm run import:people -- /path/to/collaborators.csv /path/to/workspace
+```
+
+## Architecture
+
+See [Source Architecture](src/README.md) for implementation details and source-file responsibilities.
 
 ## Test
 

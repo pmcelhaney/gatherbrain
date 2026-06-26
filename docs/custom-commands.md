@@ -64,7 +64,7 @@ Supported argument types:
 - `fact`: a fact from the current visible list. Numbered facts still work, and completion matches visible fact titles.
 - `lens`: a lens id. Supports completion.
 - `enum`: a string value from `.gatherbrain/enums.json`. Supports completion.
-- `factType`: a type string starting with a letter and containing only letters, numbers, `_`, or `-`. If `enum` is set, those enum values are offered as completions and may include spaces.
+- `factType`: a type string starting with a letter and containing only letters, numbers, spaces, `_`, or `-`. If `enum` is set, those enum values are offered as completions.
 - `date`: a natural language date normalized to `YYYY-MM-DD`.
 - `text`: free text.
 
