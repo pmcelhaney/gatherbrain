@@ -229,6 +229,16 @@ test('parses fact commands', () => {
     itemNumber: 5,
     type: 'set_fact_type'
   });
+  assert.deepEqual(parseEntry(':type Call Steve task'), {
+    factType: 'task',
+    itemTitle: 'Call Steve',
+    type: 'set_fact_type'
+  });
+  assert.deepEqual(parseEntry(':type Call Steve in progress'), {
+    factType: 'in progress',
+    itemTitle: 'Call Steve',
+    type: 'set_fact_type'
+  });
   assert.deepEqual(parseEntry('.done 5'), {
     factType: 'done',
     itemNumber: 5,
@@ -365,6 +375,18 @@ test('normalizes date command arguments', async () => {
   });
   assert.deepEqual(parseEntry(':due 4 in 2 weeks', registry), {
     itemNumber: 4,
+    property: 'due',
+    type: 'set_fact_property',
+    value: '2026-07-08'
+  });
+  assert.deepEqual(parseEntry(':due Call Steve next Friday', registry), {
+    itemTitle: 'Call Steve',
+    property: 'due',
+    type: 'set_fact_property',
+    value: '2026-06-26'
+  });
+  assert.deepEqual(parseEntry(':due Call Steve in 2 weeks', registry), {
+    itemTitle: 'Call Steve',
     property: 'due',
     type: 'set_fact_property',
     value: '2026-07-08'
