@@ -25,20 +25,11 @@ import {
   parseEntry
 } from './commands.js';
 import {
-  addFactRelation,
-  deleteFact,
   filenameBaseForTitle,
-  resolveContextDirectory,
-  saveFact,
-  timestampForFilename,
-  updateFactProperty,
-  updateFactType
+  timestampForFilename
 } from './facts.js';
 import {
   loadWorkspaceModel,
-  refreshContext,
-  refreshFact,
-  removeFact,
   watchWorkspaceModel
 } from './model.js';
 import {
@@ -54,8 +45,25 @@ import {
   renderTemplateLines
 } from './templates.js';
 import {
-  addEnumValue
-} from './enums.js';
+  addWorkspaceEnumValue,
+  contextDirectoryForId,
+  contextDirectoryForSwitchReference,
+  contextHasHiddenPathPart,
+  contextIdForDirectory,
+  contextIdForSwitchReference,
+  contextIds,
+  createContext,
+  createFact,
+  deleteWorkspaceFact,
+  ensureWorkspaceModel,
+  referencedFilePathForFact,
+  relateWorkspaceFact,
+  resolveExistingContextDirectory,
+  resolveExistingSwitchContextDirectory,
+  setWorkspaceFactProperty,
+  setWorkspaceFactType,
+  refreshWorkspaceFact
+} from './api.js';
 
 const defaultAppDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -176,12 +184,6 @@ function currentLens(state) {
     currentLensId: currentLensIdForState(state),
     currentContextDirectory: state.peekContextDirectory ?? state.currentContextDirectory
   };
-}
-
-function contextDirectoryForId(state, contextId) {
-  return contextId === ''
-    ? state.rootDirectory
-    : path.join(state.rootDirectory, ...contextId.split('/'));
 }
 
 function lensesAreEqual(left, right) {
@@ -663,34 +665,8 @@ export function keyDebugLines(value, key) {
   ];
 }
 
-async function ensureModel(state) {
-  if (!state.model) {
-    state.model = await loadWorkspaceModel({ rootDirectory: state.rootDirectory });
-  }
-
-  return state.model;
-}
-
 async function contextIdsForState(state) {
-  const model = await ensureModel(state);
-
-  return [...model.contexts.keys()].filter((contextId) => contextId !== '').sort();
-}
-
-async function contextLinksForState(state) {
-  return (await contextIdsForState(state)).map((contextId) => ({
-    folder: contextId.split('/').at(-1) ?? contextId,
-    name: contextId
-  }));
-}
-
-function contextIdForDirectory(state, contextDirectory) {
-  const contextId = path
-    .relative(state.rootDirectory, contextDirectory)
-    .split(path.sep)
-    .join('/');
-
-  return contextId === '' ? '' : contextId;
+  return contextIds(state);
 }
 
 function lensContextDirectoryForState(state) {
@@ -702,7 +678,7 @@ export function filterFactsForLensId(facts, lens = defaultLensId) {
 }
 
 export async function visibleBodyForState(state) {
-  const model = await ensureModel(state);
+  const model = await ensureWorkspaceModel(state);
   const lensModel = presentLens({
     model,
     state: {
@@ -792,17 +768,10 @@ async function openPathForReference(state, selector) {
   }
 
   const { fact, itemLabel } = await visibleFactForSelector(state, selector);
-  const referencedFile = fact.properties?.file;
-
-  if (!referencedFile) {
-    throw new Error(`item ${itemLabel} does not reference a file`);
-  }
 
   return {
     itemLabel,
-    filePath: path.isAbsolute(referencedFile)
-      ? referencedFile
-      : path.resolve(path.dirname(fact.path), referencedFile)
+    filePath: referencedFilePathForFact(fact, itemLabel)
   };
 }
 
@@ -1611,53 +1580,6 @@ function contextReferenceParts(contextReference) {
   return contextReference.split('/').filter((pathPart) => pathPart.length > 0);
 }
 
-function normalizeContextReferenceParts(contextReference, initialParts = []) {
-  const parts = [...initialParts];
-
-  for (const part of contextReferenceParts(contextReference)) {
-    if (part === '.') {
-      continue;
-    }
-
-    if (part === '..') {
-      parts.pop();
-      continue;
-    }
-
-    parts.push(part);
-  }
-
-  return parts;
-}
-
-function contextIdRelativeToCurrent(contextReference, state) {
-  const relativeContext = path
-    .relative(state.rootDirectory, state.currentContextDirectory)
-    .split(path.sep)
-    .join('/');
-  const parts = normalizeContextReferenceParts(contextReference, contextReferenceParts(relativeContext));
-
-  return parts.join('/');
-}
-
-function contextIdForSwitchReference(contextReference, state) {
-  const requestedContext = contextReference.trim();
-
-  if (requestedContext.length === 0) {
-    throw new Error('context name is required');
-  }
-
-  if (requestedContext === '/') {
-    return '';
-  }
-
-  if (requestedContext.startsWith('/')) {
-    return normalizeContextReferenceParts(requestedContext).join('/');
-  }
-
-  return contextIdRelativeToCurrent(requestedContext, state);
-}
-
 async function matchingSwitchContextCompletions(partialContext, state) {
   const contexts = await contextIdsForState(state);
   const currentContextId = contextIdForDirectory(state, state.currentContextDirectory);
@@ -1753,7 +1675,7 @@ export function openEditor(filePath, options = {}) {
 }
 
 export async function refreshEditedFact(state, filePath) {
-  await refreshFact(await ensureModel(state), filePath);
+  await refreshWorkspaceFact(state, filePath);
 }
 
 export async function reloadWorkspaceConfig(state) {
@@ -1764,95 +1686,6 @@ export async function reloadWorkspaceConfig(state) {
   state.lensRegistry = await loadLensRegistry({
     rootDirectory: state.rootDirectory
   });
-}
-
-async function relationForContextReference(contextReference, state) {
-  const requestedContext = contextReference.trim();
-
-  if (requestedContext.length === 0) {
-    throw new Error('usage: :relate <item> <context>');
-  }
-
-  const normalizedContext = requestedContext.replace(/^\/+/u, '');
-  const contexts = await contextIdsForState(state);
-  const matches = contexts.filter((contextName) => {
-    const contextFolder = contextName.split('/').at(-1) ?? contextName;
-
-    return contextName === normalizedContext
-      || contextFolder === normalizedContext;
-  });
-
-  if (matches.length === 0) {
-    throw new Error(`context ${requestedContext} does not exist`);
-  }
-
-  if (matches.length > 1) {
-    throw new Error(`context ${requestedContext} is ambiguous`);
-  }
-
-  return matches[0];
-}
-
-async function resolveExistingContextDirectory(contextReference, state) {
-  const contextDirectory = resolveContextDirectory(contextReference, {
-    rootDirectory: state.rootDirectory
-  });
-  const normalizedContext = contextIdForDirectory(state, contextDirectory);
-  const contexts = await contextIdsForState(state);
-
-  if (!contexts.includes(normalizedContext)) {
-    throw new Error(`context ${contextReference} does not exist`);
-  }
-
-  return contextDirectory;
-}
-
-async function resolveExistingSwitchContextDirectory(contextReference, state) {
-  const contextId = contextIdForSwitchReference(contextReference, state);
-  const contextDirectory = contextId === ''
-    ? state.rootDirectory
-    : path.join(state.rootDirectory, ...contextId.split('/'));
-  const model = await ensureModel(state);
-
-  if (model.contexts.has(contextId)) {
-    return contextDirectory;
-  }
-
-  const requestedContext = contextReference.trim();
-
-  if (
-    !requestedContext.startsWith('/')
-    && !requestedContext.startsWith('./')
-    && !requestedContext.startsWith('../')
-    && requestedContext !== '.'
-    && requestedContext !== '..'
-  ) {
-    const rootRelativeContextDirectory = resolveContextDirectory(requestedContext, {
-      rootDirectory: state.rootDirectory
-    });
-    const rootRelativeContextId = contextIdForDirectory(state, rootRelativeContextDirectory);
-
-    if (model.contexts.has(rootRelativeContextId)) {
-      return rootRelativeContextDirectory;
-    }
-  }
-
-  throw new Error(`context ${contextReference} does not exist`);
-}
-
-function contextDirectoryForSwitchReference(contextReference, state) {
-  const contextId = contextIdForSwitchReference(contextReference, state);
-
-  return contextId === ''
-    ? state.rootDirectory
-    : path.join(state.rootDirectory, ...contextId.split('/'));
-}
-
-function hiddenContextPathPart(contextDirectory, state) {
-  return path
-    .relative(state.rootDirectory, contextDirectory)
-    .split(path.sep)
-    .some((pathPart) => pathPart.startsWith('.'));
 }
 
 function contextCreationPrompt(contextDirectory) {
@@ -1890,16 +1723,11 @@ function factTypeConfirmationPrompt(factType) {
 }
 
 async function saveCreatedFact(parsedEntry, state) {
-  const savedPath = await saveFact(parsedEntry.title, {
-    contextLinks: await contextLinksForState(state),
-    relations: state.peekContextDirectory
-      ? [contextIdForDirectory(state, state.peekContextDirectory)]
-      : [],
-    rootDirectory: state.currentContextDirectory,
+  const savedFact = await createFact(state, {
+    title: parsedEntry.title,
     type: parsedEntry.factType ?? 'fact'
   });
-  await refreshContext(await ensureModel(state), state.currentContextDirectory);
-  const message = `saved ${path.relative(state.appDirectory, savedPath)}`;
+  const message = `saved ${savedFact.relativePath}`;
   state.pageStartIndex = 0;
   state.statusMessage = '';
   clearTemporaryBody(state);
@@ -1950,8 +1778,7 @@ async function handlePendingContextCreation(entry, state) {
   }
 
   try {
-    await mkdir(pendingContextCreation.directory, { recursive: true });
-    await refreshContext(await ensureModel(state), pendingContextCreation.directory);
+    await createContext(state, pendingContextCreation.directory);
   } catch (error) {
     state.statusMessage = error.message;
     clearTemporaryBody(state);
@@ -1998,11 +1825,7 @@ async function handlePendingFactTypeConfirmation(entry, state) {
   }
 
   try {
-    const factType = await addEnumValue({
-      rootDirectory: state.rootDirectory,
-      enumName: factTypeEnumName,
-      value: pendingFactTypeConfirmation.factType
-    });
+    const factType = await addWorkspaceEnumValue(state, factTypeEnumName, pendingFactTypeConfirmation.factType);
 
     await reloadWorkspaceConfig(state);
 
@@ -2113,21 +1936,22 @@ export async function handleEntry(entry, state) {
 
       const pastedFilename = path.basename(pastedFilePath);
       const pastedAltText = path.parse(pastedFilename).name;
-      const factPath = await saveFact(factTitle, {
+      const fact = await createFact(state, {
+        title: factTitle,
         body: clipboardItem?.type === 'file' ? `1. ![${pastedAltText}](${pastedFilename})` : '',
+        contextLinks: [],
+        relatePeek: false,
         properties: {
           file: pastedFilename
-        },
-        rootDirectory: state.currentContextDirectory
+        }
       });
-      await refreshContext(await ensureModel(state), state.currentContextDirectory);
       state.pageStartIndex = 0;
       state.statusMessage = '';
       clearTemporaryBody(state);
 
       return {
         action: 'continue',
-        message: `pasted ${path.relative(state.appDirectory, pastedFilePath)} and ${path.relative(state.appDirectory, factPath)}`
+        message: `pasted ${path.relative(state.appDirectory, pastedFilePath)} and ${fact.relativePath}`
       };
     } catch (error) {
       if (reservedImagePath) {
@@ -2200,7 +2024,7 @@ export async function handleEntry(entry, state) {
         };
       }
 
-      if (hiddenContextPathPart(contextDirectory, state)) {
+      if (contextHasHiddenPathPart(contextDirectory, state)) {
         state.statusMessage = 'context cannot contain hidden folders';
         clearTemporaryBody(state);
 
@@ -2347,8 +2171,7 @@ export async function handleEntry(entry, state) {
       itemLabel = resolvedFact.itemLabel;
       const { fact } = resolvedFact;
 
-      await deleteFact(fact.path);
-      removeFact(await ensureModel(state), fact.path);
+      await deleteWorkspaceFact(state, fact);
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);
@@ -2373,9 +2196,7 @@ export async function handleEntry(entry, state) {
   if (parsedEntry.type === 'relate_fact') {
     try {
       const { fact, itemLabel } = await visibleFactForSelector(state, parsedEntry);
-      const relation = await relationForContextReference(parsedEntry.contextReference, state);
-      await addFactRelation(fact.path, relation);
-      await refreshFact(await ensureModel(state), fact.path);
+      const relation = await relateWorkspaceFact(state, fact, parsedEntry.contextReference);
 
       const message = `related item ${itemLabel} to ${relation}`;
       state.statusMessage = '';
@@ -2414,8 +2235,7 @@ export async function handleEntry(entry, state) {
       itemLabel = resolvedFact.itemLabel;
       const { fact } = resolvedFact;
 
-      await updateFactType(fact.path, parsedEntry.factType);
-      await refreshFact(await ensureModel(state), fact.path);
+      await setWorkspaceFactType(state, fact, parsedEntry.factType);
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);
@@ -2445,8 +2265,7 @@ export async function handleEntry(entry, state) {
       itemLabel = resolvedFact.itemLabel;
       const { fact } = resolvedFact;
 
-      await updateFactProperty(fact.path, parsedEntry.property, parsedEntry.value);
-      await refreshFact(await ensureModel(state), fact.path);
+      await setWorkspaceFactProperty(state, fact, parsedEntry.property, parsedEntry.value);
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);

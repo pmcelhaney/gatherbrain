@@ -16,7 +16,7 @@
 2. `model.js` indexes contexts and facts from disk, ignoring hidden directories.
 3. `lenses.js` presents visible facts for the active context or peek context.
 4. `index.js` converts facts into view models, renders the body through `templates.js`, and draws the prompt line.
-5. User input is parsed by `commands.js`. If a command mutates data, `facts.js` writes Markdown/files and `model.js` refreshes the changed model region.
+5. User input is parsed by `commands.js`. If a command mutates data, `index.js` calls `api.js`, which uses `facts.js` for Markdown/files and `model.js` to refresh the changed model region.
 6. `config-watch.js` and `model.js` watchers keep local configuration and workspace data current while the app is running.
 
 ## Files
@@ -26,6 +26,12 @@
 The CLI entry point and TUI coordinator. It owns prompt state, rendering, key handling, completion, command execution, restart snapshots, clipboard paste, `$EDITOR` handoff, platform open commands, and watcher setup.
 
 Important exports used heavily by tests include `createPromptState`, `handleEntry`, `completeEntry`, `buildTuiLines`, `renderTui`, `visibleFactsForState`, and restart helpers.
+
+### `api.js`
+
+Command-facing workspace operations. It is the boundary between the TUI and durable workspace mutations: creating facts and contexts, resolving context references, deleting facts, relating facts, setting fact type/properties, resolving referenced files, adding enum values, and refreshing the in-memory model after changes.
+
+Prefer putting reusable app operations here rather than making `index.js` call `facts.js` or `model.js` directly.
 
 ### `facts.js`
 
@@ -83,6 +89,7 @@ Filesystem watcher for workspace-local configuration under `.gatherbrain`. It re
 
 - Prefer changing `facts.js` for Markdown/file-format rules.
 - Prefer changing `model.js` for workspace indexing and refresh behavior.
+- Prefer changing `api.js` for command-facing workspace operations and model refresh after mutations.
 - Prefer changing `lenses.js` for what is visible and what metadata presenters expose to templates.
 - Prefer changing `templates.js` and `default-config/templates` for rendering syntax and default body output.
 - Prefer changing `commands.js` and `default-config/commands.json` for command parsing and DSL shape.

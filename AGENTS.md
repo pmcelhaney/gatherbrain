@@ -1,6 +1,6 @@
 # Agent Guide
 
-This repository is a prompt-first second-brain TUI written in Node.js ESM. It stores facts as Markdown files with front matter inside a user-selected workspace directory.
+This repository is a prompt-first working-memory TUI written in Node.js ESM. It stores facts as Markdown files with front matter inside a user-selected workspace directory.
 
 ## Start Here
 
@@ -12,6 +12,7 @@ This repository is a prompt-first second-brain TUI written in Node.js ESM. It st
 ## Fast Navigation
 
 - TUI orchestration, prompt state, rendering, completions, command execution: `src/index.js`
+- Command-facing workspace operations and model refresh after mutations: `src/api.js`
 - Markdown/front matter, fact creation, deletion, relation/property edits: `src/facts.js`
 - In-memory context/fact model, model refresh, filesystem watch: `src/model.js`
 - Command DSL parsing and config loading: `src/commands.js`
@@ -55,6 +56,7 @@ This repository is a prompt-first second-brain TUI written in Node.js ESM. It st
 - Add or update focused tests in the matching `test/*.test.js` file.
 - Important test files:
   - `test/index.test.js` for TUI behavior, command execution, completion, rendering, paste/open/restart.
+  - `test/api.test.js` for command-facing workspace operations and model refresh.
   - `test/facts.test.js` for Markdown, filenames, relations, and low-level filesystem helpers.
   - `test/model.test.js` for workspace loading, hidden directory handling, refresh, and model watchers.
   - `test/lenses.test.js` for presenter and lens behavior.
@@ -64,6 +66,7 @@ This repository is a prompt-first second-brain TUI written in Node.js ESM. It st
 ## Change Placement
 
 - If the change affects file format or Markdown parsing, start in `src/facts.js`.
+- If the change affects command-facing workspace mutations or context resolution, start in `src/api.js`.
 - If the change affects what facts are visible or what fields templates receive, start in `src/lenses.js`.
 - If the change affects screen layout, wrapping, prompt mode, paste, editor/open integration, or key handling, start in `src/index.js`.
 - If the change affects command syntax or arguments, update `default-config/commands.json` and `src/commands.js`.
