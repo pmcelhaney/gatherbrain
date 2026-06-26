@@ -52,6 +52,26 @@ test('supports color filters in templates', () => {
   );
 });
 
+test('renders child context source names in default facts template', () => {
+  assert.equal(
+    renderTemplate('facts', {
+      emptyText: 'No facts yet.',
+      facts: [
+        {
+          number: ' 1',
+          type: '',
+          sourceContext: 'people/Steve Ma/reports',
+          sourceContextShort: 'reports',
+          body: 'Child fact.'
+        }
+      ],
+      hasFacts: true,
+      includeColor: true
+    }),
+    ' 1. \x1b[34mreports\x1b[39m Child fact.'
+  );
+});
+
 test('renders empty facts template', () => {
   assert.deepEqual(
     renderTemplateLines('facts', {

@@ -87,14 +87,20 @@ test('loads workspace lens definitions over defaults', async () => {
 test('all lens presents direct and related facts for the active context', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-lenses-'));
   const activeContext = path.join(directory, 'people', 'Steve Ma');
+  const childContext = path.join(activeContext, 'reports');
   const relatedPath = path.join(directory, 'projects', 'related.md');
 
   try {
     await mkdir(activeContext, { recursive: true });
+    await mkdir(childContext, { recursive: true });
     await mkdir(path.dirname(relatedPath), { recursive: true });
     await writeFile(
       path.join(activeContext, 'direct.md'),
       '---\ntype: fact\nrelatedContexts: ["projects/app"]\n---\n\nDirect fact.\n'
+    );
+    await writeFile(
+      path.join(childContext, 'child.md'),
+      '---\ntype: fact\n---\n\nChild fact.\n'
     );
     await writeFile(
       relatedPath,
@@ -122,17 +128,36 @@ test('all lens presents direct and related facts for the active context', async 
         displayRelationDirection: fact.displayRelationDirection,
         displayRelations: fact.displayRelations,
         text: fact.text
-      })),
+      })).sort((left, right) => left.text.localeCompare(right.text)),
       [
         {
-          displayRelationDirection: '<',
-          displayRelations: ['projects'],
-          text: 'Related fact.'
+          displayRelationDirection: undefined,
+          displayRelations: undefined,
+          text: 'Child fact.'
         },
         {
           displayRelationDirection: '>',
           displayRelations: ['app'],
           text: 'Direct fact.'
+        },
+        {
+          displayRelationDirection: '<',
+          displayRelations: ['projects'],
+          text: 'Related fact.'
+        }
+      ]
+    );
+    assert.deepEqual(
+      lensModel.facts
+        .filter((fact) => fact.text === 'Child fact.')
+        .map((fact) => ({
+          sourceContext: fact.sourceContext,
+          sourceContextShort: fact.sourceContextShort
+        })),
+      [
+        {
+          sourceContext: 'people/Steve Ma/reports',
+          sourceContextShort: 'reports'
         }
       ]
     );

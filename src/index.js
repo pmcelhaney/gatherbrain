@@ -997,8 +997,15 @@ function factViewModelsForDisplay(facts, options = {}) {
     const type = fact.type ?? 'fact';
     const relationSuffix = relationSuffixText(displayRelationsForFact(fact), fact.displayRelationDirection);
     const displayType = type === 'fact' ? '' : type;
-    const firstPrefix = `${String(itemNumber).padStart(numberWidth)}. ${displayType ? `${displayType} ` : ''}`;
-    const firstColumns = Math.max(columns - visibleLength(firstPrefix), 1);
+    const sourceContext = fact.sourceContext ?? '';
+    const sourceContextShort = fact.sourceContextShort ?? '';
+    const firstPrefix = [
+      `${String(itemNumber).padStart(numberWidth)}.`,
+      sourceContextShort,
+      displayType
+    ].filter((part) => part.length > 0).join(' ');
+    const firstPrefixWithSpacing = `${firstPrefix} `;
+    const firstColumns = Math.max(columns - visibleLength(firstPrefixWithSpacing), 1);
     const displayOptions = {
       columns,
       continuationColumns,
@@ -1017,6 +1024,8 @@ function factViewModelsForDisplay(facts, options = {}) {
     const viewModel = {
       number: String(itemNumber).padStart(numberWidth),
       type: displayType,
+      sourceContext,
+      sourceContextShort,
       title: titleText,
       body: bodyLines.join('\n'),
       display: displayLines.join('\n')

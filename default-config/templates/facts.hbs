@@ -1,2 +1,2 @@
-{{#if hasFacts}}{{#each facts}}{{number}}. {{#if type}}{{type | color: "cyan"}} {{/if}}{{#if display}}{{display}}{{else}}{{body}}{{/if}}{{#unless @last}}
+{{#if hasFacts}}{{#each facts}}{{number}}. {{#if sourceContextShort}}{{sourceContextShort | color: "blue"}} {{/if}}{{#if type}}{{type | color: "cyan"}} {{/if}}{{#if display}}{{display}}{{else}}{{body}}{{/if}}{{#unless @last}}
 {{/unless}}{{/each}}{{else}}{{emptyText}}{{/if}}

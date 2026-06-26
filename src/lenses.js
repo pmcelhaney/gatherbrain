@@ -46,6 +46,10 @@ function folderNameForRelation(relation) {
   return relation.split('/').at(-1) ?? relation;
 }
 
+function shortContextName(contextId) {
+  return contextId.split('/').at(-1) ?? contextId;
+}
+
 function factsForModel(model) {
   return [...model.facts.values()]
     .sort((left, right) => {
@@ -76,8 +80,18 @@ function visibleFactsForContext(model, contextPath) {
         return [];
       }
 
+      const sourceContext = insideContext && fact.contextId !== contextRelation
+        ? fact.contextId
+        : null;
+
       return [{
         ...fact,
+        ...(sourceContext
+          ? {
+            sourceContext,
+            sourceContextShort: shortContextName(sourceContext)
+          }
+          : {}),
         ...(insideContext && fact.relations?.length > 0
           ? {
             displayRelationDirection: '>',
