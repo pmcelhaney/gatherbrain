@@ -2840,6 +2840,7 @@ test('completes :relate context folder names', async () => {
 
   try {
     await mkdir(path.join(rootDirectory, 'people', 'Mike Sisto'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Sis Project'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
     const state = createPromptState({ appDirectory, rootDirectory });
@@ -2854,11 +2855,11 @@ test('completes :relate context folder names', async () => {
     );
     assert.deepEqual(
       await completeEntry(':relate 1 sis', state),
-      [['Mike Sisto'], 'sis']
+      [['Sis Project', 'Mike Sisto'], 'sis']
     );
     assert.deepEqual(
       await completeEntry(':relate 1 /people/S', state),
-      [['/people/Steve Ma'], '/people/S']
+      [['/people/Sis Project', '/people/Steve Ma'], '/people/S']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -2871,6 +2872,7 @@ test('completes context mentions in fact text', async () => {
 
   try {
     await mkdir(path.join(rootDirectory, 'people', 'Mike Sisto'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Sis Project'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
     const state = createPromptState({ appDirectory, rootDirectory });
 
@@ -2884,7 +2886,7 @@ test('completes context mentions in fact text', async () => {
     );
     assert.deepEqual(
       await completeEntry('Talk to @sis', state),
-      [['@Mike Sisto'], '@sis']
+      [['@Sis Project', '@Mike Sisto'], '@sis']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -3019,14 +3021,19 @@ test('completes fact arguments by visible fact title', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
     await handleEntry('Call Steve', state);
     await handleEntry('Email Alex', state);
+    await handleEntry('Steve Call', state);
 
     assert.deepEqual(
       await completeEntry(':edit Cal', state),
-      [['Call Steve'], 'Cal']
+      [['Call Steve', 'Steve Call'], 'Cal']
+    );
+    assert.deepEqual(
+      await completeEntry(':edit Ste', state),
+      [['Steve Call', 'Call Steve'], 'Ste']
     );
     assert.deepEqual(
       await completeEntry(':edit cal', state),
-      [['Call Steve'], 'cal']
+      [['Call Steve', 'Steve Call'], 'cal']
     );
     assert.deepEqual(
       await completeEntry(':delete Email', state),
@@ -3034,7 +3041,7 @@ test('completes fact arguments by visible fact title', async () => {
     );
     assert.deepEqual(
       await completeEntry(':type Cal', state),
-      [['Call Steve'], 'Cal']
+      [['Call Steve', 'Steve Call'], 'Cal']
     );
     assert.deepEqual(
       await completeEntry(':type Call Steve in', state),
@@ -3046,7 +3053,7 @@ test('completes fact arguments by visible fact title', async () => {
     );
     assert.deepEqual(
       await completeEntry('.done Cal', state),
-      [['Call Steve'], 'Cal']
+      [['Call Steve', 'Steve Call'], 'Cal']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

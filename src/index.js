@@ -1399,6 +1399,26 @@ function hasWordStartCaseInsensitive(value, prefix) {
     .some((part) => startsWithCaseInsensitive(part, prefix));
 }
 
+function completionMatchRank(value, prefix) {
+  if (prefix.length === 0 || startsWithCaseInsensitive(value, prefix)) {
+    return 0;
+  }
+
+  return hasWordStartCaseInsensitive(value, prefix) ? 1 : null;
+}
+
+function rankedCompletionMatches(values, rankForValue) {
+  return values
+    .map((value, index) => ({
+      index,
+      rank: rankForValue(value),
+      value
+    }))
+    .filter((match) => match.rank !== null)
+    .toSorted((left, right) => left.rank - right.rank || left.index - right.index)
+    .map((match) => match.value);
+}
+
 function commandArgumentsForCompletion(commandName, state) {
   const matchingCommandName = commandNames(state.commandRegistry)
     .find((candidate) => candidate.toLowerCase() === commandName.toLowerCase());
@@ -1717,32 +1737,44 @@ function enumCompletableArgument(argument) {
 async function matchingFactCompletions(partialTitle, state) {
   const facts = await visibleFactsForState(state);
 
-  return facts
+  const titles = facts
     .map((fact) => fact.title ?? '')
     .filter((title) => title.length > 0)
-    .filter((title, index, titles) => titles.indexOf(title) === index)
-    .filter((title) => startsWithCaseInsensitive(title, partialTitle));
+    .filter((title, index, allTitles) => allTitles.indexOf(title) === index);
+
+  return rankedCompletionMatches(titles, (title) => completionMatchRank(title, partialTitle));
 }
 
 async function matchingContextCompletions(partialContext, state) {
   const contexts = await contextIdsForState(state);
 
-  return contexts
+  const contextNames = contexts
     .map((contextName) => ({
       folder: contextName.split('/').at(-1) ?? contextName,
       name: contextName
-    }))
-    .filter((contextName) => {
-      const comparableName = contextName.name.startsWith('/')
-        ? contextName.name
-        : `/${contextName.name}`;
+    }));
 
-      return startsWithCaseInsensitive(contextName.name, partialContext)
-        || startsWithCaseInsensitive(comparableName, partialContext)
-        || startsWithCaseInsensitive(contextName.folder, partialContext)
-        || hasWordStartCaseInsensitive(contextName.name, partialContext)
-        || hasWordStartCaseInsensitive(contextName.folder, partialContext);
-    });
+  return rankedCompletionMatches(contextNames, (contextName) => contextCompletionMatchRank(contextName, partialContext));
+}
+
+function contextCompletionMatchRank(contextName, partialContext) {
+  const comparableName = contextName.name.startsWith('/')
+    ? contextName.name
+    : `/${contextName.name}`;
+
+  if (
+    partialContext.length === 0
+    || startsWithCaseInsensitive(contextName.name, partialContext)
+    || startsWithCaseInsensitive(comparableName, partialContext)
+    || startsWithCaseInsensitive(contextName.folder, partialContext)
+  ) {
+    return 0;
+  }
+
+  return hasWordStartCaseInsensitive(contextName.name, partialContext)
+    || hasWordStartCaseInsensitive(contextName.folder, partialContext)
+    ? 1
+    : null;
 }
 
 function contextReferenceParts(contextReference) {
