@@ -1,35 +1,56 @@
 # Design Theory
 
-`gatherbrain` is designed around a simple bet: a personal knowledge tool should behave less like a database you administer and more like a memory aid that stays close to your work.
+`gatherbrain` is built around a simple claim: the useful unit of personal computing is often not a document, but a small fact captured inside a context of attention.
 
-This document explains that bet in plain language and connects it to cognitive science, personal information management, and human-computer interaction research. The research does not prove that this exact app is correct. It gives a defensible set of design pressures.
+This document explains the design in plain language and connects it to cognitive science, personal information management, and human-computer interaction. The research is not decoration. It names the pressures the app is trying to respect: limited working memory, cue-driven recall, attention shifts, re-finding, and recognition over recall.
 
 ## The Short Version
 
-People are not good at holding many unfinished thoughts in mind while also deciding how those thoughts should be organized. We are better at leaving useful cues for ourselves and returning to those cues later.
+People do not work from perfectly organized archives. They move through situations: a project, a person, a meeting, an incident, a question. Useful memory tools should preserve those situations without demanding too much structure at capture time.
 
-So `gatherbrain` is built to:
+`gatherbrain` is built to:
 
 - make capture fast,
-- keep notes close to the context where they arose,
+- give every fact a stable identity,
+- keep facts close to the scope where they arose,
 - preserve source and relationship cues,
-- let the same facts appear through multiple lenses,
-- reduce memory burden with visible lists, completion, and stable item numbers,
-- store everything in plain files so the system is inspectable and durable,
+- model temporary attention with peek,
+- let lenses ask task-specific questions of the same facts,
+- reduce memory burden with completion, visible lists, and stable item numbers,
+- keep durable data open to editors, scripts, search tools, and LLMs,
 - let users configure their own semantics through small DSLs.
 
-## Memory Is Cue-Driven
+## Working Memory Is The Bottleneck
 
-When you try to remember something, you are rarely pulling it from memory by brute force. You are using cues: the project, the person, the date, the place, the task, or the adjacent thought.
+The first design constraint is attention. If a tool asks you to remember the thought, choose the right destination, pick the right schema, invent a good title, and decide the next action before saving anything, the tool is spending the scarce resource it is supposed to protect.
 
-The encoding specificity principle, associated with Endel Tulving and Donald Thomson, says that retrieval works better when the cues available at recall overlap with the context present when the memory was formed. In plain terms: the situation around a memory matters.
+`gatherbrain` keeps the capture path short:
 
-`gatherbrain` turns that into a file model:
+- Type the fact.
+- Press Enter.
+- The app writes it into the current context.
 
-- The current directory is the current context.
-- New facts go into that context by default.
-- A peeked context becomes a relationship on the fact.
-- `@context` references become Markdown links.
+The title is only a preview. The full thought goes in the body. Metadata can be added later through commands, types, dates, relations, importers, or other tools.
+
+This is grounded in the broad lesson from working-memory research: the exact capacity number is less important than the fact that active attention is limited. Good tools should spend as little of it as possible.
+
+Further reading:
+
+- [Miller, The Magical Number Seven, Plus or Minus Two](https://psychclassics.yorku.ca/Miller/)
+- [Cowan, The magical number 4 in short-term memory](https://doi.org/10.1017/S0140525X01003922)
+
+## Contexts Are Scopes Of Attention
+
+A context is implemented as a directory, but conceptually it is a scope: where you are, what is relevant, and what cues should surround new facts.
+
+That matters because memory is cue-driven. When you try to remember something, you often use surrounding cues: the project, the person, the date, the meeting, or the adjacent thought. The encoding specificity principle says retrieval works better when recall cues overlap with the context present when the memory was formed. In plain terms: where and why something came up matters.
+
+`gatherbrain` turns that into a concrete model:
+
+- The current context is the default home for new facts.
+- Nested contexts represent narrower scopes of attention.
+- A peeked context becomes a relationship on a new fact.
+- `@context` references become durable links.
 
 The app is not trying to guess the one true category. It is trying to preserve useful retrieval cues.
 
@@ -37,87 +58,76 @@ Further reading:
 
 - [Tulving and Thomson, Encoding specificity and retrieval processes in episodic memory](https://doi.org/10.1037/h0020071)
 
-## Working Memory Is Small
+## Stable Fact Identity Is The Core Primitive
 
-Classic work by George Miller popularized the idea that short-term memory has strong capacity limits. Later research, including Nelson Cowan's work, argues that the practical focus of attention is often closer to a few chunks than a long list.
+Tiny facts look unusual if you think in documents. They make more sense if you think in identities.
 
-You do not need to settle the exact number to design around the constraint. The important point is simpler: if the tool requires the user to remember the thought, the destination, the schema, and the next action all at once, the tool is spending scarce attention.
+Once a thought has a stable ID, it can:
 
-`gatherbrain` keeps the capture path short:
+- accumulate metadata,
+- become related to people, projects, meetings, and source contexts,
+- become actionable,
+- become evidence,
+- be edited without losing its identity,
+- appear in multiple lenses,
+- be cited, summarized, merged, or transformed by other tools.
 
-- Type the fact.
-- Press Enter.
-- The app creates a Markdown file in the current context.
+In the current implementation, the fact ID is its workspace-relative file path. Markdown is the serialization format. The durable identity is the deeper design choice.
 
-The title is only a preview. The full thought goes in the body. That keeps the saved item readable without asking the user to write the perfect title up front.
+This is also why the people importer creates one fact per source cell. A statement like "Alex lives in Chicago" should be traceable as its own claim, not buried inside a profile blob.
 
-Further reading:
+## Peek Models Temporary Attention
 
-- [Miller, The Magical Number Seven, Plus or Minus Two](https://psychclassics.yorku.ca/Miller/)
-- [Cowan, The magical number 4 in short-term memory](https://doi.org/10.1017/S0140525X01003922)
+Work often involves looking aside without actually switching tasks.
 
-## External Space Can Do Cognitive Work
+You may be in a project context and briefly need to think about a person. You have not left the project. The person is temporarily relevant. That is what peek models.
 
-David Kirsh's work on the intelligent use of space argues that people arrange the world to make thinking easier. We sort papers, lay things out, put reminders where we will see them, and use spatial arrangements to reduce internal computation.
+When peek is active:
 
-The filesystem is already a spatial tool. Directories are places. Moving into a directory changes what feels relevant. `gatherbrain` leans into that instead of hiding it behind an opaque database.
+- the UI shows another context,
+- the current context remains where new facts are created,
+- new facts are automatically related to the peeked context,
+- the peeked context has its own lens state.
 
-Design consequences:
+This keeps the distinction between "where I am working" and "what I am looking at." That distinction is important because attention is not the same as location.
 
-- Contexts are directories.
-- Facts are files.
-- Deleting moves a fact into `.trash` inside its context.
-- Opening a context opens a real directory in the system file viewer.
-- Importers and external editors can work with the same files.
+## Lenses Ask Questions Without Moving Facts
 
-Further reading:
+A context answers "where did this arise?" A lens answers "what am I trying to do right now?"
 
-- [Kirsh, The Intelligent Use of Space](https://doi.org/10.1016/0004-3702(94)00017-U)
+Those are different questions. A task might live in a project context, be related to a person, have a due date, and appear in `today`. Duplicating it into many places would create maintenance cost. A lens avoids that by rendering a view over the same fact.
 
-## Re-Finding Is Different From Searching
+This matches a useful lesson from information foraging: people follow cues that suggest where useful information is likely to be. A good lens increases the signal for a specific job.
 
-Personal information management research distinguishes finding from re-finding. A lot of personal knowledge work is not "search the web for something new"; it is "get back to the thing I saw, wrote, decided, or half-understood before."
-
-Re-finding often uses partial cues. You may remember the person, the project, the rough time, or the path you took, but not the exact words. `gatherbrain` supports that style:
-
-- Contexts provide place cues.
-- Related contexts provide association cues.
-- Lenses provide task cues.
-- Item numbers provide short-lived handles for action.
-- Markdown files preserve source traces and bodies for later inspection.
-
-The people importer follows the same principle. Each imported cell becomes its own fact so a later claim can point back to its source instead of being buried inside a large profile blob.
-
-Further reading:
-
-- [Jones et al., Personal Information Management](https://arxiv.org/abs/2107.03291)
-- [Capra and Perez-Quinones, Re-Finding Found Things](https://arxiv.org/abs/cs/0310011)
-
-## Lenses Ask Different Questions Of The Same Facts
-
-A folder answers "where was this captured?" A lens answers "what question am I asking right now?"
-
-Those are different jobs. A task might live in a project context, be related to a person, have a due date, and appear in `today`. Duplicating it into many places would create maintenance cost. A lens avoids that by rendering a view over the same fact.
-
-This matches a common HCI idea from information foraging: people follow cues that suggest where useful information is likely to be. A good lens increases the scent for a specific job. `today` says "show me what needs attention now." `current` says "show me what still matters today, including done items touched today."
+- `todo` asks what still needs attention.
+- `due` asks what has a due date and is not done.
+- `today` asks what is due now or overdue.
+- `current` asks what matters today, including done items touched today.
 
 Further reading:
 
 - [Information scent, Nielsen Norman Group](https://www.nngroup.com/articles/information-scent/)
 - [Pirolli and Card, Information Foraging](https://dl.acm.org/doi/10.1145/223904.223911)
 
-## Users Should Be Able To Build Their Own Semantics
+## Re-Finding Matters More Than Perfect Search
 
-Many knowledge tools make the app's categories feel like facts about the world. `gatherbrain` treats them as user vocabulary.
+Personal information management research distinguishes finding from re-finding. A lot of knowledge work is not "search the web for something new"; it is "get back to the thing I saw, wrote, decided, or half-understood before."
 
-Commands, enums, lenses, and templates are configured through small JSON and Handlebars DSLs. That means a user can decide:
+Re-finding often starts from partial cues. You may remember the person, the project, the rough time, the meeting, or the kind of thing it was, but not the exact words.
 
-- which commands exist,
-- which values are meaningful for command arguments,
-- which facts count as visible for a lens,
-- how a visible fact should be displayed.
+`gatherbrain` supports that style:
 
-This matters because personal knowledge work is personal. A useful system for one person might distinguish `waiting`, `blocked`, and `delegated`; another might care about `source`, `claim`, and `question`. The core app provides stable primitives, while configuration lets users build local semantics on top.
+- Contexts provide place cues.
+- Related contexts provide association cues.
+- Lenses provide task cues.
+- Item numbers provide short-lived handles for action.
+- Markdown bodies preserve the original source text.
+- File paths provide durable IDs that other tools can reference.
+
+Further reading:
+
+- [Jones et al., Personal Information Management](https://arxiv.org/abs/2107.03291)
+- [Capra and Perez-Quinones, Re-Finding Found Things](https://arxiv.org/abs/cs/0310011)
 
 ## Recognition Beats Recall
 
@@ -132,64 +142,63 @@ Interfaces are easier when they let people recognize options instead of forcing 
 - Visible facts have stable item numbers until the context changes.
 - The header always shows the current context, peek, and lens.
 
-This is also why the body is rendered as simple text. The interface tries to keep the active memory load low.
-
 Further reading:
 
 - [Nielsen, 10 Usability Heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/)
 - [Recognition vs. Recall in UX](https://www.nngroup.com/articles/recognition-and-recall/)
 
-## Expert Flow Matters
+## Users Should Define Their Own Semantics
 
-Ben Shneiderman's work on direct manipulation emphasized visible objects, rapid feedback, reversibility, and user control. `gatherbrain` is not a graphical direct-manipulation app, but it borrows the underlying HCI values:
+Many knowledge tools make the app's categories feel like facts about the world. `gatherbrain` treats them as user vocabulary.
 
-- The user acts on visible facts.
-- Edits use `$EDITOR`, so the user stays in their chosen expert tool.
-- Deletes are reversible enough for daily work because files move to `.trash`.
-- `:restart` preserves UI state so development and use can happen together.
-- Plain files keep the system inspectable and repairable.
+Commands, enums, lenses, and templates are configured through small JSON and Handlebars DSLs. That means a user can decide:
 
-The design accepts a tradeoff: commands require some learning, but they become efficient and predictable once learned.
+- which commands exist,
+- which values are meaningful for command arguments,
+- which facts count as visible for a lens,
+- how a visible fact should be displayed.
 
-Further reading:
-
-- [Shneiderman, Direct Manipulation: A Step Beyond Programming Languages](https://doi.org/10.1109/MC.1983.1654471)
+This matters because personal knowledge work is personal. A useful system for one person might distinguish `waiting`, `blocked`, and `delegated`; another might care about `source`, `claim`, and `question`. The core app provides stable primitives, while configuration lets users build local semantics on top.
 
 ## Plain Text Keeps The System Open
 
-`gatherbrain` is intentionally plain text. The durable data is Markdown files, front matter, and directories.
+The filesystem is not the product. It is the persistence layer.
 
-That choice is partly practical:
+That persistence layer is intentionally plain: directories, Markdown, and front matter. This keeps the system open:
 
 - users can read and edit facts without the app,
 - `grep`, `ripgrep`, Git, backup tools, and shell scripts work naturally,
 - multiple apps can interact with the same data,
 - LLM tools can inspect, summarize, rewrite, classify, or link facts without a custom export path.
 
-It is also philosophical. Unix systems are powerful because small tools can cooperate through files and streams. `gatherbrain` borrows that spirit for personal knowledge: keep the stored representation simple enough that the app is not the only thing that can understand it.
+This is the Unix influence: keep the durable representation simple enough that other tools can participate.
 
-## Why Not A Rich Database?
+## Expert Flow Matters
 
-A database can enforce more structure. But for this tool, strict structure is delayed until it earns its keep.
+The design accepts that commands require some learning. In return, it keeps the main loop predictable and fast.
 
-Plain Markdown facts keep the model simple:
+- The user acts on visible facts.
+- Edits use `$EDITOR`, so the user stays in their chosen expert tool.
+- Deletes move files to `.trash`.
+- `:restart` preserves UI state so development and use can happen together.
+- Configuration can evolve while the app is running.
 
-- Contexts are directories.
-- Facts are files.
-- Properties are front matter.
-- Relations are explicit context IDs.
-- Views are computed from the model.
+This borrows from the HCI value behind direct manipulation: visible objects, rapid feedback, user control, and reversible-enough actions.
 
-That simplicity is intentional. It lowers the cost of capture, makes data portable, and lets the user gradually add structure through types, due dates, relations, and lenses.
+Further reading:
+
+- [Shneiderman, Direct Manipulation: A Step Beyond Programming Languages](https://doi.org/10.1109/MC.1983.1654471)
 
 ## Design Principles
 
 | Principle | What it means in the app |
 | --- | --- |
 | Capture first, refine later | Plain text creates a fact immediately. |
-| Context is a memory cue | New facts are stored in the current directory context. |
-| Relationships should be explicit | Peek and `:relate` write `relatedContexts`. |
+| Context is a scope of attention | New facts are stored in the current directory context. |
+| Facts need stable identities | Each fact has a workspace-relative file path ID. |
+| Attention can look aside | Peek relates new facts to what the user is looking at without changing where they are. |
 | Views should not duplicate data | Lenses render facts without moving them. |
+| Relationships should be explicit | Peek and `:relate` write `relatedContexts`. |
 | Semantics should be user-shaped | Commands, enums, lenses, and templates are configurable DSLs. |
 | Recognition should help recall | Completion, visible lists, and stable item numbers reduce command burden. |
 | Plain text should stay open | Markdown and directories stay visible to editors, scripts, search tools, and LLMs. |

@@ -1,8 +1,12 @@
 # gatherbrain
 
-`gatherbrain` is a local-first, prompt-first second brain for capturing small pieces of knowledge while you work.
+`gatherbrain` is a local-first working-memory system for capturing small facts while you work.
 
-It runs in the terminal. You point it at a workspace directory, move through that directory tree as **contexts**, and save short **facts** as Markdown files. The app keeps an in-memory model of the workspace so it can render quickly, update after edits, and reflect external file changes while it is running.
+It runs in the terminal. You move through a workspace as **contexts**, capture tiny **facts**, briefly **peek** at other contexts without leaving your current one, and use **lenses** to ask different questions of the same facts.
+
+The important idea is not that facts are Markdown files. The important idea is that every thought gets a stable identity. Once a thought has an identity, it can accumulate metadata, become related to other contexts, show up in task views, be edited, be cited, be summarized, or be used by another tool.
+
+Markdown and directories are the durable storage format. The running app loads them into an in-memory object model and renders from that model.
 
 ## What Problem It Solves
 
@@ -10,43 +14,40 @@ Most note systems ask you to stop and organize your thought before you have fini
 
 `gatherbrain` is built around a smaller loop:
 
-1. Go to the context you are working in.
+1. Go to the context you are already working in.
 2. Type the thing you want to remember.
-3. Let the app store it as a plain Markdown fact.
+3. Let the app give it a stable identity.
 4. Use lenses later to see the same facts through different questions.
 
-The goal is not to build a perfect taxonomy. The goal is to make useful memory traces cheap to capture and easy to re-find.
-
-## Design Influences
-
-`gatherbrain` is influenced by Unix-style tools: keep the data plain, make the core model simple, and let other programs participate. A workspace is just directories, Markdown, and front matter. That means editors, scripts, search tools, importers, backup systems, and LLM-based tools can all inspect or transform the same data without going through a private database.
-
-The app also uses configurable DSLs for commands, enums, lenses, and templates. That lets users define their own working semantics: what commands exist, what values are meaningful, which facts appear in a view, and how those facts are rendered.
+The goal is not to build a perfect taxonomy. The goal is to reduce the cost of maintaining and extending your own working memory.
 
 ## The Basic Model
 
-- A **context** is where you are. It maps to a directory under the workspace root.
-- A **fact** is something you want to remember. It is stored as a Markdown file with front matter.
+- A **context** is a scope of attention. It maps to a directory under the workspace root.
+- A **fact** is an atomic thing you want to remember. It has a stable workspace-relative file path as its ID.
 - A **peek** is a context you are looking at without leaving the current context.
 - A **lens** is a view over visible facts, such as `all`, `todo`, `due`, `today`, or `current`.
 
 New facts are always created in the current context. If you are peeking at another context, the fact is still created where you are, but it is related to the peeked context.
 
+Contexts can nest. That makes them more than folders: they are nested scopes. For example, `walgreens/enterprise-architecture/steve/meeting-july-2` is a path through increasingly specific attention.
+
 ## Why It Is Designed This Way
 
-`gatherbrain` treats memory as something distributed between your head, your filesystem, and your current task. That design is grounded in a few ideas from cognitive science and human-computer interaction:
+`gatherbrain` treats memory as something distributed between your head, your current task, the workspace model, and durable files.
 
-- Human working memory is limited, so capture should be fast and should not require much up-front categorization.
-- People remember better when retrieval cues match the context in which something was encoded, so facts live inside meaningful directory contexts.
-- Re-finding personal information often depends on partial cues like where something was, who it was about, or what task it belonged to.
-- Interfaces should reduce recall burden and support recognition, so commands use completion and visible item numbers.
-- Expert tools should preserve flow, so the TUI keeps navigation, capture, editing, and filtering close to the keyboard.
+- Working memory is limited, so capture should be fast and should not require much up-front categorization.
+- People remember through cues, so facts live near the context where they arose.
+- Attention shifts without fully switching tasks, so peek models looking aside while remaining in place.
+- Work asks different questions at different times, so lenses render views without duplicating facts.
+- Personal systems need personal semantics, so commands, enums, lenses, and templates are configurable DSLs.
+- Durable memory should stay open, so the stored representation is plain text inspired by Unix-style tool cooperation.
 
-See [Design Theory](docs/design-theory.md) for the plain-English research grounding behind these choices.
+See [Design Theory](docs/design-theory.md) for the research grounding behind these choices and [Vision](docs/vision.md) for the larger direction.
 
-## How It Stores Data
+## Storage
 
-A workspace is just a directory tree.
+A workspace is a directory tree:
 
 ```text
 workspace/
@@ -58,7 +59,7 @@ workspace/
       idea.md
 ```
 
-Each fact is a Markdown file:
+Each fact is serialized as Markdown with front matter:
 
 ```markdown
 ---
@@ -73,6 +74,8 @@ Follow up with [Alex](/people/alex) about the prototype.
 The title is a plain-text preview capped at 80 characters. The full captured text is stored in the body. `@context` references in captured text are converted to Markdown links.
 
 Hidden directories are ignored, including `.trash`, `.gatherbrain`, and any directory whose name starts with `.`.
+
+This format keeps the data useful outside the app. Editors, scripts, search tools, Git, backups, importers, and LLM-based tools can all work with the same files.
 
 ## Run
 
@@ -103,7 +106,7 @@ See [Usage](docs/usage.md) for the full command reference.
 
 Defaults live in `default-config/`. Workspace-local configuration lives under `.gatherbrain/` in the workspace root and overrides or extends defaults.
 
-Configuration is part of the design, not an afterthought. Commands, enum-backed argument values, lenses, and templates form a small DSL for shaping the system around a user's own vocabulary and workflows.
+Configuration is part of the model. Commands, enum-backed argument values, lenses, and templates form a small DSL for shaping the system around a user's own vocabulary and workflows.
 
 - [Custom Commands](docs/custom-commands.md)
 - [Custom Enums](docs/custom-enums.md)
