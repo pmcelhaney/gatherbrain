@@ -21,6 +21,7 @@ import {
   filenameBaseForTitle,
   saveFact,
   slugifyTitle,
+  titleForFactText,
   truncateFilenameBase,
   timestampForFilename,
   updateFactTypeAtIndex
@@ -201,7 +202,7 @@ test('saves a fact to a slug-named Markdown file', async () => {
     assert.equal(path.basename(savedPath), 'captured-from-the-prompt.md');
     assert.equal(
       await readFile(savedPath, 'utf8'),
-      '---\ntitle: "Captured from the prompt."\ntype: fact\n---\n\n\n'
+      '---\ntitle: "Captured from the prompt."\ntype: fact\n---\n\nCaptured from the prompt.\n'
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -222,6 +223,10 @@ test('saves a long-titled fact to a truncated slug filename', async () => {
     assert.equal(path.basename(savedPath).endsWith('-.md'), false);
     assert.equal(
       factTitleFromMarkdown(await readFile(savedPath, 'utf8')),
+      titleForFactText(title)
+    );
+    assert.equal(
+      factTextFromMarkdown(await readFile(savedPath, 'utf8')),
       title
     );
   } finally {

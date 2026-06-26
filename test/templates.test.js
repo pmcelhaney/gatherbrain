@@ -23,6 +23,20 @@ test('renders default facts template', () => {
   );
 });
 
+test('default facts template prefers body over title', () => {
+  assert.equal(
+    renderTemplate('facts', {
+      emptyText: 'No facts yet.',
+      facts: [
+        { number: ' 1', type: '', title: 'Title fallback', body: 'Body first.' }
+      ],
+      hasFacts: true,
+      includeColor: false
+    }),
+    ' 1. Body first.'
+  );
+});
+
 test('renders template lines', () => {
   assert.deepEqual(
     renderTemplateLines('facts', {

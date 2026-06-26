@@ -672,6 +672,13 @@ async function contextIdsForState(state) {
   return [...model.contexts.keys()].filter((contextId) => contextId !== '').sort();
 }
 
+async function contextLinksForState(state) {
+  return (await contextIdsForState(state)).map((contextId) => ({
+    folder: contextId.split('/').at(-1) ?? contextId,
+    name: contextId
+  }));
+}
+
 function contextIdForDirectory(state, contextDirectory) {
   const contextId = path
     .relative(state.rootDirectory, contextDirectory)
@@ -993,7 +1000,7 @@ function factViewModelsForDisplay(facts, options = {}) {
     const itemNumber = fact.itemNumber ?? facts.length - factIndex;
     const bodyText = fact.text ?? '';
     const titleText = fact.title?.trim() ?? '';
-    const displayText = titleText.length > 0 ? titleText : bodyText;
+    const displayText = bodyText.length > 0 ? bodyText : titleText;
     const type = fact.type ?? 'fact';
     const relationSuffix = relationSuffixText(displayRelationsForFact(fact), fact.displayRelationDirection);
     const displayType = type === 'fact' ? '' : type;
@@ -2322,6 +2329,7 @@ export async function handleEntry(entry, state) {
   }
 
   const savedPath = await saveFact(parsedEntry.title, {
+    contextLinks: await contextLinksForState(state),
     relations: state.peekContextDirectory
       ? [contextIdForDirectory(state, state.peekContextDirectory)]
       : [],

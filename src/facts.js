@@ -7,6 +7,7 @@ const frontMatterPropertyPattern = /^[A-Za-z][A-Za-z0-9_-]*$/u;
 const trashDirectoryName = '.trash';
 const relatedContextsField = 'relatedContexts';
 const maxFilenameBaseLength = 120;
+const maxFactTitleLength = 80;
 
 export function timestampForFilename(date = new Date()) {
   const timezoneOffsetMinutes = -date.getTimezoneOffset();
@@ -59,6 +60,19 @@ export function truncateFilenameBase(filenameBase, maxLength = maxFilenameBaseLe
 
 export function filenameBaseForTitle(title) {
   return truncateFilenameBase(slugifyTitle(title));
+}
+
+export function titleForFactText(text, maxLength = maxFactTitleLength) {
+  const plainTitle = text
+    .replace(/\r?\n/gu, ' ')
+    .replace(/\s+/gu, ' ')
+    .trim();
+
+  if (plainTitle.length <= maxLength) {
+    return plainTitle;
+  }
+
+  return plainTitle.slice(0, maxLength).trim();
 }
 
 export function buildFactMarkdown(title, options = {}) {
@@ -544,7 +558,8 @@ export async function deleteFact(filePath) {
 
 export async function saveFact(text, options = {}) {
   const {
-    body = '',
+    body = null,
+    contextLinks = [],
     relations = [],
     properties = {},
     title = text,
@@ -560,14 +575,16 @@ export async function saveFact(text, options = {}) {
 
   await mkdir(destinationDirectory, { recursive: true });
 
-  const slug = filenameBaseForTitle(title);
+  const factTitle = titleForFactText(title);
+  const slug = filenameBaseForTitle(factTitle);
+  const factBody = body ?? markdownWithContextLinks(text, { contextLinks });
 
   for (let attempt = 0; attempt < 1000; attempt += 1) {
     const filename = `${attempt === 0 ? slug : `${slug}-${attempt + 1}`}.md`;
     const filePath = path.join(destinationDirectory, filename);
 
     try {
-      await writeFile(filePath, buildFactMarkdown(title, { body, properties, relations, type }), { flag: 'wx' });
+      await writeFile(filePath, buildFactMarkdown(factTitle, { body: factBody, properties, relations, type }), { flag: 'wx' });
       return filePath;
     } catch (error) {
       if (error.code !== 'EEXIST') {

@@ -37,7 +37,7 @@ import {
 } from '../src/index.js';
 import { createCommandRegistry } from '../src/commands.js';
 import { createEnumRegistry } from '../src/enums.js';
-import { filenameBaseForTitle } from '../src/facts.js';
+import { filenameBaseForTitle, titleForFactText } from '../src/facts.js';
 import { createLensRegistry } from '../src/lenses.js';
 
 test(':switch switches context without creating a fact', async () => {
@@ -72,7 +72,7 @@ test(':switch switches context without creating a fact', async () => {
     assert.equal(files.length, 1);
     assert.equal(
       await readFile(path.join(state.currentContextDirectory, files[0]), 'utf8'),
-      '---\ntitle: "Captured in context."\ntype: fact\n---\n\n\n'
+      '---\ntitle: "Captured in context."\ntype: fact\n---\n\nCaptured in context.\n'
     );
     assert.equal(
       state.model.facts.get(path.join('my-cool-project', files[0])).title,
@@ -274,7 +274,7 @@ test(':switch refuses to create hidden contexts', async () => {
   }
 });
 
-test('saves typed text as a titled fact without deriving relationships from peek or mentions', async () => {
+test('saves typed text as a titled fact with linked mentions in the body', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -289,7 +289,7 @@ test('saves typed text as a titled fact without deriving relationships from peek
     const factFile = files.find((file) => path.extname(file) === '.md');
     assert.equal(
       await readFile(path.join(rootDirectory, factFile), 'utf8'),
-      '---\ntitle: "Talk to @Steve Ma."\ntype: fact\n---\n\n\n'
+      '---\ntitle: "Talk to @Steve Ma."\ntype: fact\n---\n\nTalk to [Steve Ma](/people/Steve Ma).\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -310,7 +310,7 @@ test(':new saves a titled fact', async () => {
     const factFile = files.find((file) => path.extname(file) === '.md');
     assert.equal(
       await readFile(path.join(rootDirectory, factFile), 'utf8'),
-      '---\ntitle: "Follow up with Alex"\ntype: fact\n---\n\n\n'
+      '---\ntitle: "Follow up with Alex"\ntype: fact\n---\n\nFollow up with Alex\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -398,7 +398,8 @@ test(':paste truncates long prompted names for generated filenames', async () =>
   const rootDirectory = path.join(appDirectory, 'facts');
   const currentContext = path.join(rootDirectory, 'projects', 'gatherbrain');
   const title = `${'Long pasted item '.repeat(20)}tail`;
-  const expectedBase = filenameBaseForTitle(title);
+  const expectedAssetBase = filenameBaseForTitle(title);
+  const expectedFactBase = filenameBaseForTitle(titleForFactText(title));
 
   try {
     const state = createPromptState({
@@ -412,15 +413,16 @@ test(':paste truncates long prompted names for generated filenames', async () =>
 
     assert.deepEqual(await handleEntry(`:paste ${title}`, state), {
       action: 'continue',
-      message: `pasted ${path.join('facts', 'projects', 'gatherbrain', `${expectedBase}.txt`)} and ${path.join('facts', 'projects', 'gatherbrain', `${expectedBase}.md`)}`
+      message: `pasted ${path.join('facts', 'projects', 'gatherbrain', `${expectedAssetBase}.txt`)} and ${path.join('facts', 'projects', 'gatherbrain', `${expectedFactBase}.md`)}`
     });
-    assert.equal(expectedBase.length, 120);
+    assert.equal(expectedAssetBase.length, 120);
+    assert.equal(expectedFactBase.length <= 80, true);
     assert.equal(
-      await readFile(path.join(currentContext, `${expectedBase}.txt`), 'utf8'),
+      await readFile(path.join(currentContext, `${expectedAssetBase}.txt`), 'utf8'),
       'clipboard contents'
     );
     assert.equal(
-      (await readFile(path.join(currentContext, `${expectedBase}.md`), 'utf8')).includes(`file: "${expectedBase}.txt"`),
+      (await readFile(path.join(currentContext, `${expectedFactBase}.md`), 'utf8')).includes(`file: "${expectedAssetBase}.txt"`),
       true
     );
   } finally {
@@ -526,7 +528,7 @@ test(':new prompts for a missing title', async () => {
     const factFile = files.find((file) => path.extname(file) === '.md');
     assert.equal(
       await readFile(path.join(rootDirectory, factFile), 'utf8'),
-      '---\ntitle: "Prompted capture"\ntype: fact\n---\n\n\n'
+      '---\ntitle: "Prompted capture"\ntype: fact\n---\n\nPrompted capture\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -1039,7 +1041,7 @@ test('builds TUI lines from a body view model', () => {
   );
 });
 
-test('builds TUI lines with titles before body text', () => {
+test('builds TUI lines with body text before titles', () => {
   const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
   const rootDirectory = path.join(appDirectory, 'facts');
   const state = createPromptState({ appDirectory, rootDirectory });
@@ -1057,7 +1059,7 @@ test('builds TUI lines with titles before body text', () => {
     [
       'facts',
       '--------------------------------------------------------------------------------',
-      ' 2. Title first',
+      ' 2. Body fallback.',
       ' 1. No title body.'
     ]
   );
@@ -1328,6 +1330,28 @@ test('colors Markdown link labels in the TUI', () => {
       state,
       facts: [
         { type: 'fact', text: 'Talk to [Steve Ma](/people/Steve Ma).' }
+      ],
+      rows: 4,
+      columns: 80
+    }),
+    '\x1b[2J\x1b[Hfacts\n--------------------------------------------------------------------------------\n 1. Talk to \x1b[34mSteve Ma\x1b[39m.\x1b[4;1H'
+  );
+});
+
+test('renders linked body text before title text in the TUI', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const state = createPromptState({ appDirectory, rootDirectory });
+
+  assert.equal(
+    renderTui({
+      state,
+      facts: [
+        {
+          title: 'Title fallback',
+          type: 'fact',
+          text: 'Talk to [Steve Ma](/people/Steve Ma).'
+        }
       ],
       rows: 4,
       columns: 80
@@ -1675,7 +1699,7 @@ test('saving while peeking creates in the current context and relates to peek', 
     );
     assert.equal(
       await readFile(path.join(currentContext, 'follow-up-with-alex.md'), 'utf8'),
-      '---\ntitle: "Follow up with Alex"\ntype: fact\nrelatedContexts: ["people/Alex"]\n---\n\n\n'
+      '---\ntitle: "Follow up with Alex"\ntype: fact\nrelatedContexts: ["people/Alex"]\n---\n\nFollow up with Alex\n'
     );
     assert.deepEqual(
       (await visibleFactsForState(state)).map((fact) => ({
