@@ -190,7 +190,7 @@ test(':switch asks to create a missing context and switches after yes', async ()
       [
         'facts',
         '--------------------------------------------------------------------------------',
-        ' 1. Existing fact.'
+        'Existing fact. [1]'
       ]
     );
     assert.deepEqual(await completeEntry('Y', state), [['yes'], 'Y']);
@@ -812,7 +812,7 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :paste <title> | :debug-keys | :restart'
+      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :debug-keys | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
@@ -834,8 +834,8 @@ test(':help lists commands without saving a fact', async () => {
         ':open [item]',
         ':delete <item>',
         ':relate <item> <context>',
-        ':type <type> <item>',
-        ':due <value> <item>',
+        ':type <item> <type>',
+        ':due <item> <value>',
         ':paste <title>',
         ':debug-keys',
         ':restart'
@@ -868,7 +868,7 @@ test('slash commands show a colon command usage error', async () => {
       [
         'facts | slash shortcuts are no longer supported; use colon commands',
         '--------------------------------------------------------------------------------',
-        ' 1. Existing fact.'
+        'Existing fact. [1]'
       ]
     );
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
@@ -1083,9 +1083,9 @@ test('builds TUI lines with the current context and fact contents', () => {
     [
       'my-cool-project',
       '--------------------------------------------------------------------------------',
-      ' 2. First fact.',
-      ' 1. task Second fact.',
-      '    with detail.'
+      'First fact. [2]',
+      'task Second fact.',
+      '    with detail. [1]'
     ]
   );
 });
@@ -1112,8 +1112,8 @@ test('builds TUI lines from a body view model', () => {
     [
       'facts',
       '--------------------------------------------------------------------------------',
-      ' 2. First fact.',
-      ' 1. task Second fact.'
+      'First fact. [2]',
+      'task Second fact. [1]'
     ]
   );
 });
@@ -1136,8 +1136,8 @@ test('builds TUI lines with body text before titles', () => {
     [
       'facts',
       '--------------------------------------------------------------------------------',
-      ' 2. Body fallback.',
-      ' 1. No title body.'
+      'Body fallback. [2]',
+      'No title body. [1]'
     ]
   );
 });
@@ -1168,7 +1168,7 @@ test('builds TUI lines with a workspace-local body template', async () => {
       [
         'facts',
         '--------------------------------------------------------------------------------',
-        ' 1|First fact.'
+        ' 1|First fact. [1]'
       ]
     );
   } finally {
@@ -1202,9 +1202,9 @@ test('wraps fact lines and indents continuations by four spaces', () => {
     [
       'facts',
       '---------------',
-      '10. This is a',
-      '    long fact',
-      '    body.'
+      'This is a long',
+      '    fact body. [10]',
+      'Tenth item. [9]'
     ]
   );
 });
@@ -1224,8 +1224,8 @@ test('wraps long words only when no word boundary fits', () => {
     [
       'facts',
       '---------------',
-      ' 1. supercalifr',
-      '    agilistic'
+      'supercalifragil',
+      '    istic [1]'
     ]
   );
 });
@@ -1243,12 +1243,13 @@ test('paginates by complete items and shows an ellipsis', () => {
     }),
     {
       lines: [
-        ' 3. First',
-        '    item',
-        '    wraps.',
+        'First item',
+        '    wraps. [3]',
+        'Second item',
+        '    wraps. [2]',
         '...'
       ],
-      nextPageStartIndex: 1,
+      nextPageStartIndex: 2,
       previousPageStartIndex: null
     }
   );
@@ -1281,7 +1282,7 @@ test('navigates fact pages', () => {
       columns: 12
     }),
     {
-      nextPageStartIndex: 2,
+      nextPageStartIndex: null,
       previousPageStartIndex: 0
     }
   );
@@ -1303,7 +1304,7 @@ test('navigates body pages', () => {
       columns: 12
     }),
     {
-      nextPageStartIndex: 1,
+      nextPageStartIndex: 2,
       previousPageStartIndex: null
     }
   );
@@ -1349,7 +1350,7 @@ test('colors non-fact fact types in the TUI', () => {
       rows: 5,
       columns: 80
     }),
-    '\x1b[2J\x1b[Hfacts\n--------------------------------------------------------------------------------\n 2. First fact.\n 1. \x1b[36mtask\x1b[39m Second fact.\x1b[5;1H'
+    '\x1b[2J\x1b[Hfacts\n--------------------------------------------------------------------------------\nFirst fact. \x1b[2m[2]\x1b[22m\n\x1b[36mtask\x1b[39m Second fact. \x1b[2m[1]\x1b[22m\x1b[5;1H'
   );
 });
 
@@ -1370,7 +1371,7 @@ test('renders Markdown links without syntax in the TUI', () => {
     [
       'facts',
       '--------------------------------------------------------------------------------',
-      ' 1. Talk to Steve Ma.'
+      'Talk to Steve Ma. [1]'
     ]
   );
 });
@@ -1392,7 +1393,7 @@ test('renders Markdown image links as filenames in the TUI', () => {
     [
       'facts',
       '--------------------------------------------------------------------------------',
-      ' 1. 1. test.png'
+      '1. test.png [1]'
     ]
   );
 });
@@ -1411,7 +1412,7 @@ test('colors Markdown link labels in the TUI', () => {
       rows: 4,
       columns: 80
     }),
-    '\x1b[2J\x1b[Hfacts\n--------------------------------------------------------------------------------\n 1. Talk to \x1b[34mSteve Ma\x1b[39m.\x1b[4;1H'
+    '\x1b[2J\x1b[Hfacts\n--------------------------------------------------------------------------------\nTalk to \x1b[34mSteve Ma\x1b[39m. \x1b[2m[1]\x1b[22m\x1b[4;1H'
   );
 });
 
@@ -1433,7 +1434,7 @@ test('renders linked body text before title text in the TUI', () => {
       rows: 4,
       columns: 80
     }),
-    '\x1b[2J\x1b[Hfacts\n--------------------------------------------------------------------------------\n 1. Talk to \x1b[34mSteve Ma\x1b[39m.\x1b[4;1H'
+    '\x1b[2J\x1b[Hfacts\n--------------------------------------------------------------------------------\nTalk to \x1b[34mSteve Ma\x1b[39m. \x1b[2m[1]\x1b[22m\x1b[4;1H'
   );
 });
 
@@ -1458,7 +1459,7 @@ test('shows related folder names after related facts', () => {
     [
       'facts',
       '--------------------------------------------------------------------------------',
-      ' 1. Related fact. <Steve Ma, gatherbrain'
+      'Related fact. <Steve Ma, gatherbrain [1]'
     ]
   );
 });
@@ -1481,7 +1482,7 @@ test('colors related folder names in the TUI', () => {
       rows: 4,
       columns: 80
     }),
-    '\x1b[2J\x1b[Hfacts\n--------------------------------------------------------------------------------\n 1. Related fact. \x1b[35m<Steve Ma\x1b[39m\x1b[4;1H'
+    '\x1b[2J\x1b[Hfacts\n--------------------------------------------------------------------------------\nRelated fact. \x1b[35m<Steve Ma\x1b[39m \x1b[2m[1]\x1b[22m\x1b[4;1H'
   );
 });
 
@@ -1507,7 +1508,7 @@ test('shows outbound relation names after direct facts', () => {
     [
       'facts',
       '--------------------------------------------------------------------------------',
-      ' 1. Direct fact. >Steve Ma, gatherbrain'
+      'Direct fact. >Steve Ma, gatherbrain [1]'
     ]
   );
 });
@@ -1535,7 +1536,7 @@ test('does not show outbound relation names already shown as Markdown links', ()
     [
       'facts',
       '--------------------------------------------------------------------------------',
-      ' 1. Talk to Steve Ma'
+      'Talk to Steve Ma [1]'
     ]
   );
 });
@@ -1573,7 +1574,7 @@ test('shows the active lens in the TUI header', () => {
     [
       'facts | todo',
       '--------------------------------------------------------------------------------',
-      ' 1. todo Do this.'
+      'todo Do this. [1]'
     ]
   );
 });
@@ -1745,7 +1746,7 @@ test(':peek changes peek without changing the current context', async () => {
       [
         'projects/gatherbrain -> people/Alex',
         '--------------------------------------------------------------------------------',
-        ' 1. Peek context fact.'
+        'Peek context fact. [1]'
       ]
     );
   } finally {
@@ -1856,7 +1857,7 @@ test('type command changes a listed item type', async () => {
       '---\ntype: fact\n---\n\nThird fact.\n'
     );
 
-    const result = await handleEntry(':type foo 1', state);
+    const result = await handleEntry(':type 1 foo', state);
     const files = await readdir(rootDirectory);
     const firstFact = await readFile(path.join(rootDirectory, files.sort()[0]), 'utf8');
 
@@ -1895,7 +1896,7 @@ test('type command targets the active lens list', async () => {
       '---\ntype: todo\n---\n\nTodo item.\n'
     );
 
-    assert.deepEqual(await handleEntry(':type done 2', state), {
+    assert.deepEqual(await handleEntry(':type 2 done', state), {
       action: 'continue',
       message: 'set item 2 type to done'
     });
@@ -1988,11 +1989,11 @@ test('commands show source folders for facts related to the active context', asy
       [
         'people/Steve Ma',
         '--------------------------------------------------------------------------------',
-        ' 2. Related fact. <projects',
-        ' 1. Direct fact.'
+        'Related fact. <projects [2]',
+        'Direct fact. [1]'
       ]
     );
-    assert.deepEqual(await handleEntry(':type todo 2', state), {
+    assert.deepEqual(await handleEntry(':type 2 todo', state), {
       action: 'continue',
       message: 'set item 2 type to todo'
     });
@@ -2048,7 +2049,7 @@ test('commands show outbound relations for direct facts in the active context', 
       [
         'gatherbrain',
         '--------------------------------------------------------------------------------',
-        ' 1. done Turn the app into a TUI. >Steve Ma'
+        'done Turn the app into a TUI. >Steve Ma [1]'
       ]
     );
   } finally {
@@ -2064,7 +2065,7 @@ test('type command reports missing item', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(
-      await handleEntry(':type foo 3', state),
+      await handleEntry(':type 3 foo', state),
       {
         action: 'continue',
         message: 'item 3 does not exist'
@@ -2086,14 +2087,14 @@ test('due command sets a normalized due date property', async () => {
       property: 'due',
       arguments: [
         {
-          name: 'value',
-          type: 'date',
-          prompt: 'Due when?'
-        },
-        {
           name: 'item',
           type: 'fact',
           prompt: 'Set due date on which fact?'
+        },
+        {
+          name: 'value',
+          type: 'date',
+          prompt: 'Due when?'
         }
       ]
     }
@@ -2106,7 +2107,7 @@ test('due command sets a normalized due date property', async () => {
     await writeFile(factPath, '---\ntype: fact\n---\n\nExisting fact.\n');
     const state = createPromptState({ appDirectory, commandRegistry, rootDirectory });
 
-    assert.deepEqual(await handleEntry(':due today 1', state), {
+    assert.deepEqual(await handleEntry(':due 1 today', state), {
       action: 'continue',
       message: 'set item 1 due to 2026-06-24'
     });
@@ -2347,9 +2348,9 @@ test('item numbers stay stable after deleting a visible item', async () => {
       [
         'facts',
         '--------------------------------------------------------------------------------',
-        ' 3. Third fact.',
-        ' 2. Second fact.',
-        ' 1. First fact.'
+        'Third fact. [3]',
+        'Second fact. [2]',
+        'First fact. [1]'
       ]
     );
     assert.deepEqual(await handleEntry(':delete 2', state), {
@@ -2366,8 +2367,8 @@ test('item numbers stay stable after deleting a visible item', async () => {
       [
         'facts',
         '--------------------------------------------------------------------------------',
-        ' 3. Third fact.',
-        ' 1. First fact.'
+        'Third fact. [3]',
+        'First fact. [1]'
       ]
     );
   } finally {
@@ -2964,11 +2965,11 @@ test('completes named command arguments', async () => {
       [['todo', 'today'], 'T']
     );
     assert.deepEqual(
-      await completeEntry(':type wa', state),
+      await completeEntry(':type 1 wa', state),
       [['waiting'], 'wa']
     );
     assert.deepEqual(
-      await completeEntry(':type WA', state),
+      await completeEntry(':type 1 WA', state),
       [['waiting'], 'WA']
     );
     assert.deepEqual(
@@ -3032,6 +3033,10 @@ test('completes fact arguments by visible fact title', async () => {
       [['Email Alex'], 'Email']
     );
     assert.deepEqual(
+      await completeEntry(':type Cal', state),
+      [['Call Steve'], 'Cal']
+    );
+    assert.deepEqual(
       await completeEntry('.done Cal', state),
       [['Call Steve'], 'Cal']
     );
@@ -3074,7 +3079,7 @@ test('executes commands with fact titles completed as final arguments', async ()
     const state = createPromptState({ appDirectory, rootDirectory });
     await handleEntry('Call Steve', state);
 
-    assert.deepEqual(await handleEntry(':type task Call Steve', state), {
+    assert.deepEqual(await handleEntry(':type Call Steve task', state), {
       action: 'continue',
       message: 'set item Call Steve type to task'
     });
@@ -3181,7 +3186,7 @@ test('reloads workspace-local templates', async () => {
     await writeFile(templatePath, '{{#each facts}}OLD {{body}}{{/each}}');
     assert.deepEqual(
       buildTuiLines({ state, body, rows: 5, columns: 80 }).at(2),
-      'OLD First fact.'
+      'OLD First fact. [1]'
     );
 
     await writeFile(templatePath, '{{#each facts}}NEW {{body}}{{/each}}');
@@ -3189,7 +3194,7 @@ test('reloads workspace-local templates', async () => {
 
     assert.deepEqual(
       buildTuiLines({ state, body, rows: 5, columns: 80 }).at(2),
-      'NEW First fact.'
+      'NEW First fact. [1]'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

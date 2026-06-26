@@ -108,15 +108,15 @@
       "action": "set_fact_type",
       "arguments": [
         {
+          "name": "item",
+          "type": "fact",
+          "prompt": "Change which fact?"
+        },
+        {
           "name": "type",
           "type": "factType",
           "enum": "factType",
           "prompt": "Set which type?"
-        },
-        {
-          "name": "item",
-          "type": "fact",
-          "prompt": "Change which fact?"
         }
       ]
     },
@@ -126,14 +126,14 @@
       "property": "due",
       "arguments": [
         {
-          "name": "value",
-          "type": "date",
-          "prompt": "Due when?"
-        },
-        {
           "name": "item",
           "type": "fact",
           "prompt": "Set due date on which fact?"
+        },
+        {
+          "name": "value",
+          "type": "date",
+          "prompt": "Due when?"
         }
       ]
     },

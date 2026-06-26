@@ -27,15 +27,15 @@ test('lists built-in command help', () => {
     ':open [item]',
     ':delete <item>',
     ':relate <item> <context>',
-    ':type <type> <item>',
-    ':due <value> <item>',
+    ':type <item> <type>',
+    ':due <item> <value>',
     ':paste <title>',
     ':debug-keys',
     ':restart'
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <type> <item> | :due <value> <item> | :paste <title> | :debug-keys | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :debug-keys | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -58,12 +58,12 @@ test('lists built-in command help', () => {
     { name: 'context', type: 'context', consume: 'rest', prompt: 'Relate it to which context?' }
   ]);
   assert.deepEqual(commandArguments('type'), [
-    { name: 'type', type: 'factType', enum: 'factType', prompt: 'Set which type?' },
-    { name: 'item', type: 'fact', prompt: 'Change which fact?' }
+    { name: 'item', type: 'fact', prompt: 'Change which fact?' },
+    { name: 'type', type: 'factType', enum: 'factType', prompt: 'Set which type?' }
   ]);
   assert.deepEqual(commandArguments('due'), [
-    { name: 'value', type: 'date', prompt: 'Due when?' },
-    { name: 'item', type: 'fact', prompt: 'Set due date on which fact?' }
+    { name: 'item', type: 'fact', prompt: 'Set due date on which fact?' },
+    { name: 'value', type: 'date', prompt: 'Due when?' }
   ]);
   assert.deepEqual(commandArguments('new'), [
     { name: 'title', type: 'text', consume: 'rest', prompt: 'Title?' }
@@ -214,17 +214,17 @@ test('parses fact commands', () => {
     itemNumber: 4,
     type: 'relate_fact'
   });
-  assert.deepEqual(parseEntry(':type done 5'), {
+  assert.deepEqual(parseEntry(':type 5 done'), {
     factType: 'done',
     itemNumber: 5,
     type: 'set_fact_type'
   });
-  assert.deepEqual(parseEntry(':TYPE WAITING 5'), {
+  assert.deepEqual(parseEntry(':TYPE 5 WAITING'), {
     factType: 'waiting',
     itemNumber: 5,
     type: 'set_fact_type'
   });
-  assert.deepEqual(parseEntry(':type in progress 5'), {
+  assert.deepEqual(parseEntry(':type 5 in progress'), {
     factType: 'in progress',
     itemNumber: 5,
     type: 'set_fact_type'
@@ -247,7 +247,7 @@ test('parses fact commands', () => {
   assert.deepEqual(parseEntry('.done'), {
     type: 'prompt_command_argument',
     commandName: 'type',
-    values: { type: 'done' },
+    values: {},
     argument: {
       name: 'item',
       type: 'fact',
@@ -259,22 +259,23 @@ test('parses fact commands', () => {
     message: 'usage: .<type> <item>',
     type: 'usage_error'
   });
-  assert.deepEqual(parseEntry(':type done'), {
+  assert.deepEqual(parseEntry(':type 5'), {
     type: 'prompt_command_argument',
     commandName: 'type',
-    values: { type: 'done' },
+    values: { item: { kind: 'number', value: 5 } },
     argument: {
-      name: 'item',
-      type: 'fact',
-      prompt: 'Change which fact?'
+      name: 'type',
+      type: 'factType',
+      enum: 'factType',
+      prompt: 'Set which type?'
     },
-    prompt: 'Change which fact?'
+    prompt: 'Set which type?'
   });
-  assert.deepEqual(parseEntry(':type bad:type 5'), {
-    message: 'usage: :type <type> <item>',
+  assert.deepEqual(parseEntry(':type 5 bad:type'), {
+    message: 'usage: :type <item> <type>',
     type: 'usage_error'
   });
-  assert.deepEqual(parseEntry(':due 2026-07-04 2'), {
+  assert.deepEqual(parseEntry(':due 2 2026-07-04'), {
     itemNumber: 2,
     property: 'due',
     type: 'set_fact_property',
@@ -287,17 +288,29 @@ test('parses fact commands', () => {
 });
 
 test('continues prompted commands', () => {
-  const pendingType = parseEntry(':type done');
+  const pendingType = parseEntry(':type 5');
 
-  assert.deepEqual(continuePromptedCommand(pendingType, '5'), {
+  assert.deepEqual(continuePromptedCommand(pendingType, 'done'), {
     factType: 'done',
     itemNumber: 5,
     type: 'set_fact_type'
   });
   assert.deepEqual(continuePromptedCommand(parseEntry('.done'), '5'), {
-    factType: 'done',
-    itemNumber: 5,
-    type: 'set_fact_type'
+    type: 'prompt_command_argument',
+    commandName: 'type',
+    values: {
+      item: {
+        kind: 'number',
+        value: 5
+      }
+    },
+    argument: {
+      name: 'type',
+      type: 'factType',
+      enum: 'factType',
+      prompt: 'Set which type?'
+    },
+    prompt: 'Set which type?'
   });
   assert.deepEqual(continuePromptedCommand(parseEntry(':relate'), '4'), {
     type: 'prompt_command_argument',
@@ -344,35 +357,35 @@ test('normalizes date command arguments', async () => {
     dateToday: new Date(2026, 5, 24, 12)
   });
 
-  assert.deepEqual(parseEntry(':due today 4', registry), {
+  assert.deepEqual(parseEntry(':due 4 today', registry), {
     itemNumber: 4,
     property: 'due',
     type: 'set_fact_property',
     value: '2026-06-24'
   });
-  assert.deepEqual(parseEntry(':due in 2 weeks 4', registry), {
+  assert.deepEqual(parseEntry(':due 4 in 2 weeks', registry), {
     itemNumber: 4,
     property: 'due',
     type: 'set_fact_property',
     value: '2026-07-08'
   });
-  assert.deepEqual(parseEntry(':due someday 4', registry), {
-    message: 'usage: :due <value> <item>',
+  assert.deepEqual(parseEntry(':due 4 someday', registry), {
+    message: 'usage: :due <item> <value>',
     type: 'usage_error'
   });
   assert.deepEqual(continuePromptedCommand({
     ...parseEntry(':due', registry),
     registry
-  }, 'tomorrow'), {
+  }, '4'), {
     type: 'prompt_command_argument',
     commandName: 'due',
-    values: { value: '2026-06-25' },
+    values: { item: { kind: 'number', value: 4 } },
     argument: {
-      name: 'item',
-      type: 'fact',
-      prompt: 'Set due date on which fact?'
+      name: 'value',
+      type: 'date',
+      prompt: 'Due when?'
     },
-    prompt: 'Set due date on which fact?'
+    prompt: 'Due when?'
   });
 });
 

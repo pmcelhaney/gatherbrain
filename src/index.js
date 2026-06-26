@@ -70,7 +70,9 @@ const defaultAppDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.
 const ansiTypeColor = '\x1b[36m';
 const ansiLinkColor = '\x1b[34m';
 const ansiRelationColor = '\x1b[35m';
+const ansiSecondaryColor = '\x1b[2m';
 const ansiResetColor = '\x1b[39m';
+const ansiResetIntensity = '\x1b[22m';
 const ansiCommandPromptBackground = '\x1b[48;5;236m';
 const ansiPeekBackground = '\x1b[48;5;234m';
 const ansiResetAll = '\x1b[0m';
@@ -805,6 +807,10 @@ function truncateVisible(line, columns) {
     result += ansiResetColor;
   }
 
+  if (result.lastIndexOf(ansiSecondaryColor) > result.lastIndexOf(ansiResetIntensity)) {
+    result += ansiResetIntensity;
+  }
+
   return result;
 }
 
@@ -922,6 +928,12 @@ function displayRelationSuffix(suffix, includeColor) {
     : suffix;
 }
 
+function displaySecondarySuffix(suffix, includeColor) {
+  return includeColor
+    ? `${ansiSecondaryColor}${suffix}${ansiResetIntensity}`
+    : suffix;
+}
+
 function formattedDisplayLines(text, options = {}) {
   const {
     columns,
@@ -929,7 +941,8 @@ function formattedDisplayLines(text, options = {}) {
     continuationPrefix,
     firstColumns,
     includeColor,
-    relationSuffix = ''
+    relationSuffix = '',
+    secondarySuffix = ''
   } = options;
   const lines = text.split(/\r?\n/u);
   const displayLines = lines.length > 0 ? lines : [''];
@@ -937,8 +950,11 @@ function formattedDisplayLines(text, options = {}) {
   return displayLines.flatMap((line, lineIndex) => {
     const linkLabels = markdownLinksInText(line);
     const plainLine = plainTextWithMarkdownLinks(line);
+    const trailingSuffix = lineIndex === displayLines.length - 1
+      ? [relationSuffix, secondarySuffix].filter((part) => part.length > 0).join(' ')
+      : '';
     const displayLine = lineIndex === displayLines.length - 1
-      ? `${plainLine}${relationSuffix ? ` ${relationSuffix}` : ''}`
+      ? `${plainLine}${trailingSuffix ? ` ${trailingSuffix}` : ''}`
       : plainLine;
     const wrappedLines = wrapPlainText(
       displayLine,
@@ -947,9 +963,23 @@ function formattedDisplayLines(text, options = {}) {
 
     return wrappedLines.map((wrappedLine, wrappedLineIndex) => {
       const linkLine = displayMarkdownLinks(wrappedLine, linkLabels, includeColor);
-      const displayedLine = relationSuffix && linkLine.endsWith(relationSuffix)
-        ? `${linkLine.slice(0, -relationSuffix.length)}${displayRelationSuffix(relationSuffix, includeColor)}`
-        : linkLine;
+      let displayedLine = linkLine;
+
+      if (
+        relationSuffix
+        && secondarySuffix
+        && displayedLine.endsWith(`${relationSuffix} ${secondarySuffix}`)
+      ) {
+        displayedLine = `${displayedLine.slice(0, -(relationSuffix.length + secondarySuffix.length + 1))}${displayRelationSuffix(relationSuffix, includeColor)} ${displaySecondarySuffix(secondarySuffix, includeColor)}`;
+      } else {
+        if (relationSuffix && displayedLine.endsWith(relationSuffix)) {
+          displayedLine = `${displayedLine.slice(0, -relationSuffix.length)}${displayRelationSuffix(relationSuffix, includeColor)}`;
+        }
+
+        if (secondarySuffix && displayedLine.endsWith(secondarySuffix)) {
+          displayedLine = `${displayedLine.slice(0, -secondarySuffix.length)}${displaySecondarySuffix(secondarySuffix, includeColor)}`;
+        }
+      }
 
       return lineIndex === 0 && wrappedLineIndex === 0
         ? displayedLine
@@ -977,15 +1007,15 @@ function factViewModelsForDisplay(facts, options = {}) {
     const displayText = bodyText.length > 0 ? bodyText : titleText;
     const type = fact.type ?? 'fact';
     const relationSuffix = relationSuffixText(displayRelationsForFact(fact), fact.displayRelationDirection);
+    const secondarySuffix = `[${itemNumber}]`;
     const displayType = type === 'fact' ? '' : type;
     const sourceContext = fact.sourceContext ?? '';
     const sourceContextShort = fact.sourceContextShort ?? '';
     const firstPrefix = [
-      `${String(itemNumber).padStart(numberWidth)}.`,
       sourceContextShort,
       displayType
     ].filter((part) => part.length > 0).join(' ');
-    const firstPrefixWithSpacing = `${firstPrefix} `;
+    const firstPrefixWithSpacing = firstPrefix.length > 0 ? `${firstPrefix} ` : '';
     const firstColumns = Math.max(columns - visibleLength(firstPrefixWithSpacing), 1);
     const displayOptions = {
       columns,
@@ -993,7 +1023,8 @@ function factViewModelsForDisplay(facts, options = {}) {
       continuationPrefix,
       firstColumns,
       includeColor,
-      relationSuffix
+      relationSuffix,
+      secondarySuffix
     };
     const bodyLines = formattedDisplayLines(bodyText, displayOptions);
     const displayLines = formattedDisplayLines(displayText, displayOptions);
@@ -1004,6 +1035,7 @@ function factViewModelsForDisplay(facts, options = {}) {
 
     const viewModel = {
       number: String(itemNumber).padStart(numberWidth),
+      numberSuffix: secondarySuffix,
       type: displayType,
       sourceContext,
       sourceContextShort,

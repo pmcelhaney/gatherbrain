@@ -263,7 +263,7 @@ function parseTypedFactTypeCommand(command, registry) {
         name: 'type',
         action: 'set_fact_type',
         arguments: commandArguments('type', registry)
-      }, { type: matchingValue }, {
+      }, {}, {
         name: 'item',
         type: 'fact',
         prompt: 'Change which fact?'
@@ -299,6 +299,12 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
     dateToday = null,
     promptForMissing = false
   } = options;
+  const trailingParsedArguments = parseTrailingCommandArguments(commandDefinition, args, options);
+
+  if (trailingParsedArguments) {
+    return trailingParsedArguments;
+  }
+
   const parsedArguments = {};
   let remainingArgs = args.trim();
 
@@ -353,6 +359,69 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
   }
 
   return buildCommandAction(commandDefinition, parsedArguments);
+}
+
+function parseTrailingCommandArguments(commandDefinition, args, options = {}) {
+  const {
+    enumRegistry = null,
+    dateToday = null,
+    promptForMissing = false
+  } = options;
+
+  if (commandDefinition.arguments.length !== 2) {
+    return null;
+  }
+
+  const [firstArgument, secondArgument] = commandDefinition.arguments;
+
+  if (firstArgument.type !== 'fact' || !['factType', 'date'].includes(secondArgument.type)) {
+    return null;
+  }
+
+  const trimmedArgs = args.trim();
+
+  if (trimmedArgs.length === 0) {
+    return promptForMissing
+      ? promptForArgument(commandDefinition, {}, firstArgument)
+      : {
+        type: 'usage_error',
+        message: `usage: ${usageForCommandDefinition(commandDefinition)}`
+      };
+  }
+
+  const tokens = trimmedArgs.split(/\s+/u);
+
+  for (let splitIndex = 1; splitIndex < tokens.length; splitIndex += 1) {
+    const firstValueText = tokens.slice(0, splitIndex).join(' ');
+    const secondValueText = tokens.slice(splitIndex).join(' ');
+    const firstValue = parseArgumentValue(firstArgument, firstValueText, { enumRegistry, dateToday });
+    const secondValue = parseArgumentValue(secondArgument, secondValueText, { enumRegistry, dateToday });
+
+    if (firstValue !== null && secondValue !== null) {
+      return buildCommandAction(commandDefinition, {
+        [firstArgument.name]: firstValue,
+        [secondArgument.name]: secondValue
+      });
+    }
+  }
+
+  if (!promptForMissing) {
+    return null;
+  }
+
+  if (tokens.length !== 1) {
+    return null;
+  }
+
+  const firstValue = parseArgumentValue(firstArgument, trimmedArgs, { enumRegistry, dateToday });
+
+  if (firstValue !== null) {
+    return promptForArgument(commandDefinition, {
+      [firstArgument.name]: firstValue
+    }, secondArgument);
+  }
+
+  return null;
 }
 
 function readArgumentValue(argument, remainingArgs, options = {}) {

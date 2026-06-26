@@ -13,13 +13,13 @@ test('renders default facts template', () => {
     renderTemplate('facts', {
       emptyText: 'No facts yet.',
       facts: [
-        { number: ' 1', type: '', body: 'First fact.' },
-        { number: ' 2', type: 'task', body: 'Second fact.' }
+        { number: ' 1', numberSuffix: '[1]', type: '', body: 'First fact. [1]' },
+        { number: ' 2', numberSuffix: '[2]', type: 'task', body: 'Second fact. [2]' }
       ],
       hasFacts: true,
       includeColor: false
     }),
-    ' 1. First fact.\n 2. task Second fact.'
+    'First fact. [1]\ntask Second fact. [2]'
   );
 });
 
@@ -28,12 +28,12 @@ test('default facts template prefers body over title', () => {
     renderTemplate('facts', {
       emptyText: 'No facts yet.',
       facts: [
-        { number: ' 1', type: '', title: 'Title fallback', body: 'Body first.' }
+        { number: ' 1', numberSuffix: '[1]', type: '', title: 'Title fallback', body: 'Body first. [1]' }
       ],
       hasFacts: true,
       includeColor: false
     }),
-    ' 1. Body first.'
+    'Body first. [1]'
   );
 });
 
@@ -42,13 +42,13 @@ test('renders template lines', () => {
     renderTemplateLines('facts', {
       emptyText: 'No facts yet.',
       facts: [
-        { number: ' 1', type: '', body: 'First fact.' },
-        { number: ' 2', type: 'task', body: 'Second fact.' }
+        { number: ' 1', numberSuffix: '[1]', type: '', body: 'First fact. [1]' },
+        { number: ' 2', numberSuffix: '[2]', type: 'task', body: 'Second fact. [2]' }
       ],
       hasFacts: true,
       includeColor: false
     }),
-    [' 1. First fact.', ' 2. task Second fact.']
+    ['First fact. [1]', 'task Second fact. [2]']
   );
 });
 
@@ -57,12 +57,12 @@ test('supports color filters in templates', () => {
     renderTemplate('facts', {
       emptyText: 'No facts yet.',
       facts: [
-        { number: ' 1', type: 'task', body: 'Second fact.' }
+        { number: ' 1', numberSuffix: '[1]', type: 'task', body: `Second fact. \x1b[2m[1]\x1b[22m` }
       ],
       hasFacts: true,
       includeColor: true
     }),
-    ' 1. \x1b[36mtask\x1b[39m Second fact.'
+    '\x1b[36mtask\x1b[39m Second fact. \x1b[2m[1]\x1b[22m'
   );
 });
 
@@ -73,16 +73,17 @@ test('renders child context source names in default facts template', () => {
       facts: [
         {
           number: ' 1',
+          numberSuffix: '[1]',
           type: '',
           sourceContext: 'people/Steve Ma/reports',
           sourceContextShort: 'reports',
-          body: 'Child fact.'
+          body: `Child fact. \x1b[2m[1]\x1b[22m`
         }
       ],
       hasFacts: true,
       includeColor: true
     }),
-    ' 1. \x1b[34mreports\x1b[39m Child fact.'
+    '\x1b[34mreports\x1b[39m Child fact. \x1b[2m[1]\x1b[22m'
   );
 });
 
@@ -112,14 +113,14 @@ test('renders workspace-local templates', async () => {
       renderTemplate('compact', {
         emptyText: 'No facts yet.',
         facts: [
-          { number: ' 1', type: '', body: 'First fact.' }
+          { number: ' 1', numberSuffix: '[1]', type: '', body: 'First fact. [1]' }
         ],
         hasFacts: true,
         includeColor: false
       }, {
         rootDirectory
       }),
-      ' 1|First fact.'
+      ' 1|First fact. [1]'
     );
   } finally {
     await rm(rootDirectory, { recursive: true, force: true });
@@ -140,14 +141,14 @@ test('workspace-local templates override default templates', async () => {
       renderTemplate('facts', {
         emptyText: 'No facts yet.',
         facts: [
-          { number: ' 1', type: '', body: 'First fact.' }
+          { number: ' 1', numberSuffix: '[1]', type: '', body: 'First fact. [1]' }
         ],
         hasFacts: true,
         includeColor: false
       }, {
         rootDirectory
       }),
-      'LOCAL First fact.'
+      'LOCAL First fact. [1]'
     );
   } finally {
     await rm(rootDirectory, { recursive: true, force: true });
