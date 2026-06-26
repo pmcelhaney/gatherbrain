@@ -148,9 +148,34 @@ function factTitleValueForCell(column, value) {
   return value.trim();
 }
 
+function sourceValuesForColumn(row, column) {
+  const sourceValue = row[column]?.trim() ?? '';
+
+  if (!sourceValue) {
+    return [];
+  }
+
+  if (column === 'Left Ulta' && sourceValue.toLowerCase() === 'no') {
+    return [];
+  }
+
+  if (column === 'Met?') {
+    return sourceValue
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0)
+      .map((value) => ({
+        sourceCellValue: sourceValue,
+        value
+      }));
+  }
+
+  return [{ value: sourceValue }];
+}
+
 export function factMarkdownFromCell(row, column, options = {}) {
   const personName = row.Name?.trim();
-  const value = row[column]?.trim();
+  const sourceValue = options.value?.trim() ?? row[column]?.trim();
   const factType = propertyNames.get(column);
 
   if (!personName) {
@@ -161,7 +186,7 @@ export function factMarkdownFromCell(row, column, options = {}) {
     throw new Error(`unsupported people column ${column}`);
   }
 
-  if (!value) {
+  if (!sourceValue) {
     throw new Error(`person row is missing ${column}`);
   }
 
@@ -171,20 +196,31 @@ export function factMarkdownFromCell(row, column, options = {}) {
     ...(sourceFile ? { sourceFile } : {}),
     ...(options.sourceRow ? { sourceRow: String(options.sourceRow) } : {}),
     sourceColumn: column,
-    sourceValue: value
+    sourceValue,
+    ...(options.sourceCellValue && options.sourceCellValue !== sourceValue
+      ? { sourceCellValue: options.sourceCellValue }
+      : {})
   };
   const relations = [];
 
   if (column === 'Manager') {
-    relations.push(`people/${slugifyTitle(firstNotionLabel(value))}`);
+    relations.push(`people/${slugifyTitle(firstNotionLabel(sourceValue))}`);
   }
 
-  return buildFactMarkdown(`${column}: ${factTitleValueForCell(column, value)}`, {
-    body: factBodyForCell(column, value),
+  return buildFactMarkdown(`${column}: ${factTitleValueForCell(column, sourceValue)}`, {
+    body: factBodyForCell(column, sourceValue),
     properties,
     relations,
     type: factType
   });
+}
+
+function factFilenameForColumnValue(column, value) {
+  const factType = propertyNames.get(column);
+
+  return column === 'Met?'
+    ? `${factType}-${slugifyTitle(value)}.md`
+    : `${factType}.md`;
 }
 
 export function personFactsFromRow(row, options = {}) {
@@ -194,13 +230,17 @@ export function personFactsFromRow(row, options = {}) {
     throw new Error('person row is missing Name');
   }
 
-  return columns
-    .filter((column) => row[column]?.trim())
-    .map((column) => ({
+  return columns.flatMap((column) => sourceValuesForColumn(row, column)
+    .map(({ sourceCellValue, value }) => ({
       column,
-      filename: `${propertyNames.get(column)}.md`,
-      markdown: factMarkdownFromCell(row, column, options)
-    }));
+      filename: factFilenameForColumnValue(column, value),
+      markdown: factMarkdownFromCell(row, column, {
+        ...options,
+        sourceCellValue,
+        value
+      }),
+      value
+    })));
 }
 
 export async function importPeopleCsv(csvPath, options = {}) {

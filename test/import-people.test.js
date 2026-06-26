@@ -84,7 +84,7 @@ test('builds manager relations when Notion labels contain parentheses', () => {
   );
 });
 
-test('builds one fact per non-empty person metadata cell', () => {
+test('builds one fact per importable person metadata value', () => {
   assert.deepEqual(
     personFactsFromRow({
       Name: 'Jane Smith',
@@ -93,7 +93,7 @@ test('builds one fact per non-empty person metadata cell', () => {
       'Left Ulta': 'No',
       Location: 'Chicago',
       Manager: '',
-      'Met?': '',
+      'Met?': '1:1, In Person',
       Organization: '',
       Projects: '',
       Role: 'Architect'
@@ -106,10 +106,38 @@ test('builds one fact per non-empty person metadata cell', () => {
     })),
     [
       { column: 'Email', filename: 'email.md' },
-      { column: 'Left Ulta', filename: 'left-ulta.md' },
       { column: 'Location', filename: 'location.md' },
+      { column: 'Met?', filename: 'met-1-1.md' },
+      { column: 'Met?', filename: 'met-in-person.md' },
       { column: 'Role', filename: 'role.md' }
     ]
+  );
+});
+
+test('records split met values with the original source cell value', () => {
+  assert.equal(
+    personFactsFromRow({
+      Name: 'Jane Smith',
+      'Met?': '1:1, In Person'
+    }, {
+      sourceFile: '/tmp/collaborators.csv',
+      sourceRow: 2
+    }).find((fact) => fact.filename === 'met-in-person.md').markdown,
+    [
+      '---',
+      'title: "Met?: In Person"',
+      'type: met',
+      'source: "Notion Collaborators export"',
+      'sourceFile: "collaborators.csv"',
+      'sourceRow: 2',
+      'sourceColumn: "Met?"',
+      'sourceValue: "In Person"',
+      'sourceCellValue: "1:1, In Person"',
+      '---',
+      '',
+      'In Person',
+      ''
+    ].join('\n')
   );
 });
 
@@ -130,7 +158,7 @@ test('imports people as contexts containing source-cell facts', async () => {
     assert.deepEqual(
       await importPeopleCsv(csvPath, { rootDirectory: path.join(directory, 'notes') }),
       {
-        facts: 9,
+        facts: 8,
         people: 2,
         peopleDirectory: path.join(directory, 'notes', 'people')
       }
@@ -144,10 +172,9 @@ test('imports people as contexts containing source-cell facts', async () => {
       [
         'company.md',
         'email.md',
-        'left-ulta.md',
         'location.md',
         'manager.md',
-        'met.md',
+        'met-1-1.md',
         'organization.md',
         'projects.md',
         'role.md'
