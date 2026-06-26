@@ -968,8 +968,8 @@ test('builds TUI lines with the current context and fact contents', () => {
     [
       'my-cool-project',
       '--------------------------------------------------------------------------------',
-      ' 1. First fact.',
-      ' 2. task Second fact.',
+      ' 2. First fact.',
+      ' 1. task Second fact.',
       '    with detail.'
     ]
   );
@@ -997,8 +997,8 @@ test('builds TUI lines from a body view model', () => {
     [
       'facts',
       '--------------------------------------------------------------------------------',
-      ' 1. First fact.',
-      ' 2. task Second fact.'
+      ' 2. First fact.',
+      ' 1. task Second fact.'
     ]
   );
 });
@@ -1021,8 +1021,8 @@ test('builds TUI lines with titles before body text', () => {
     [
       'facts',
       '--------------------------------------------------------------------------------',
-      ' 1. Title first',
-      ' 2. No title body.'
+      ' 2. Title first',
+      ' 1. No title body.'
     ]
   );
 });
@@ -1087,7 +1087,7 @@ test('wraps fact lines and indents continuations by four spaces', () => {
     [
       'facts',
       '---------------',
-      ' 1. This is a',
+      '10. This is a',
       '    long fact',
       '    body.'
     ]
@@ -1128,7 +1128,7 @@ test('paginates by complete items and shows an ellipsis', () => {
     }),
     {
       lines: [
-        ' 1. First',
+        ' 3. First',
         '    item',
         '    wraps.',
         '...'
@@ -1234,7 +1234,7 @@ test('colors non-fact fact types in the TUI', () => {
       rows: 5,
       columns: 80
     }),
-    '\x1b[2J\x1b[Hfacts\n--------------------------------------------------------------------------------\n 1. First fact.\n 2. \x1b[36mtask\x1b[39m Second fact.\x1b[5;1H'
+    '\x1b[2J\x1b[Hfacts\n--------------------------------------------------------------------------------\n 2. First fact.\n 1. \x1b[36mtask\x1b[39m Second fact.\x1b[5;1H'
   );
 });
 
@@ -1719,13 +1719,13 @@ test('type command changes a listed item type', async () => {
       '---\ntype: fact\n---\n\nThird fact.\n'
     );
 
-    const result = await handleEntry(':type foo 3', state);
+    const result = await handleEntry(':type foo 1', state);
     const files = await readdir(rootDirectory);
     const firstFact = await readFile(path.join(rootDirectory, files.sort()[0]), 'utf8');
 
     assert.deepEqual(result, {
       action: 'continue',
-      message: 'set item 3 type to foo'
+      message: 'set item 1 type to foo'
     });
     assert.equal(
       firstFact,
@@ -1821,13 +1821,13 @@ test('commands show source folders for facts related to the active context', asy
       [
         'people/Steve Ma',
         '--------------------------------------------------------------------------------',
-        ' 1. Related fact. <projects',
-        ' 2. Direct fact.'
+        ' 2. Related fact. <projects',
+        ' 1. Direct fact.'
       ]
     );
-    assert.deepEqual(await handleEntry(':type todo 1', state), {
+    assert.deepEqual(await handleEntry(':type todo 2', state), {
       action: 'continue',
-      message: 'set item 1 type to todo'
+      message: 'set item 2 type to todo'
     });
     assert.equal(
       await readFile(relatedPath, 'utf8'),
@@ -1974,7 +1974,7 @@ test(':edit command returns an edit action for a listed item', async () => {
       await handleEntry(':edit 2', state),
       {
         action: 'edit',
-        filePath: firstFactPath,
+        filePath: secondFactPath,
         itemLabel: '2',
         itemNumber: 2
       }
@@ -2127,9 +2127,9 @@ test(':delete command trashes a listed item', async () => {
       '---\ntype: fact\n---\n\nSecond fact.\n'
     );
 
-    assert.deepEqual(await handleEntry(':delete 2', state), {
+    assert.deepEqual(await handleEntry(':delete 1', state), {
       action: 'continue',
-      message: 'trashed item 2'
+      message: 'trashed item 1'
     });
     assert.deepEqual((await readdir(rootDirectory)).sort(), [
       '.trash',
@@ -2145,6 +2145,64 @@ test(':delete command trashes a listed item', async () => {
       ['Second fact.']
     );
     assert.equal(state.model.facts.has(path.basename(firstFactPath)), false);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('item numbers stay stable after deleting a visible item', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(rootDirectory, { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, '2026-06-23T09-05-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nSecond fact.\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, '2026-06-23T09-06-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nThird fact.\n'
+    );
+
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        body: await visibleBodyForState(state),
+        rows: 6,
+        columns: 80
+      }),
+      [
+        'facts',
+        '--------------------------------------------------------------------------------',
+        ' 3. Third fact.',
+        ' 2. Second fact.',
+        ' 1. First fact.'
+      ]
+    );
+    assert.deepEqual(await handleEntry(':delete 2', state), {
+      action: 'continue',
+      message: 'trashed item 2'
+    });
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        body: await visibleBodyForState(state),
+        rows: 5,
+        columns: 80
+      }),
+      [
+        'facts',
+        '--------------------------------------------------------------------------------',
+        ' 3. Third fact.',
+        ' 1. First fact.'
+      ]
+    );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

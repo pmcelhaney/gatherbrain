@@ -78,6 +78,8 @@ export function createPromptState(options = {}) {
     lensRegistry: options.lensRegistry ?? null,
     currentLensId: defaultLensId,
     peekLensId: defaultLensId,
+    itemNumberAssignments: new Map(),
+    nextItemNumber: 1,
     model: options.model ?? null,
     pageStartIndex: 0,
     pendingCommand: null,
@@ -91,6 +93,49 @@ export function createPromptState(options = {}) {
     openPath: options.openPath ?? openPath,
     readClipboard: options.readClipboard ?? readClipboard
   };
+}
+
+function resetItemNumbers(state) {
+  state.itemNumberAssignments = new Map();
+  state.nextItemNumber = 1;
+}
+
+function factIdentity(fact, fallbackIndex = 0) {
+  return fact?.id
+    ?? fact?.path
+    ?? fact?.filename
+    ?? `visible:${fallbackIndex}`;
+}
+
+function visibleFactsWithItemNumbers(facts, state = null) {
+  if (!state) {
+    return facts.map((fact, index) => ({
+      ...fact,
+      itemNumber: facts.length - index
+    }));
+  }
+
+  if (!(state.itemNumberAssignments instanceof Map)) {
+    resetItemNumbers(state);
+  }
+
+  const unassigned = facts
+    .map((fact, index) => ({
+      fact,
+      key: factIdentity(fact, index)
+    }))
+    .filter(({ key }) => !state.itemNumberAssignments.has(key));
+
+  for (const [index, { key }] of unassigned.entries()) {
+    state.itemNumberAssignments.set(key, state.nextItemNumber + unassigned.length - index - 1);
+  }
+
+  state.nextItemNumber += unassigned.length;
+
+  return facts.map((fact, index) => ({
+    ...fact,
+    itemNumber: state.itemNumberAssignments.get(factIdentity(fact, index))
+  }));
 }
 
 export function currentContextName(state) {
@@ -678,8 +723,8 @@ async function visibleFactAtIndex(state, index) {
     throw new Error('item number must be a positive integer');
   }
 
-  const facts = await visibleFactsForState(state);
-  const fact = facts[index - 1];
+  const facts = visibleFactsWithItemNumbers(await visibleFactsForState(state), state);
+  const fact = facts.find((candidate) => candidate.itemNumber === index);
 
   if (!fact) {
     throw new Error(`item ${index} does not exist`);
@@ -700,11 +745,11 @@ async function visibleFactForSelector(state, selector) {
   }
 
   if (typeof selector.itemTitle === 'string' && selector.itemTitle.length > 0) {
-    const facts = await visibleFactsForState(state);
+    const facts = visibleFactsWithItemNumbers(await visibleFactsForState(state), state);
     const matches = facts
-      .map((fact, index) => ({
+      .map((fact) => ({
         fact,
-        itemNumber: index + 1
+        itemNumber: fact.itemNumber
       }))
       .filter((candidate) => candidate.fact.title === selector.itemTitle);
 
@@ -940,18 +985,19 @@ function factViewModelsForDisplay(facts, options = {}) {
     templateRootDirectory = null
   } = options;
 
-  const numberWidth = Math.max(2, String(facts.length).length);
+  const numberWidth = Math.max(2, ...facts.map((fact) => String(fact.itemNumber ?? 0).length));
   const continuationPrefix = '    ';
   const continuationColumns = Math.max(columns - continuationPrefix.length, 1);
 
   return facts.map((fact, factIndex) => {
+    const itemNumber = fact.itemNumber ?? facts.length - factIndex;
     const bodyText = fact.text ?? '';
     const titleText = fact.title?.trim() ?? '';
     const displayText = titleText.length > 0 ? titleText : bodyText;
     const type = fact.type ?? 'fact';
     const relationSuffix = relationSuffixText(displayRelationsForFact(fact), fact.displayRelationDirection);
     const displayType = type === 'fact' ? '' : type;
-    const firstPrefix = `${String(factIndex + 1).padStart(numberWidth)}. ${displayType ? `${displayType} ` : ''}`;
+    const firstPrefix = `${String(itemNumber).padStart(numberWidth)}. ${displayType ? `${displayType} ` : ''}`;
     const firstColumns = Math.max(columns - visibleLength(firstPrefix), 1);
     const displayOptions = {
       columns,
@@ -969,7 +1015,7 @@ function factViewModelsForDisplay(facts, options = {}) {
     }
 
     const viewModel = {
-      number: String(factIndex + 1).padStart(numberWidth),
+      number: String(itemNumber).padStart(numberWidth),
       type: displayType,
       title: titleText,
       body: bodyLines.join('\n'),
@@ -998,7 +1044,8 @@ export function buildPagedFactLines(options = {}) {
     pageStartIndex = 0,
     rows = 0,
     template = 'facts',
-    templateRootDirectory = null
+    templateRootDirectory = null,
+    state = null
   } = options;
   const factRows = Math.max(rows, 0);
 
@@ -1027,7 +1074,8 @@ export function buildPagedFactLines(options = {}) {
     };
   }
 
-  const factViewModels = factViewModelsForDisplay(facts, {
+  const numberedFacts = visibleFactsWithItemNumbers(facts, state);
+  const factViewModels = factViewModelsForDisplay(numberedFacts, {
     columns,
     includeColor,
     template,
@@ -1106,6 +1154,7 @@ export function pageNavigationForFacts(options = {}) {
     body = null,
     facts = [],
     pageStartIndex = 0,
+    state = null,
     templateRootDirectory = null,
     rows = 0
   } = options;
@@ -1113,6 +1162,7 @@ export function pageNavigationForFacts(options = {}) {
     columns,
     includeColor,
     facts: body ? factsForBody(body) : facts,
+    state,
     template: body?.template ?? 'facts',
     templateRootDirectory,
     pageStartIndex,
@@ -1126,6 +1176,7 @@ export function pageNavigationForFacts(options = {}) {
       columns,
       includeColor,
       facts: body ? factsForBody(body) : facts,
+      state,
       template: body?.template ?? 'facts',
       templateRootDirectory,
       pageStartIndex: candidateStartIndex,
@@ -1221,6 +1272,7 @@ export function buildTuiLines(options = {}) {
       columns,
       includeColor,
       facts: bodyFacts,
+      state,
       template: body?.template ?? 'facts',
       templateRootDirectory: state.rootDirectory,
       pageStartIndex: state.pageStartIndex ?? 0,
@@ -1781,6 +1833,7 @@ function parseConfirmation(value) {
 async function switchToContextDirectory(contextDirectory, state) {
   state.peekContextDirectory = null;
   state.peekLensId = defaultLensId;
+  resetItemNumbers(state);
   changeLens(state, {
     ...currentLens(state),
     currentContextDirectory: contextDirectory
@@ -2025,6 +2078,7 @@ export async function handleEntry(entry, state) {
   if (parsedEntry.type === 'clear_peek' || parsedEntry.type === 'clear_gaze') {
     state.peekContextDirectory = null;
     state.peekLensId = defaultLensId;
+    resetItemNumbers(state);
     state.statusMessage = '';
     clearTemporaryBody(state);
 
@@ -2049,6 +2103,7 @@ export async function handleEntry(entry, state) {
 
     const message = `peek ${contextIdForDirectory(state, state.peekContextDirectory)}`;
     state.peekLensId = defaultLensId;
+    resetItemNumbers(state);
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);
@@ -2331,6 +2386,7 @@ async function main() {
       columns: terminalColumns(),
       includeColor: output.isTTY,
       pageStartIndex: state.pageStartIndex ?? 0,
+      state,
       templateRootDirectory: state.rootDirectory,
       rows: factRows()
     });
