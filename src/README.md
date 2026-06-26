@@ -29,7 +29,9 @@ Important exports used heavily by tests include `createPromptState`, `handleEntr
 
 ### `api.js`
 
-Command-facing workspace operations. It is the boundary between the TUI and durable workspace mutations: creating facts and contexts, resolving context references, deleting facts, relating facts, setting fact type/properties, resolving referenced files, adding enum values, and refreshing the in-memory model after changes.
+Command-facing workspace operations. It is the boundary between the TUI and the workspace model: creating facts and contexts, resolving context references, deleting facts, relating facts, setting fact type/properties, resolving referenced files, adding enum values, and refreshing the in-memory model after changes.
+
+It also exposes read-only model queries intended for future LLM and dashboard surfaces, including all facts, facts in a context, visible facts for the active lens, related facts, recent facts, facts by type, and due/today/current fact sets.
 
 Prefer putting reusable app operations here rather than making `index.js` call `facts.js` or `model.js` directly.
 
@@ -89,7 +91,7 @@ Filesystem watcher for workspace-local configuration under `.gatherbrain`. It re
 
 - Prefer changing `facts.js` for Markdown/file-format rules.
 - Prefer changing `model.js` for workspace indexing and refresh behavior.
-- Prefer changing `api.js` for command-facing workspace operations and model refresh after mutations.
+- Prefer changing `api.js` for command-facing workspace operations, reusable read queries, and model refresh after mutations.
 - Prefer changing `lenses.js` for what is visible and what metadata presenters expose to templates.
 - Prefer changing `templates.js` and `default-config/templates` for rendering syntax and default body output.
 - Prefer changing `commands.js` and `default-config/commands.json` for command parsing and DSL shape.

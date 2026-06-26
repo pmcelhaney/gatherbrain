@@ -1,25 +1,38 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addWorkspaceEnumValue,
+  allFacts,
   contextDirectoryForSwitchReference,
   contextHasHiddenPathPart,
   contextIdForDirectory,
   createContext,
   createFact,
+  currentFacts,
   deleteWorkspaceFact,
+  dueFacts,
   ensureWorkspaceModel,
+  factsByType,
+  factsInContext,
   referencedFilePathForFact,
+  recentFacts,
+  relatedFacts,
   relateWorkspaceFact,
   resolveExistingSwitchContextDirectory,
   setWorkspaceFactProperty,
-  setWorkspaceFactType
+  setWorkspaceFactType,
+  todayFacts,
+  visibleFacts
 } from '../src/api.js';
 import { enumValues, loadEnumRegistry } from '../src/enums.js';
 import { createPromptState } from '../src/index.js';
+
+function factIds(facts) {
+  return facts.map((fact) => fact.id);
+}
 
 test('creates facts and refreshes the workspace model', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-api-'));
@@ -129,6 +142,96 @@ test('resolves referenced files and appends workspace enum values', async () => 
 
     const registry = await loadEnumRegistry({ rootDirectory });
     assert.deepEqual(enumValues('factType', registry), ['fact', 'todo', 'waiting', 'in progress', 'done', 'blocked']);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('reads facts from the workspace model for LLM-friendly queries', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-api-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain', 'child'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'todo.md'),
+      '---\ntitle: Todo\ntype: todo\ndue: 2026-06-26\n---\n\nTodo\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'child', 'done.md'),
+      '---\ntitle: Done\ntype: done\ndue: 2026-06-20\n---\n\nDone\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'people', 'Steve Ma', 'waiting.md'),
+      '---\ntitle: Waiting\ntype: waiting\nrelatedContexts: ["projects/gatherbrain"]\n---\n\nWaiting\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'people', 'Steve Ma', 'fact.md'),
+      '---\ntitle: Person Fact\ntype: fact\n---\n\nPerson Fact\n'
+    );
+    await utimes(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'child', 'done.md'),
+      new Date('2026-06-26T12:00:00Z'),
+      new Date('2026-06-26T12:00:00Z')
+    );
+    await ensureWorkspaceModel(state);
+    state.currentContextDirectory = path.join(rootDirectory, 'projects', 'gatherbrain');
+    state.currentLensId = 'todo';
+
+    assert.deepEqual(
+      factIds(await factsInContext(state, { contextId: 'projects/gatherbrain' })).sort(),
+      [
+        'projects/gatherbrain/child/done.md',
+        'projects/gatherbrain/todo.md'
+      ]
+    );
+    assert.deepEqual(
+      factIds(await relatedFacts(state, 'projects/gatherbrain')),
+      ['people/Steve Ma/waiting.md']
+    );
+    assert.deepEqual(
+      factIds(await factsByType(state, ['todo', 'waiting'])).sort(),
+      [
+        'people/Steve Ma/waiting.md',
+        'projects/gatherbrain/todo.md'
+      ]
+    );
+    assert.equal((await allFacts(state)).length, 4);
+    assert.equal((await recentFacts(state, { limit: 2 })).length, 2);
+    assert.deepEqual(
+      factIds(await dueFacts(state, {
+        contextId: 'projects/gatherbrain',
+        includeRelated: true
+      })).sort(),
+      ['projects/gatherbrain/todo.md']
+    );
+    assert.deepEqual(
+      factIds(await todayFacts(state, {
+        contextId: 'projects/gatherbrain',
+        includeRelated: true,
+        today: new Date('2026-06-26T09:00:00Z')
+      })),
+      ['projects/gatherbrain/todo.md']
+    );
+    assert.deepEqual(
+      factIds(await currentFacts(state, {
+        contextId: 'projects/gatherbrain',
+        today: new Date('2026-06-26T09:00:00Z')
+      })).sort(),
+      [
+        'projects/gatherbrain/child/done.md',
+        'projects/gatherbrain/todo.md'
+      ]
+    );
+    assert.deepEqual(
+      factIds(await visibleFacts(state)).sort(),
+      [
+        'people/Steve Ma/waiting.md',
+        'projects/gatherbrain/todo.md'
+      ]
+    );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

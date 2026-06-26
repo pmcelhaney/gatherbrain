@@ -15,6 +15,11 @@ import {
   removeFact
 } from './model.js';
 import { addEnumValue } from './enums.js';
+import { formatDateArgument } from './dates.js';
+import {
+  defaultLensId,
+  presentLens
+} from './lenses.js';
 
 export async function ensureWorkspaceModel(state) {
   if (!state.model) {
@@ -50,6 +55,166 @@ export async function contextLinks(state) {
     folder: contextId.split('/').at(-1) ?? contextId,
     name: contextId
   }));
+}
+
+function factsForModel(model) {
+  return [...model.facts.values()]
+    .sort((left, right) => {
+      const createdComparison = (right.createdAt ?? '').localeCompare(left.createdAt ?? '');
+
+      if (createdComparison !== 0) {
+        return createdComparison;
+      }
+
+      const filenameComparison = path.basename(right.filename).localeCompare(path.basename(left.filename));
+
+      return filenameComparison === 0
+        ? right.filename.localeCompare(left.filename)
+        : filenameComparison;
+    });
+}
+
+function currentContextId(state) {
+  return contextIdForDirectory(state, state.currentContextDirectory);
+}
+
+function activeLensContextDirectory(state) {
+  return state.peekContextDirectory ?? state.currentContextDirectory;
+}
+
+function activeLensId(state) {
+  return state.peekContextDirectory
+    ? state.peekLensId ?? defaultLensId
+    : state.currentLensId ?? defaultLensId;
+}
+
+function factIsInContextTree(fact, contextId) {
+  return contextId === ''
+    || fact.contextId === contextId
+    || fact.contextId.startsWith(`${contextId}/`);
+}
+
+function factIsRelatedToContext(fact, contextId) {
+  return contextId.length > 0 && (fact.relations?.includes(contextId) ?? false);
+}
+
+function factHasDueDate(fact) {
+  return Boolean(fact.properties?.due);
+}
+
+function factIsDone(fact) {
+  return fact.type === 'done';
+}
+
+function factIsDueOnOrBefore(fact, dateString) {
+  const dueDate = fact.properties?.due;
+
+  return Boolean(dueDate) && dueDate <= dateString;
+}
+
+function factWasModifiedOn(fact, dateString) {
+  return fact.modifiedAt
+    ? formatDateArgument(new Date(fact.modifiedAt)) === dateString
+    : false;
+}
+
+export async function allFacts(state) {
+  return factsForModel(await ensureWorkspaceModel(state));
+}
+
+export async function factsInContext(state, options = {}) {
+  const {
+    contextId = currentContextId(state),
+    includeChildContexts = true,
+    includeRelated = false
+  } = options;
+  const facts = await allFacts(state);
+
+  return facts.filter((fact) => {
+    const directMatch = includeChildContexts
+      ? factIsInContextTree(fact, contextId)
+      : fact.contextId === contextId;
+
+    return directMatch || (includeRelated && factIsRelatedToContext(fact, contextId));
+  });
+}
+
+export async function relatedFacts(state, contextId = currentContextId(state)) {
+  const facts = await allFacts(state);
+
+  return facts.filter((fact) => factIsRelatedToContext(fact, contextId));
+}
+
+export async function factsByType(state, types) {
+  const allowedTypes = new Set(Array.isArray(types) ? types : [types]);
+  const facts = await allFacts(state);
+
+  return facts.filter((fact) => allowedTypes.has(fact.type));
+}
+
+export async function recentFacts(state, options = {}) {
+  const {
+    contextId = null,
+    includeChildContexts = true,
+    includeRelated = false,
+    limit = 10
+  } = options;
+  const facts = contextId === null
+    ? await allFacts(state)
+    : await factsInContext(state, { contextId, includeChildContexts, includeRelated });
+
+  return Number.isInteger(limit) && limit >= 0
+    ? facts.slice(0, limit)
+    : facts;
+}
+
+export async function dueFacts(state, options = {}) {
+  const facts = await factsInContext(state, {
+    contextId: options.contextId ?? currentContextId(state),
+    includeChildContexts: options.includeChildContexts ?? true,
+    includeRelated: options.includeRelated ?? true
+  });
+
+  return facts.filter((fact) => factHasDueDate(fact) && !factIsDone(fact));
+}
+
+export async function todayFacts(state, options = {}) {
+  const today = formatDateArgument(options.today ?? state.dateToday ?? new Date());
+  const facts = await dueFacts(state, options);
+
+  return facts.filter((fact) => factIsDueOnOrBefore(fact, today));
+}
+
+export async function currentFacts(state, options = {}) {
+  const today = formatDateArgument(options.today ?? state.dateToday ?? new Date());
+  const facts = await factsInContext(state, {
+    contextId: options.contextId ?? currentContextId(state),
+    includeChildContexts: options.includeChildContexts ?? true,
+    includeRelated: options.includeRelated ?? true
+  });
+
+  return facts.filter((fact) => (
+    (factIsDueOnOrBefore(fact, today) && !factIsDone(fact))
+    || (factIsDone(fact) && factWasModifiedOn(fact, today))
+  ));
+}
+
+export async function visibleFacts(state, options = {}) {
+  const model = await ensureWorkspaceModel(state);
+  const lensContextDirectory = options.contextId === undefined
+    ? activeLensContextDirectory(state)
+    : contextDirectoryForId(state, options.contextId);
+  const lensModel = presentLens({
+    model,
+    state: {
+      ...state,
+      lensContextDirectory
+    },
+    lensRegistry: state.lensRegistry,
+    lensId: options.lensId ?? activeLensId(state)
+  });
+
+  return lensModel.facts ?? lensModel.body?.facts ?? [];
 }
 
 function contextReferenceParts(contextReference) {
