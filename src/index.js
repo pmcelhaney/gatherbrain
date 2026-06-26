@@ -79,6 +79,20 @@ const ansiResetAll = '\x1b[0m';
 const ansiCodePattern = /\x1b\[[0-9;]*m/gu;
 const restartRestoreEnv = 'GATHERBRAIN_RESTORE';
 const factTypeEnumName = 'factType';
+const dateCompletionValues = [
+  'today',
+  'tomorrow',
+  'yesterday',
+  'next monday',
+  'next tuesday',
+  'next wednesday',
+  'next thursday',
+  'next friday',
+  'next saturday',
+  'next sunday',
+  'in 1 day',
+  'in 1 week'
+];
 export function createPromptState(options = {}) {
   const appDirectory = options.appDirectory ?? defaultAppDirectory;
   const rootDirectory = options.rootDirectory ?? options.notesDirectory ?? path.join(appDirectory, 'notes');
@@ -1483,6 +1497,12 @@ export async function completeEntry(line, state) {
     }
   }
 
+  const trailingNamedArgumentCompletion = await matchingTrailingNamedArgument(line, state);
+
+  if (trailingNamedArgumentCompletion) {
+    return trailingNamedArgumentCompletion;
+  }
+
   const namedEnumCompletion = matchingNamedEnumArgument(line, state);
 
   if (namedEnumCompletion) {
@@ -1555,6 +1575,84 @@ export async function completeEntry(line, state) {
   }
 
   return [[], line];
+}
+
+async function matchingTrailingNamedArgument(line, state) {
+  const match = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+(?<args>.*)$/u);
+
+  if (!match) {
+    return null;
+  }
+
+  const argumentsDefinition = commandArgumentsForCompletion(match.groups.commandName, state);
+  const [itemArgument, trailingArgument] = argumentsDefinition ?? [];
+
+  if (
+    argumentsDefinition?.length !== 2
+    || itemArgument.type !== 'fact'
+    || !['factType', 'date'].includes(trailingArgument.type)
+  ) {
+    return null;
+  }
+
+  const args = match.groups.args ?? '';
+  const split = await trailingArgumentSplitForArgs(args, state);
+
+  if (!split) {
+    return null;
+  }
+
+  const matches = trailingArgumentCompletionValues(trailingArgument, state)
+    .filter((value) => startsWithCaseInsensitive(value, split.partialValue));
+
+  return [matches, split.partialValue];
+}
+
+async function trailingArgumentSplitForArgs(args, state) {
+  const trimmedArgs = args.trim();
+
+  if (trimmedArgs.length === 0) {
+    return null;
+  }
+
+  const facts = await visibleFactsForState(state);
+
+  if (args.endsWith(' ')) {
+    return factSelectorIsComplete(trimmedArgs, facts)
+      ? { partialValue: '' }
+      : null;
+  }
+
+  const tokens = trimmedArgs.split(/\s+/u);
+
+  for (let splitIndex = tokens.length - 1; splitIndex >= 1; splitIndex -= 1) {
+    const itemValue = tokens.slice(0, splitIndex).join(' ');
+
+    if (factSelectorIsComplete(itemValue, facts)) {
+      return {
+        partialValue: tokens.slice(splitIndex).join(' ')
+      };
+    }
+  }
+
+  return null;
+}
+
+function factSelectorIsComplete(value, facts) {
+  return /^[1-9]\d*$/u.test(value)
+    || facts.some((fact) => fact.title?.toLowerCase() === value.toLowerCase());
+}
+
+function trailingArgumentCompletionValues(argument, state) {
+  if (enumCompletableArgument(argument)) {
+    return commandArgumentValues(argument, state.commandRegistry);
+  }
+
+  if (argument.type === 'date') {
+    return dateCompletionValues;
+  }
+
+  return [];
 }
 
 async function matchingNamedFactArgument(line, state) {

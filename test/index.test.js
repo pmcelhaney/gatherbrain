@@ -3037,6 +3037,14 @@ test('completes fact arguments by visible fact title', async () => {
       [['Call Steve'], 'Cal']
     );
     assert.deepEqual(
+      await completeEntry(':type Call Steve in', state),
+      [['in progress'], 'in']
+    );
+    assert.deepEqual(
+      await completeEntry(':due Call Steve to', state),
+      [['today', 'tomorrow'], 'to']
+    );
+    assert.deepEqual(
       await completeEntry('.done Cal', state),
       [['Call Steve'], 'Cal']
     );
