@@ -61,7 +61,7 @@ Handlebars rendering for body templates. Defaults live in `default-config/templa
 
 ### `enums.js`
 
-Enum registry loader. It merges `default-config/enums.json` with workspace-local `.gatherbrain/enums.json`. Enums are used for command argument validation and autocomplete, for example the `factType` enum used by `:type`.
+Enum registry loader. It merges `default-config/enums.json` with workspace-local `.gatherbrain/enums.json`. Enums are used for command argument validation and autocomplete, for example the `factType` enum used by `:type` and `%<type>` fact capture.
 
 ### `dates.js`
 

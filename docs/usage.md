@@ -39,6 +39,14 @@ Use `:new` when you want the same behavior through an explicit command:
 
 If you type only `:new`, the app prompts for the fact text.
 
+Use `%<type>` to capture a fact and set its type in one step:
+
+```text
+%todo Get milk
+```
+
+Press `Tab` after `%` to complete values from the `factType` enum. If the type is not listed, the app asks whether to add it to the workspace enum before creating the fact.
+
 ## Commands
 
 Commands use colon-prefixed names. Press `Tab` after `:` to complete command names. If a command is missing an argument, the prompt asks for the next argument.

@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -92,4 +92,58 @@ export function enumValues(name, registry = defaultEnumRegistry) {
 
 export function hasEnumValue(name, value, registry = defaultEnumRegistry) {
   return enumValues(name, registry).includes(value);
+}
+
+function valuesAreEqualCaseInsensitive(left, right) {
+  return left.toLowerCase() === right.toLowerCase();
+}
+
+export async function addEnumValue(options = {}) {
+  const { rootDirectory, enumName, value } = options;
+
+  if (!rootDirectory) {
+    throw new Error('rootDirectory is required');
+  }
+
+  if (!enumName) {
+    throw new Error('enumName is required');
+  }
+
+  const trimmedValue = value?.trim?.() ?? '';
+
+  if (trimmedValue.length === 0) {
+    throw new Error('enum value is required');
+  }
+
+  const registry = await loadEnumRegistry({ rootDirectory });
+  const values = enumValues(enumName, registry);
+  const existingValue = values.find((candidate) => valuesAreEqualCaseInsensitive(candidate, trimmedValue));
+
+  if (existingValue) {
+    return existingValue;
+  }
+
+  const configFilePath = path.join(rootDirectory, enumConfigPath);
+  let localConfig = { enums: {} };
+
+  try {
+    localConfig = JSON.parse(await readFile(configFilePath, 'utf8'));
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      throw error;
+    }
+  }
+
+  if (!localConfig || typeof localConfig.enums !== 'object' || Array.isArray(localConfig.enums)) {
+    throw new Error(`${enumConfigPath} must contain an enums object`);
+  }
+
+  localConfig.enums[enumName] = {
+    values: [...values, trimmedValue]
+  };
+
+  await mkdir(path.dirname(configFilePath), { recursive: true });
+  await writeFile(configFilePath, `${JSON.stringify(localConfig, null, 2)}\n`);
+
+  return trimmedValue;
 }

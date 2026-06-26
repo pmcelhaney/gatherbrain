@@ -36,7 +36,7 @@ import {
   lensNavigationForKey
 } from '../src/index.js';
 import { createCommandRegistry } from '../src/commands.js';
-import { createEnumRegistry } from '../src/enums.js';
+import { createEnumRegistry, enumValues } from '../src/enums.js';
 import { filenameBaseForTitle, titleForFactText } from '../src/facts.js';
 import { createLensRegistry } from '../src/lenses.js';
 
@@ -312,6 +312,83 @@ test(':new saves a titled fact', async () => {
       await readFile(path.join(rootDirectory, factFile), 'utf8'),
       '---\ntitle: "Follow up with Alex"\ntype: fact\n---\n\nFollow up with Alex\n'
     );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('%type saves a fact with the matching type', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(await handleEntry('%todo Get milk', state), {
+      action: 'continue',
+      message: `saved ${path.join('facts', 'get-milk.md')}`
+    });
+    assert.equal(
+      await readFile(path.join(rootDirectory, 'get-milk.md'), 'utf8'),
+      '---\ntitle: "Get Milk"\ntype: todo\n---\n\nGet Milk\n'
+    );
+    assert.equal(state.model.facts.get('get-milk.md').type, 'todo');
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('%type asks before adding an unknown fact type', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(await handleEntry('%blocked Get milk', state), {
+      action: 'continue',
+      message: 'Fact type "blocked" is not listed. Add it? [y/N]'
+    });
+    assert.deepEqual(state.pendingFactTypeConfirmation, {
+      factType: 'blocked',
+      title: 'Get Milk'
+    });
+    assert.deepEqual(await completeEntry('y', state), [['yes'], 'y']);
+    assert.deepEqual(await handleEntry('yes', state), {
+      action: 'continue',
+      message: `saved ${path.join('facts', 'get-milk.md')}`
+    });
+    assert.equal(state.pendingFactTypeConfirmation, null);
+    assert.equal(
+      await readFile(path.join(rootDirectory, 'get-milk.md'), 'utf8'),
+      '---\ntitle: "Get Milk"\ntype: blocked\n---\n\nGet Milk\n'
+    );
+    assert.deepEqual(
+      enumValues('factType', state.commandRegistry.enumRegistry),
+      ['fact', 'todo', 'waiting', 'in progress', 'done', 'blocked']
+    );
+    assert.deepEqual(
+      JSON.parse(await readFile(path.join(rootDirectory, '.gatherbrain', 'enums.json'), 'utf8')).enums.factType.values,
+      ['fact', 'todo', 'waiting', 'in progress', 'done', 'blocked']
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('%type does not create a fact when unknown type confirmation is declined', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    await handleEntry('%blocked Get milk', state);
+    assert.deepEqual(await handleEntry('no', state), {
+      action: 'continue',
+      message: 'fact type blocked not added'
+    });
+    await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -2848,6 +2925,18 @@ test('completes named command arguments', async () => {
     assert.deepEqual(
       await completeEntry(':type WA', state),
       [['waiting'], 'WA']
+    );
+    assert.deepEqual(
+      await completeEntry('%', state),
+      [['%fact ', '%todo ', '%waiting ', '%in progress ', '%done '], '%']
+    );
+    assert.deepEqual(
+      await completeEntry('%t', state),
+      [['%todo '], '%t']
+    );
+    assert.deepEqual(
+      await completeEntry('%in', state),
+      [['%in progress '], '%in']
     );
 
     state.lensRegistry = createLensRegistry([

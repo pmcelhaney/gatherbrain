@@ -53,6 +53,9 @@ import {
   clearTemplateCache,
   renderTemplateLines
 } from './templates.js';
+import {
+  addEnumValue
+} from './enums.js';
 
 const defaultAppDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -65,6 +68,7 @@ const ansiPeekBackground = '\x1b[48;5;234m';
 const ansiResetAll = '\x1b[0m';
 const ansiCodePattern = /\x1b\[[0-9;]*m/gu;
 const restartRestoreEnv = 'GATHERBRAIN_RESTORE';
+const factTypeEnumName = 'factType';
 export function createPromptState(options = {}) {
   const appDirectory = options.appDirectory ?? defaultAppDirectory;
   const rootDirectory = options.rootDirectory ?? options.notesDirectory ?? path.join(appDirectory, 'notes');
@@ -84,6 +88,7 @@ export function createPromptState(options = {}) {
     pageStartIndex: 0,
     pendingCommand: null,
     pendingContextCreation: null,
+    pendingFactTypeConfirmation: null,
     temporaryBodyLines: null,
     lensBackStack: [],
     lensForwardStack: [],
@@ -1224,7 +1229,7 @@ export function pageNavigationForBody(options = {}) {
 }
 
 function promptQuestionForState(state = {}) {
-  if (!state.pendingCommand && !state.pendingContextCreation) {
+  if (!state.pendingCommand && !state.pendingContextCreation && !state.pendingFactTypeConfirmation) {
     return '';
   }
 
@@ -1324,8 +1329,10 @@ export function renderTui(options = {}) {
 
 function commandModePromptActive(line, state = {}) {
   return line.startsWith(':')
+    || line.startsWith('%')
     || Boolean(state.pendingCommand)
-    || Boolean(state.pendingContextCreation);
+    || Boolean(state.pendingContextCreation)
+    || Boolean(state.pendingFactTypeConfirmation);
 }
 
 export function renderPromptLine(line, options = {}) {
@@ -1376,6 +1383,12 @@ function commandArgumentsForCompletion(commandName, state) {
 }
 
 export async function completeEntry(line, state) {
+  if (state.pendingFactTypeConfirmation) {
+    const matches = ['yes', 'no'].filter((value) => startsWithCaseInsensitive(value, line));
+
+    return [matches, line];
+  }
+
   if (state.pendingContextCreation) {
     const matches = ['yes', 'no'].filter((value) => startsWithCaseInsensitive(value, line));
 
@@ -1414,6 +1427,20 @@ export async function completeEntry(line, state) {
     const matches = commandNames(state.commandRegistry)
       .filter((commandName) => startsWithCaseInsensitive(commandName, partialCommand))
       .map((commandName) => `:${commandName} `);
+
+    return [matches, line];
+  }
+
+  const typedFactCompletion = line.match(/^%(?<partial>[^\s]*)$/u);
+
+  if (typedFactCompletion) {
+    const partialType = typedFactCompletion.groups.partial ?? '';
+    const matches = commandArgumentValues({
+      type: 'factType',
+      enum: factTypeEnumName
+    }, state.commandRegistry)
+      .filter((value) => startsWithCaseInsensitive(value, partialType))
+      .map((value) => `%${value} `);
 
     return [matches, line];
   }
@@ -1846,6 +1873,43 @@ function parseConfirmation(value) {
   return null;
 }
 
+function factTypeValuesForState(state) {
+  return commandArgumentValues({
+    type: 'factType',
+    enum: factTypeEnumName
+  }, state.commandRegistry);
+}
+
+function matchingFactTypeForState(factType, state) {
+  return factTypeValuesForState(state)
+    .find((value) => value.toLowerCase() === factType.toLowerCase());
+}
+
+function factTypeConfirmationPrompt(factType) {
+  return `Fact type "${factType}" is not listed. Add it? [y/N]`;
+}
+
+async function saveCreatedFact(parsedEntry, state) {
+  const savedPath = await saveFact(parsedEntry.title, {
+    contextLinks: await contextLinksForState(state),
+    relations: state.peekContextDirectory
+      ? [contextIdForDirectory(state, state.peekContextDirectory)]
+      : [],
+    rootDirectory: state.currentContextDirectory,
+    type: parsedEntry.factType ?? 'fact'
+  });
+  await refreshContext(await ensureModel(state), state.currentContextDirectory);
+  const message = `saved ${path.relative(state.appDirectory, savedPath)}`;
+  state.pageStartIndex = 0;
+  state.statusMessage = '';
+  clearTemporaryBody(state);
+
+  return {
+    action: 'continue',
+    message
+  };
+}
+
 async function switchToContextDirectory(contextDirectory, state) {
   state.peekContextDirectory = null;
   state.peekLensId = defaultLensId;
@@ -1906,7 +1970,63 @@ async function handlePendingContextCreation(entry, state) {
   };
 }
 
+async function handlePendingFactTypeConfirmation(entry, state) {
+  const pendingFactTypeConfirmation = state.pendingFactTypeConfirmation;
+  state.pendingFactTypeConfirmation = null;
+
+  const confirmation = parseConfirmation(entry);
+
+  if (confirmation === null) {
+    state.pendingFactTypeConfirmation = pendingFactTypeConfirmation;
+    state.statusMessage = 'please answer yes or no';
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message: state.statusMessage
+    };
+  }
+
+  if (!confirmation) {
+    state.statusMessage = `fact type ${pendingFactTypeConfirmation.factType} not added`;
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message: state.statusMessage
+    };
+  }
+
+  try {
+    const factType = await addEnumValue({
+      rootDirectory: state.rootDirectory,
+      enumName: factTypeEnumName,
+      value: pendingFactTypeConfirmation.factType
+    });
+
+    await reloadWorkspaceConfig(state);
+
+    return saveCreatedFact({
+      title: pendingFactTypeConfirmation.title,
+      type: 'create_fact',
+      factType
+    }, state);
+  } catch (error) {
+    state.statusMessage = error.message;
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message: state.statusMessage
+    };
+  }
+}
+
 export async function handleEntry(entry, state) {
+  if (state.pendingFactTypeConfirmation) {
+    return handlePendingFactTypeConfirmation(entry, state);
+  }
+
   if (state.pendingContextCreation) {
     return handlePendingContextCreation(entry, state);
   }
@@ -2038,6 +2158,26 @@ export async function handleEntry(entry, state) {
       action: 'continue',
       message: state.statusMessage
     };
+  }
+
+  if (parsedEntry.type === 'create_fact' && parsedEntry.confirmFactType) {
+    const existingFactType = matchingFactTypeForState(parsedEntry.factType, state);
+
+    if (existingFactType) {
+      parsedEntry.factType = existingFactType;
+    } else {
+      state.pendingFactTypeConfirmation = {
+        factType: parsedEntry.factType,
+        title: parsedEntry.title
+      };
+      state.statusMessage = factTypeConfirmationPrompt(parsedEntry.factType);
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
   }
 
   if (parsedEntry.type === 'switch_context') {
@@ -2328,23 +2468,7 @@ export async function handleEntry(entry, state) {
     };
   }
 
-  const savedPath = await saveFact(parsedEntry.title, {
-    contextLinks: await contextLinksForState(state),
-    relations: state.peekContextDirectory
-      ? [contextIdForDirectory(state, state.peekContextDirectory)]
-      : [],
-    rootDirectory: state.currentContextDirectory
-  });
-  await refreshContext(await ensureModel(state), state.currentContextDirectory);
-  const message = `saved ${path.relative(state.appDirectory, savedPath)}`;
-  state.pageStartIndex = 0;
-  state.statusMessage = '';
-  clearTemporaryBody(state);
-
-  return {
-    action: 'continue',
-    message
-  };
+  return saveCreatedFact(parsedEntry, state);
 }
 
 async function main() {

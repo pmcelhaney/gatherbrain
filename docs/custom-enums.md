@@ -59,3 +59,5 @@ Command arguments use enums by setting `type` to `enum` and `enum` to the enum n
 This allows commands such as `:status todo 3` and rejects values that are not in the enum.
 
 The built-in `:type` command uses the `factType` enum for autocomplete. Because its argument type is `factType`, it still accepts any syntactically valid fact type even when that value is not listed in the enum.
+
+The `%<type>` capture shorthand also uses the `factType` enum for autocomplete. For example, `%todo Get milk` creates a `todo` fact. If `%blocked Get milk` uses a type that is not listed, the app asks whether to add `blocked` to the workspace-local `factType` enum before creating the fact.

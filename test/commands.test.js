@@ -160,6 +160,27 @@ test('parses fact commands', () => {
     title: 'Call Steve',
     type: 'create_fact'
   });
+  assert.deepEqual(parseEntry('%todo Get milk'), {
+    title: 'Get Milk',
+    type: 'create_fact',
+    factType: 'todo'
+  });
+  assert.deepEqual(parseEntry('%TODO Get milk'), {
+    title: 'Get Milk',
+    type: 'create_fact',
+    factType: 'todo'
+  });
+  assert.deepEqual(parseEntry('%in progress Get milk'), {
+    title: 'Get Milk',
+    type: 'create_fact',
+    factType: 'in progress'
+  });
+  assert.deepEqual(parseEntry('%someday Get milk'), {
+    title: 'Get Milk',
+    type: 'create_fact',
+    factType: 'someday',
+    confirmFactType: true
+  });
   assert.deepEqual(parseEntry(':new'), {
     type: 'prompt_command_argument',
     commandName: 'new',

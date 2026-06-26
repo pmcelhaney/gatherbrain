@@ -86,6 +86,7 @@ Use `:q`, `:quit`, `:exit`, or `Ctrl+C` to leave the prompt.
 ## Common Commands
 
 - Type plain text and press Enter to save a fact.
+- `%todo Get milk` saves a `todo` fact. Type `%` and press `Tab` to complete configured fact types.
 - `:switch projects/gatherbrain` changes context.
 - `:peek people/alex` looks at another context without leaving the current one.
 - `:lens today` changes the current lens.

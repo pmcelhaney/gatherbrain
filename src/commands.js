@@ -10,6 +10,7 @@ import { parseDateArgument } from './dates.js';
 
 const itemNumberPattern = '[1-9]\\d*';
 const typeNamePattern = '[A-Za-z][A-Za-z0-9_-]*';
+const shorthandFactTypeEnum = 'factType';
 const commandConfigPath = path.join('.gatherbrain', 'commands.json');
 const defaultCommandConfigPath = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -170,6 +171,69 @@ function parseNamedCommand(command, registry) {
   return {
     commandName: `:${name}`,
     type: 'unknown_command'
+  };
+}
+
+function titleCaseFactText(text) {
+  return text.replace(/\p{L}[\p{L}\p{N}'-]*/gu, (word) => (
+    word[0].toUpperCase() + word.slice(1)
+  ));
+}
+
+function parseTypedFactCommand(command, registry) {
+  const match = command.match(/^%(?<args>.*)$/u);
+
+  if (!match) {
+    return null;
+  }
+
+  const args = match.groups.args.trim();
+
+  if (args.length === 0) {
+    return {
+      type: 'usage_error',
+      message: 'usage: %<type> <fact>'
+    };
+  }
+
+  const normalizedArgs = args.toLowerCase();
+  const matchingValue = enumValues(shorthandFactTypeEnum, registry?.enumRegistry)
+    .toSorted((left, right) => right.length - left.length)
+    .find((value) => (
+      normalizedArgs.startsWith(`${value.toLowerCase()} `)
+    ));
+
+  if (matchingValue) {
+    const title = args.slice(matchingValue.length).trim();
+
+    return title.length > 0
+      ? {
+        type: 'create_fact',
+        title: titleCaseFactText(title),
+        factType: matchingValue
+      }
+      : {
+        type: 'usage_error',
+        message: 'usage: %<type> <fact>'
+      };
+  }
+
+  const unknownType = args.match(/^(?<factType>\S+)(?:\s+(?<title>.*))?$/u);
+  const factType = unknownType?.groups.factType ?? '';
+  const title = unknownType?.groups.title?.trim() ?? '';
+
+  if (!new RegExp(`^${typeNamePattern}$`, 'u').test(factType) || title.length === 0) {
+    return {
+      type: 'usage_error',
+      message: 'usage: %<type> <fact>'
+    };
+  }
+
+  return {
+    type: 'create_fact',
+    title: titleCaseFactText(title),
+    factType,
+    confirmFactType: true
   };
 }
 
@@ -532,6 +596,12 @@ export function parseEntry(entry, registry = defaultCommandRegistry) {
 
   if (namedCommand) {
     return namedCommand;
+  }
+
+  const typedFactCommand = parseTypedFactCommand(command, registry);
+
+  if (typedFactCommand) {
+    return typedFactCommand;
   }
 
   if (command.startsWith('/')) {
