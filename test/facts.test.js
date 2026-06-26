@@ -18,8 +18,10 @@ import {
   markdownWithRelation,
   markdownWithFactType,
   resolveContextDirectory,
+  filenameBaseForTitle,
   saveFact,
   slugifyTitle,
+  truncateFilenameBase,
   timestampForFilename,
   updateFactTypeAtIndex
 } from '../src/facts.js';
@@ -178,6 +180,15 @@ test('slugifies fact titles for filenames', () => {
   assert.equal(slugifyTitle('Captured from the prompt.'), 'captured-from-the-prompt');
 });
 
+test('truncates long title slugs for filenames', () => {
+  assert.equal(truncateFilenameBase('short-name'), 'short-name');
+  assert.equal(filenameBaseForTitle(`${'Long fact '.repeat(40)}tail`).length <= 120, true);
+  assert.equal(
+    filenameBaseForTitle(`${'Long fact '.repeat(40)}tail`).endsWith('-'),
+    false
+  );
+});
+
 test('saves a fact to a slug-named Markdown file', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
 
@@ -191,6 +202,27 @@ test('saves a fact to a slug-named Markdown file', async () => {
     assert.equal(
       await readFile(savedPath, 'utf8'),
       '---\ntitle: "Captured from the prompt."\ntype: fact\n---\n\n\n'
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('saves a long-titled fact to a truncated slug filename', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
+  const title = `${'Long fact '.repeat(40)}tail`;
+
+  try {
+    const savedPath = await saveFact(title, {
+      rootDirectory: directory
+    });
+
+    assert.equal(path.extname(savedPath), '.md');
+    assert.equal(path.basename(savedPath).length <= 123, true);
+    assert.equal(path.basename(savedPath).endsWith('-.md'), false);
+    assert.equal(
+      factTitleFromMarkdown(await readFile(savedPath, 'utf8')),
+      title
     );
   } finally {
     await rm(directory, { recursive: true, force: true });

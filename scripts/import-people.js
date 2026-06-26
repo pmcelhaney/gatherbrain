@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import {
   buildFactMarkdown,
+  filenameBaseForTitle,
   slugifyTitle
 } from '../src/facts.js';
 
@@ -219,8 +220,8 @@ function factFilenameForColumnValue(column, value) {
   const factType = propertyNames.get(column);
 
   return column === 'Met?'
-    ? `${factType}-${slugifyTitle(value)}.md`
-    : `${factType}.md`;
+    ? `${filenameBaseForTitle(`${factType}-${value}`)}.md`
+    : `${filenameBaseForTitle(factType)}.md`;
 }
 
 export function personFactsFromRow(row, options = {}) {

@@ -6,6 +6,7 @@ const factTypePattern = /^[A-Za-z][A-Za-z0-9 _-]*$/u;
 const frontMatterPropertyPattern = /^[A-Za-z][A-Za-z0-9_-]*$/u;
 const trashDirectoryName = '.trash';
 const relatedContextsField = 'relatedContexts';
+const maxFilenameBaseLength = 120;
 
 export function timestampForFilename(date = new Date()) {
   const timezoneOffsetMinutes = -date.getTimezoneOffset();
@@ -44,6 +45,20 @@ export function slugifyTitle(title) {
     .replace(/^-+|-+$/gu, '');
 
   return slug.length > 0 ? slug : 'fact';
+}
+
+export function truncateFilenameBase(filenameBase, maxLength = maxFilenameBaseLength) {
+  if (filenameBase.length <= maxLength) {
+    return filenameBase;
+  }
+
+  return filenameBase
+    .slice(0, maxLength)
+    .replace(/-+$/u, '') || filenameBase.slice(0, maxLength);
+}
+
+export function filenameBaseForTitle(title) {
+  return truncateFilenameBase(slugifyTitle(title));
 }
 
 export function buildFactMarkdown(title, options = {}) {
@@ -545,7 +560,7 @@ export async function saveFact(text, options = {}) {
 
   await mkdir(destinationDirectory, { recursive: true });
 
-  const slug = slugifyTitle(title);
+  const slug = filenameBaseForTitle(title);
 
   for (let attempt = 0; attempt < 1000; attempt += 1) {
     const filename = `${attempt === 0 ? slug : `${slug}-${attempt + 1}`}.md`;

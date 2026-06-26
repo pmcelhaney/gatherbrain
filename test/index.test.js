@@ -37,6 +37,7 @@ import {
 } from '../src/index.js';
 import { createCommandRegistry } from '../src/commands.js';
 import { createEnumRegistry } from '../src/enums.js';
+import { filenameBaseForTitle } from '../src/facts.js';
 import { createLensRegistry } from '../src/lenses.js';
 
 test(':switch switches context without creating a fact', async () => {
@@ -386,6 +387,41 @@ test(':paste uses a typed prompted name for the companion fact', async () => {
     assert.equal(
       await readFile(path.join(currentContext, 'meeting-notes.md'), 'utf8'),
       '---\ntitle: "Meeting notes"\ntype: fact\nfile: "meeting-notes.txt"\n---\n\n\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':paste truncates long prompted names for generated filenames', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const currentContext = path.join(rootDirectory, 'projects', 'gatherbrain');
+  const title = `${'Long pasted item '.repeat(20)}tail`;
+  const expectedBase = filenameBaseForTitle(title);
+
+  try {
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      now: () => new Date(2026, 5, 25, 14, 3, 4, 5),
+      readClipboard: async () => 'clipboard contents'
+    });
+    await mkdir(currentContext, { recursive: true });
+    await handleEntry(':switch projects/gatherbrain', state);
+
+    assert.deepEqual(await handleEntry(`:paste ${title}`, state), {
+      action: 'continue',
+      message: `pasted ${path.join('facts', 'projects', 'gatherbrain', `${expectedBase}.txt`)} and ${path.join('facts', 'projects', 'gatherbrain', `${expectedBase}.md`)}`
+    });
+    assert.equal(expectedBase.length, 120);
+    assert.equal(
+      await readFile(path.join(currentContext, `${expectedBase}.txt`), 'utf8'),
+      'clipboard contents'
+    );
+    assert.equal(
+      (await readFile(path.join(currentContext, `${expectedBase}.md`), 'utf8')).includes(`file: "${expectedBase}.txt"`),
+      true
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
