@@ -2730,7 +2730,7 @@ test('completes :switch context names', async () => {
     );
     assert.deepEqual(
       await completeEntry(':switch deep', state),
-      [['alpha/deep-project'], 'deep']
+      [['alpha/deep-project', 'alpha/deep-project/child'], 'deep']
     );
     assert.deepEqual(
       await completeEntry(':switch ', state),
@@ -2778,6 +2778,7 @@ test('completes :peek context names', async () => {
 
   try {
     await mkdir(path.join(rootDirectory, 'people', 'Alex'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Mike Sisto'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
     const state = createPromptState({ appDirectory, rootDirectory });
 
@@ -2790,8 +2791,12 @@ test('completes :peek context names', async () => {
       [['people/Alex'], 'al']
     );
     assert.deepEqual(
+      await completeEntry(':peek sis', state),
+      [['people/Mike Sisto'], 'sis']
+    );
+    assert.deepEqual(
       await completeEntry(':peek ', state),
-      [['people', 'people/Alex', 'projects', 'projects/gatherbrain'], '']
+      [['people', 'people/Alex', 'people/Mike Sisto', 'projects', 'projects/gatherbrain'], '']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -2803,6 +2808,7 @@ test('completes :relate context folder names', async () => {
   const rootDirectory = path.join(appDirectory, 'facts');
 
   try {
+    await mkdir(path.join(rootDirectory, 'people', 'Mike Sisto'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
     const state = createPromptState({ appDirectory, rootDirectory });
@@ -2814,6 +2820,10 @@ test('completes :relate context folder names', async () => {
     assert.deepEqual(
       await completeEntry(':relate 1 steve', state),
       [['Steve Ma'], 'steve']
+    );
+    assert.deepEqual(
+      await completeEntry(':relate 1 sis', state),
+      [['Mike Sisto'], 'sis']
     );
     assert.deepEqual(
       await completeEntry(':relate 1 /people/S', state),
@@ -2829,6 +2839,7 @@ test('completes context mentions in fact text', async () => {
   const rootDirectory = path.join(appDirectory, 'facts');
 
   try {
+    await mkdir(path.join(rootDirectory, 'people', 'Mike Sisto'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
     const state = createPromptState({ appDirectory, rootDirectory });
 
@@ -2839,6 +2850,10 @@ test('completes context mentions in fact text', async () => {
     assert.deepEqual(
       await completeEntry('Talk to @st', state),
       [['@Steve Ma'], '@st']
+    );
+    assert.deepEqual(
+      await completeEntry('Talk to @sis', state),
+      [['@Mike Sisto'], '@sis']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

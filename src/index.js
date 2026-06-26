@@ -1342,6 +1342,17 @@ function startsWithCaseInsensitive(value, prefix) {
   return value.toLowerCase().startsWith(prefix.toLowerCase());
 }
 
+function hasWordStartCaseInsensitive(value, prefix) {
+  if (prefix.length === 0) {
+    return true;
+  }
+
+  return value
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((part) => part.length > 0)
+    .some((part) => startsWithCaseInsensitive(part, prefix));
+}
+
 function commandArgumentsForCompletion(commandName, state) {
   const matchingCommandName = commandNames(state.commandRegistry)
     .find((candidate) => candidate.toLowerCase() === commandName.toLowerCase());
@@ -1572,7 +1583,9 @@ async function matchingContextCompletions(partialContext, state) {
 
       return startsWithCaseInsensitive(contextName.name, partialContext)
         || startsWithCaseInsensitive(comparableName, partialContext)
-        || startsWithCaseInsensitive(contextName.folder, partialContext);
+        || startsWithCaseInsensitive(contextName.folder, partialContext)
+        || hasWordStartCaseInsensitive(contextName.name, partialContext)
+        || hasWordStartCaseInsensitive(contextName.folder, partialContext);
     });
 }
 
