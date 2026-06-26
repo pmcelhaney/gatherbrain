@@ -3022,6 +3022,7 @@ test('completes fact arguments by visible fact title', async () => {
     await handleEntry('Call Steve', state);
     await handleEntry('Email Alex', state);
     await handleEntry('Steve Call', state);
+    await handleEntry('Feed the cat', state);
 
     assert.deepEqual(
       await completeEntry(':edit Cal', state),
@@ -3040,8 +3041,16 @@ test('completes fact arguments by visible fact title', async () => {
       [['Email Alex'], 'Email']
     );
     assert.deepEqual(
+      await completeEntry(':delete feed the', state),
+      [['Feed the cat'], 'feed the']
+    );
+    assert.deepEqual(
       await completeEntry(':type Cal', state),
       [['Call Steve', 'Steve Call'], 'Cal']
+    );
+    assert.deepEqual(
+      await completeEntry(':type Feed the', state),
+      [['Feed the cat'], 'Feed the']
     );
     assert.deepEqual(
       await completeEntry(':type Call Steve in', state),

@@ -1676,7 +1676,7 @@ function trailingArgumentCompletionValues(argument, state) {
 }
 
 async function matchingNamedFactArgument(line, state) {
-  const argumentCompletion = matchingNamedArgument(line, state);
+  const argumentCompletion = await matchingFactArgument(line, state);
 
   if (argumentCompletion?.argument?.type !== 'fact') {
     return null;
@@ -1697,7 +1697,7 @@ function matchingNamedEnumArgument(line, state) {
   const matches = commandArgumentValues(argumentCompletion.argument, state.commandRegistry)
     .filter((value) => startsWithCaseInsensitive(value, argumentCompletion.partialValue));
 
-  return [matches, argumentCompletion.partialValue];
+  return matches.length > 0 ? [matches, argumentCompletion.partialValue] : null;
 }
 
 function matchingNamedArgument(line, state) {
@@ -1728,6 +1728,63 @@ function matchingNamedArgument(line, state) {
     argument,
     partialValue
   };
+}
+
+async function matchingFactArgument(line, state) {
+  const match = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)(?:\s+(?<args>.*))?$/u);
+
+  if (!match) {
+    return null;
+  }
+
+  const args = match.groups.args ?? '';
+  const argumentsDefinition = commandArgumentsForCompletion(match.groups.commandName, state);
+
+  if (!argumentsDefinition || argumentsDefinition.length === 0) {
+    return null;
+  }
+
+  const factArgumentIndex = argumentsDefinition.findIndex((argument) => argument.type === 'fact');
+
+  if (factArgumentIndex === -1) {
+    return null;
+  }
+
+  const factArgument = argumentsDefinition[factArgumentIndex];
+
+  if (argumentsDefinition.length === 1 && factArgumentIndex === 0) {
+    return {
+      argument: factArgument,
+      partialValue: args
+    };
+  }
+
+  if (
+    argumentsDefinition.length === 2
+    && factArgumentIndex === 0
+    && ['factType', 'date'].includes(argumentsDefinition[1].type)
+  ) {
+    const trailingSplit = await trailingArgumentSplitForArgs(args, state);
+
+    if (trailingSplit) {
+      return null;
+    }
+
+    return {
+      argument: factArgument,
+      partialValue: args
+    };
+  }
+
+  const tokens = args.length > 0 ? args.split(/\s+/u) : [];
+  const argumentIndex = args.endsWith(' ') ? tokens.length : Math.max(tokens.length - 1, 0);
+
+  return argumentsDefinition[argumentIndex]?.type === 'fact'
+    ? {
+      argument: argumentsDefinition[argumentIndex],
+      partialValue: args.endsWith(' ') ? '' : (tokens.at(-1) ?? '')
+    }
+    : null;
 }
 
 function enumCompletableArgument(argument) {
