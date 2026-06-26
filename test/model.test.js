@@ -78,6 +78,64 @@ test('loads front matter properties and modified timestamps', async () => {
   }
 });
 
+test('loads index markdown as context metadata instead of facts', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-model-'));
+
+  try {
+    await mkdir(path.join(directory, 'projects', 'gatherbrain'), { recursive: true });
+    await writeFile(
+      path.join(directory, 'index.md'),
+      '---\ntitle: Workspace\ntype: context\nowner: Robin\n---\n\nRoot scope.\n'
+    );
+    await writeFile(
+      path.join(directory, 'projects', 'gatherbrain', 'index.md'),
+      '---\ntitle: Gatherbrain\ndefaultLens: current\n---\n\nProject scope.\n'
+    );
+    await writeFile(
+      path.join(directory, 'projects', 'gatherbrain', 'fact.md'),
+      buildFactMarkdown('Project fact')
+    );
+
+    const model = await loadWorkspaceModel({ rootDirectory: directory });
+    const rootContext = model.contexts.get('');
+    const projectContext = model.contexts.get('projects/gatherbrain');
+
+    assert.deepEqual([...model.facts.keys()], ['projects/gatherbrain/fact.md']);
+    assert.deepEqual(rootContext.factIds, []);
+    assert.deepEqual(projectContext.factIds, ['projects/gatherbrain/fact.md']);
+    assert.deepEqual(rootContext.metadata, {
+      id: 'index.md',
+      path: path.join(directory, 'index.md'),
+      contextId: '',
+      filename: 'index.md',
+      createdAt: rootContext.metadata.createdAt,
+      modifiedAt: rootContext.metadata.modifiedAt,
+      properties: {
+        owner: 'Robin'
+      },
+      title: 'Workspace',
+      type: 'context',
+      text: 'Root scope.'
+    });
+    assert.deepEqual(projectContext.metadata, {
+      id: 'projects/gatherbrain/index.md',
+      path: path.join(directory, 'projects', 'gatherbrain', 'index.md'),
+      contextId: 'projects/gatherbrain',
+      filename: 'projects/gatherbrain/index.md',
+      createdAt: projectContext.metadata.createdAt,
+      modifiedAt: projectContext.metadata.modifiedAt,
+      properties: {
+        defaultLens: 'current'
+      },
+      title: 'Gatherbrain',
+      type: 'context',
+      text: 'Project scope.'
+    });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('ignores hidden directories when loading model', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-model-'));
 

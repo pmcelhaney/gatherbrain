@@ -29,6 +29,7 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
 
 - Context IDs are workspace-relative slash paths. The root context ID is `""`.
 - Fact IDs are workspace-relative Markdown file paths.
+- `index.md` is reserved for context metadata and is not loaded or generated as a normal fact.
 - Hidden directories are ignored by the model, including `.trash`, `.gatherbrain`, and any path segment beginning with `.`.
 - New facts are always created in the current context, even while peeking at another context.
 - Saving while peeking relates the new fact to the peeked context.
@@ -43,6 +44,7 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
 ## Fact Creation Details
 
 - `saveFact()` in `src/facts.js` is the canonical fact creation helper.
+- Fact creation must avoid the reserved `index.md` context metadata filename.
 - Generated filename bases are truncated to prevent `ENAMETOOLONG`.
 - New fact titles are plain text previews capped at 80 characters.
 - The full captured fact text is stored in the Markdown body.

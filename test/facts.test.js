@@ -234,6 +234,24 @@ test('saves a long-titled fact to a truncated slug filename', async () => {
   }
 });
 
+test('does not save facts to the reserved context metadata filename', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-'));
+
+  try {
+    const savedPath = await saveFact('index', {
+      rootDirectory: directory
+    });
+
+    assert.equal(path.basename(savedPath), 'index-2.md');
+    assert.equal(
+      await readFile(savedPath, 'utf8'),
+      '---\ntitle: index\ntype: fact\n---\n\nindex\n'
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('resolves context directories inside the root directory', () => {
   const rootDirectory = path.join(tmpdir(), 'gatherbrain-root');
   const contextDirectory = resolveContextDirectory('my-cool-project', {

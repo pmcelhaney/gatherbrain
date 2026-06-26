@@ -8,6 +8,7 @@ const trashDirectoryName = '.trash';
 const relatedContextsField = 'relatedContexts';
 const maxFilenameBaseLength = 120;
 const maxFactTitleLength = 80;
+const reservedFactFilenames = new Set(['index.md']);
 
 export function timestampForFilename(date = new Date()) {
   const timezoneOffsetMinutes = -date.getTimezoneOffset();
@@ -581,6 +582,11 @@ export async function saveFact(text, options = {}) {
 
   for (let attempt = 0; attempt < 1000; attempt += 1) {
     const filename = `${attempt === 0 ? slug : `${slug}-${attempt + 1}`}.md`;
+
+    if (reservedFactFilenames.has(filename)) {
+      continue;
+    }
+
     const filePath = path.join(destinationDirectory, filename);
 
     try {

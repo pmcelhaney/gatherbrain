@@ -5,6 +5,7 @@
 ## Core Concepts
 
 - A **context** is a directory under the workspace root. The root context has the ID `""`; nested contexts use slash IDs such as `people/alex`.
+- A context can have optional metadata in a reserved `index.md` file. That file is loaded onto the context and is not treated as a fact.
 - A **fact** is a Markdown file with front matter. Its ID is its workspace-relative path, such as `people/alex/follow-up.md`.
 - A **peek** is a second context being viewed from the current context. Saving while peeking still writes into the current context and relates the new fact to the peeked context.
 - A **lens** chooses a presenter and template. Presenters are built into the app; lens definitions and templates are configurable.
@@ -31,7 +32,7 @@ Important exports used heavily by tests include `createPromptState`, `handleEntr
 
 Command-facing workspace operations. It is the boundary between the TUI and the workspace model: creating facts and contexts, resolving context references, deleting facts, relating facts, setting fact type/properties, resolving referenced files, adding enum values, and refreshing the in-memory model after changes.
 
-It also exposes read-only model queries intended for future LLM and dashboard surfaces, including all facts, facts in a context, visible facts for the active lens, related facts, recent facts, facts by type, and due/today/current fact sets.
+It also exposes read-only model queries intended for future LLM and dashboard surfaces, including all facts, context metadata, facts in a context, visible facts for the active lens, related facts, recent facts, facts by type, and due/today/current fact sets.
 
 Prefer putting reusable app operations here rather than making `index.js` call `facts.js` or `model.js` directly.
 
@@ -50,6 +51,8 @@ The in-memory workspace model. It loads:
 - `facts: Map<factId, Fact>`
 
 It also provides targeted refresh helpers (`refreshFact`, `refreshContext`, `removeFact`) and `watchWorkspaceModel`. Hidden directories are ignored, including `.trash`, `.gatherbrain`, and any directory whose name starts with `.`.
+
+`index.md` is reserved as context metadata. It is parsed with the same front matter/body helpers as facts, attached to `context.metadata`, and excluded from `model.facts`.
 
 ### `commands.js`
 

@@ -75,6 +75,8 @@ The title is a plain-text preview capped at 80 characters. The full captured tex
 
 Hidden directories are ignored, including `.trash`, `.gatherbrain`, and any directory whose name starts with `.`.
 
+Each context may include a reserved `index.md` file for metadata about the context itself. The model attaches that file to the context and does not render it as a normal fact.
+
 This format keeps the data useful outside the app. Editors, scripts, search tools, Git, backups, importers, and LLM-based tools can all work with the same files.
 
 ## Run

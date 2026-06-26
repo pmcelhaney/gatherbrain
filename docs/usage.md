@@ -8,6 +8,8 @@ npm start -- /path/to/workspace
 
 The root directory and every non-hidden subdirectory are contexts. Hidden directories, including `.trash` and `.gatherbrain`, are ignored.
 
+Each context can include an optional reserved `index.md` file for context metadata. The app loads that file onto the context and does not show it as a normal fact.
+
 The workspace is loaded into an in-memory model at startup. Visible workspace directories are watched while the TUI is running, so external Markdown edits and newly created contexts are reflected in the model without restarting the app. Workspace configuration in `.gatherbrain` is also watched, so command, lens, enum, and template changes are reloaded while the app runs.
 
 The top of the screen shows the current context. Existing facts in that context and its subcontexts are listed below it, and the prompt stays on the bottom line.

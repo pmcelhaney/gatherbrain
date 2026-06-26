@@ -9,6 +9,8 @@ import {
   factTypeFromMarkdown
 } from './facts.js';
 
+const contextMetadataFilename = 'index.md';
+
 function toWorkspacePath(filePath) {
   return filePath.split(path.sep).join('/');
 }
@@ -50,7 +52,8 @@ function makeContext(rootPath, contextId) {
     name: contextNameForId(contextId, rootPath),
     parentId: contextId === '' ? null : contextIdForFactId(contextId),
     childContextIds: [],
-    factIds: []
+    factIds: [],
+    metadata: null
   };
 }
 
@@ -113,6 +116,29 @@ export async function readFact(rootPath, filePath) {
   };
 }
 
+export async function readContextMetadata(rootPath, filePath) {
+  const markdown = await readFile(filePath, 'utf8');
+  const fileStat = await stat(filePath);
+  const id = relativeId(rootPath, filePath);
+  const contextId = contextIdForFactId(id);
+  const properties = factPropertiesFromMarkdown(markdown);
+  const title = factTitleFromMarkdown(markdown);
+  const body = factTextFromMarkdown(markdown);
+
+  return {
+    id,
+    path: filePath,
+    contextId,
+    filename: id,
+    createdAt: fileStat.birthtime.toISOString(),
+    modifiedAt: fileStat.mtime.toISOString(),
+    properties,
+    title,
+    type: factTypeFromMarkdown(markdown) ?? 'context',
+    text: body
+  };
+}
+
 export async function loadWorkspaceModel(options = {}) {
   const { rootDirectory } = options;
 
@@ -159,6 +185,14 @@ export async function loadWorkspaceModel(options = {}) {
         }
 
         if (entry.isFile() && path.extname(entry.name) === '.md') {
+          if (entry.name === contextMetadataFilename) {
+            const metadata = await readContextMetadata(rootPath, entryPath);
+            const context = ensureContext(model, metadata.contextId);
+
+            context.metadata = metadata;
+            return;
+          }
+
           const fact = await readFact(rootPath, entryPath);
           const context = ensureContext(model, fact.contextId);
 

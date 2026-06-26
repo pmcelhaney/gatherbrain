@@ -9,6 +9,7 @@ import {
   contextDirectoryForSwitchReference,
   contextHasHiddenPathPart,
   contextIdForDirectory,
+  contextMetadata,
   createContext,
   createFact,
   currentFacts,
@@ -232,6 +233,40 @@ test('reads facts from the workspace model for LLM-friendly queries', async () =
         'projects/gatherbrain/todo.md'
       ]
     );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('reads context metadata through the workspace API', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-api-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'index.md'),
+      '---\ntitle: Gatherbrain\ndefaultLens: current\n---\n\nProject scope.\n'
+    );
+    await ensureWorkspaceModel(state);
+    const metadata = await contextMetadata(state, 'projects/gatherbrain');
+
+    assert.deepEqual(metadata, {
+      id: 'projects/gatherbrain/index.md',
+      path: path.join(rootDirectory, 'projects', 'gatherbrain', 'index.md'),
+      contextId: 'projects/gatherbrain',
+      filename: 'projects/gatherbrain/index.md',
+      createdAt: metadata.createdAt,
+      modifiedAt: metadata.modifiedAt,
+      properties: {
+        defaultLens: 'current'
+      },
+      title: 'Gatherbrain',
+      type: 'context',
+      text: 'Project scope.'
+    });
+    assert.equal(await contextMetadata(state, 'missing'), null);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

@@ -57,6 +57,12 @@ export async function contextLinks(state) {
   }));
 }
 
+export async function contextMetadata(state, contextId = currentContextId(state)) {
+  const model = await ensureWorkspaceModel(state);
+
+  return model.contexts.get(contextId)?.metadata ?? null;
+}
+
 function factsForModel(model) {
   return [...model.facts.values()]
     .sort((left, right) => {
