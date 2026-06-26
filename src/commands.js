@@ -35,6 +35,13 @@ function usageForCommandDefinition(commandDefinition) {
     : `:${commandDefinition.name}`;
 }
 
+function usageErrorForCommand(commandDefinition) {
+  return {
+    type: 'usage_error',
+    message: `usage: ${usageForCommandDefinition(commandDefinition)}`
+  };
+}
+
 export function createCommandRegistry(commandDefinitions = defaultCommandRegistry.definitions, options = {}) {
   return {
     definitions: commandDefinitions.map(normalizeCommandDefinition),
@@ -318,10 +325,7 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
         return promptForArgument(commandDefinition, parsedArguments, argument);
       }
 
-      return {
-        type: 'usage_error',
-        message: `usage: ${usageForCommandDefinition(commandDefinition)}`
-      };
+      return usageErrorForCommand(commandDefinition);
     }
 
     const argumentValue = readArgumentValue(argument, remainingArgs, {
@@ -332,19 +336,13 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
     const value = argumentValue?.value;
 
     if (!value) {
-      return {
-        type: 'usage_error',
-        message: `usage: ${usageForCommandDefinition(commandDefinition)}`
-      };
+      return usageErrorForCommand(commandDefinition);
     }
 
     const parsedValue = parseArgumentValue(argument, value, { enumRegistry, dateToday });
 
     if (parsedValue === null) {
-      return {
-        type: 'usage_error',
-        message: `usage: ${usageForCommandDefinition(commandDefinition)}`
-      };
+      return usageErrorForCommand(commandDefinition);
     }
 
     parsedArguments[argument.name] = parsedValue;
@@ -352,10 +350,7 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
   }
 
   if (remainingArgs.length > 0) {
-    return {
-      type: 'usage_error',
-      message: `usage: ${usageForCommandDefinition(commandDefinition)}`
-    };
+    return usageErrorForCommand(commandDefinition);
   }
 
   return buildCommandAction(commandDefinition, parsedArguments);
@@ -368,39 +363,33 @@ function parseTrailingCommandArguments(commandDefinition, args, options = {}) {
     promptForMissing = false
   } = options;
 
-  if (commandDefinition.arguments.length !== 2) {
+  const trailingArguments = itemFirstTrailingArguments(commandDefinition);
+
+  if (!trailingArguments) {
     return null;
   }
 
-  const [firstArgument, secondArgument] = commandDefinition.arguments;
-
-  if (firstArgument.type !== 'fact' || !['factType', 'date'].includes(secondArgument.type)) {
-    return null;
-  }
-
+  const { itemArgument, trailingArgument } = trailingArguments;
   const trimmedArgs = args.trim();
 
   if (trimmedArgs.length === 0) {
     return promptForMissing
-      ? promptForArgument(commandDefinition, {}, firstArgument)
-      : {
-        type: 'usage_error',
-        message: `usage: ${usageForCommandDefinition(commandDefinition)}`
-      };
+      ? promptForArgument(commandDefinition, {}, itemArgument)
+      : usageErrorForCommand(commandDefinition);
   }
 
   const tokens = trimmedArgs.split(/\s+/u);
 
   for (let splitIndex = 1; splitIndex < tokens.length; splitIndex += 1) {
-    const firstValueText = tokens.slice(0, splitIndex).join(' ');
-    const secondValueText = tokens.slice(splitIndex).join(' ');
-    const firstValue = parseArgumentValue(firstArgument, firstValueText, { enumRegistry, dateToday });
-    const secondValue = parseArgumentValue(secondArgument, secondValueText, { enumRegistry, dateToday });
+    const itemValueText = tokens.slice(0, splitIndex).join(' ');
+    const trailingValueText = tokens.slice(splitIndex).join(' ');
+    const itemValue = parseArgumentValue(itemArgument, itemValueText, { enumRegistry, dateToday });
+    const trailingValue = parseArgumentValue(trailingArgument, trailingValueText, { enumRegistry, dateToday });
 
-    if (firstValue !== null && secondValue !== null) {
+    if (itemValue !== null && trailingValue !== null) {
       return buildCommandAction(commandDefinition, {
-        [firstArgument.name]: firstValue,
-        [secondArgument.name]: secondValue
+        [itemArgument.name]: itemValue,
+        [trailingArgument.name]: trailingValue
       });
     }
   }
@@ -413,15 +402,27 @@ function parseTrailingCommandArguments(commandDefinition, args, options = {}) {
     return null;
   }
 
-  const firstValue = parseArgumentValue(firstArgument, trimmedArgs, { enumRegistry, dateToday });
+  const itemValue = parseArgumentValue(itemArgument, trimmedArgs, { enumRegistry, dateToday });
 
-  if (firstValue !== null) {
+  if (itemValue !== null) {
     return promptForArgument(commandDefinition, {
-      [firstArgument.name]: firstValue
-    }, secondArgument);
+      [itemArgument.name]: itemValue
+    }, trailingArgument);
   }
 
   return null;
+}
+
+function itemFirstTrailingArguments(commandDefinition) {
+  if (commandDefinition.arguments.length !== 2) {
+    return null;
+  }
+
+  const [itemArgument, trailingArgument] = commandDefinition.arguments;
+
+  return itemArgument.type === 'fact' && ['factType', 'date'].includes(trailingArgument.type)
+    ? { itemArgument, trailingArgument }
+    : null;
 }
 
 function readArgumentValue(argument, remainingArgs, options = {}) {
