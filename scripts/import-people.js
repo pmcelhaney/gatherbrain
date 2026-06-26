@@ -23,7 +23,7 @@ const columns = [
 const propertyNames = new Map([
   ['Company', 'company'],
   ['Email', 'email'],
-  ['Left Ulta', 'leftUlta'],
+  ['Left Ulta', 'left-ulta'],
   ['Location', 'location'],
   ['Manager', 'manager'],
   ['Met?', 'met'],
@@ -31,6 +31,8 @@ const propertyNames = new Map([
   ['Projects', 'projects'],
   ['Role', 'role']
 ]);
+
+const sourceName = 'Notion Collaborators export';
 
 function trimByteOrderMark(value) {
   return value.charCodeAt(0) === 0xfeff ? value.slice(1) : value;
@@ -101,11 +103,15 @@ export function parseCsv(text) {
 }
 
 function notionLinks(value) {
-  return [...value.matchAll(/([^,()]+?)\s*\((https?:\/\/[^)]+)\)/gu)]
+  return [...value.matchAll(/(?:^|,\s*)(.*?)\s*\((https?:\/\/[^)]+)\)/gu)]
     .map((match) => ({
       label: match[1].trim(),
       url: match[2].trim()
     }));
+}
+
+function firstNotionLabel(value) {
+  return notionLinks(value).at(0)?.label ?? value.replace(/\s*\(https?:\/\/[^)]+\)\s*/gu, '').trim();
 }
 
 function markdownValue(value) {
@@ -118,52 +124,83 @@ function markdownValue(value) {
   return links.map((link) => `[${link.label}](${link.url})`).join(', ');
 }
 
-function bodyLinesForRow(row) {
-  const lines = [];
+function factBodyForCell(column, value) {
+  const links = notionLinks(value);
 
-  for (const column of columns) {
-    const value = row[column]?.trim();
+  if (column === 'Manager') {
+    const managerName = firstNotionLabel(value);
 
-    if (!value) {
-      continue;
-    }
-
-    const links = notionLinks(value);
-
-    if (column === 'Projects' && links.length > 1) {
-      lines.push(`- ${column}:`);
-      lines.push(...links.map((link) => `  - [${link.label}](${link.url})`));
-      continue;
-    }
-
-    lines.push(`- ${column}: ${markdownValue(value)}`);
+    return `[${managerName}](/people/${slugifyTitle(managerName)})`;
   }
 
-  return lines;
+  if (column === 'Projects' && links.length > 1) {
+    return links.map((link) => `- [${link.label}](${link.url})`).join('\n');
+  }
+
+  return markdownValue(value);
 }
 
-export function personMarkdownFromRow(row) {
+function factTitleValueForCell(column, value) {
+  if (column === 'Manager') {
+    return firstNotionLabel(value);
+  }
+
+  return value.trim();
+}
+
+export function factMarkdownFromCell(row, column, options = {}) {
+  const personName = row.Name?.trim();
+  const value = row[column]?.trim();
+  const factType = propertyNames.get(column);
+
+  if (!personName) {
+    throw new Error('person row is missing Name');
+  }
+
+  if (!factType) {
+    throw new Error(`unsupported people column ${column}`);
+  }
+
+  if (!value) {
+    throw new Error(`person row is missing ${column}`);
+  }
+
+  const sourceFile = options.sourceFile ? path.basename(options.sourceFile) : '';
+  const properties = {
+    source: sourceName,
+    ...(sourceFile ? { sourceFile } : {}),
+    ...(options.sourceRow ? { sourceRow: String(options.sourceRow) } : {}),
+    sourceColumn: column,
+    sourceValue: value
+  };
+  const relations = [];
+
+  if (column === 'Manager') {
+    relations.push(`people/${slugifyTitle(firstNotionLabel(value))}`);
+  }
+
+  return buildFactMarkdown(`${column}: ${factTitleValueForCell(column, value)}`, {
+    body: factBodyForCell(column, value),
+    properties,
+    relations,
+    type: factType
+  });
+}
+
+export function personFactsFromRow(row, options = {}) {
   const title = row.Name?.trim();
 
   if (!title) {
     throw new Error('person row is missing Name');
   }
 
-  const properties = {};
-
-  for (const column of columns) {
-    const value = row[column]?.trim();
-
-    if (value) {
-      properties[propertyNames.get(column)] = value;
-    }
-  }
-
-  return buildFactMarkdown(title, {
-    body: bodyLinesForRow(row).join('\n'),
-    properties,
-    type: 'person'
-  });
+  return columns
+    .filter((column) => row[column]?.trim())
+    .map((column) => ({
+      column,
+      filename: `${propertyNames.get(column)}.md`,
+      markdown: factMarkdownFromCell(row, column, options)
+    }));
 }
 
 export async function importPeopleCsv(csvPath, options = {}) {
@@ -174,27 +211,53 @@ export async function importPeopleCsv(csvPath, options = {}) {
   const rootDirectory = path.resolve(options.rootDirectory ?? 'notes');
   const peopleDirectory = path.join(rootDirectory, 'people');
   const rows = parseCsv(await readFile(csvPath, 'utf8'));
-  let written = 0;
+  let people = 0;
+  let facts = 0;
+  const personContextIds = new Set();
+
+  for (const row of rows) {
+    const personName = row.Name?.trim();
+
+    if (personName) {
+      personContextIds.add(slugifyTitle(personName));
+    }
+
+    const manager = row.Manager?.trim();
+
+    if (manager) {
+      personContextIds.add(slugifyTitle(firstNotionLabel(manager)));
+    }
+  }
 
   await mkdir(peopleDirectory, { recursive: true });
 
-  for (const row of rows) {
+  for (const personContextId of personContextIds) {
+    await mkdir(path.join(peopleDirectory, personContextId), { recursive: true });
+  }
+
+  for (const [rowIndex, row] of rows.entries()) {
     const title = row.Name?.trim();
 
     if (!title) {
       continue;
     }
 
-    await writeFile(
-      path.join(peopleDirectory, `${slugifyTitle(title)}.md`),
-      personMarkdownFromRow(row)
-    );
-    written += 1;
+    const personDirectory = path.join(peopleDirectory, slugifyTitle(title));
+    people += 1;
+
+    for (const fact of personFactsFromRow(row, {
+      sourceFile: csvPath,
+      sourceRow: rowIndex + 2
+    })) {
+      await writeFile(path.join(personDirectory, fact.filename), fact.markdown);
+      facts += 1;
+    }
   }
 
   return {
+    facts,
+    people,
     peopleDirectory,
-    written
   };
 }
 
@@ -202,7 +265,7 @@ async function main() {
   const [_node, _script, csvPath, rootDirectory] = process.argv;
   const result = await importPeopleCsv(csvPath, { rootDirectory });
 
-  console.log(`Imported ${result.written} people into ${result.peopleDirectory}`);
+  console.log(`Imported ${result.people} people and ${result.facts} facts into ${result.peopleDirectory}`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
