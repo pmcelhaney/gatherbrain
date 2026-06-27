@@ -1181,13 +1181,13 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :debug-keys | :restart'
+      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :move <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :debug-keys | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         facts: [{ type: 'fact', text: 'Existing fact.' }],
-        rows: 18,
+        rows: 19,
         columns: 80
       }),
       [
@@ -1203,6 +1203,7 @@ test(':help lists commands without saving a fact', async () => {
         ':open [item]',
         ':delete <item>',
         ':relate <item> <context>',
+        ':move <item> <context>',
         ':type <item> <type>',
         ':due <item> <value>',
         ':paste <title>',
@@ -2894,6 +2895,38 @@ test(':relate command accepts full context paths', async () => {
   }
 });
 
+test(':move command moves a listed item to a context', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const sourceContext = path.join(rootDirectory, 'projects');
+  const targetContext = path.join(rootDirectory, 'people', 'Steve Ma');
+  const factPath = path.join(sourceContext, 'follow-up.md');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(sourceContext, { recursive: true });
+    await mkdir(targetContext, { recursive: true });
+    state.currentContextDirectory = sourceContext;
+    await writeFile(
+      factPath,
+      '---\ntitle: "Follow up"\ntype: todo\n---\n\nFollow up\n'
+    );
+
+    assert.deepEqual(await handleEntry(':move 1 /people/Steve Ma', state), {
+      action: 'continue',
+      message: 'moved item 1 to people/Steve Ma'
+    });
+    assert.equal(state.model.facts.has('projects/follow-up.md'), false);
+    assert.equal(state.model.facts.get('people/Steve Ma/follow-up.md').contextId, 'people/Steve Ma');
+    assert.equal(
+      markdownWithoutFactUuid(await readFile(path.join(targetContext, 'follow-up.md'), 'utf8')),
+      '---\ntitle: "Follow up"\ntype: todo\nrelatedContexts: ["projects"]\n---\n\nFollow up\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test(':relate command reports ambiguous context names', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -3297,6 +3330,7 @@ test('completes colon command names', async () => {
       ':open ',
       ':delete ',
       ':relate ',
+      ':move ',
       ':type ',
       ':due ',
       ':paste ',
@@ -3332,6 +3366,10 @@ test('completes named command arguments', async () => {
     );
     assert.deepEqual(
       await completeEntry(':relate 1 /people/S', state),
+      [['/people/Steve Ma'], '/people/S']
+    );
+    assert.deepEqual(
+      await completeEntry(':move 1 /people/S', state),
       [['/people/Steve Ma'], '/people/S']
     );
     assert.deepEqual(

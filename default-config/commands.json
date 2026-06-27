@@ -104,6 +104,23 @@
       ]
     },
     {
+      "name": "move",
+      "action": "move_fact",
+      "arguments": [
+        {
+          "name": "item",
+          "type": "fact",
+          "prompt": "Move which fact?"
+        },
+        {
+          "name": "context",
+          "type": "context",
+          "consume": "rest",
+          "prompt": "Move it to which context?"
+        }
+      ]
+    },
+    {
       "name": "type",
       "action": "set_fact_type",
       "arguments": [

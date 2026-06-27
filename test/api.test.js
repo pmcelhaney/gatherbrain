@@ -18,6 +18,7 @@ import {
   ensureWorkspaceModel,
   factsByType,
   factsInContext,
+  moveWorkspaceFact,
   referencedFilePathForFact,
   recentFacts,
   relatedFacts,
@@ -29,6 +30,7 @@ import {
   visibleFacts
 } from '../src/api.js';
 import { enumValues, loadEnumRegistry } from '../src/enums.js';
+import { eventLogFilePath } from '../src/events.js';
 import { createPromptState } from '../src/index.js';
 
 function factIds(facts) {
@@ -123,6 +125,60 @@ test('mutates facts through the workspace API', async () => {
       '---\ntitle: "Ask Steve"\ntype: waiting\ndue: 2026-07-04\nrelatedContexts: ["people/Steve Ma"]\n---\n\nAsk Steve\n'
     );
     assert.equal(savedFact.relativePath, path.join('facts', 'ask-steve.md'));
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('moves facts through the workspace API and relates them to their source context', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-api-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const sourceContext = path.join(rootDirectory, 'source');
+  const targetContext = path.join(rootDirectory, 'target');
+  const factPath = path.join(sourceContext, 'ask-steve.md');
+
+  try {
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      now: () => new Date('2026-06-27T13:14:15.016Z')
+    });
+    await mkdir(sourceContext, { recursive: true });
+    await mkdir(targetContext, { recursive: true });
+    await writeFile(
+      factPath,
+      '---\ntitle: "Ask Steve"\ntype: todo\n---\n\nAsk Steve\n'
+    );
+    await ensureWorkspaceModel(state);
+
+    const fact = state.model.facts.get('source/ask-steve.md');
+    const moved = await moveWorkspaceFact(state, fact, '/target');
+
+    assert.equal(moved.toContextId, 'target');
+    assert.equal(moved.path, path.join(targetContext, 'ask-steve.md'));
+    assert.equal(state.model.facts.has('source/ask-steve.md'), false);
+    assert.equal(state.model.facts.get('target/ask-steve.md').contextId, 'target');
+    assert.deepEqual(state.model.facts.get('target/ask-steve.md').relations, ['source']);
+    assert.equal(
+      markdownWithoutFactUuid(await readFile(path.join(targetContext, 'ask-steve.md'), 'utf8')),
+      '---\ntitle: "Ask Steve"\ntype: todo\nrelatedContexts: ["source"]\n---\n\nAsk Steve\n'
+    );
+    const eventRows = (await readFile(eventLogFilePath(rootDirectory, '2026-06-27'), 'utf8'))
+      .trimEnd()
+      .split('\n');
+    const [timestamp, event, metadata] = eventRows.at(-1).split('\t');
+
+    assert.equal(timestamp, '2026-06-27T13:14:15.016Z');
+    assert.equal(event, 'fact.moved');
+    assert.deepEqual(JSON.parse(metadata), {
+      factId: 'source/ask-steve.md',
+      newFactId: 'target/ask-steve.md',
+      uuid: state.model.facts.get('target/ask-steve.md').uuid,
+      fromContextId: 'source',
+      toContextId: 'target',
+      fromPath: factPath,
+      toPath: path.join(targetContext, 'ask-steve.md')
+    });
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

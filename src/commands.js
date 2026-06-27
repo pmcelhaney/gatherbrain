@@ -718,6 +718,14 @@ function buildCommandAction(commandDefinition, values) {
     };
   }
 
+  if (commandDefinition.action === 'move_fact') {
+    return {
+      type: 'move_fact',
+      ...factSelectorProperties(values.item),
+      contextReference: values.context
+    };
+  }
+
   if (commandDefinition.action === 'set_fact_type') {
     return {
       type: 'set_fact_type',

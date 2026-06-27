@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises';
+import { access, mkdir, rename } from 'node:fs/promises';
 import path from 'node:path';
 import {
   addFactRelation,
@@ -393,6 +393,72 @@ export async function deleteWorkspaceFact(state, fact) {
     contextId: fact.contextId || '/',
     path: fact.path
   });
+}
+
+async function uniqueMovedFactPath(targetDirectory, filename) {
+  const extension = path.extname(filename);
+  const baseName = path.basename(filename, extension);
+
+  for (let index = 0; index < 1000; index += 1) {
+    const candidateName = index === 0
+      ? filename
+      : `${baseName}-${index + 1}${extension}`;
+    const candidatePath = path.join(targetDirectory, candidateName);
+
+    try {
+      await access(candidatePath);
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        return candidatePath;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error(`could not find available filename for ${filename}`);
+}
+
+function metadataContextId(contextId) {
+  return contextId || '/';
+}
+
+export async function moveWorkspaceFact(state, fact, contextReference) {
+  const targetContextId = contextIdForSwitchReference(contextReference, state);
+  const model = await ensureWorkspaceModel(state);
+
+  if (!model.contexts.has(targetContextId)) {
+    throw new Error(`context ${contextReference} does not exist`);
+  }
+
+  if (fact.contextId === targetContextId) {
+    throw new Error(`fact is already in context ${metadataContextId(targetContextId)}`);
+  }
+
+  const targetDirectory = contextDirectoryForId(state, targetContextId);
+  const targetPath = await uniqueMovedFactPath(targetDirectory, path.basename(fact.path));
+  const sourceContextId = fact.contextId;
+
+  await addFactRelation(fact.path, metadataContextId(sourceContextId));
+  await rename(fact.path, targetPath);
+  removeFact(model, fact.path);
+  const movedFact = await refreshFact(model, targetPath);
+  await logEvent(state, 'fact.moved', {
+    factId: fact.id,
+    newFactId: movedFact?.id,
+    uuid: movedFact?.uuid ?? fact.uuid,
+    fromContextId: metadataContextId(sourceContextId),
+    toContextId: metadataContextId(targetContextId),
+    fromPath: fact.path,
+    toPath: targetPath
+  });
+
+  return {
+    fact: movedFact,
+    fromContextId: sourceContextId,
+    toContextId: targetContextId,
+    path: targetPath
+  };
 }
 
 export async function relationForContextReference(contextReference, state) {

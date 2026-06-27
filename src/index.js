@@ -69,6 +69,7 @@ import {
   createFact,
   deleteWorkspaceFact,
   ensureWorkspaceModel,
+  moveWorkspaceFact,
   referencedFilePathForFact,
   relateWorkspaceFact,
   resolveExistingContextDirectory,
@@ -3051,6 +3052,32 @@ export async function handleEntry(entry, state) {
       const relation = await relateWorkspaceFact(state, fact, parsedEntry.contextReference);
 
       const message = `related item ${itemLabel} to ${relation}`;
+      state.statusMessage = '';
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message
+      };
+    } catch (error) {
+      state.statusMessage = error.message;
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
+  }
+
+  if (parsedEntry.type === 'move_fact') {
+    try {
+      const { fact, itemLabel } = await visibleFactForSelector(state, parsedEntry);
+      const moved = await moveWorkspaceFact(state, fact, parsedEntry.contextReference);
+      const targetContext = moved.toContextId || '/';
+
+      const message = `moved item ${itemLabel} to ${targetContext}`;
+      state.pageStartIndex = 0;
       state.statusMessage = '';
       clearTemporaryBody(state);
 

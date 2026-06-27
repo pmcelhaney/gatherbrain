@@ -27,6 +27,7 @@ test('lists built-in command help', () => {
     ':open [item]',
     ':delete <item>',
     ':relate <item> <context>',
+    ':move <item> <context>',
     ':type <item> <type>',
     ':due <item> <value>',
     ':paste <title>',
@@ -38,7 +39,7 @@ test('lists built-in command help', () => {
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :debug-keys | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :move <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :debug-keys | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -50,6 +51,7 @@ test('lists built-in command help', () => {
     'open',
     'delete',
     'relate',
+    'move',
     'type',
     'due',
     'paste',
@@ -62,6 +64,10 @@ test('lists built-in command help', () => {
   assert.deepEqual(commandArguments('relate'), [
     { name: 'item', type: 'fact', prompt: 'Relate which fact?' },
     { name: 'context', type: 'context', consume: 'rest', prompt: 'Relate it to which context?' }
+  ]);
+  assert.deepEqual(commandArguments('move'), [
+    { name: 'item', type: 'fact', prompt: 'Move which fact?' },
+    { name: 'context', type: 'context', consume: 'rest', prompt: 'Move it to which context?' }
   ]);
   assert.deepEqual(commandArguments('type'), [
     { name: 'item', type: 'fact', prompt: 'Change which fact?' },
@@ -270,6 +276,11 @@ test('parses fact commands', () => {
     itemNumber: 4,
     type: 'relate_fact'
   });
+  assert.deepEqual(parseEntry(':move 4 people/alex'), {
+    contextReference: 'people/alex',
+    itemNumber: 4,
+    type: 'move_fact'
+  });
   assert.deepEqual(parseEntry(':type 5 done'), {
     factType: 'done',
     itemNumber: 5,
@@ -400,6 +411,28 @@ test('continues prompted commands', () => {
     itemNumber: 4,
     type: 'relate_fact'
   });
+  assert.deepEqual(continuePromptedCommand(parseEntry(':move'), '4'), {
+    type: 'prompt_command_argument',
+    commandName: 'move',
+    values: {
+      item: {
+        kind: 'number',
+        value: 4
+      }
+    },
+    argument: {
+      name: 'context',
+      type: 'context',
+      consume: 'rest',
+      prompt: 'Move it to which context?'
+    },
+    prompt: 'Move it to which context?'
+  });
+  assert.deepEqual(continuePromptedCommand(continuePromptedCommand(parseEntry(':move'), '4'), 'people/alex'), {
+    contextReference: 'people/alex',
+    itemNumber: 4,
+    type: 'move_fact'
+  });
   assert.deepEqual(continuePromptedCommand(parseEntry(':edit'), 'nope'), {
     itemTitle: 'nope',
     type: 'edit_fact'
@@ -504,6 +537,7 @@ test('loads workspace command definitions from config', async () => {
       'open',
       'delete',
       'relate',
+      'move',
       'type',
       'due',
       'paste',
@@ -627,6 +661,7 @@ test('workspace command config overrides default commands by name', async () => 
       'open',
       'delete',
       'relate',
+      'move',
       'type',
       'due',
       'paste',
