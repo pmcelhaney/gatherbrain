@@ -70,7 +70,9 @@ Each item in `facts` has:
 
 - `number`: the 1-based visible number, already padded for alignment.
 - `type`: the fact type label, or an empty string for plain facts.
-- `body`: the wrapped fact text, including any relation suffixes.
+- `body`: the wrapped fact text, including Markdown links rendered as colored text and any relation suffixes.
+- `sourceContext`: the full context id where the fact lives when that is useful to show.
+- `sourceContextShort`: the short final path segment of `sourceContext`.
 
 Templates should loop over facts and render fact properties directly:
 

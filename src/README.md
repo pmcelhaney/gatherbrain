@@ -6,7 +6,7 @@
 
 - A **context** is a directory under the workspace root. The root context has the ID `""`; nested contexts use slash IDs such as `people/alex`.
 - A context can have optional metadata in a reserved `index.md` file. That file is loaded onto the context and is not treated as a fact.
-- A **fact** is a Markdown file with front matter. Its ID is its workspace-relative path, such as `people/alex/follow-up.md`.
+- A **fact** is a Markdown file with front matter. Its model ID is its workspace-relative path, such as `people/alex/follow-up.md`; its front matter UUID gives it a durable identifier that can survive moves.
 - A **peek** is a second context being viewed from the current context. Saving while peeking still writes into the current context and relates the new fact to the peeked context.
 - A **lens** chooses a presenter and template. Presenters are built into the app; lens definitions and templates are configurable.
 - A **timebox** is a planned focus interval assigned to a context. Timeboxes are stored outside the fact model and resolved as overlays.
@@ -32,7 +32,7 @@ Important exports used heavily by tests include `createPromptState`, `handleEntr
 
 ### `api.js`
 
-Command-facing workspace operations. It is the boundary between the TUI and the workspace model: creating facts and contexts, resolving context references, deleting facts, relating facts, setting fact type/properties, resolving referenced files, adding enum values, and refreshing the in-memory model after changes.
+Command-facing workspace operations. It is the boundary between the TUI and the workspace model: creating facts and contexts, resolving context references, deleting facts, moving facts, relating facts, setting fact type/properties, resolving referenced files, adding enum values, and refreshing the in-memory model after changes.
 
 It also exposes read-only model queries intended for future LLM and dashboard surfaces, including all facts, context metadata, facts in a context, visible facts for the active lens, related facts, recent facts, facts by type, and due/today/current fact sets.
 
@@ -64,7 +64,7 @@ This module parses command intent only; `index.js` executes the resulting action
 
 ### `timeboxes.js`
 
-Timebox planner storage and resolution. It reads and writes one TSV file per date under `.gatherbrain/timeboxes/`, parses user-facing time ranges, appends planned rows, cancels matching rows, resolves the active context with last-row-wins overlay semantics, and renders 15-minute planner lines.
+Timebox planner storage and resolution. It reads and writes one TSV file per date under `.gatherbrain/timeboxes/`, parses user-facing time ranges, appends planned rows, cancels matching rows, resolves the active context with last-row-wins overlay semantics, and renders scaled planner timeline blocks.
 
 ### `events.js`
 

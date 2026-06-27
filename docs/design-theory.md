@@ -16,9 +16,33 @@ People do not work from perfectly organized archives. They move through situatio
 - preserve source and relationship cues,
 - model temporary attention with peek,
 - let lenses ask task-specific questions of the same facts,
+- plan attention by assigning time to contexts,
+- preserve a simple event trail for state and view changes,
 - reduce memory burden with completion, visible lists, and stable item numbers,
 - keep durable data open to editors, scripts, search tools, and LLMs,
 - let users configure their own semantics through small DSLs.
+
+## The Influence Map
+
+The app is not a literal implementation of any one method. It is more like a working compromise between several ideas.
+
+GTD contributes the capture reflex: get open loops out of working memory and into a trusted system. Gatherbrain's capture path is intentionally short because the user's attention should stay on the work that produced the thought.
+
+Tiago Forte's PARA model contributes the idea that organization should serve action. Gatherbrain keeps the more general word `context` because the useful scope might be a project, area, person, meeting, date, source, question, or temporary workspace.
+
+Cal Newport's time block planning contributes an explicit plan for attention. Gatherbrain stores timeboxes separately from facts so the plan can say which context should own a period of time without rewriting the notes in that context.
+
+Memex and Engelbart contribute the ambition: not just storing information, but augmenting a person's ability to make and follow trails through it. Gatherbrain's paths, relations, item numbers, lenses, and commands are small handles for doing that.
+
+Zettelkasten contributes atomicity and linking. Gatherbrain's unit is a fact rather than a page, because small addressable facts can be moved, related, filtered, cited, and recombined.
+
+Sweller's cognitive load theory contributes a constraint: the tool should reduce extraneous load. Prompts, completion, visible item numbers, default context capture, and plain text storage all reduce the number of things the user has to keep active at once.
+
+Unix contributes the persistence philosophy: simple durable formats make cooperation possible. Markdown facts, JSON config, TSV timeboxes, and TSV event logs are easy for editors, shell tools, Git, importers, and LLMs to work with.
+
+"Attention Is All You Need" contributes a useful metaphor. The app is full of attention-routing structures: current context, peek context, related contexts, lenses, due dates, and timeboxes. They decide which facts become salient for the current action.
+
+"Be where your feet are" is the practical test. The interface should help the user know where they are, what they are looking at, what owns the present moment, and what small thing should happen next.
 
 ## Working Memory Is The Bottleneck
 
@@ -72,9 +96,11 @@ Once a thought has a stable ID, it can:
 - appear in multiple lenses,
 - be cited, summarized, merged, or transformed by other tools.
 
-In the current implementation, the fact ID is its workspace-relative file path. Markdown is the serialization format. The durable identity is the deeper design choice.
+In the current implementation, the fact's model ID is its workspace-relative file path. Each fact also has a front matter UUID, which gives other tools a durable identifier that can survive moves. Markdown is the serialization format. Durable identity is the deeper design choice.
 
 This is also why the people importer creates one fact per source cell. A statement like "Alex lives in Chicago" should be traceable as its own claim, not buried inside a profile blob.
+
+Moving a fact preserves this idea. The file can move to a better context, while `relatedContexts` records where it came from. Reorganization should add provenance, not erase it.
 
 ## Peek Models Temporary Attention
 
@@ -123,6 +149,7 @@ Re-finding often starts from partial cues. You may remember the person, the proj
 - Item numbers provide short-lived handles for action.
 - Markdown bodies preserve the original source text.
 - File paths provide durable IDs that other tools can reference.
+- UUIDs provide stable identifiers that can survive path changes.
 
 Further reading:
 
@@ -160,6 +187,33 @@ Commands, enums, lenses, and templates are configured through small JSON and Han
 
 This matters because personal knowledge work is personal. A useful system for one person might distinguish `waiting`, `blocked`, and `delegated`; another might care about `source`, `claim`, and `question`. The core app provides stable primitives, while configuration lets users build local semantics on top.
 
+## Planning Is Part Of Memory
+
+A memory system is more useful when it can shape attention, not only retrieve old information.
+
+The timebox planner borrows from Cal Newport's time block planning: decide what kind of work should own a period of the day. Gatherbrain makes the owner a context, not just a calendar label.
+
+That has two consequences:
+
+- `:plan` connects planned time to the same context tree that stores facts.
+- `:now` can move the user to the context that owns the present moment.
+
+Timeboxes are overlays rather than destructive edits. Adding a new timebox appends a row. If it overlaps an older row, the last matching row wins. This keeps planning cheap and preserves the record of how the plan changed.
+
+Free time is represented in the resolved view, but it is not stored as a timebox. The root context `/` is the fallback whenever no planned context claims a moment.
+
+## Event Trails Make The System Inspectable
+
+Gatherbrain logs user-visible state changes, view changes, planner changes, and external tool actions to daily TSV files.
+
+This is not meant to be a heavyweight audit database. It is a simple trail:
+
+- what changed,
+- when it changed,
+- the relevant metadata.
+
+The event log fits the same philosophy as the rest of the app: keep durable traces plain enough that scripts, Git, and LLM tools can inspect them later.
+
 ## Plain Text Keeps The System Open
 
 The filesystem is not the product. It is the persistence layer.
@@ -195,10 +249,12 @@ Further reading:
 | --- | --- |
 | Capture first, refine later | Plain text creates a fact immediately. |
 | Context is a scope of attention | New facts are stored in the current directory context. |
-| Facts need stable identities | Each fact has a workspace-relative file path ID. |
+| Facts need stable identities | Each fact has a workspace-relative path ID and a front matter UUID. |
 | Attention can look aside | Peek relates new facts to what the user is looking at without changing where they are. |
 | Views should not duplicate data | Lenses render facts without moving them. |
-| Relationships should be explicit | Peek and `:relate` write `relatedContexts`. |
+| Relationships should be explicit | Peek, `:relate`, and `:move` write `relatedContexts`. |
+| Planning should follow context | Timeboxes assign focus time to contexts and `:now` switches to the current owner of time. |
+| Trails should be inspectable | Event logs are daily TSV files with JSON metadata. |
 | Semantics should be user-shaped | Commands, enums, lenses, and templates are configurable DSLs. |
 | Recognition should help recall | Completion, visible lists, and stable item numbers reduce command burden. |
 | Plain text should stay open | Markdown and directories stay visible to editors, scripts, search tools, and LLMs. |

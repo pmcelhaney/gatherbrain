@@ -31,13 +31,14 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
 ## Core Invariants
 
 - Context IDs are workspace-relative slash paths. The root context ID is `""`.
-- Fact IDs are workspace-relative Markdown file paths.
+- Fact model IDs are workspace-relative Markdown file paths; fact front matter includes a UUID for durable identity across moves.
 - `index.md` is reserved for context metadata and is not loaded or generated as a normal fact.
 - Hidden directories are ignored by the model, including `.trash`, `.gatherbrain`, and any path segment beginning with `.`.
 - New facts are always created in the current context, even while peeking at another context.
 - Saving while peeking relates the new fact to the peeked context.
 - `:switch` clears peek.
 - Deleting a fact moves it into `.trash` inside the fact's context instead of permanently removing it.
+- Moving a fact writes a relation to the context it came from.
 - Rendering should use the in-memory model, not reread files on every draw.
 - After app-driven mutations, refresh the model region that changed.
 - Command names and argument shapes come from the command DSL config.

@@ -51,6 +51,7 @@ Supported actions:
 - `open_reference`: open the current context directory or a fact's referenced `file`. Accepts optional `item`.
 - `delete_fact`: move a fact to `.trash`. Requires `item`.
 - `relate_fact`: add a related context to a fact. Requires `item` and `context`.
+- `move_fact`: move a fact to another context and relate it to the source context. Requires `item` and `context`.
 - `set_fact_type`: change a fact type. Requires `type` and `item`.
 - `set_fact_property`: change a front matter property on a fact. Requires `item` and `value`, plus either command-level `property` or a `property` argument.
 - `paste_clipboard`: save clipboard contents to a file and create a fact pointing to it. Requires `title`; the built-in command supplies a timestamped default when it prompts.
@@ -221,7 +222,7 @@ Add a command that sets a date property:
 {
   "commands": [
     {
-      "name": "due",
+      "name": "deadline",
       "action": "set_fact_property",
       "property": "due",
       "arguments": [
@@ -241,4 +242,38 @@ Add a command that sets a date property:
 }
 ```
 
-This adds commands such as `:due today 3`, which writes `due: 2026-06-24`.
+This adds commands such as `:deadline today 3`, using the argument order defined above, which writes `due: 2026-06-24`.
+
+The built-in `:due` command uses item-first order, `:due <item> <value>`, so the same update is written as:
+
+```text
+:due 3 today
+```
+
+Add an alias for moving facts:
+
+```json
+{
+  "commands": [
+    {
+      "name": "mv",
+      "action": "move_fact",
+      "arguments": [
+        {
+          "name": "item",
+          "type": "fact",
+          "prompt": "Move which fact?"
+        },
+        {
+          "name": "context",
+          "type": "context",
+          "consume": "rest",
+          "prompt": "Move it where?"
+        }
+      ]
+    }
+  ]
+}
+```
+
+This adds `:mv 3 /projects/gatherbrain` without removing `:move`.

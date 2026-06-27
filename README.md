@@ -1,12 +1,12 @@
 # gatherbrain
 
-`gatherbrain` is a local-first working-memory system for capturing small facts while you work.
+`gatherbrain` is a local-first working-memory system for capturing small facts, navigating contexts, and planning attention while you work.
 
-It runs in the terminal. You move through a workspace as **contexts**, capture tiny **facts**, briefly **peek** at other contexts without leaving your current one, and use **lenses** to ask different questions of the same facts.
+It runs in the terminal. You move through a workspace as **contexts**, capture tiny **facts**, briefly **peek** at other contexts without leaving your current one, use **lenses** to ask different questions of the same facts, and assign time blocks to contexts with the planner.
 
 The important idea is not that facts are Markdown files. The important idea is that every thought gets a stable identity. Once a thought has an identity, it can accumulate metadata, become related to other contexts, show up in task views, be edited, be cited, be summarized, or be used by another tool.
 
-Markdown and directories are the durable storage format. The running app loads them into an in-memory object model and renders from that model.
+Markdown, directories, JSON config, TSV timeboxes, and TSV event logs are the durable storage format. The running app loads them into an in-memory object model and renders from that model.
 
 ## What Problem It Solves
 
@@ -17,17 +17,18 @@ Most note systems ask you to stop and organize your thought before you have fini
 1. Go to the context you are already working in.
 2. Type the thing you want to remember.
 3. Let the app give it a stable identity.
-4. Use lenses later to see the same facts through different questions.
+4. Use lenses, relations, and timeboxes later to see the same facts through different questions.
 
 The goal is not to build a perfect taxonomy. The goal is to reduce the cost of maintaining and extending your own working memory.
 
 ## The Basic Model
 
 - A **context** is a scope of attention. It maps to a directory under the workspace root.
-- A **fact** is an atomic thing you want to remember. It has a stable workspace-relative file path as its ID.
+- A **fact** is an atomic thing you want to remember. It has a workspace-relative path in the model and a front matter UUID for durable identity across moves.
 - A **peek** is a context you are looking at without leaving the current context.
 - A **lens** is a view over visible facts, such as `all`, `todo`, `due`, `today`, or `current`.
 - A **timebox** is an intended block of focus assigned to a context. Timeboxes are independent of facts and overlay older timeboxes without rewriting them.
+- An **event** is an append-only log row recording a state change, view change, or external tool action.
 
 New facts are always created in the current context. If you are peeking at another context, the fact is still created where you are, but it is related to the peeked context.
 
@@ -37,12 +38,14 @@ Contexts can nest. That makes them more than folders: they are nested scopes. Fo
 
 `gatherbrain` treats memory as something distributed between your head, your current task, the workspace model, and durable files.
 
-- Working memory is limited, so capture should be fast and should not require much up-front categorization.
-- People remember through cues, so facts live near the context where they arose.
-- Attention shifts without fully switching tasks, so peek models looking aside while remaining in place.
-- Work asks different questions at different times, so lenses render views without duplicating facts.
-- Personal systems need personal semantics, so commands, enums, lenses, and templates are configurable DSLs.
-- Durable memory should stay open, so the stored representation is plain text inspired by Unix-style tool cooperation.
+- GTD's capture habit keeps open loops from consuming working memory.
+- Tiago Forte's action-oriented organization shows why contexts should serve use, not taxonomy for its own sake.
+- Cal Newport's time blocking turns attention into an explicit plan; Gatherbrain binds that plan to contexts.
+- Memex, Engelbart, and Zettelkasten point toward small addressable objects, links, trails, and augmentation.
+- Sweller's cognitive load theory pushes the app toward fast capture, completion, prompts, and visible handles.
+- Unix pushes the storage toward plain files that many tools can read and write.
+- "Attention Is All You Need" is a useful metaphor: contexts, peek, lenses, relations, and timeboxes route attention over the fact model.
+- "Be where your feet are" is the human version: know where you are, what you are looking at, and what matters now.
 
 See [Design Theory](docs/design-theory.md) for the research grounding behind these choices and [Vision](docs/vision.md) for the larger direction.
 
@@ -66,19 +69,22 @@ Each fact is serialized as Markdown with front matter:
 ---
 title: Follow up with Alex about the prototype
 type: fact
+id: 11111111-1111-4111-8111-111111111111
 relatedContexts: ["people/alex"]
 ---
 
 Follow up with [Alex](/people/alex) about the prototype.
 ```
 
-The title is a plain-text preview capped at 80 characters. The full captured text is stored in the body. `@context` references in captured text are converted to Markdown links.
+The title is a plain-text preview capped at 80 characters. The full captured text is stored in the body. `@context` references in captured text are converted to Markdown links. The workspace-relative path is the model ID; the front matter UUID gives the fact a durable identifier that can survive moves and be useful to other tools.
 
 Hidden directories are ignored, including `.trash`, `.gatherbrain`, and any directory whose name starts with `.`.
 
 Each context may include a reserved `index.md` file for metadata about the context itself. The model attaches that file to the context and does not render it as a normal fact.
 
 Timeboxes are stored separately under `.gatherbrain/timeboxes/` as one TSV file per day. Each row stores a context path, start time, and end time; later rows overlay earlier rows when resolving who owns a moment. The planner shows the configured workday by default, `08:00-18:00` unless changed in workspace settings.
+
+Events are stored under `.gatherbrain/events/` as one TSV file per day. Each row contains a timestamp, event name, and JSON metadata.
 
 This format keeps the data useful outside the app. Editors, scripts, search tools, Git, backups, importers, and LLM-based tools can all work with the same files.
 
@@ -100,8 +106,14 @@ Use `:q`, `:quit`, `:exit`, or `Ctrl+C` to leave the prompt.
 - `:lens today` changes the current lens.
 - `:edit 3` opens the third visible fact in `$EDITOR`.
 - `:delete 3` moves the third visible fact to `.trash`.
+- `:move 3 /projects/gatherbrain` moves a fact and relates it to the context it came from.
+- `:relate 3 people/alex` relates a fact to another context without moving it.
+- `:type 3 done` changes a fact's type.
+- `:due 3 today` sets a normalized due date.
+- `:open` opens the current context directory; `:open 3` opens a referenced file.
 - `:paste` saves the current clipboard contents and creates a companion fact.
 - `:plan 9-12 /projects/gatherbrain` assigns focus time to a context.
+- `:plan` shows the current day's planner timeline.
 - `:now` switches to the context that owns the current time.
 - `:restart` restarts the app and restores the current UI state.
 
