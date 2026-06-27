@@ -30,12 +30,15 @@ test('lists built-in command help', () => {
     ':type <item> <type>',
     ':due <item> <value>',
     ':paste <title>',
+    ':plan <range> <context>',
+    ':cancel <range> <context>',
+    ':now',
     ':debug-keys',
     ':restart'
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :debug-keys | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :debug-keys | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -50,6 +53,9 @@ test('lists built-in command help', () => {
     'type',
     'due',
     'paste',
+    'plan',
+    'cancel',
+    'now',
     'debug-keys',
     'restart'
   ]);
@@ -71,6 +77,14 @@ test('lists built-in command help', () => {
   assert.deepEqual(commandArguments('paste'), [
     { name: 'title', type: 'text', consume: 'rest', prompt: 'Name pasted item?' }
   ]);
+  assert.deepEqual(commandArguments('plan'), [
+    { name: 'range', type: 'timeRange', prompt: 'Plan what time?' },
+    { name: 'context', type: 'context', consume: 'rest', prompt: 'Plan which context?' }
+  ]);
+  assert.deepEqual(commandArguments('cancel'), [
+    { name: 'range', type: 'timeRange', prompt: 'Cancel what time?' },
+    { name: 'context', type: 'context', consume: 'rest', prompt: 'Cancel which context?' }
+  ]);
   assert.equal(commandArguments('missing'), null);
 });
 
@@ -85,6 +99,7 @@ test('parses control entries', () => {
   assert.deepEqual(parseEntry(':help'), { type: 'help' });
   assert.deepEqual(parseEntry(':debug-keys'), { type: 'debug_keys' });
   assert.deepEqual(parseEntry(':restart'), { type: 'restart_app' });
+  assert.deepEqual(parseEntry(':now'), { type: 'switch_to_current_timebox' });
   assert.deepEqual(parseEntry(':paste'), {
     type: 'prompt_command_argument',
     commandName: 'paste',
@@ -97,6 +112,47 @@ test('parses control entries', () => {
     title: 'Project notes'
   });
   assert.deepEqual(parseEntry(':open'), { type: 'open_reference' });
+  assert.deepEqual(parseEntry(':plan'), { type: 'show_plan' });
+});
+
+test('parses planner commands', () => {
+  assert.deepEqual(parseEntry(':plan 9 /arb-prep'), {
+    type: 'plan_timebox',
+    range: {
+      start: '09:00',
+      end: '09:30',
+      startMinutes: 540,
+      endMinutes: 570,
+      isRange: false
+    },
+    context: '/arb-prep'
+  });
+  assert.deepEqual(parseEntry(':plan 1:30-3 /arb/meetings/2026-06-29'), {
+    type: 'plan_timebox',
+    range: {
+      start: '13:30',
+      end: '15:00',
+      startMinutes: 810,
+      endMinutes: 900,
+      isRange: true
+    },
+    context: '/arb/meetings/2026-06-29'
+  });
+  assert.deepEqual(parseEntry(':cancel 11-11:30 /arb/meetings/2026-06-29'), {
+    type: 'cancel_timebox',
+    range: {
+      start: '11:00',
+      end: '11:30',
+      startMinutes: 660,
+      endMinutes: 690,
+      isRange: true
+    },
+    context: '/arb/meetings/2026-06-29'
+  });
+  assert.deepEqual(parseEntry(':plan noon /arb-prep'), {
+    message: 'usage: :plan <range> <context>',
+    type: 'usage_error'
+  });
 });
 
 test('parses context and lens commands', () => {
@@ -451,6 +507,9 @@ test('loads workspace command definitions from config', async () => {
       'type',
       'due',
       'paste',
+      'plan',
+      'cancel',
+      'now',
       'debug-keys',
       'restart',
       'jump'
@@ -571,6 +630,9 @@ test('workspace command config overrides default commands by name', async () => 
       'type',
       'due',
       'paste',
+      'plan',
+      'cancel',
+      'now',
       'debug-keys',
       'restart'
     ]);

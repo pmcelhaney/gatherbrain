@@ -7,6 +7,7 @@ import {
   loadEnumRegistry
 } from './enums.js';
 import { parseDateArgument } from './dates.js';
+import { parseTimeRange } from './timeboxes.js';
 
 const itemNumberPattern = '[1-9]\\d*';
 const typeNamePattern = '[A-Za-z][A-Za-z0-9_-]*';
@@ -132,6 +133,7 @@ function normalizeCommandDefinition(commandDefinition) {
   return {
     name: commandDefinition.name,
     action: commandDefinition.action,
+    ...(commandDefinition.emptyAction ? { emptyAction: commandDefinition.emptyAction } : {}),
     ...(commandDefinition.property ? { property: commandDefinition.property } : {}),
     arguments: (commandDefinition.arguments ?? []).map((argument) => ({ ...argument }))
   };
@@ -312,6 +314,10 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
     return trailingParsedArguments;
   }
 
+  if (args.trim().length === 0 && commandDefinition.emptyAction) {
+    return { type: commandDefinition.emptyAction };
+  }
+
   const parsedArguments = {};
   let remainingArgs = args.trim();
 
@@ -471,6 +477,17 @@ function readArgumentValue(argument, remainingArgs, options = {}) {
     }
   }
 
+  if (argument.type === 'timeRange') {
+    const match = remainingArgs.match(/^(?<value>\S+)(?:\s+(?<remaining>.*))?$/u);
+
+    return match
+      ? {
+        value: match.groups.value,
+        remainingArgs: (match.groups.remaining ?? '').trim()
+      }
+      : null;
+  }
+
   if (argument.type === 'fact' && isLastArgument) {
     const numberedPrefix = remainingArgs.match(new RegExp(`^${itemNumberPattern}\\s+`, 'u'));
 
@@ -554,6 +571,10 @@ function parseArgumentValue(argument, value, options = {}) {
     return parseDateArgument(value, { today: dateToday });
   }
 
+  if (argument.type === 'timeRange') {
+    return parseTimeRange(value);
+  }
+
   return value;
 }
 
@@ -630,6 +651,26 @@ function buildCommandAction(commandDefinition, values) {
 
   if (commandDefinition.action === 'restart_app') {
     return { type: 'restart_app' };
+  }
+
+  if (commandDefinition.action === 'switch_to_current_timebox') {
+    return { type: 'switch_to_current_timebox' };
+  }
+
+  if (commandDefinition.action === 'plan_timebox') {
+    return {
+      type: 'plan_timebox',
+      range: values.range,
+      context: values.context
+    };
+  }
+
+  if (commandDefinition.action === 'cancel_timebox') {
+    return {
+      type: 'cancel_timebox',
+      range: values.range,
+      context: values.context
+    };
   }
 
   if (commandDefinition.action === 'paste_clipboard') {

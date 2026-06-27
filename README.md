@@ -27,6 +27,7 @@ The goal is not to build a perfect taxonomy. The goal is to reduce the cost of m
 - A **fact** is an atomic thing you want to remember. It has a stable workspace-relative file path as its ID.
 - A **peek** is a context you are looking at without leaving the current context.
 - A **lens** is a view over visible facts, such as `all`, `todo`, `due`, `today`, or `current`.
+- A **timebox** is an intended block of focus assigned to a context. Timeboxes are independent of facts and overlay older timeboxes without rewriting them.
 
 New facts are always created in the current context. If you are peeking at another context, the fact is still created where you are, but it is related to the peeked context.
 
@@ -77,6 +78,8 @@ Hidden directories are ignored, including `.trash`, `.gatherbrain`, and any dire
 
 Each context may include a reserved `index.md` file for metadata about the context itself. The model attaches that file to the context and does not render it as a normal fact.
 
+Timeboxes are stored separately under `.gatherbrain/timeboxes/` as one TSV file per day. Each row stores a context path, start time, and end time; later rows overlay earlier rows when resolving who owns a moment.
+
 This format keeps the data useful outside the app. Editors, scripts, search tools, Git, backups, importers, and LLM-based tools can all work with the same files.
 
 ## Run
@@ -98,6 +101,8 @@ Use `:q`, `:quit`, `:exit`, or `Ctrl+C` to leave the prompt.
 - `:edit 3` opens the third visible fact in `$EDITOR`.
 - `:delete 3` moves the third visible fact to `.trash`.
 - `:paste` saves the current clipboard contents and creates a companion fact.
+- `:plan 9-12 /projects/gatherbrain` assigns focus time to a context.
+- `:now` switches to the context that owns the current time.
 - `:restart` restarts the app and restores the current UI state.
 
 Press `Tab` after `:` to complete command names. When a command needs more information, the prompt asks for arguments one at a time.

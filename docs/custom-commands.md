@@ -35,6 +35,7 @@ Each command has:
 
 - `name`: the colon command name, without `:`.
 - `action`: the app behavior to execute.
+- `emptyAction`: optional app behavior to execute when the command is entered with no arguments.
 - `arguments`: ordered argument definitions.
 
 ## Actions
@@ -53,6 +54,10 @@ Supported actions:
 - `set_fact_type`: change a fact type. Requires `type` and `item`.
 - `set_fact_property`: change a front matter property on a fact. Requires `item` and `value`, plus either command-level `property` or a `property` argument.
 - `paste_clipboard`: save clipboard contents to a file and create a fact pointing to it. Requires `title`; the built-in command supplies a timestamped default when it prompts.
+- `show_plan`: render the current day's planner view. Usually used as `emptyAction` for a planner command.
+- `plan_timebox`: append a planner timebox row. Requires `range` and `context`.
+- `cancel_timebox`: cancel a stored planner timebox row. Requires `range` and `context`.
+- `switch_to_current_timebox`: switch to the context that owns the present time. Takes no arguments.
 - `debug_keys`: toggle key debugging. Takes no arguments.
 - `restart_app`: restart the app process and restore stable UI state. Takes no arguments.
 
@@ -66,6 +71,7 @@ Supported argument types:
 - `enum`: a string value from `.gatherbrain/enums.json`. Supports completion.
 - `factType`: a type string starting with a letter and containing only letters, numbers, spaces, `_`, or `-`. If `enum` is set, those enum values are offered as completions.
 - `date`: a natural language date normalized to `YYYY-MM-DD`.
+- `timeRange`: a planner time or range such as `9`, `9-12`, or `1:30-3`, normalized to `HH:MM` start and end values.
 - `text`: free text.
 
 Argument fields:

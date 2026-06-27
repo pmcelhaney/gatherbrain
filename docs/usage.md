@@ -126,6 +126,53 @@ Use `:paste` to name and save the current clipboard contents to a file in the cu
 
 The chosen name is used for the pasted file and its companion fact. The companion fact's `file` front matter property points to the pasted file. On macOS, image clipboard contents such as screenshots are saved as `.png` files and embedded in the companion Markdown fact.
 
+## Timebox Planner
+
+Timeboxes assign intended focus time to contexts. They are independent of facts and are stored as TSV files under `.gatherbrain/timeboxes/`, one file per day:
+
+```text
+.gatherbrain/timeboxes/2026-06-29.tsv
+```
+
+Each row has no header and contains:
+
+```text
+/context/path<TAB>09:00<TAB>12:00
+```
+
+Timeboxes are overlays. Adding a timebox appends a row and does not split or rewrite older rows. When several rows contain the same moment, the last matching row wins. When no timebox matches, the resolved context is `/`.
+
+Use `:plan` without arguments to show the current day's 15-minute planner view:
+
+```text
+:plan
+```
+
+Use `:plan <start> <context>` to create a 30-minute timebox:
+
+```text
+:plan 9 /arb-prep
+```
+
+Use `:plan <start>-<end> <context>` to create a longer timebox:
+
+```text
+:plan 1:30-3 /arb/meetings/2026-06-29
+```
+
+Bare hours `1` through `7` are interpreted as afternoon workday times, so `1:30-3` becomes `13:30-15:00`.
+
+Use `:cancel <time-or-range> <context>` to remove stored rows matching both the time and context:
+
+```text
+:cancel 11 /arb/meetings/2026-06-29
+:cancel 11-11:30 /arb/meetings/2026-06-29
+```
+
+If multiple rows match, the app prompts you to choose one. The fallback root context `/` is never stored, so it cannot be cancelled.
+
+Use `:now` to switch to the context that owns the present local time. If no timebox matches, `:now` switches to `/`.
+
 ## Debugging And Restarting
 
 Use `:debug-keys` to toggle key debugging output.

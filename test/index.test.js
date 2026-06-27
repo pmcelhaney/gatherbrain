@@ -548,6 +548,146 @@ test(':paste writes clipboard image contents and embeds the image fact', async (
   }
 });
 
+test(':plan appends a timebox row and :plan displays the planner', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'arb-prep'), { recursive: true });
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      now: () => new Date(2026, 5, 29, 8, 0)
+    });
+
+    assert.deepEqual(await handleEntry(':plan 9-12 /arb-prep', state), {
+      action: 'continue',
+      message: 'planned 09:00-12:00 /arb-prep'
+    });
+    assert.equal(
+      await readFile(path.join(rootDirectory, '.gatherbrain', 'timeboxes', '2026-06-29.tsv'), 'utf8'),
+      '/arb-prep\t09:00\t12:00\n'
+    );
+
+    assert.deepEqual(await handleEntry(':plan', state), {
+      action: 'continue',
+      message: 'plan 2026-06-29'
+    });
+    state.pageStartIndex = 36;
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        rows: 8,
+        columns: 80
+      }),
+      [
+        'facts | plan 2026-06-29',
+        '--------------------------------------------------------------------------------',
+        '09:00  /arb-prep',
+        '09:15',
+        '09:30',
+        '09:45',
+        '10:00'
+      ]
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':cancel removes matching timeboxes and prompts for ambiguous matches', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'arb-prep'), { recursive: true });
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      now: () => new Date(2026, 5, 29, 8, 0)
+    });
+
+    await handleEntry(':plan 9-12 /arb-prep', state);
+    await handleEntry(':plan 11-11:30 /arb-prep', state);
+
+    assert.deepEqual(await handleEntry(':cancel 11 /arb-prep', state), {
+      action: 'continue',
+      message: 'Cancel which timebox? 1. 09:00-12:00 /arb-prep 2. 11:00-11:30 /arb-prep'
+    });
+    assert.deepEqual(await completeEntry('2', state), [['2'], '2']);
+    assert.deepEqual(await handleEntry('2', state), {
+      action: 'continue',
+      message: 'cancelled 11:00-11:30 /arb-prep'
+    });
+    assert.equal(
+      await readFile(path.join(rootDirectory, '.gatherbrain', 'timeboxes', '2026-06-29.tsv'), 'utf8'),
+      '/arb-prep\t09:00\t12:00\n'
+    );
+    assert.deepEqual(await handleEntry(':cancel 3 /arb-prep', state), {
+      action: 'continue',
+      message: 'no timebox matches 15:00-15:30 /arb-prep'
+    });
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':now switches to the context that owns the current time', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'arb-prep'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'team-meeting', '2026-06-29'), { recursive: true });
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      now: () => new Date(2026, 5, 29, 14, 15)
+    });
+
+    await handleEntry(':plan 9-12 /arb-prep', state);
+    await handleEntry(':plan 2-3 /team-meeting/2026-06-29', state);
+
+    assert.deepEqual(await handleEntry(':now', state), {
+      action: 'continue',
+      message: 'context team-meeting/2026-06-29'
+    });
+    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'team-meeting', '2026-06-29'));
+
+    state.now = () => new Date(2026, 5, 29, 16, 0);
+    assert.deepEqual(await handleEntry(':now', state), {
+      action: 'continue',
+      message: 'context /'
+    });
+    assert.equal(state.currentContextDirectory, rootDirectory);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':cancel completes only contexts overlapping the supplied time', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'arb-prep'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'team-meeting'), { recursive: true });
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      now: () => new Date(2026, 5, 29, 8, 0)
+    });
+
+    await handleEntry(':plan 9-12 /arb-prep', state);
+    await handleEntry(':plan 2-3 /team-meeting', state);
+
+    assert.deepEqual(await completeEntry(':cancel 11 /a', state), [['/arb-prep'], '/a']);
+    assert.deepEqual(await completeEntry(':cancel 11 /t', state), [[], '/t']);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('readClipboard uses osascript for macOS image clipboard contents', async () => {
   const calls = [];
   const clipboardItem = await readClipboard({
@@ -812,7 +952,7 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :debug-keys | :restart'
+      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :debug-keys | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
@@ -837,8 +977,8 @@ test(':help lists commands without saving a fact', async () => {
         ':type <item> <type>',
         ':due <item> <value>',
         ':paste <title>',
-        ':debug-keys',
-        ':restart'
+        ':plan <range> <context>',
+        ':cancel <range> <context>'
       ]
     );
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
@@ -2931,6 +3071,9 @@ test('completes colon command names', async () => {
       ':type ',
       ':due ',
       ':paste ',
+      ':plan ',
+      ':cancel ',
+      ':now ',
       ':debug-keys ',
       ':restart '
     ], ':']
@@ -2953,6 +3096,10 @@ test('completes named command arguments', async () => {
     assert.deepEqual(
       await completeEntry(':peek Steve', state),
       [['people/Steve Ma'], 'Steve']
+    );
+    assert.deepEqual(
+      await completeEntry(':plan 9 gather', state),
+      [['projects/gatherbrain'], 'gather']
     );
     assert.deepEqual(
       await completeEntry(':relate 1 /people/S', state),

@@ -9,6 +9,7 @@
 - A **fact** is a Markdown file with front matter. Its ID is its workspace-relative path, such as `people/alex/follow-up.md`.
 - A **peek** is a second context being viewed from the current context. Saving while peeking still writes into the current context and relates the new fact to the peeked context.
 - A **lens** chooses a presenter and template. Presenters are built into the app; lens definitions and templates are configurable.
+- A **timebox** is a planned focus interval assigned to a context. Timeboxes are stored outside the fact model and resolved as overlays.
 - The **object model** is the source for rendering and command selection during a run. Filesystem changes refresh that model after app-driven mutations and through watchers.
 
 ## Runtime Flow
@@ -17,7 +18,7 @@
 2. `model.js` indexes contexts and facts from disk, ignoring hidden directories.
 3. `lenses.js` presents visible facts for the active context or peek context.
 4. `index.js` converts facts into view models, renders the body through `templates.js`, and draws the prompt line.
-5. User input is parsed by `commands.js`. If a command mutates data, `index.js` calls `api.js`, which uses `facts.js` for Markdown/files and `model.js` to refresh the changed model region.
+5. User input is parsed by `commands.js`. If a command mutates facts or contexts, `index.js` calls `api.js`, which uses `facts.js` for Markdown/files and `model.js` to refresh the changed model region. Planner commands use `timeboxes.js`.
 6. `config-watch.js` and `model.js` watchers keep local configuration and workspace data current while the app is running.
 
 ## Files
@@ -56,9 +57,13 @@ It also provides targeted refresh helpers (`refreshFact`, `refreshContext`, `rem
 
 ### `commands.js`
 
-The command DSL loader, parser, argument validator, and action builder. It merges `default-config/commands.json` with workspace-local `.gatherbrain/commands.json`. Arguments support command-specific types such as `fact`, `context`, `lens`, `date`, `text`, and enum-backed values.
+The command DSL loader, parser, argument validator, and action builder. It merges `default-config/commands.json` with workspace-local `.gatherbrain/commands.json`. Arguments support command-specific types such as `fact`, `context`, `lens`, `date`, `timeRange`, `text`, and enum-backed values.
 
 This module parses command intent only; `index.js` executes the resulting actions.
+
+### `timeboxes.js`
+
+Timebox planner storage and resolution. It reads and writes one TSV file per date under `.gatherbrain/timeboxes/`, parses user-facing time ranges, appends planned rows, cancels matching rows, resolves the active context with last-row-wins overlay semantics, and renders 15-minute planner lines.
 
 ### `lenses.js`
 

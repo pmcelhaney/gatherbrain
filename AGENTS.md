@@ -20,6 +20,7 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
 - Handlebars template rendering and color filters: `src/templates.js`
 - Enum config and autocomplete values: `src/enums.js`
 - Natural-language dates: `src/dates.js`
+- Timebox planner TSV storage, parsing, overlay resolution, and planner rows: `src/timeboxes.js`
 - Workspace config watchers: `src/config-watch.js`
 - Default command/lens/enum/template config: `default-config/`
 - Notion people import script: `scripts/import-people.js`
@@ -40,6 +41,9 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
 - Command names and argument shapes come from the command DSL config.
 - Enums come from enum config and are used for argument validation/autocomplete.
 - Templates render presenter view models; presenters are app code, not user config.
+- Timeboxes are stored outside the fact model under `.gatherbrain/timeboxes/YYYY-MM-DD.tsv`.
+- Timeboxes are append-only overlays during planning; resolving a moment uses the last matching row and falls back to `/`.
+- The root context `/` is never stored as a timebox row.
 
 ## Fact Creation Details
 
@@ -61,6 +65,7 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
   - `test/api.test.js` for command-facing workspace operations, read queries, and model refresh.
   - `test/facts.test.js` for Markdown, filenames, relations, and low-level filesystem helpers.
   - `test/model.test.js` for workspace loading, hidden directory handling, refresh, and model watchers.
+  - `test/timeboxes.test.js` for planner TSV storage, time parsing, overlay resolution, cancellation, and planner rows.
   - `test/lenses.test.js` for presenter and lens behavior.
   - `test/commands.test.js` for command DSL parsing.
   - `test/templates.test.js` for Handlebars rendering.
@@ -74,6 +79,7 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
 - If the change affects command syntax or arguments, update `default-config/commands.json` and `src/commands.js`.
 - If the change affects user-configurable views, update `default-config/lenses.json`, `default-config/templates/`, `src/lenses.js`, or `src/templates.js` as appropriate.
 - If the change affects default autocomplete values for enum arguments, update `default-config/enums.json` and tests.
+- If the change affects planner storage, time parsing, overlay resolution, or planner rows, start in `src/timeboxes.js`.
 
 ## Local Config Shape
 

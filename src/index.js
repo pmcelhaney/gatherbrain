@@ -33,6 +33,14 @@ import {
   watchWorkspaceModel
 } from './model.js';
 import {
+  appendTimebox,
+  cancelTimebox,
+  contextsOverlappingTime,
+  plannerLines,
+  resolveContextForTime,
+  timeboxDate
+} from './timeboxes.js';
+import {
   defaultLensId,
   filterFactsForLens,
   hasLens,
@@ -113,6 +121,7 @@ export function createPromptState(options = {}) {
     pendingCommand: null,
     pendingContextCreation: null,
     pendingFactTypeConfirmation: null,
+    pendingTimeboxCancellation: null,
     temporaryBodyLines: null,
     lensBackStack: [],
     lensForwardStack: [],
@@ -1173,14 +1182,30 @@ export function buildPagedFactLines(options = {}) {
   };
 }
 
-function buildTemporaryBodyLines(lines, rows, columns) {
+function temporaryBodyPage(lines, rows, columns, pageStartIndex = 0) {
+  const wrappedLines = lines.flatMap((line) => wrapPlainText(line, columns));
+  const startIndex = Math.min(Math.max(pageStartIndex, 0), Math.max(wrappedLines.length - 1, 0));
+
   return {
-    lines: lines
-      .flatMap((line) => wrapPlainText(line, columns))
-      .slice(0, rows),
-    nextPageStartIndex: null,
-    previousPageStartIndex: null
+    lines: wrappedLines.slice(startIndex, startIndex + rows),
+    nextPageStartIndex: startIndex + rows < wrappedLines.length ? startIndex + rows : null,
+    previousPageStartIndex: startIndex > 0 ? Math.max(startIndex - rows, 0) : null
   };
+}
+
+function buildTemporaryBodyLines(lines, rows, columns, pageStartIndex = 0) {
+  return temporaryBodyPage(lines, rows, columns, pageStartIndex);
+}
+
+function pageNavigationForTemporaryBody(options = {}) {
+  const {
+    columns = 80,
+    lines = [],
+    pageStartIndex = 0,
+    rows = 0
+  } = options;
+
+  return temporaryBodyPage(lines, rows, columns, pageStartIndex);
 }
 
 export function pageNavigationForFacts(options = {}) {
@@ -1237,6 +1262,15 @@ export function pageNavigationForFacts(options = {}) {
 }
 
 export function pageNavigationForBody(options = {}) {
+  if (options.state?.temporaryBodyLines) {
+    return pageNavigationForTemporaryBody({
+      columns: options.columns,
+      lines: options.state.temporaryBodyLines,
+      pageStartIndex: options.pageStartIndex,
+      rows: options.rows
+    });
+  }
+
   return pageNavigationForFacts({
     ...options,
     body: options.body
@@ -1244,11 +1278,19 @@ export function pageNavigationForBody(options = {}) {
 }
 
 function promptQuestionForState(state = {}) {
-  if (!state.pendingCommand && !state.pendingContextCreation && !state.pendingFactTypeConfirmation) {
+  if (
+    !state.pendingCommand
+    && !state.pendingContextCreation
+    && !state.pendingFactTypeConfirmation
+    && !state.pendingTimeboxCancellation
+  ) {
     return '';
   }
 
-  return state.statusMessage || state.pendingCommand?.argument?.prompt || '';
+  return state.statusMessage
+    || state.pendingCommand?.argument?.prompt
+    || state.pendingTimeboxCancellation?.prompt
+    || '';
 }
 
 function promptLabelWithDefault(prompt, defaultValue) {
@@ -1303,7 +1345,7 @@ export function buildTuiLines(options = {}) {
   const separator = '-'.repeat(Math.max(columns, 0));
   const bodyFacts = body ? factsForBody(body) : facts;
   const { lines: bodyLines } = state.temporaryBodyLines
-    ? buildTemporaryBodyLines(state.temporaryBodyLines, factRows, columns)
+    ? buildTemporaryBodyLines(state.temporaryBodyLines, factRows, columns, state.pageStartIndex ?? 0)
     : buildPagedFactLines({
       columns,
       includeColor,
@@ -1347,7 +1389,8 @@ function commandModePromptActive(line, state = {}) {
     || line.startsWith('%')
     || Boolean(state.pendingCommand)
     || Boolean(state.pendingContextCreation)
-    || Boolean(state.pendingFactTypeConfirmation);
+    || Boolean(state.pendingFactTypeConfirmation)
+    || Boolean(state.pendingTimeboxCancellation);
 }
 
 export function renderPromptLine(line, options = {}) {
@@ -1429,6 +1472,14 @@ function commandArgumentsForCompletion(commandName, state) {
 }
 
 export async function completeEntry(line, state) {
+  if (state.pendingTimeboxCancellation) {
+    const matches = state.pendingTimeboxCancellation.matches
+      .map((_match, index) => String(index + 1))
+      .filter((value) => startsWithCaseInsensitive(value, line));
+
+    return [matches, line];
+  }
+
   if (state.pendingFactTypeConfirmation) {
     const matches = ['yes', 'no'].filter((value) => startsWithCaseInsensitive(value, line));
 
@@ -1540,6 +1591,12 @@ export async function completeEntry(line, state) {
     ? commandArgumentsForCompletion(namedContextCompletion.groups.commandName, state)
     : null;
 
+  const cancelContextCompletion = await matchingCancelContextCompletion(line, state);
+
+  if (cancelContextCompletion) {
+    return cancelContextCompletion;
+  }
+
   if (
     namedContextCompletion
     && namedContextArguments?.length === 1
@@ -1561,6 +1618,7 @@ export async function completeEntry(line, state) {
   if (
     namedRelationCompletion
     && namedRelationArguments?.length > 1
+    && namedRelationArguments.at(0)?.type === 'fact'
     && namedRelationArguments.at(-1)?.type === 'context'
   ) {
     const partialContext = namedRelationCompletion.groups.partial ?? '';
@@ -1570,6 +1628,12 @@ export async function completeEntry(line, state) {
       : matches.map((context) => context.folder);
 
     return [relationCompletions, partialContext];
+  }
+
+  const namedContextArgumentCompletion = await matchingNamedContextArgument(line, state);
+
+  if (namedContextArgumentCompletion) {
+    return namedContextArgumentCompletion;
   }
 
   const namedLensCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+(?<partial>.*)$/u);
@@ -1626,6 +1690,39 @@ async function matchingTrailingNamedArgument(line, state) {
     .filter((value) => startsWithCaseInsensitive(value, split.partialValue));
 
   return [matches, split.partialValue];
+}
+
+async function matchingCancelContextCompletion(line, state) {
+  const match = line.match(/^:cancel\s+(?<range>\S+)\s+(?<partial>.*)$/iu);
+
+  if (!match) {
+    return null;
+  }
+
+  const argumentsDefinition = commandArgumentsForCompletion('cancel', state);
+
+  if (!argumentsDefinition) {
+    return null;
+  }
+
+  const parsedRange = parseEntry(`:cancel ${match.groups.range} /`, state.commandRegistry).range;
+
+  if (!parsedRange) {
+    return null;
+  }
+
+  const partialContext = match.groups.partial ?? '';
+  const date = timeboxDate(state.now());
+  const contexts = await contextsOverlappingTime(state.rootDirectory, {
+    date,
+    range: parsedRange
+  });
+  const matches = rankedCompletionMatches(contexts, (context) => contextCompletionMatchRank({
+    folder: context.split('/').filter(Boolean).at(-1) ?? '/',
+    name: context
+  }, partialContext));
+
+  return [matches, partialContext];
 }
 
 async function trailingArgumentSplitForArgs(args, state) {
@@ -1685,6 +1782,18 @@ async function matchingNamedFactArgument(line, state) {
   const matches = await matchingFactCompletions(argumentCompletion.partialValue, state);
 
   return [matches, argumentCompletion.partialValue];
+}
+
+async function matchingNamedContextArgument(line, state) {
+  const argumentCompletion = matchingNamedArgument(line, state);
+
+  if (argumentCompletion?.argument?.type !== 'context') {
+    return null;
+  }
+
+  const matches = await matchingContextCompletions(argumentCompletion.partialValue, state);
+
+  return [matches.map((context) => context.name), argumentCompletion.partialValue];
 }
 
 function matchingNamedEnumArgument(line, state) {
@@ -2005,7 +2114,9 @@ async function switchToContextDirectory(contextDirectory, state) {
     currentContextDirectory: contextDirectory
   });
 
-  return `context ${path.relative(state.rootDirectory, state.currentContextDirectory)}`;
+  const contextId = path.relative(state.rootDirectory, state.currentContextDirectory);
+
+  return contextId.length > 0 ? `context ${contextId}` : 'context /';
 }
 
 async function handlePendingContextCreation(entry, state) {
@@ -2103,7 +2214,204 @@ async function handlePendingFactTypeConfirmation(entry, state) {
   }
 }
 
+function timeboxContextIdForReference(contextReference, state) {
+  const contextId = contextIdForSwitchReference(contextReference, state);
+
+  if (contextId === '') {
+    throw new Error('root context cannot be stored as a timebox');
+  }
+
+  if (!state.model?.contexts?.has(contextId)) {
+    throw new Error(`context ${contextReference} does not exist`);
+  }
+
+  return contextId;
+}
+
+function timeboxContextLabel(contextId) {
+  return contextId === '' ? '/' : `/${contextId}`;
+}
+
+function dateForTimeboxCommand(state) {
+  return timeboxDate(state.now());
+}
+
+async function showPlanner(state) {
+  const date = dateForTimeboxCommand(state);
+
+  state.temporaryBodyLines = await plannerLines(state.rootDirectory, date);
+  state.pageStartIndex = 0;
+  state.statusMessage = `plan ${date}`;
+
+  return {
+    action: 'continue',
+    message: state.statusMessage
+  };
+}
+
+async function planTimebox(parsedEntry, state) {
+  try {
+    await ensureWorkspaceModel(state);
+    const contextId = timeboxContextIdForReference(parsedEntry.context, state);
+    const timebox = await appendTimebox(state.rootDirectory, {
+      context: timeboxContextLabel(contextId),
+      date: dateForTimeboxCommand(state),
+      range: parsedEntry.range
+    });
+
+    state.statusMessage = '';
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message: `planned ${timebox.start}-${timebox.end} ${timebox.context}`
+    };
+  } catch (error) {
+    state.statusMessage = error.message;
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message: state.statusMessage
+    };
+  }
+}
+
+function cancellationPrompt(matches) {
+  return [
+    'Cancel which timebox?',
+    ...matches.map((match, index) => `${index + 1}. ${match.start}-${match.end} ${match.context}`)
+  ].join(' ');
+}
+
+async function cancelPlannedTimebox(parsedEntry, state) {
+  try {
+    await ensureWorkspaceModel(state);
+    const contextId = timeboxContextIdForReference(parsedEntry.context, state);
+    const date = dateForTimeboxCommand(state);
+    const context = timeboxContextLabel(contextId);
+    const result = await cancelTimebox(state.rootDirectory, {
+      context,
+      date,
+      range: parsedEntry.range
+    });
+
+    if (result.matches.length === 0) {
+      state.statusMessage = `no timebox matches ${parsedEntry.range.start}-${parsedEntry.range.end} ${context}`;
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
+
+    if (result.matches.length > 1) {
+      state.pendingTimeboxCancellation = {
+        context,
+        date,
+        range: parsedEntry.range,
+        matches: result.matches,
+        prompt: cancellationPrompt(result.matches)
+      };
+      state.statusMessage = state.pendingTimeboxCancellation.prompt;
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
+
+    const cancelled = result.cancelled[0];
+    const message = `cancelled ${cancelled.start}-${cancelled.end} ${cancelled.context}`;
+    state.statusMessage = '';
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message
+    };
+  } catch (error) {
+    state.statusMessage = error.message;
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message: state.statusMessage
+    };
+  }
+}
+
+async function handlePendingTimeboxCancellation(entry, state) {
+  const pendingTimeboxCancellation = state.pendingTimeboxCancellation;
+  const choice = Number(entry.trim());
+
+  if (!Number.isInteger(choice) || choice < 1 || choice > pendingTimeboxCancellation.matches.length) {
+    state.statusMessage = `choose 1-${pendingTimeboxCancellation.matches.length}`;
+
+    return {
+      action: 'continue',
+      message: state.statusMessage
+    };
+  }
+
+  state.pendingTimeboxCancellation = null;
+
+  const chosenTimebox = pendingTimeboxCancellation.matches[choice - 1];
+  const result = await cancelTimebox(state.rootDirectory, {
+    context: pendingTimeboxCancellation.context,
+    date: pendingTimeboxCancellation.date,
+    index: chosenTimebox.index,
+    range: pendingTimeboxCancellation.range
+  });
+  const cancelled = result.cancelled[0];
+  const message = `cancelled ${cancelled.start}-${cancelled.end} ${cancelled.context}`;
+  state.statusMessage = '';
+  clearTemporaryBody(state);
+
+  return {
+    action: 'continue',
+    message
+  };
+}
+
+async function switchToCurrentTimebox(state) {
+  try {
+    await ensureWorkspaceModel(state);
+    const now = state.now();
+    const context = await resolveContextForTime(state.rootDirectory, {
+      date: timeboxDate(now),
+      now
+    });
+    const contextId = context === '/' ? '' : context.replace(/^\/+/u, '');
+
+    if (contextId.length > 0 && !state.model?.contexts?.has(contextId)) {
+      throw new Error(`context ${context} does not exist`);
+    }
+
+    const message = await switchToContextDirectory(contextDirectoryForId(state, contextId), state);
+
+    return {
+      action: 'continue',
+      message
+    };
+  } catch (error) {
+    state.statusMessage = error.message;
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message: state.statusMessage
+    };
+  }
+}
+
 export async function handleEntry(entry, state) {
+  if (state.pendingTimeboxCancellation) {
+    return handlePendingTimeboxCancellation(entry, state);
+  }
+
   if (state.pendingFactTypeConfirmation) {
     return handlePendingFactTypeConfirmation(entry, state);
   }
@@ -2167,6 +2475,22 @@ export async function handleEntry(entry, state) {
       action: 'restart',
       snapshot: restartSnapshotForState(state)
     };
+  }
+
+  if (parsedEntry.type === 'show_plan') {
+    return showPlanner(state);
+  }
+
+  if (parsedEntry.type === 'plan_timebox') {
+    return planTimebox(parsedEntry, state);
+  }
+
+  if (parsedEntry.type === 'cancel_timebox') {
+    return cancelPlannedTimebox(parsedEntry, state);
+  }
+
+  if (parsedEntry.type === 'switch_to_current_timebox') {
+    return switchToCurrentTimebox(state);
   }
 
   if (parsedEntry.type === 'paste_clipboard') {
@@ -2600,6 +2924,7 @@ async function main() {
 
   function changePage(direction) {
     const navigation = pageNavigationForBody({
+      state,
       body,
       columns: terminalColumns(),
       includeColor: output.isTTY,

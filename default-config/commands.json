@@ -150,6 +150,46 @@
       ]
     },
     {
+      "name": "plan",
+      "action": "plan_timebox",
+      "emptyAction": "show_plan",
+      "arguments": [
+        {
+          "name": "range",
+          "type": "timeRange",
+          "prompt": "Plan what time?"
+        },
+        {
+          "name": "context",
+          "type": "context",
+          "consume": "rest",
+          "prompt": "Plan which context?"
+        }
+      ]
+    },
+    {
+      "name": "cancel",
+      "action": "cancel_timebox",
+      "arguments": [
+        {
+          "name": "range",
+          "type": "timeRange",
+          "prompt": "Cancel what time?"
+        },
+        {
+          "name": "context",
+          "type": "context",
+          "consume": "rest",
+          "prompt": "Cancel which context?"
+        }
+      ]
+    },
+    {
+      "name": "now",
+      "action": "switch_to_current_timebox",
+      "arguments": []
+    },
+    {
       "name": "debug-keys",
       "action": "debug_keys",
       "arguments": []
