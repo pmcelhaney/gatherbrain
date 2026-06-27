@@ -150,7 +150,7 @@ Use `:plan` without arguments to show the current day's planner timeline:
 
 The planner defaults to showing the workday from `08:00` through `18:00`. If a day has timeboxes outside that window, the visible rows expand to include them.
 
-The planner renders resolved time blocks as a small timeline. Each block shows its start time, context, and duration. Free time appears as `/free`, and the row nearest the current time is marked with `>`.
+The planner renders resolved time blocks as a small colorized timeline. Each block shows its exact start time, context or `free`, and duration. The current time is marked with `>`.
 
 Use `:plan <start> <context>` to create a 30-minute timebox:
 

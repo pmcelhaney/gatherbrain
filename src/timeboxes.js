@@ -4,7 +4,6 @@ import { formatDateArgument } from './dates.js';
 
 const timeboxDirectory = path.join('.gatherbrain', 'timeboxes');
 const minutesPerDay = 24 * 60;
-const plannerRowMinutes = 15;
 const defaultDurationMinutes = 30;
 
 export function timeboxDate(date = new Date()) {
@@ -265,21 +264,14 @@ export function resolveTimeboxContext(timeboxes, minutes) {
 
 export async function resolveContextForTime(rootDirectory, options = {}) {
   const date = options.date ?? timeboxDate(options.now ?? new Date());
-  const minutes = options.minutes ?? minutesFromDate(options.now ?? new Date());
+  const minutes = options.minutes ?? plannerMinutesFromDate(options.now ?? new Date());
   const timeboxes = await readTimeboxes(rootDirectory, date);
 
   return resolveTimeboxContext(timeboxes, minutes);
 }
 
-function minutesFromDate(date) {
+export function plannerMinutesFromDate(date) {
   return date.getHours() * 60 + date.getMinutes();
-}
-
-export function roundedPlannerMinutes(date) {
-  return Math.min(
-    minutesPerDay - plannerRowMinutes,
-    Math.round(minutesFromDate(date) / plannerRowMinutes) * plannerRowMinutes
-  );
 }
 
 function compactDurationText(minutes) {
@@ -304,8 +296,8 @@ function plannerDisplayRange(timeboxes, options = {}) {
   const latestTimeboxEnd = Math.max(workdayEndMinutes, ...timeboxes.map((timebox) => timebox.endMinutes));
 
   return {
-    startMinutes: Math.floor(earliestTimeboxStart / plannerRowMinutes) * plannerRowMinutes,
-    endMinutes: Math.ceil(latestTimeboxEnd / plannerRowMinutes) * plannerRowMinutes
+    startMinutes: earliestTimeboxStart,
+    endMinutes: latestTimeboxEnd
   };
 }
 
@@ -332,28 +324,48 @@ export function plannerLinesForDay(timeboxes, options = {}) {
 
 function resolvedPlannerBlocks(timeboxes, startMinutes, endMinutes) {
   const blocks = [];
-  let blockStartMinutes = startMinutes;
-  let previousContext = resolveTimeboxContext(timeboxes, startMinutes);
+  const boundaries = plannerBoundaries(timeboxes, startMinutes, endMinutes);
 
-  for (let minutes = startMinutes + plannerRowMinutes; minutes <= endMinutes; minutes += plannerRowMinutes) {
-    const context = minutes === endMinutes
-      ? null
-      : resolveTimeboxContext(timeboxes, minutes);
+  for (let index = 0; index < boundaries.length - 1; index += 1) {
+    const blockStartMinutes = boundaries[index];
+    const blockEndMinutes = boundaries[index + 1];
+    const context = resolveTimeboxContext(timeboxes, blockStartMinutes);
 
-    if (context === previousContext) {
+    if (blockEndMinutes <= blockStartMinutes) {
+      continue;
+    }
+
+    const previousBlock = blocks.at(-1);
+
+    if (previousBlock?.context === context && previousBlock.endMinutes === blockStartMinutes) {
+      previousBlock.endMinutes = blockEndMinutes;
       continue;
     }
 
     blocks.push({
-      context: previousContext,
+      context,
       startMinutes: blockStartMinutes,
-      endMinutes: minutes
+      endMinutes: blockEndMinutes
     });
-    blockStartMinutes = minutes;
-    previousContext = context;
   }
 
   return blocks;
+}
+
+function plannerBoundaries(timeboxes, startMinutes, endMinutes) {
+  const boundaries = new Set([startMinutes, endMinutes]);
+
+  for (const timebox of timeboxes) {
+    if (timebox.startMinutes > startMinutes && timebox.startMinutes < endMinutes) {
+      boundaries.add(timebox.startMinutes);
+    }
+
+    if (timebox.endMinutes > startMinutes && timebox.endMinutes < endMinutes) {
+      boundaries.add(timebox.endMinutes);
+    }
+  }
+
+  return [...boundaries].sort((left, right) => left - right);
 }
 
 function plannerBlockStartLine(block, currentMinutes) {
@@ -373,7 +385,7 @@ function plannerBlockDurationLine(block) {
 }
 
 function labelForPlannerBlock(block) {
-  return block.context === '/' ? '/free' : block.context;
+  return block.context === '/' ? 'free' : block.context;
 }
 
 function nodeForPlannerBlock(block) {

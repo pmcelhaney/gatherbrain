@@ -582,11 +582,11 @@ test(':plan appends a timebox row and :plan displays the planner', async () => {
       [
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
-        '> 08:00  ●  /free',
+        '> 08:00  ●  free',
         '         ╎  1h',
         '  09:00  ○  /arb-prep',
         '         │  3h',
-        '  12:00  ◇  /free'
+        '  12:00  ◇  free'
       ]
     );
   } finally {
@@ -623,7 +623,7 @@ test('editing timeboxes keeps the planner view active', async () => {
       [
         'facts | planned 09:00-10:00 /arb-prep',
         '--------------------------------------------------------------------------------',
-        '  08:00  ◇  /free',
+        '  08:00  ◇  free',
         '         ╎  1h',
         '  09:00  ○  /arb-prep'
       ]
@@ -643,8 +643,8 @@ test('editing timeboxes keeps the planner view active', async () => {
       [
         'facts | cancelled 09:00-10:00 /arb-prep',
         '--------------------------------------------------------------------------------',
-        '  08:00  ◇  /free',
-        '> 09:15  ╎  now',
+        '  08:00  ◇  free',
+        '> 09:20  ╎  now',
         '         ╎  10h'
       ]
     );
@@ -851,14 +851,30 @@ test(':plan display uses workspace workday settings', async () => {
     assert.deepEqual(
       buildTuiLines({
         state,
+        includeColor: true,
         rows: 8,
         columns: 80
       }),
       [
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
-        '  09:00  ◇  /free',
-        '> 09:15  ╎  now',
+        '\x1b[32m  09:00  ◇  free\x1b[39m',
+        '\x1b[33m> 09:20  ╎  now\x1b[39m',
+        '\x1b[32m         ╎  1h\x1b[39m'
+      ]
+    );
+
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        rows: 8,
+        columns: 80
+      }),
+      [
+        'facts | plan 2026-06-29',
+        '--------------------------------------------------------------------------------',
+        '  09:00  ◇  free',
+        '> 09:20  ╎  now',
         '         ╎  1h'
       ]
     );

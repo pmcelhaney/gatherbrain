@@ -37,7 +37,7 @@ import {
   cancelTimebox,
   contextsOverlappingTime,
   plannerLines,
-  roundedPlannerMinutes,
+  plannerMinutesFromDate,
   resolveContextForTime,
   timeboxDate
 } from './timeboxes.js';
@@ -81,6 +81,8 @@ const ansiTypeColor = '\x1b[36m';
 const ansiLinkColor = '\x1b[34m';
 const ansiRelationColor = '\x1b[35m';
 const ansiSecondaryColor = '\x1b[2m';
+const ansiPlannerFreeColor = '\x1b[32m';
+const ansiPlannerCurrentColor = '\x1b[33m';
 const ansiResetColor = '\x1b[39m';
 const ansiResetIntensity = '\x1b[22m';
 const ansiCommandPromptBackground = '\x1b[48;5;236m';
@@ -831,6 +833,8 @@ function truncateVisible(line, columns) {
     result.lastIndexOf(ansiTypeColor) > result.lastIndexOf(ansiResetColor)
     || result.lastIndexOf(ansiLinkColor) > result.lastIndexOf(ansiResetColor)
     || result.lastIndexOf(ansiRelationColor) > result.lastIndexOf(ansiResetColor)
+    || result.lastIndexOf(ansiPlannerFreeColor) > result.lastIndexOf(ansiResetColor)
+    || result.lastIndexOf(ansiPlannerCurrentColor) > result.lastIndexOf(ansiResetColor)
   ) {
     result += ansiResetColor;
   }
@@ -1234,8 +1238,33 @@ function temporaryBodyPage(lines, rows, columns, pageStartIndex = 0) {
   };
 }
 
-function buildTemporaryBodyLines(lines, rows, columns, pageStartIndex = 0) {
-  return temporaryBodyPage(lines, rows, columns, pageStartIndex);
+function buildTemporaryBodyLines(lines, rows, columns, pageStartIndex = 0, options = {}) {
+  const page = temporaryBodyPage(lines, rows, columns, pageStartIndex);
+
+  if (!options.includeColor || options.bodyType !== 'plan') {
+    return page;
+  }
+
+  return {
+    ...page,
+    lines: page.lines.map(colorizePlannerLine)
+  };
+}
+
+function colorizePlannerLine(line) {
+  if (line.startsWith('> ')) {
+    return `${ansiPlannerCurrentColor}${line}${ansiResetColor}`;
+  }
+
+  if (line.includes('◇') || line.includes('╎')) {
+    return `${ansiPlannerFreeColor}${line}${ansiResetColor}`;
+  }
+
+  if (line.includes('○') || line.includes('│')) {
+    return `${ansiTypeColor}${line}${ansiResetColor}`;
+  }
+
+  return line;
 }
 
 function pageNavigationForTemporaryBody(options = {}) {
@@ -1386,7 +1415,10 @@ export function buildTuiLines(options = {}) {
   const separator = '-'.repeat(Math.max(columns, 0));
   const bodyFacts = body ? factsForBody(body) : facts;
   const { lines: bodyLines } = state.temporaryBodyLines
-    ? buildTemporaryBodyLines(state.temporaryBodyLines, factRows, columns, state.pageStartIndex ?? 0)
+    ? buildTemporaryBodyLines(state.temporaryBodyLines, factRows, columns, state.pageStartIndex ?? 0, {
+      bodyType: state.temporaryBodyType,
+      includeColor
+    })
     : buildPagedFactLines({
       columns,
       includeColor,
@@ -2303,7 +2335,7 @@ async function refreshPlannerView(state, options = {}) {
 
   state.settings ??= await loadSettings({ rootDirectory: state.rootDirectory });
   state.temporaryBodyLines = await plannerLines(state.rootDirectory, date, {
-    currentMinutes: date === currentDate ? roundedPlannerMinutes(now) : null,
+    currentMinutes: date === currentDate ? plannerMinutesFromDate(now) : null,
     workday: state.settings.workday
   });
   state.temporaryBodyType = 'plan';
