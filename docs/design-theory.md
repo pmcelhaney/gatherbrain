@@ -22,27 +22,7 @@ People do not work from perfectly organized archives. They move through situatio
 - keep durable data open to editors, scripts, search tools, and LLMs,
 - let users configure their own semantics through small DSLs.
 
-## The Influence Map
-
-The app is not a literal implementation of any one method. It is more like a working compromise between several ideas.
-
-GTD contributes the capture reflex: get open loops out of working memory and into a trusted system. Gatherbrain's capture path is intentionally short because the user's attention should stay on the work that produced the thought.
-
-Tiago Forte's PARA model contributes the idea that organization should serve action. Gatherbrain keeps the more general word `context` because the useful scope might be a project, area, person, meeting, date, source, question, or temporary workspace.
-
-Cal Newport's time block planning contributes an explicit plan for attention. Gatherbrain stores timeboxes separately from facts so the plan can say which context should own a period of time without rewriting the notes in that context.
-
-Memex and Engelbart contribute the ambition: not just storing information, but augmenting a person's ability to make and follow trails through it. Gatherbrain's paths, relations, item numbers, lenses, and commands are small handles for doing that.
-
-Zettelkasten contributes atomicity and linking. Gatherbrain's unit is a fact rather than a page, because small addressable facts can be moved, related, filtered, cited, and recombined.
-
-Sweller's cognitive load theory contributes a constraint: the tool should reduce extraneous load. Prompts, completion, visible item numbers, default context capture, and plain text storage all reduce the number of things the user has to keep active at once.
-
-Unix contributes the persistence philosophy: simple durable formats make cooperation possible. Markdown facts, JSON config, TSV timeboxes, and TSV event logs are easy for editors, shell tools, Git, importers, and LLMs to work with.
-
-"Attention Is All You Need" contributes a useful metaphor. The app is full of attention-routing structures: current context, peek context, related contexts, lenses, due dates, and timeboxes. They decide which facts become salient for the current action.
-
-"Be where your feet are" is the practical test. The interface should help the user know where they are, what they are looking at, what owns the present moment, and what small thing should happen next.
+For a separate reminder of ideas that shaped the app, see [Inspiration](inspiration.md).
 
 ## Working Memory Is The Bottleneck
 
@@ -191,7 +171,7 @@ This matters because personal knowledge work is personal. A useful system for on
 
 A memory system is more useful when it can shape attention, not only retrieve old information.
 
-The timebox planner borrows from Cal Newport's time block planning: decide what kind of work should own a period of the day. Gatherbrain makes the owner a context, not just a calendar label.
+The timebox planner treats planned attention as part of the workspace model: decide what kind of work should own a period of the day. Gatherbrain makes the owner a context, not just a calendar label.
 
 That has two consequences:
 

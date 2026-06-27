@@ -38,16 +38,7 @@ Contexts can nest. That makes them more than folders: they are nested scopes. Fo
 
 `gatherbrain` treats memory as something distributed between your head, your current task, the workspace model, and durable files.
 
-- GTD's capture habit keeps open loops from consuming working memory.
-- Tiago Forte's action-oriented organization shows why contexts should serve use, not taxonomy for its own sake.
-- Cal Newport's time blocking turns attention into an explicit plan; Gatherbrain binds that plan to contexts.
-- Memex, Engelbart, and Zettelkasten point toward small addressable objects, links, trails, and augmentation.
-- Sweller's cognitive load theory pushes the app toward fast capture, completion, prompts, and visible handles.
-- Unix pushes the storage toward plain files that many tools can read and write.
-- "Attention Is All You Need" is a useful metaphor: contexts, peek, lenses, relations, and timeboxes route attention over the fact model.
-- "Be where your feet are" is the human version: know where you are, what you are looking at, and what matters now.
-
-See [Design Theory](docs/design-theory.md) for the research grounding behind these choices and [Vision](docs/vision.md) for the larger direction.
+See [Design Theory](docs/design-theory.md) for the research grounding behind these choices, [Vision](docs/vision.md) for the larger direction, and [Inspiration](docs/inspiration.md) for a working inventory of source ideas.
 
 ## Storage
 

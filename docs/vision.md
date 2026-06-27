@@ -30,27 +30,7 @@ That gives the system three layers:
 
 The filesystem remains important because it keeps the data inspectable and tool-friendly. But the deeper product is the model built on top of it.
 
-## The Influences
-
-`gatherbrain` sits at the intersection of several traditions.
-
-GTD says open loops are expensive. If a thought is tugging at your attention, capture it into a trusted system so your mind can stop rehearsing it. Gatherbrain's shortest path is therefore simple: type the thing, press Enter, get back to work.
-
-Tiago Forte's PARA model emphasizes organizing information by actionability: projects, areas, resources, archives. Gatherbrain borrows the idea that organization should serve present use, but it keeps the primitive more general. A context can be a project, person, meeting, source, date, question, or temporary workspace. The user decides which scopes matter.
-
-Cal Newport's time block planning treats time as an intentional plan, not just a calendar artifact. Gatherbrain's planner stores intended focus separately from facts. A timebox says, "for this span, this context owns my attention." The `:now` command then lets the working context follow that plan.
-
-Memex and Engelbart point toward associative trails and augmentation. The goal is not only to store notes, but to help a person build and follow meaningful paths through their own material. Contexts, relations, links, facts, item numbers, commands, and lenses are all small handles for augmenting recall and action.
-
-Zettelkasten contributes the value of atomic notes and explicit links. Gatherbrain narrows that idea into "facts": small, addressable pieces of memory that can accumulate metadata, move between contexts, and appear in many views.
-
-Sweller's cognitive load theory is a reminder that tooling can either protect attention or spend it. Capture should have low extraneous load. Completion, visible item numbers, prompted arguments, and context defaults all exist to reduce the amount the user has to hold in working memory.
-
-Unix contributes the bias toward plain files, small pieces, and composition. Markdown, directories, JSON config, TSV timeboxes, and TSV event logs are deliberately boring. Boring formats let editors, shell tools, Git, search, importers, and LLMs participate without a private export path.
-
-The "Attention Is All You Need" paper is not an HCI paper, but the metaphor is useful: intelligence often depends on what can attend to what. Gatherbrain's contexts, peek state, relations, lenses, and timeboxes are routing structures for attention. They decide which facts become salient for the next action.
-
-The phrase "be where your feet are" captures the human side of the design. The app keeps asking: where are you now, what are you looking at, and what is the next thing this context needs?
+For a separate reminder of ideas that shaped this direction, see [Inspiration](inspiration.md).
 
 ## Why Facts Have Identity
 
@@ -128,7 +108,7 @@ The planner is intentionally separate from facts. A timebox does not edit a proj
 
 Timeboxes are overlays. Newer rows win when ranges overlap. That makes planning cheap: you do not have to split the old plan perfectly before adding a new interruption. The planner resolves the current owner of time when needed.
 
-This is where Cal Newport-style planning meets a context model. A calendar says what is scheduled. Gatherbrain asks which context should own your attention right now.
+This is where time planning meets a context model. A calendar says what is scheduled. Gatherbrain asks which context should own your attention right now.
 
 ## Configuration Is Local Semantics
 
