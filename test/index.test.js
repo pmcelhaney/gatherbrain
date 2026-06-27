@@ -12,7 +12,6 @@ import {
   createPromptState,
   filterFactsForLensId,
   handleEntry,
-  keyDebugLines,
   navigateLensBack,
   navigateLensForward,
   openEditor,
@@ -1181,7 +1180,7 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :move <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :debug-keys | :restart'
+      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :move <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
@@ -1242,29 +1241,6 @@ test('slash commands show a colon command usage error', async () => {
       ]
     );
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
-  } finally {
-    await rm(appDirectory, { recursive: true, force: true });
-  }
-});
-
-test(':debug-keys toggles key debugging', async () => {
-  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
-  const rootDirectory = path.join(appDirectory, 'facts');
-
-  try {
-    const state = createPromptState({ appDirectory, rootDirectory });
-
-    assert.deepEqual(await handleEntry(':debug-keys', state), {
-      action: 'continue',
-      message: 'key debug on'
-    });
-    assert.equal(state.debugKeys, true);
-
-    assert.deepEqual(await handleEntry(':debug-keys', state), {
-      action: 'continue',
-      message: 'key debug off'
-    });
-    assert.equal(state.debugKeys, false);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -1401,29 +1377,6 @@ test('restart process waits for the replacement app to exit', async () => {
       stdio: 'inherit'
     }
   }]);
-});
-
-test('formats key debug lines', () => {
-  assert.deepEqual(
-    keyDebugLines('\x1b[A', {
-      ctrl: false,
-      meta: true,
-      name: 'up',
-      sequence: '\x1b[A',
-      shift: false
-    }),
-    [
-      'Key debug:',
-      'value: "\\u001b[A"',
-      'value code points: [1b, 5b, 41]',
-      'name: "up"',
-      'sequence: "\\u001b[A"',
-      'sequence code points: [1b, 5b, 41]',
-      'ctrl: false',
-      'meta: true',
-      'shift: false'
-    ]
-  );
 });
 
 test('uses a supplied root directory as the workspace', () => {
@@ -3337,7 +3290,6 @@ test('completes colon command names', async () => {
       ':plan ',
       ':cancel ',
       ':now ',
-      ':debug-keys ',
       ':restart '
     ], ':']
   );

@@ -645,10 +645,6 @@ function buildCommandAction(commandDefinition, values) {
     return { type: 'clear_peek' };
   }
 
-  if (commandDefinition.action === 'debug_keys') {
-    return { type: 'debug_keys' };
-  }
-
   if (commandDefinition.action === 'restart_app') {
     return { type: 'restart_app' };
   }

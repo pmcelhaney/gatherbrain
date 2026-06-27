@@ -142,7 +142,6 @@ export function createPromptState(options = {}) {
     temporaryBodyDate: null,
     lensBackStack: [],
     lensForwardStack: [],
-    debugKeys: false,
     statusMessage: '',
     now: options.now ?? (() => new Date()),
     openPath: options.openPath ?? openPath,
@@ -691,20 +690,6 @@ function keyCodePoints(value) {
   }
 
   return `[${[...value].map((character) => character.codePointAt(0).toString(16).padStart(2, '0')).join(', ')}]`;
-}
-
-export function keyDebugLines(value, key) {
-  return [
-    'Key debug:',
-    `value: ${visibleKeyValue(value)}`,
-    `value code points: ${keyCodePoints(value)}`,
-    `name: ${visibleKeyValue(key?.name)}`,
-    `sequence: ${visibleKeyValue(key?.sequence)}`,
-    `sequence code points: ${keyCodePoints(key?.sequence)}`,
-    `ctrl: ${String(key?.ctrl ?? false)}`,
-    `meta: ${String(key?.meta ?? false)}`,
-    `shift: ${String(key?.shift ?? false)}`
-  ];
 }
 
 async function contextIdsForState(state) {
@@ -2696,17 +2681,6 @@ export async function handleEntry(entry, state) {
     };
   }
 
-  if (parsedEntry.type === 'debug_keys') {
-    state.debugKeys = !state.debugKeys;
-    state.statusMessage = `key debug ${state.debugKeys ? 'on' : 'off'}`;
-    clearTemporaryBody(state);
-
-    return {
-      action: 'continue',
-      message: state.statusMessage
-    };
-  }
-
   if (parsedEntry.type === 'restart_app') {
     await logEvent(state, 'app.restarted', {
       snapshot: restartSnapshotForState(state)
@@ -3275,12 +3249,6 @@ async function main() {
       return;
     }
 
-    if (state.debugKeys) {
-      state.statusMessage = 'key debug on';
-      state.temporaryBodyLines = keyDebugLines(value, key);
-      state.temporaryBodyPlanner = null;
-    }
-
     const lensNavigation = lensNavigationForKey(key);
 
     if (lensNavigation) {
@@ -3295,10 +3263,6 @@ async function main() {
       return;
     }
 
-    if (state.debugKeys) {
-      renderCurrentScreen();
-      redrawPrompt();
-    }
   };
   const modelWatcher = watchWorkspaceModel(state.model, {
     onChange: async () => {

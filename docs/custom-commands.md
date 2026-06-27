@@ -59,7 +59,6 @@ Supported actions:
 - `plan_timebox`: append a planner timebox row. Requires `range` and `context`.
 - `cancel_timebox`: cancel a stored planner timebox row. Requires `range` and `context`.
 - `switch_to_current_timebox`: switch to the context that owns the present time. Takes no arguments.
-- `debug_keys`: toggle key debugging. Takes no arguments.
 - `restart_app`: restart the app process and restore stable UI state. Takes no arguments.
 
 ## Argument Types

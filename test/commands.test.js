@@ -34,12 +34,11 @@ test('lists built-in command help', () => {
     ':plan <range> <context>',
     ':cancel <range> <context>',
     ':now',
-    ':debug-keys',
     ':restart'
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :move <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :debug-keys | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :move <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -58,7 +57,6 @@ test('lists built-in command help', () => {
     'plan',
     'cancel',
     'now',
-    'debug-keys',
     'restart'
   ]);
   assert.deepEqual(commandArguments('relate'), [
@@ -103,7 +101,6 @@ test('parses control entries', () => {
     type: 'usage_error'
   });
   assert.deepEqual(parseEntry(':help'), { type: 'help' });
-  assert.deepEqual(parseEntry(':debug-keys'), { type: 'debug_keys' });
   assert.deepEqual(parseEntry(':restart'), { type: 'restart_app' });
   assert.deepEqual(parseEntry(':now'), { type: 'switch_to_current_timebox' });
   assert.deepEqual(parseEntry(':paste'), {
@@ -544,7 +541,6 @@ test('loads workspace command definitions from config', async () => {
       'plan',
       'cancel',
       'now',
-      'debug-keys',
       'restart',
       'jump'
     ]);
@@ -668,7 +664,6 @@ test('workspace command config overrides default commands by name', async () => 
       'plan',
       'cancel',
       'now',
-      'debug-keys',
       'restart'
     ]);
     assert.deepEqual(parseEntry(':switch', registry), {

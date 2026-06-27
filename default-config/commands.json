@@ -207,11 +207,6 @@
       "arguments": []
     },
     {
-      "name": "debug-keys",
-      "action": "debug_keys",
-      "arguments": []
-    },
-    {
       "name": "restart",
       "action": "restart_app",
       "arguments": []

@@ -298,7 +298,6 @@ These logs are intentionally simple. They are useful for debugging, auditing cha
 
 ## Debugging And Restarting
 
-Use `:debug-keys` to toggle key debugging output.
 
 Use `:restart` to restart the app process and restore the current context, peek, lens, lens history, and page position.
 
