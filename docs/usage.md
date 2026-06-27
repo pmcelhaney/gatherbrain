@@ -142,7 +142,7 @@ Each row has no header and contains:
 
 Timeboxes are overlays. Adding a timebox appends a row and does not split or rewrite older rows. When several rows contain the same moment, the last matching row wins. When no timebox matches, the resolved context is `/`.
 
-Use `:plan` without arguments to show the current day's 15-minute planner view:
+Use `:plan` without arguments to show the current day's planner timeline:
 
 ```text
 :plan
@@ -150,7 +150,7 @@ Use `:plan` without arguments to show the current day's 15-minute planner view:
 
 The planner defaults to showing the workday from `08:00` through `18:00`. If a day has timeboxes outside that window, the visible rows expand to include them.
 
-To reduce visual clutter, continuation rows only show time labels on the hour. Rows where a context block or free block begins always show the time. The row nearest the current time is marked with `>`.
+The planner renders resolved time blocks as a small timeline. Each block shows its start time, context, and duration. Free time appears as `/free`, and the row nearest the current time is marked with `>`.
 
 Use `:plan <start> <context>` to create a 30-minute timebox:
 

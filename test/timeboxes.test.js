@@ -98,7 +98,7 @@ test('resolves overlay ownership with last matching row winning', () => {
   assert.equal(resolveTimeboxContext(timeboxes, 12 * 60), '/');
 });
 
-test('renders 15-minute planner rows with free block markers', async () => {
+test('renders planner timeline blocks with durations', async () => {
   const rootDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-timeboxes-'));
 
   try {
@@ -110,32 +110,21 @@ test('renders 15-minute planner rows with free block markers', async () => {
 
     const lines = plannerLinesForDay(await readTimeboxes(rootDirectory, '2026-06-29'));
 
-    assert.equal(lines[0], '  08:00  [1 hour free]');
-    assert.equal(lines.at(-2), '');
-    assert.equal(lines.at(-1), '');
-    assert.equal(lines.length, 40);
-    assert.deepEqual(lines.slice(4, 25), [
-      '  09:00  /arb-prep',
-      '',
-      '',
-      '',
-      '  10:00',
-      '',
-      '',
-      '',
-      '  11:00  /arb/meetings/2026-06-29',
-      '',
-      '  11:30  /arb-prep',
-      '',
-      '  12:00  [2 hours free]',
-      '',
-      '',
-      '',
-      '  13:00',
-      '',
-      '',
-      '',
-      '  14:00  /team-meeting/2026-06-29'
+    assert.deepEqual(lines, [
+      '  08:00  ◇  /free',
+      '         ╎  1h',
+      '  09:00  ○  /arb-prep',
+      '         │  2h',
+      '  11:00  ○  /arb/meetings/2026-06-29',
+      '         │  30m',
+      '  11:30  ○  /arb-prep',
+      '         │  30m',
+      '  12:00  ◇  /free',
+      '         ╎  2h',
+      '  14:00  ○  /team-meeting/2026-06-29',
+      '         │  1h',
+      '  15:00  ◇  /free',
+      '         ╎  3h'
     ]);
   } finally {
     await rm(rootDirectory, { recursive: true, force: true });
@@ -156,10 +145,10 @@ test('expands planner rows when timeboxes fall outside the workday', () => {
     }
   ]);
 
-  assert.equal(lines[0], '  07:00  /early');
-  assert.equal(lines[2], '  07:30  [11 hours free]');
-  assert.equal(lines.at(-2), '  18:30  /late');
-  assert.equal(lines.at(-1), '');
+  assert.equal(lines[0], '  07:00  ○  /early');
+  assert.equal(lines[2], '  07:30  ◇  /free');
+  assert.equal(lines.at(-2), '  18:30  ○  /late');
+  assert.equal(lines.at(-1), '         │  30m');
 });
 
 test('uses configured workday boundaries for planner rows', () => {
@@ -170,10 +159,10 @@ test('uses configured workday boundaries for planner rows', () => {
     }
   });
 
-  assert.equal(lines[0], '  09:00  [8 hours free]');
-  assert.equal(lines.at(-2), '');
-  assert.equal(lines.at(-1), '');
-  assert.equal(lines.length, 32);
+  assert.deepEqual(lines, [
+    '  09:00  ◇  /free',
+    '         ╎  8h'
+  ]);
 });
 
 test('marks the current rounded planner row', () => {
@@ -187,10 +176,9 @@ test('marks the current rounded planner row', () => {
       endMinutes: 10 * 60
     }
   }), [
-    '  09:00  [1 hour free]',
-    '>',
-    '',
-    ''
+    '  09:00  ◇  /free',
+    '> 09:15  ╎  now',
+    '         ╎  1h'
   ]);
 
   assert.deepEqual(plannerLinesForDay([], {
@@ -200,8 +188,8 @@ test('marks the current rounded planner row', () => {
       endMinutes: 9 * 60 + 30
     }
   }), [
-    '> 09:00  [30 minutes free]',
-    ''
+    '> 09:00  ●  /free',
+    '         ╎  30m'
   ]);
 });
 

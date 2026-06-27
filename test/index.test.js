@@ -573,7 +573,6 @@ test(':plan appends a timebox row and :plan displays the planner', async () => {
       action: 'continue',
       message: 'plan 2026-06-29'
     });
-    state.pageStartIndex = 4;
     assert.deepEqual(
       buildTuiLines({
         state,
@@ -583,11 +582,11 @@ test(':plan appends a timebox row and :plan displays the planner', async () => {
       [
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
-        '  09:00  /arb-prep',
-        '',
-        '',
-        '',
-        '  10:00'
+        '> 08:00  ●  /free',
+        '         ╎  1h',
+        '  09:00  ○  /arb-prep',
+        '         │  3h',
+        '  12:00  ◇  /free'
       ]
     );
   } finally {
@@ -608,14 +607,13 @@ test('editing timeboxes keeps the planner view active', async () => {
     });
 
     await handleEntry(':plan', state);
-    state.pageStartIndex = 4;
 
     assert.deepEqual(await handleEntry(':plan 9-10 /arb-prep', state), {
       action: 'continue',
       message: 'planned 09:00-10:00 /arb-prep'
     });
     assert.equal(state.temporaryBodyType, 'plan');
-    assert.equal(state.pageStartIndex, 4);
+    assert.equal(state.pageStartIndex, 0);
     assert.deepEqual(
       buildTuiLines({
         state,
@@ -625,9 +623,9 @@ test('editing timeboxes keeps the planner view active', async () => {
       [
         'facts | planned 09:00-10:00 /arb-prep',
         '--------------------------------------------------------------------------------',
-        '  09:00  /arb-prep',
-        '>',
-        ''
+        '  08:00  ◇  /free',
+        '         ╎  1h',
+        '  09:00  ○  /arb-prep'
       ]
     );
 
@@ -645,9 +643,9 @@ test('editing timeboxes keeps the planner view active', async () => {
       [
         'facts | cancelled 09:00-10:00 /arb-prep',
         '--------------------------------------------------------------------------------',
-        '  09:00',
-        '>',
-        ''
+        '  08:00  ◇  /free',
+        '> 09:15  ╎  now',
+        '         ╎  10h'
       ]
     );
   } finally {
@@ -859,10 +857,9 @@ test(':plan display uses workspace workday settings', async () => {
       [
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
-        '  09:00  [1 hour free]',
-        '>',
-        '',
-        ''
+        '  09:00  ◇  /free',
+        '> 09:15  ╎  now',
+        '         ╎  1h'
       ]
     );
   } finally {

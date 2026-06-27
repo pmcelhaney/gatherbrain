@@ -282,14 +282,19 @@ export function roundedPlannerMinutes(date) {
   );
 }
 
-function durationText(minutes) {
-  if (minutes < 60) {
-    return `${minutes} minutes free`;
+function compactDurationText(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (hours === 0) {
+    return `${remainingMinutes}m`;
   }
 
-  const hours = minutes / 60;
+  if (remainingMinutes === 0) {
+    return `${hours}h`;
+  }
 
-  return hours === 1 ? '1 hour free' : `${hours} hours free`;
+  return `${hours}h ${remainingMinutes}m`;
 }
 
 function plannerDisplayRange(timeboxes, options = {}) {
@@ -309,68 +314,74 @@ export function plannerLinesForDay(timeboxes, options = {}) {
   const currentMinutes = Number.isInteger(options.currentMinutes)
     ? options.currentMinutes
     : null;
+  const blocks = resolvedPlannerBlocks(timeboxes, startMinutes, endMinutes);
   const lines = [];
-  let previousContext = null;
-  let freeBlockEnd = 0;
 
-  for (let minutes = startMinutes; minutes < endMinutes; minutes += plannerRowMinutes) {
-    const context = resolveTimeboxContext(timeboxes, minutes);
-    let label = '';
+  for (const block of blocks) {
+    lines.push(plannerBlockStartLine(block, currentMinutes));
 
-    if (context !== previousContext) {
-      if (context === '/') {
-        const nextClaimedMinute = nextContextBoundary(timeboxes, minutes, context, endMinutes);
-        freeBlockEnd = nextClaimedMinute;
-        label = `[${durationText(nextClaimedMinute - minutes)}]`;
-      } else {
-        label = context;
-      }
-    } else if (context === '/' && minutes >= freeBlockEnd) {
-      freeBlockEnd = nextContextBoundary(timeboxes, minutes, context, endMinutes);
-      label = `[${durationText(freeBlockEnd - minutes)}]`;
+    if (currentMinutes > block.startMinutes && currentMinutes < block.endMinutes) {
+      lines.push(plannerCurrentLine(block, currentMinutes));
     }
 
-    lines.push(plannerLineForRow(minutes, label, currentMinutes));
-    previousContext = context;
+    lines.push(plannerBlockDurationLine(block));
   }
 
   return lines;
 }
 
-function plannerLineForRow(minutes, label, currentMinutes) {
-  const hasCurrentMarker = minutes === currentMinutes;
-  const marker = hasCurrentMarker ? '> ' : '  ';
-  const time = shouldShowPlannerTime(minutes, label) ? formatClockTime(minutes) : '';
+function resolvedPlannerBlocks(timeboxes, startMinutes, endMinutes) {
+  const blocks = [];
+  let blockStartMinutes = startMinutes;
+  let previousContext = resolveTimeboxContext(timeboxes, startMinutes);
 
-  if (time) {
-    return `${marker}${time}${label ? `  ${label}` : ''}`;
-  }
+  for (let minutes = startMinutes + plannerRowMinutes; minutes <= endMinutes; minutes += plannerRowMinutes) {
+    const context = minutes === endMinutes
+      ? null
+      : resolveTimeboxContext(timeboxes, minutes);
 
-  if (hasCurrentMarker) {
-    return '>';
-  }
-
-  return label;
-}
-
-function shouldShowPlannerTime(minutes, label) {
-  if (label) {
-    return true;
-  }
-
-  const minute = minutes % 60;
-
-  return minute === 0;
-}
-
-function nextContextBoundary(timeboxes, startMinutes, context, endMinutes = minutesPerDay) {
-  for (let minutes = startMinutes + plannerRowMinutes; minutes < endMinutes; minutes += plannerRowMinutes) {
-    if (resolveTimeboxContext(timeboxes, minutes) !== context) {
-      return minutes;
+    if (context === previousContext) {
+      continue;
     }
+
+    blocks.push({
+      context: previousContext,
+      startMinutes: blockStartMinutes,
+      endMinutes: minutes
+    });
+    blockStartMinutes = minutes;
+    previousContext = context;
   }
 
-  return endMinutes;
+  return blocks;
+}
+
+function plannerBlockStartLine(block, currentMinutes) {
+  const hasCurrentMarker = block.startMinutes === currentMinutes;
+  const marker = hasCurrentMarker ? '> ' : '  ';
+  const node = hasCurrentMarker ? '●' : nodeForPlannerBlock(block);
+
+  return `${marker}${formatClockTime(block.startMinutes)}  ${node}  ${labelForPlannerBlock(block)}`;
+}
+
+function plannerCurrentLine(block, currentMinutes) {
+  return `> ${formatClockTime(currentMinutes)}  ${railForPlannerBlock(block)}  now`;
+}
+
+function plannerBlockDurationLine(block) {
+  return `         ${railForPlannerBlock(block)}  ${compactDurationText(block.endMinutes - block.startMinutes)}`;
+}
+
+function labelForPlannerBlock(block) {
+  return block.context === '/' ? '/free' : block.context;
+}
+
+function nodeForPlannerBlock(block) {
+  return block.context === '/' ? '◇' : '○';
+}
+
+function railForPlannerBlock(block) {
+  return block.context === '/' ? '╎' : '│';
 }
 
 export async function plannerLines(rootDirectory, date, options = {}) {
