@@ -655,6 +655,83 @@ test('editing timeboxes keeps the planner view active', async () => {
   }
 });
 
+test(':plan asks to create a missing context before adding the timebox', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      now: () => new Date(2026, 5, 29, 8, 0)
+    });
+    const newContextDirectory = path.join(rootDirectory, 'new-project');
+
+    await handleEntry(':plan', state);
+    assert.deepEqual(await handleEntry(':plan 9-10 /new-project', state), {
+      action: 'continue',
+      message: `Create ${newContextDirectory}? [y/N]`
+    });
+    assert.deepEqual(state.pendingContextCreation, {
+      context: '/new-project',
+      directory: newContextDirectory,
+      after: {
+        type: 'plan_timebox',
+        parsedEntry: {
+          type: 'plan_timebox',
+          context: '/new-project',
+          range: {
+            start: '09:00',
+            end: '10:00',
+            startMinutes: 9 * 60,
+            endMinutes: 10 * 60,
+            isRange: true
+          }
+        }
+      }
+    });
+
+    assert.deepEqual(await handleEntry('yes', state), {
+      action: 'continue',
+      message: 'planned 09:00-10:00 /new-project'
+    });
+    assert.equal(state.currentContextDirectory, rootDirectory);
+    assert.equal(state.model.contexts.has('new-project'), true);
+    assert.equal(
+      await readFile(path.join(rootDirectory, '.gatherbrain', 'timeboxes', '2026-06-29.tsv'), 'utf8'),
+      '/new-project\t09:00\t10:00\n'
+    );
+    assert.equal(state.temporaryBodyType, 'plan');
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':plan does not add a timebox when missing context creation is declined', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      now: () => new Date(2026, 5, 29, 8, 0)
+    });
+
+    await handleEntry(':plan 9-10 /new-project', state);
+    assert.deepEqual(await handleEntry('no', state), {
+      action: 'continue',
+      message: 'context /new-project not created'
+    });
+    await assert.rejects(
+      readFile(path.join(rootDirectory, '.gatherbrain', 'timeboxes', '2026-06-29.tsv'), 'utf8'),
+      { code: 'ENOENT' }
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test(':cancel removes matching timeboxes and prompts for ambiguous matches', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');

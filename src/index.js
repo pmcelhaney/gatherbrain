@@ -2167,6 +2167,10 @@ async function handlePendingContextCreation(entry, state) {
     };
   }
 
+  if (pendingContextCreation.after?.type === 'plan_timebox') {
+    return planTimebox(pendingContextCreation.after.parsedEntry, state);
+  }
+
   const message = await switchToContextDirectory(pendingContextCreation.directory, state);
 
   return {
@@ -2304,7 +2308,35 @@ function setStatusPreservingPlannerView(state, statusMessage) {
 async function planTimebox(parsedEntry, state) {
   try {
     await ensureWorkspaceModel(state);
-    const contextId = timeboxContextIdForReference(parsedEntry.context, state);
+    const contextId = contextIdForSwitchReference(parsedEntry.context, state);
+
+    if (contextId === '') {
+      throw new Error('root context cannot be stored as a timebox');
+    }
+
+    if (!state.model?.contexts?.has(contextId)) {
+      const contextDirectory = contextDirectoryForSwitchReference(parsedEntry.context, state);
+
+      if (contextHasHiddenPathPart(contextDirectory, state)) {
+        throw new Error('context cannot contain hidden folders');
+      }
+
+      state.pendingContextCreation = {
+        context: parsedEntry.context,
+        directory: contextDirectory,
+        after: {
+          type: 'plan_timebox',
+          parsedEntry
+        }
+      };
+      setStatusPreservingPlannerView(state, contextCreationPrompt(contextDirectory));
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
+
     const timebox = await appendTimebox(state.rootDirectory, {
       context: timeboxContextLabel(contextId),
       date: dateForTimeboxCommand(state),
