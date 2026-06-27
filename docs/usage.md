@@ -150,6 +150,8 @@ Use `:plan` without arguments to show the current day's 15-minute planner view:
 
 The planner defaults to showing the workday from `08:00` through `18:00`. If a day has timeboxes outside that window, the visible rows expand to include them.
 
+To reduce visual clutter, planner rows at `:15` and `:45` do not show their time labels. The row nearest the current time is marked with `>`.
+
 Use `:plan <start> <context>` to create a 30-minute timebox:
 
 ```text

@@ -584,9 +584,9 @@ test(':plan appends a timebox row and :plan displays the planner', async () => {
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
         '09:00  /arb-prep',
-        '09:15',
+        '',
         '09:30',
-        '09:45',
+        '',
         '10:00'
       ]
     );
@@ -604,7 +604,7 @@ test('editing timeboxes keeps the planner view active', async () => {
     const state = createPromptState({
       appDirectory,
       rootDirectory,
-      now: () => new Date(2026, 5, 29, 8, 0)
+      now: () => new Date(2026, 5, 29, 9, 20)
     });
 
     await handleEntry(':plan', state);
@@ -626,7 +626,7 @@ test('editing timeboxes keeps the planner view active', async () => {
         'facts | planned 09:00-10:00 /arb-prep',
         '--------------------------------------------------------------------------------',
         '09:00  /arb-prep',
-        '09:15',
+        '>',
         '09:30'
       ]
     );
@@ -646,7 +646,7 @@ test('editing timeboxes keeps the planner view active', async () => {
         'facts | cancelled 09:00-10:00 /arb-prep',
         '--------------------------------------------------------------------------------',
         '09:00',
-        '09:15',
+        '>',
         '09:30'
       ]
     );
@@ -663,7 +663,7 @@ test(':plan asks to create a missing context before adding the timebox', async (
     const state = createPromptState({
       appDirectory,
       rootDirectory,
-      now: () => new Date(2026, 5, 29, 8, 0)
+      now: () => new Date(2026, 5, 29, 9, 20)
     });
     const newContextDirectory = path.join(rootDirectory, 'new-project');
 
@@ -715,7 +715,7 @@ test(':plan does not add a timebox when missing context creation is declined', a
     const state = createPromptState({
       appDirectory,
       rootDirectory,
-      now: () => new Date(2026, 5, 29, 8, 0)
+      now: () => new Date(2026, 5, 29, 9, 20)
     });
 
     await handleEntry(':plan 9-10 /new-project', state);
@@ -741,7 +741,7 @@ test(':cancel removes matching timeboxes and prompts for ambiguous matches', asy
     const state = createPromptState({
       appDirectory,
       rootDirectory,
-      now: () => new Date(2026, 5, 29, 8, 0)
+      now: () => new Date(2026, 5, 29, 9, 20)
     });
 
     await handleEntry(':plan 9-12 /arb-prep', state);
@@ -845,7 +845,7 @@ test(':plan display uses workspace workday settings', async () => {
     const state = createPromptState({
       appDirectory,
       rootDirectory,
-      now: () => new Date(2026, 5, 29, 8, 0)
+      now: () => new Date(2026, 5, 29, 9, 20)
     });
 
     await handleEntry(':plan', state);
@@ -860,9 +860,9 @@ test(':plan display uses workspace workday settings', async () => {
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
         '09:00  [1 hour free]',
-        '09:15',
+        '>',
         '09:30',
-        '09:45'
+        ''
       ]
     );
   } finally {

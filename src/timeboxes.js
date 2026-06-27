@@ -275,6 +275,13 @@ function minutesFromDate(date) {
   return date.getHours() * 60 + date.getMinutes();
 }
 
+export function roundedPlannerMinutes(date) {
+  return Math.min(
+    minutesPerDay - plannerRowMinutes,
+    Math.round(minutesFromDate(date) / plannerRowMinutes) * plannerRowMinutes
+  );
+}
+
 function durationText(minutes) {
   if (minutes < 60) {
     return `${minutes} minutes free`;
@@ -299,6 +306,9 @@ function plannerDisplayRange(timeboxes, options = {}) {
 
 export function plannerLinesForDay(timeboxes, options = {}) {
   const { startMinutes, endMinutes } = plannerDisplayRange(timeboxes, options);
+  const currentMinutes = Number.isInteger(options.currentMinutes)
+    ? options.currentMinutes
+    : null;
   const lines = [];
   let previousContext = null;
   let freeBlockEnd = 0;
@@ -320,11 +330,29 @@ export function plannerLinesForDay(timeboxes, options = {}) {
       label = `[${durationText(freeBlockEnd - minutes)}]`;
     }
 
-    lines.push(label ? `${formatClockTime(minutes)}  ${label}` : formatClockTime(minutes));
+    lines.push(plannerLineForRow(minutes, label, currentMinutes));
     previousContext = context;
   }
 
   return lines;
+}
+
+function plannerLineForRow(minutes, label, currentMinutes) {
+  const marker = minutes === currentMinutes ? '> ' : '';
+  const time = shouldShowPlannerTime(minutes) ? formatClockTime(minutes) : '';
+  const prefix = `${marker}${time}`;
+
+  if (label) {
+    return prefix.length > 0 ? `${prefix}  ${label}` : label;
+  }
+
+  return prefix.trimEnd();
+}
+
+function shouldShowPlannerTime(minutes) {
+  const minute = minutes % 60;
+
+  return minute === 0 || minute === 30;
 }
 
 function nextContextBoundary(timeboxes, startMinutes, context, endMinutes = minutesPerDay) {

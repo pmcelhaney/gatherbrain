@@ -37,6 +37,7 @@ import {
   cancelTimebox,
   contextsOverlappingTime,
   plannerLines,
+  roundedPlannerMinutes,
   resolveContextForTime,
   timeboxDate
 } from './timeboxes.js';
@@ -2261,9 +2262,12 @@ async function showPlanner(state) {
 
 async function refreshPlannerView(state, options = {}) {
   const date = options.date ?? state.temporaryBodyDate ?? dateForTimeboxCommand(state);
+  const now = state.now();
+  const currentDate = timeboxDate(now);
 
   state.settings ??= await loadSettings({ rootDirectory: state.rootDirectory });
   state.temporaryBodyLines = await plannerLines(state.rootDirectory, date, {
+    currentMinutes: date === currentDate ? roundedPlannerMinutes(now) : null,
     workday: state.settings.workday
   });
   state.temporaryBodyType = 'plan';
