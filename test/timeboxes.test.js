@@ -119,20 +119,13 @@ test('renders planner timeline blocks with durations', async () => {
     const lines = plannerLinesForDay(await readTimeboxes(rootDirectory, '2026-06-29'));
 
     assert.deepEqual(lines, [
-      '   8:00  ◇  free',
-      '         ╎  1h',
-      '   9:00  ○  /arb-prep',
-      '         │  2h',
-      '  11:00  ○  /arb/meetings/2026-06-29',
-      '         │  30m',
-      '  11:30  ○  /arb-prep',
-      '         │  30m',
-      '  12:00  ◇  free',
-      '         ╎  2h',
-      '   2:00  ○  /team-meeting/2026-06-29',
-      '         │  1h',
-      '   3:00  ◇  free',
-      '         ╎  3h'
+      '   8:00  ○  free · 1h',
+      '   9:00  ●  /arb-prep · 2h',
+      '  11:00  ●  /arb/meetings/2026-06-29 · 30m',
+      '  11:30  ●  /arb-prep · 30m',
+      '  12:00  ○  free · 2h',
+      '   2:00  ●  /team-meeting/2026-06-29 · 1h',
+      '   3:00  ○  free · 3h'
     ]);
   } finally {
     await rm(rootDirectory, { recursive: true, force: true });
@@ -153,10 +146,9 @@ test('expands planner rows when timeboxes fall outside the workday', () => {
     }
   ]);
 
-  assert.equal(lines[0], '   7:00  ○  /early');
-  assert.equal(lines[2], '   7:30  ◇  free');
-  assert.equal(lines.at(-2), '   6:30  ○  /late');
-  assert.equal(lines.at(-1), '         │  30m');
+  assert.equal(lines[0], '   7:00  ●  /early · 30m');
+  assert.equal(lines[1], '   7:30  ○  free · 11h');
+  assert.equal(lines.at(-1), '   6:30  ●  /late · 30m');
 });
 
 test('uses configured workday boundaries for planner rows', () => {
@@ -168,8 +160,7 @@ test('uses configured workday boundaries for planner rows', () => {
   });
 
   assert.deepEqual(lines, [
-    '   9:00  ◇  free',
-    '         ╎  8h'
+    '   9:00  ○  free · 8h'
   ]);
 });
 
@@ -183,9 +174,9 @@ test('marks the exact current planner minute', () => {
       endMinutes: 10 * 60
     }
   }), [
-    '   9:00  ◇  free',
-    '         ╎  1h',
-    '>  9:07  ╎'
+    '   9:00  ○  free · 1h',
+    '         ▶ now  9:07',
+    '         ╎'
   ]);
 
   assert.deepEqual(plannerLinesForDay([], {
@@ -195,8 +186,8 @@ test('marks the exact current planner minute', () => {
       endMinutes: 9 * 60 + 30
     }
   }), [
-    '>  9:00  ●  free',
-    '         ╎  30m'
+    '         ▶ now  9:00',
+    '   9:00  ○  free · 30m'
   ]);
 });
 
@@ -213,12 +204,9 @@ test('renders planner timeline blocks at exact timebox boundaries', () => {
       endMinutes: 10 * 60
     }
   }), [
-    '   9:00  ◇  free',
-    '         ╎  7m',
-    '   9:07  ○  /deep-work',
-    '         │  15m',
-    '   9:22  ◇  free',
-    '         ╎  38m'
+    '   9:00  ○  free · 7m',
+    '   9:07  ●  /deep-work · 15m',
+    '   9:22  ○  free · 38m'
   ]);
 });
 
@@ -241,11 +229,11 @@ test('scales planner rail spacing to a target row count', () => {
       endMinutes: 13 * 60
     }
   }), [
-    '   9:00  ○  /short',
-    '         │  1h',
+    '   9:00  ●  /short · 1h',
     '         │',
-    '  10:00  ○  /long',
-    '         │  3h',
+    '         │',
+    '  10:00  ●  /long · 3h',
+    '         │',
     '         │',
     '         │',
     '         │'

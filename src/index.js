@@ -1255,29 +1255,19 @@ function buildTemporaryBodyLines(lines, rows, columns, pageStartIndex = 0, optio
 }
 
 function colorizePlannerLine(line) {
-  if (line.startsWith('> ')) {
-    return colorizeCurrentPlannerLine(line);
+  if (line.includes('▶')) {
+    return `${ansiPlannerCurrentColor}${line}${ansiResetColor}`;
   }
 
   return colorizePlannerSegment(line);
 }
 
-function colorizeCurrentPlannerLine(line) {
-  const match = line.match(/^(> .{5}  )(?<rest>.*)$/u);
-
-  if (!match) {
-    return `${ansiPlannerCurrentColor}${line}${ansiResetColor}`;
-  }
-
-  return `${ansiPlannerCurrentColor}${match[1]}${ansiResetColor}${colorizePlannerSegment(match.groups.rest)}`;
-}
-
 function colorizePlannerSegment(line) {
-  if (line.includes('free') || line.includes('◇') || line.includes('╎')) {
+  if (line.includes('free') || line.includes('○') || line.includes('╎')) {
     return `${ansiPlannerFreeColor}${line}${ansiResetColor}`;
   }
 
-  if (line.includes('●') || line.includes('○') || line.includes('│')) {
+  if (line.includes('●') || line.includes('│')) {
     return `${ansiTypeColor}${line}${ansiResetColor}`;
   }
 

@@ -346,11 +346,15 @@ export function renderPlannerBlocks(blocks, options = {}) {
   const lines = [];
 
   for (const [index, block] of blocks.entries()) {
-    lines.push(plannerBlockStartLine(block, currentMinutes));
-    lines.push(plannerBlockDurationLine(block));
+    if (block.startMinutes === currentMinutes) {
+      lines.push(plannerCurrentLine(currentMinutes));
+    }
+
+    lines.push(plannerBlockStartLine(block));
 
     if (currentMinutes > block.startMinutes && currentMinutes < block.endMinutes) {
-      lines.push(plannerCurrentLine(block, currentMinutes));
+      lines.push(plannerCurrentLine(currentMinutes));
+      lines.push(plannerBlockRailLine(block));
     }
 
     for (let count = 0; count < extraRows[index]; count += 1) {
@@ -363,7 +367,7 @@ export function renderPlannerBlocks(blocks, options = {}) {
 
 function plannerExtraRowsForBlocks(blocks, currentMinutes, targetRows) {
   const baseRows = blocks.reduce((count, block) => (
-    count + 2 + (currentMinutes > block.startMinutes && currentMinutes < block.endMinutes ? 1 : 0)
+    count + 1 + currentMarkerRowsForBlock(block, currentMinutes)
   ), 0);
   const availableExtraRows = Number.isInteger(targetRows)
     ? Math.max(targetRows - baseRows, 0)
@@ -402,6 +406,18 @@ function plannerExtraRowsForBlocks(blocks, currentMinutes, targetRows) {
   return allocations
     .sort((left, right) => left.index - right.index)
     .map((allocation) => allocation.rows);
+}
+
+function currentMarkerRowsForBlock(block, currentMinutes) {
+  if (currentMinutes === block.startMinutes) {
+    return 1;
+  }
+
+  if (currentMinutes > block.startMinutes && currentMinutes < block.endMinutes) {
+    return 2;
+  }
+
+  return 0;
 }
 
 function resolvedPlannerBlocks(timeboxes, startMinutes, endMinutes) {
@@ -450,24 +466,16 @@ function plannerBoundaries(timeboxes, startMinutes, endMinutes) {
   return [...boundaries].sort((left, right) => left - right);
 }
 
-function plannerBlockStartLine(block, currentMinutes) {
-  const hasCurrentMarker = block.startMinutes === currentMinutes;
-  const marker = hasCurrentMarker ? '> ' : '  ';
-  const node = hasCurrentMarker ? '●' : nodeForPlannerBlock(block);
-
-  return `${marker}${formatDisplayClockTime(block.startMinutes, { padHour: true })}  ${node}  ${labelForPlannerBlock(block)}`;
+function plannerBlockStartLine(block) {
+  return `  ${formatDisplayClockTime(block.startMinutes, { padHour: true })}  ${nodeForPlannerBlock(block)}  ${labelForPlannerBlock(block)} · ${compactDurationText(block.endMinutes - block.startMinutes)}`;
 }
 
-function plannerCurrentLine(block, currentMinutes) {
-  return `> ${formatDisplayClockTime(currentMinutes, { padHour: true })}  ${railForPlannerBlock(block)}`;
+function plannerCurrentLine(currentMinutes) {
+  return `         ▶ now ${formatDisplayClockTime(currentMinutes, { padHour: true })}`;
 }
 
 function plannerBlockRailLine(block) {
   return `         ${railForPlannerBlock(block)}`;
-}
-
-function plannerBlockDurationLine(block) {
-  return `         ${railForPlannerBlock(block)}  ${compactDurationText(block.endMinutes - block.startMinutes)}`;
 }
 
 function labelForPlannerBlock(block) {
@@ -475,7 +483,7 @@ function labelForPlannerBlock(block) {
 }
 
 function nodeForPlannerBlock(block) {
-  return block.context === '/' ? '◇' : '○';
+  return block.context === '/' ? '○' : '●';
 }
 
 function railForPlannerBlock(block) {
