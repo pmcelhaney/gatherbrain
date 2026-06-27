@@ -22,6 +22,7 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
 - Natural-language dates: `src/dates.js`
 - Workspace settings config: `src/settings.js`
 - Timebox planner TSV storage, parsing, overlay resolution, and planner rows: `src/timeboxes.js`
+- Daily event log TSV storage: `src/events.js`
 - Workspace config watchers: `src/config-watch.js`
 - Default command/lens/enum/settings/template config: `default-config/`
 - Notion people import script: `scripts/import-people.js`
@@ -46,6 +47,7 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
 - Timeboxes are append-only overlays during planning; resolving a moment uses the last matching row and falls back to `/`.
 - The root context `/` is never stored as a timebox row.
 - Planner rendering defaults to the configured workday and expands only when timeboxes fall outside it.
+- User-visible state/view/external-tool actions are appended to `.gatherbrain/events/YYYY-MM-DD.tsv`.
 
 ## Fact Creation Details
 
@@ -68,6 +70,7 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
   - `test/facts.test.js` for Markdown, filenames, relations, and low-level filesystem helpers.
   - `test/model.test.js` for workspace loading, hidden directory handling, refresh, and model watchers.
   - `test/timeboxes.test.js` for planner TSV storage, time parsing, overlay resolution, cancellation, and planner rows.
+  - `test/events.test.js` for event log storage and command event integration.
   - `test/lenses.test.js` for presenter and lens behavior.
   - `test/commands.test.js` for command DSL parsing.
   - `test/templates.test.js` for Handlebars rendering.
@@ -83,6 +86,7 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
 - If the change affects workspace settings, update `default-config/settings.json`, `src/settings.js`, and tests.
 - If the change affects default autocomplete values for enum arguments, update `default-config/enums.json` and tests.
 - If the change affects planner storage, time parsing, overlay resolution, or planner rows, start in `src/timeboxes.js`.
+- If the change affects action logging or event metadata, update `src/events.js`, the relevant command/API hook, and tests.
 
 ## Local Config Shape
 

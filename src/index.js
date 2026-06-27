@@ -56,6 +56,7 @@ import {
   renderTemplateLines
 } from './templates.js';
 import { loadSettings } from './settings.js';
+import { logEvent } from './events.js';
 import {
   addWorkspaceEnumValue,
   contextDirectoryForId,
@@ -107,6 +108,11 @@ const dateCompletionValues = [
   'in 1 day',
   'in 1 week'
 ];
+
+function contextIdMetadataForDirectory(state, contextDirectory) {
+  return contextIdForDirectory(state, contextDirectory) || '/';
+}
+
 export function createPromptState(options = {}) {
   const appDirectory = options.appDirectory ?? defaultAppDirectory;
   const rootDirectory = options.rootDirectory ?? options.notesDirectory ?? path.join(appDirectory, 'notes');
@@ -2138,7 +2144,13 @@ export function openEditor(filePath, options = {}) {
 }
 
 export async function refreshEditedFact(state, filePath) {
-  await refreshWorkspaceFact(state, filePath);
+  const fact = await refreshWorkspaceFact(state, filePath);
+
+  await logEvent(state, 'fact.edited', {
+    factId: fact?.id,
+    uuid: fact?.uuid,
+    path: filePath
+  });
 }
 
 export async function reloadWorkspaceConfig(state) {
@@ -2205,6 +2217,11 @@ async function saveCreatedFact(parsedEntry, state) {
 }
 
 async function switchToContextDirectory(contextDirectory, state) {
+  const previousContextId = contextIdMetadataForDirectory(state, state.currentContextDirectory);
+  const previousPeekContextId = state.peekContextDirectory
+    ? contextIdMetadataForDirectory(state, state.peekContextDirectory)
+    : null;
+
   state.peekContextDirectory = null;
   state.peekLensId = defaultLensId;
   resetItemNumbers(state);
@@ -2214,6 +2231,12 @@ async function switchToContextDirectory(contextDirectory, state) {
   });
 
   const contextId = path.relative(state.rootDirectory, state.currentContextDirectory);
+  await logEvent(state, 'context.switched', {
+    from: previousContextId,
+    to: contextId.length > 0 ? contextId : '/',
+    clearedPeek: previousPeekContextId !== null,
+    ...(previousPeekContextId ? { previousPeek: previousPeekContextId } : {})
+  });
 
   return contextId.length > 0 ? `context ${contextId}` : 'context /';
 }
@@ -2341,12 +2364,21 @@ function dateForTimeboxCommand(state) {
 
 async function showPlanner(state) {
   const date = dateForTimeboxCommand(state);
-
-  return refreshPlannerView(state, {
+  const previousView = state.temporaryBodyType ?? 'facts';
+  const result = await refreshPlannerView(state, {
     date,
     resetPage: true,
     statusMessage: `plan ${date}`
   });
+
+  await logEvent(state, 'planner.viewed', { date });
+  await logEvent(state, 'view.changed', {
+    view: 'plan',
+    date,
+    from: previousView
+  });
+
+  return result;
 }
 
 async function refreshPlannerView(state, options = {}) {
@@ -2445,6 +2477,12 @@ async function planTimebox(parsedEntry, state) {
 
     const message = `planned ${formatDisplayTimeRange(timebox)} ${timebox.context}`;
     await refreshPlannerViewIfActive(state, message);
+    await logEvent(state, 'timebox.created', {
+      date: dateForTimeboxCommand(state),
+      context: timebox.context,
+      start: timebox.start,
+      end: timebox.end
+    });
 
     return {
       action: 'continue',
@@ -2508,6 +2546,13 @@ async function cancelPlannedTimebox(parsedEntry, state) {
     const cancelled = result.cancelled[0];
     const message = `cancelled ${formatDisplayTimeRange(cancelled)} ${cancelled.context}`;
     await refreshPlannerViewIfActive(state, message);
+    await logEvent(state, 'timebox.cancelled', {
+      date,
+      context: cancelled.context,
+      start: cancelled.start,
+      end: cancelled.end,
+      index: cancelled.index
+    });
 
     return {
       action: 'continue',
@@ -2548,6 +2593,13 @@ async function handlePendingTimeboxCancellation(entry, state) {
   const cancelled = result.cancelled[0];
   const message = `cancelled ${formatDisplayTimeRange(cancelled)} ${cancelled.context}`;
   await refreshPlannerViewIfActive(state, message);
+  await logEvent(state, 'timebox.cancelled', {
+    date: pendingTimeboxCancellation.date,
+    context: cancelled.context,
+    start: cancelled.start,
+    end: cancelled.end,
+    index: cancelled.index
+  });
 
   return {
     action: 'continue',
@@ -2570,6 +2622,11 @@ async function switchToCurrentTimebox(state) {
     }
 
     const message = await switchToContextDirectory(contextDirectoryForId(state, contextId), state);
+    await logEvent(state, 'context.switched_to_current_timebox', {
+      context,
+      contextId: contextId || '/',
+      date: timeboxDate(now)
+    });
 
     return {
       action: 'continue',
@@ -2650,6 +2707,10 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'restart_app') {
+    await logEvent(state, 'app.restarted', {
+      snapshot: restartSnapshotForState(state)
+    });
+
     return {
       action: 'restart',
       snapshot: restartSnapshotForState(state)
@@ -2709,6 +2770,12 @@ export async function handleEntry(entry, state) {
       state.pageStartIndex = 0;
       state.statusMessage = '';
       clearTemporaryBody(state);
+      await logEvent(state, 'clipboard.pasted', {
+        assetPath: path.relative(state.rootDirectory, pastedFilePath).split(path.sep).join('/'),
+        factPath: path.relative(state.rootDirectory, fact.path).split(path.sep).join('/'),
+        title: factTitle,
+        kind: clipboardItem?.type === 'file' ? 'file' : 'text'
+      });
 
       return {
         action: 'continue',
@@ -2817,11 +2884,21 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'clear_peek' || parsedEntry.type === 'clear_gaze') {
+    const previousPeekContextId = state.peekContextDirectory
+      ? contextIdMetadataForDirectory(state, state.peekContextDirectory)
+      : null;
+
     state.peekContextDirectory = null;
     state.peekLensId = defaultLensId;
     resetItemNumbers(state);
     state.statusMessage = '';
     clearTemporaryBody(state);
+
+    if (previousPeekContextId) {
+      await logEvent(state, 'peek.cleared', {
+        previousPeek: previousPeekContextId
+      });
+    }
 
     return {
       action: 'continue',
@@ -2843,11 +2920,16 @@ export async function handleEntry(entry, state) {
     }
 
     const message = `peek ${contextIdForDirectory(state, state.peekContextDirectory)}`;
+    const peekContextId = contextIdMetadataForDirectory(state, state.peekContextDirectory);
     state.peekLensId = defaultLensId;
     resetItemNumbers(state);
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);
+    await logEvent(state, 'peek.started', {
+      contextId: peekContextId,
+      lens: state.peekLensId
+    });
 
     return {
       action: 'continue',
@@ -2869,6 +2951,11 @@ export async function handleEntry(entry, state) {
     changeLens(state, {
       ...currentLens(state),
       currentLensId: parsedEntry.lens
+    });
+    await logEvent(state, 'lens.changed', {
+      lens: parsedEntry.lens,
+      contextId: contextIdMetadataForDirectory(state, state.peekContextDirectory ?? state.currentContextDirectory),
+      scope: state.peekContextDirectory ? 'peek' : 'current'
     });
 
     return {
@@ -2906,6 +2993,10 @@ export async function handleEntry(entry, state) {
       await state.openPath(filePath);
       state.statusMessage = '';
       clearTemporaryBody(state);
+      await logEvent(state, itemLabel ? 'file.opened' : 'directory.opened', {
+        path: filePath,
+        ...(itemLabel ? { item: itemLabel } : {})
+      });
 
       return {
         action: 'continue',
@@ -3138,6 +3229,12 @@ async function main() {
     }
 
     body = await visibleBodyForState(state);
+    await logEvent(state, 'lens.changed', {
+      direction,
+      lens: currentLensIdForState(state),
+      contextId: contextIdMetadataForDirectory(state, state.peekContextDirectory ?? state.currentContextDirectory),
+      scope: state.peekContextDirectory ? 'peek' : 'current'
+    });
     renderCurrentScreen();
     redrawPrompt();
   }
@@ -3248,6 +3345,11 @@ async function main() {
       if (result.action === 'edit') {
         editorOpen = true;
         terminal.pause();
+        await logEvent(state, 'editor.opened', {
+          path: result.filePath,
+          item: result.itemLabel
+        });
+        let editorError = null;
 
         if (useAlternateScreen) {
           output.write('\x1b[?1049l');
@@ -3258,8 +3360,16 @@ async function main() {
           await refreshEditedFact(state, result.filePath);
           state.statusMessage = `edited item ${result.itemLabel}`;
         } catch (error) {
+          editorError = error;
           state.statusMessage = error.message;
         } finally {
+          await logEvent(state, 'editor.closed', {
+            path: result.filePath,
+            item: result.itemLabel,
+            status: editorError ? 'error' : 'ok',
+            ...(editorError ? { error: editorError.message } : {})
+          });
+
           if (useAlternateScreen) {
             output.write('\x1b[?1049h');
           }

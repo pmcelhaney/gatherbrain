@@ -44,6 +44,12 @@ function markdownWithoutFactUuid(markdown) {
   return markdown.replace(/^id: [0-9a-f-]+\n/mu, '');
 }
 
+async function visibleDirectoryEntries(directory) {
+  return (await readdir(directory))
+    .filter((entry) => !entry.startsWith('.gatherbrain'))
+    .sort();
+}
+
 test(':switch switches context without creating a fact', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -2221,7 +2227,7 @@ test('type command changes a listed item type', async () => {
     );
 
     const result = await handleEntry(':type 1 foo', state);
-    const files = await readdir(rootDirectory);
+    const files = (await readdir(rootDirectory)).filter((file) => path.extname(file) === '.md');
     const firstFact = markdownWithoutFactUuid(await readFile(path.join(rootDirectory, files.sort()[0]), 'utf8'));
 
     assert.deepEqual(result, {
@@ -2662,7 +2668,7 @@ test(':delete command trashes a listed item', async () => {
       action: 'continue',
       message: 'trashed item 1'
     });
-    assert.deepEqual((await readdir(rootDirectory)).sort(), [
+    assert.deepEqual(await visibleDirectoryEntries(rootDirectory), [
       '.trash',
       path.basename(secondFactPath)
     ]);
@@ -2767,7 +2773,7 @@ test(':delete command targets the active lens list', async () => {
       action: 'continue',
       message: 'trashed item 2'
     });
-    assert.deepEqual((await readdir(rootDirectory)).sort(), [
+    assert.deepEqual(await visibleDirectoryEntries(rootDirectory), [
       '.trash',
       path.basename(factPath),
       path.basename(todoPath)

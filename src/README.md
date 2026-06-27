@@ -10,6 +10,7 @@
 - A **peek** is a second context being viewed from the current context. Saving while peeking still writes into the current context and relates the new fact to the peeked context.
 - A **lens** chooses a presenter and template. Presenters are built into the app; lens definitions and templates are configurable.
 - A **timebox** is a planned focus interval assigned to a context. Timeboxes are stored outside the fact model and resolved as overlays.
+- An **event** is an append-only audit row for an action that changes workspace state, navigation state, view state, or invokes an external tool.
 - The **object model** is the source for rendering and command selection during a run. Filesystem changes refresh that model after app-driven mutations and through watchers.
 
 ## Runtime Flow
@@ -18,7 +19,7 @@
 2. `model.js` indexes contexts and facts from disk, ignoring hidden directories.
 3. `lenses.js` presents visible facts for the active context or peek context.
 4. `index.js` converts facts into view models, renders the body through `templates.js`, and draws the prompt line.
-5. User input is parsed by `commands.js`. If a command mutates facts or contexts, `index.js` calls `api.js`, which uses `facts.js` for Markdown/files and `model.js` to refresh the changed model region. Planner commands use `timeboxes.js`.
+5. User input is parsed by `commands.js`. If a command mutates facts or contexts, `index.js` calls `api.js`, which uses `facts.js` for Markdown/files, `model.js` to refresh the changed model region, and `events.js` to append action logs. Planner commands use `timeboxes.js`.
 6. `config-watch.js` and `model.js` watchers keep local configuration and workspace data current while the app is running.
 
 ## Files
@@ -64,6 +65,10 @@ This module parses command intent only; `index.js` executes the resulting action
 ### `timeboxes.js`
 
 Timebox planner storage and resolution. It reads and writes one TSV file per date under `.gatherbrain/timeboxes/`, parses user-facing time ranges, appends planned rows, cancels matching rows, resolves the active context with last-row-wins overlay semantics, and renders 15-minute planner lines.
+
+### `events.js`
+
+Daily append-only event logging. It writes one tab-delimited file per date under `.gatherbrain/events/`. Rows contain timestamp, event name, and JSON metadata. Higher layers log user-visible actions after they succeed; low-level helpers avoid logging by themselves unless they are the command-facing boundary.
 
 ### `lenses.js`
 

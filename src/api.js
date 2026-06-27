@@ -16,6 +16,7 @@ import {
 } from './model.js';
 import { addEnumValue } from './enums.js';
 import { formatDateArgument } from './dates.js';
+import { logEvent } from './events.js';
 import {
   defaultLensId,
   presentLens
@@ -333,10 +334,15 @@ export function contextHasHiddenPathPart(contextDirectory, state) {
 export async function createContext(state, contextDirectory) {
   await mkdir(contextDirectory, { recursive: true });
   await refreshContext(await ensureWorkspaceModel(state), contextDirectory);
+  const contextId = contextIdForDirectory(state, contextDirectory);
+  await logEvent(state, 'context.created', {
+    contextId: contextId || '/',
+    path: contextDirectory
+  });
 
   return {
     contextDirectory,
-    contextId: contextIdForDirectory(state, contextDirectory)
+    contextId
   };
 }
 
@@ -361,6 +367,16 @@ export async function createFact(state, options = {}) {
   });
 
   await refreshContext(await ensureWorkspaceModel(state), state.currentContextDirectory);
+  const factId = path.relative(state.rootDirectory, savedPath).split(path.sep).join('/');
+  const fact = state.model.facts.get(factId);
+
+  await logEvent(state, 'fact.created', {
+    factId,
+    uuid: fact?.uuid,
+    contextId: contextIdForDirectory(state, state.currentContextDirectory) || '/',
+    title: fact?.title ?? title,
+    type
+  });
 
   return {
     path: savedPath,
@@ -371,6 +387,12 @@ export async function createFact(state, options = {}) {
 export async function deleteWorkspaceFact(state, fact) {
   await deleteFact(fact.path);
   removeFact(await ensureWorkspaceModel(state), fact.path);
+  await logEvent(state, 'fact.deleted', {
+    factId: fact.id,
+    uuid: fact.uuid,
+    contextId: fact.contextId || '/',
+    path: fact.path
+  });
 }
 
 export async function relationForContextReference(contextReference, state) {
@@ -404,23 +426,45 @@ export async function relateWorkspaceFact(state, fact, contextReference) {
   const relation = await relationForContextReference(contextReference, state);
 
   await addFactRelation(fact.path, relation);
-  await refreshFact(await ensureWorkspaceModel(state), fact.path);
+  const refreshedFact = await refreshFact(await ensureWorkspaceModel(state), fact.path);
+  await logEvent(state, 'fact.related', {
+    factId: fact.id,
+    uuid: refreshedFact?.uuid ?? fact.uuid,
+    relation
+  });
 
   return relation;
 }
 
 export async function setWorkspaceFactType(state, fact, type) {
+  const previousType = fact.type;
+
   await updateFactType(fact.path, type);
-  await refreshFact(await ensureWorkspaceModel(state), fact.path);
+  const refreshedFact = await refreshFact(await ensureWorkspaceModel(state), fact.path);
+  await logEvent(state, 'fact.type_changed', {
+    factId: fact.id,
+    uuid: refreshedFact?.uuid ?? fact.uuid,
+    from: previousType,
+    to: type
+  });
 }
 
 export async function setWorkspaceFactProperty(state, fact, property, value) {
+  const previousValue = fact.properties?.[property] ?? null;
+
   await updateFactProperty(fact.path, property, value);
-  await refreshFact(await ensureWorkspaceModel(state), fact.path);
+  const refreshedFact = await refreshFact(await ensureWorkspaceModel(state), fact.path);
+  await logEvent(state, 'fact.property_changed', {
+    factId: fact.id,
+    uuid: refreshedFact?.uuid ?? fact.uuid,
+    property,
+    from: previousValue,
+    to: value
+  });
 }
 
 export async function refreshWorkspaceFact(state, filePath) {
-  await refreshFact(await ensureWorkspaceModel(state), filePath);
+  return refreshFact(await ensureWorkspaceModel(state), filePath);
 }
 
 export function referencedFilePathForFact(fact, itemLabel) {
