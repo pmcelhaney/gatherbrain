@@ -562,7 +562,7 @@ test(':plan appends a timebox row and :plan displays the planner', async () => {
 
     assert.deepEqual(await handleEntry(':plan 9-12 /arb-prep', state), {
       action: 'continue',
-      message: 'planned 09:00-12:00 /arb-prep'
+      message: 'planned 9:00-12:00 /arb-prep'
     });
     assert.equal(
       await readFile(path.join(rootDirectory, '.gatherbrain', 'timeboxes', '2026-06-29.tsv'), 'utf8'),
@@ -582,9 +582,9 @@ test(':plan appends a timebox row and :plan displays the planner', async () => {
       [
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
-        '> 08:00  ●  free',
+        '> 8:00  ●  free',
         '         ╎  1h',
-        '  09:00  ○  /arb-prep',
+        '  9:00  ○  /arb-prep',
         '         │  3h',
         '  12:00  ◇  free'
       ]
@@ -610,7 +610,7 @@ test('editing timeboxes keeps the planner view active', async () => {
 
     assert.deepEqual(await handleEntry(':plan 9-10 /arb-prep', state), {
       action: 'continue',
-      message: 'planned 09:00-10:00 /arb-prep'
+      message: 'planned 9:00-10:00 /arb-prep'
     });
     assert.equal(state.temporaryBodyType, 'plan');
     assert.equal(state.pageStartIndex, 0);
@@ -621,17 +621,17 @@ test('editing timeboxes keeps the planner view active', async () => {
         columns: 80
       }),
       [
-        'facts | planned 09:00-10:00 /arb-prep',
+        'facts | planned 9:00-10:00 /arb-prep',
         '--------------------------------------------------------------------------------',
-        '  08:00  ◇  free',
+        '  8:00  ◇  free',
         '         ╎  1h',
-        '  09:00  ○  /arb-prep'
+        '  9:00  ○  /arb-prep'
       ]
     );
 
     assert.deepEqual(await handleEntry(':cancel 9 /arb-prep', state), {
       action: 'continue',
-      message: 'cancelled 09:00-10:00 /arb-prep'
+      message: 'cancelled 9:00-10:00 /arb-prep'
     });
     assert.equal(state.temporaryBodyType, 'plan');
     assert.deepEqual(
@@ -641,10 +641,10 @@ test('editing timeboxes keeps the planner view active', async () => {
         columns: 80
       }),
       [
-        'facts | cancelled 09:00-10:00 /arb-prep',
+        'facts | cancelled 9:00-10:00 /arb-prep',
         '--------------------------------------------------------------------------------',
-        '  08:00  ◇  free',
-        '> 09:20  ╎  now',
+        '  8:00  ◇  free',
+        '> 9:20  ╎  now',
         '         ╎  10h'
       ]
     );
@@ -691,7 +691,7 @@ test(':plan asks to create a missing context before adding the timebox', async (
 
     assert.deepEqual(await handleEntry('yes', state), {
       action: 'continue',
-      message: 'planned 09:00-10:00 /new-project'
+      message: 'planned 9:00-10:00 /new-project'
     });
     assert.equal(state.currentContextDirectory, rootDirectory);
     assert.equal(state.model.contexts.has('new-project'), true);
@@ -747,7 +747,7 @@ test(':cancel removes matching timeboxes and prompts for ambiguous matches', asy
 
     assert.deepEqual(await handleEntry(':cancel 11 /arb-prep', state), {
       action: 'continue',
-      message: 'Cancel which timebox? 1. 09:00-12:00 /arb-prep 2. 11:00-11:30 /arb-prep'
+      message: 'Cancel which timebox? 1. 9:00-12:00 /arb-prep 2. 11:00-11:30 /arb-prep'
     });
     assert.deepEqual(await completeEntry('2', state), [['2'], '2']);
     assert.deepEqual(await handleEntry('2', state), {
@@ -760,7 +760,7 @@ test(':cancel removes matching timeboxes and prompts for ambiguous matches', asy
     );
     assert.deepEqual(await handleEntry(':cancel 3 /arb-prep', state), {
       action: 'continue',
-      message: 'no timebox matches 15:00-15:30 /arb-prep'
+      message: 'no timebox matches 3:00-3:30 /arb-prep'
     });
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -858,8 +858,8 @@ test(':plan display uses workspace workday settings', async () => {
       [
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
-        '\x1b[32m  09:00  ◇  free\x1b[39m',
-        '\x1b[33m> 09:20  ╎  now\x1b[39m',
+        '\x1b[32m  9:00  ◇  free\x1b[39m',
+        '\x1b[33m> 9:20  ╎  now\x1b[39m',
         '\x1b[32m         ╎  1h\x1b[39m'
       ]
     );
@@ -873,8 +873,8 @@ test(':plan display uses workspace workday settings', async () => {
       [
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
-        '  09:00  ◇  free',
-        '> 09:20  ╎  now',
+        '  9:00  ◇  free',
+        '> 9:20  ╎  now',
         '         ╎  1h'
       ]
     );

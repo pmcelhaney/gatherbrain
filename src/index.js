@@ -36,6 +36,7 @@ import {
   appendTimebox,
   cancelTimebox,
   contextsOverlappingTime,
+  formatDisplayTimeRange,
   plannerLines,
   plannerMinutesFromDate,
   resolveContextForTime,
@@ -2415,11 +2416,12 @@ async function planTimebox(parsedEntry, state) {
       range: parsedEntry.range
     });
 
-    await refreshPlannerViewIfActive(state, `planned ${timebox.start}-${timebox.end} ${timebox.context}`);
+    const message = `planned ${formatDisplayTimeRange(timebox)} ${timebox.context}`;
+    await refreshPlannerViewIfActive(state, message);
 
     return {
       action: 'continue',
-      message: `planned ${timebox.start}-${timebox.end} ${timebox.context}`
+      message
     };
   } catch (error) {
     setStatusPreservingPlannerView(state, error.message);
@@ -2434,7 +2436,7 @@ async function planTimebox(parsedEntry, state) {
 function cancellationPrompt(matches) {
   return [
     'Cancel which timebox?',
-    ...matches.map((match, index) => `${index + 1}. ${match.start}-${match.end} ${match.context}`)
+    ...matches.map((match, index) => `${index + 1}. ${formatDisplayTimeRange(match)} ${match.context}`)
   ].join(' ');
 }
 
@@ -2451,7 +2453,7 @@ async function cancelPlannedTimebox(parsedEntry, state) {
     });
 
     if (result.matches.length === 0) {
-      setStatusPreservingPlannerView(state, `no timebox matches ${parsedEntry.range.start}-${parsedEntry.range.end} ${context}`);
+      setStatusPreservingPlannerView(state, `no timebox matches ${formatDisplayTimeRange(parsedEntry.range)} ${context}`);
 
       return {
         action: 'continue',
@@ -2477,7 +2479,7 @@ async function cancelPlannedTimebox(parsedEntry, state) {
     }
 
     const cancelled = result.cancelled[0];
-    const message = `cancelled ${cancelled.start}-${cancelled.end} ${cancelled.context}`;
+    const message = `cancelled ${formatDisplayTimeRange(cancelled)} ${cancelled.context}`;
     await refreshPlannerViewIfActive(state, message);
 
     return {
@@ -2517,7 +2519,7 @@ async function handlePendingTimeboxCancellation(entry, state) {
     range: pendingTimeboxCancellation.range
   });
   const cancelled = result.cancelled[0];
-  const message = `cancelled ${cancelled.start}-${cancelled.end} ${cancelled.context}`;
+  const message = `cancelled ${formatDisplayTimeRange(cancelled)} ${cancelled.context}`;
   await refreshPlannerViewIfActive(state, message);
 
   return {
