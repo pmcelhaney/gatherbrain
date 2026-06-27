@@ -583,11 +583,11 @@ test(':plan appends a timebox row and :plan displays the planner', async () => {
       [
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
-        '09:00  /arb-prep',
+        '  09:00  /arb-prep',
         '',
-        '09:30',
         '',
-        '10:00'
+        '',
+        '  10:00'
       ]
     );
   } finally {
@@ -625,9 +625,9 @@ test('editing timeboxes keeps the planner view active', async () => {
       [
         'facts | planned 09:00-10:00 /arb-prep',
         '--------------------------------------------------------------------------------',
-        '09:00  /arb-prep',
+        '  09:00  /arb-prep',
         '>',
-        '09:30'
+        ''
       ]
     );
 
@@ -645,9 +645,9 @@ test('editing timeboxes keeps the planner view active', async () => {
       [
         'facts | cancelled 09:00-10:00 /arb-prep',
         '--------------------------------------------------------------------------------',
-        '09:00',
+        '  09:00',
         '>',
-        '09:30'
+        ''
       ]
     );
   } finally {
@@ -859,9 +859,9 @@ test(':plan display uses workspace workday settings', async () => {
       [
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
-        '09:00  [1 hour free]',
+        '  09:00  [1 hour free]',
         '>',
-        '09:30',
+        '',
         ''
       ]
     );

@@ -896,6 +896,42 @@ function wrapPlainText(text, columns) {
   return lines;
 }
 
+function wrapPreformattedText(text, columns) {
+  if (columns <= 0) {
+    return [text];
+  }
+
+  if (text.length === 0) {
+    return [''];
+  }
+
+  const lines = [];
+  let remaining = text;
+
+  while (remaining.length > columns) {
+    let breakIndex = -1;
+
+    for (let index = columns; index > 0; index -= 1) {
+      if (/\s/u.test(remaining[index])) {
+        breakIndex = index;
+        break;
+      }
+    }
+
+    if (breakIndex <= 0) {
+      lines.push(remaining.slice(0, columns));
+      remaining = remaining.slice(columns).trimStart();
+      continue;
+    }
+
+    lines.push(remaining.slice(0, breakIndex));
+    remaining = remaining.slice(breakIndex + 1).trimStart();
+  }
+
+  lines.push(remaining);
+  return lines;
+}
+
 function markdownLinksInText(text) {
   return [
     ...[...text.matchAll(/!\[[^\]]*\]\(([^)]+)\)/gu)]
@@ -1188,7 +1224,7 @@ export function buildPagedFactLines(options = {}) {
 }
 
 function temporaryBodyPage(lines, rows, columns, pageStartIndex = 0) {
-  const wrappedLines = lines.flatMap((line) => wrapPlainText(line, columns));
+  const wrappedLines = lines.flatMap((line) => wrapPreformattedText(line, columns));
   const startIndex = Math.min(Math.max(pageStartIndex, 0), Math.max(wrappedLines.length - 1, 0));
 
   return {

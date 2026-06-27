@@ -338,21 +338,29 @@ export function plannerLinesForDay(timeboxes, options = {}) {
 }
 
 function plannerLineForRow(minutes, label, currentMinutes) {
-  const marker = minutes === currentMinutes ? '> ' : '';
-  const time = shouldShowPlannerTime(minutes) ? formatClockTime(minutes) : '';
-  const prefix = `${marker}${time}`;
+  const hasCurrentMarker = minutes === currentMinutes;
+  const marker = hasCurrentMarker ? '> ' : '  ';
+  const time = shouldShowPlannerTime(minutes, label) ? formatClockTime(minutes) : '';
 
-  if (label) {
-    return prefix.length > 0 ? `${prefix}  ${label}` : label;
+  if (time) {
+    return `${marker}${time}${label ? `  ${label}` : ''}`;
   }
 
-  return prefix.trimEnd();
+  if (hasCurrentMarker) {
+    return '>';
+  }
+
+  return label;
 }
 
-function shouldShowPlannerTime(minutes) {
+function shouldShowPlannerTime(minutes, label) {
+  if (label) {
+    return true;
+  }
+
   const minute = minutes % 60;
 
-  return minute === 0 || minute === 30;
+  return minute === 0;
 }
 
 function nextContextBoundary(timeboxes, startMinutes, context, endMinutes = minutesPerDay) {
