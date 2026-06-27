@@ -36,6 +36,7 @@ test('builds a source-traceable fact from a Notion export cell', () => {
       Name: 'Jane Smith',
       Manager: 'Steve Ma (https://example.com/steve)'
     }, 'Manager', {
+      id: '11111111-1111-4111-8111-111111111111',
       sourceFile: '/tmp/collaborators.csv',
       sourceRow: 12
     }),
@@ -43,6 +44,7 @@ test('builds a source-traceable fact from a Notion export cell', () => {
       '---',
       'title: "Manager: Steve Ma"',
       'type: manager',
+      'id: 11111111-1111-4111-8111-111111111111',
       'source: "Notion Collaborators export"',
       'sourceFile: "collaborators.csv"',
       'sourceRow: 12',
@@ -63,6 +65,7 @@ test('builds manager relations when Notion labels contain parentheses', () => {
       Name: 'Jane Smith',
       Manager: 'Michael (Mike) Sisto (https://example.com/mike)'
     }, 'Manager', {
+      id: '11111111-1111-4111-8111-111111111111',
       sourceFile: '/tmp/collaborators.csv',
       sourceRow: 12
     }),
@@ -70,6 +73,7 @@ test('builds manager relations when Notion labels contain parentheses', () => {
       '---',
       'title: "Manager: Michael (Mike) Sisto"',
       'type: manager',
+      'id: 11111111-1111-4111-8111-111111111111',
       'source: "Notion Collaborators export"',
       'sourceFile: "collaborators.csv"',
       'sourceRow: 12',
@@ -120,6 +124,7 @@ test('records split met values with the original source cell value', () => {
       Name: 'Jane Smith',
       'Met?': '1:1, In Person'
     }, {
+      id: '11111111-1111-4111-8111-111111111111',
       sourceFile: '/tmp/collaborators.csv',
       sourceRow: 2
     }).find((fact) => fact.filename === 'met-in-person.md').markdown,
@@ -127,6 +132,7 @@ test('records split met values with the original source cell value', () => {
       '---',
       'title: "Met?: In Person"',
       'type: met',
+      'id: 11111111-1111-4111-8111-111111111111',
       'source: "Notion Collaborators export"',
       'sourceFile: "collaborators.csv"',
       'sourceRow: 2',
@@ -180,32 +186,13 @@ test('imports people as contexts containing source-cell facts', async () => {
         'role.md'
       ]
     );
-    assert.equal(
+    assert.match(
       await readFile(path.join(directory, 'notes', 'people', 'jane-smith', 'location.md'), 'utf8'),
-      [
-        '---',
-        'title: "Location: Chicago"',
-        'type: location',
-        'source: "Notion Collaborators export"',
-        'sourceFile: "people.csv"',
-        'sourceRow: 2',
-        'sourceColumn: Location',
-        'sourceValue: Chicago',
-        '---',
-        '',
-        'Chicago',
-        ''
-      ].join('\n')
+      /^---\ntitle: "Location: Chicago"\ntype: location\nid: [0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\nsource: "Notion Collaborators export"\nsourceFile: "people.csv"\nsourceRow: 2\nsourceColumn: Location\nsourceValue: Chicago\n---\n\nChicago\n$/u
     );
-    assert.equal(
+    assert.match(
       await readFile(path.join(directory, 'notes', 'people', 'jane-smith', 'manager.md'), 'utf8'),
-      factMarkdownFromCell({
-        Name: 'Jane Smith',
-        Manager: 'Steve Ma (https://example.com/steve)'
-      }, 'Manager', {
-        sourceFile: csvPath,
-        sourceRow: 2
-      })
+      /^---\ntitle: "Manager: Steve Ma"\ntype: manager\nid: [0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\nsource: "Notion Collaborators export"\nsourceFile: "people.csv"\nsourceRow: 2\nsourceColumn: Manager\nsourceValue: "Steve Ma \(https:\/\/example\.com\/steve\)"\nrelatedContexts: \["people\/steve-ma"\]\n---\n\n\[Steve Ma\]\(\/people\/steve-ma\)\n$/u
     );
   } finally {
     await rm(directory, { recursive: true, force: true });

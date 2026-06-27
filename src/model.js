@@ -1,7 +1,8 @@
 import { watch } from 'node:fs';
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { readdir, readFile, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
+  ensureFactUuidInMarkdown,
   factRelationsFromMarkdown,
   factPropertiesFromMarkdown,
   factTextFromMarkdown,
@@ -92,8 +93,16 @@ export function contextPathToId(model, contextPath) {
 }
 
 export async function readFact(rootPath, filePath) {
-  const markdown = await readFile(filePath, 'utf8');
+  let markdown = await readFile(filePath, 'utf8');
   const fileStat = await stat(filePath);
+  const ensuredUuid = ensureFactUuidInMarkdown(markdown);
+
+  if (ensuredUuid.changed) {
+    await writeFile(filePath, ensuredUuid.markdown);
+    await utimes(filePath, fileStat.atime, fileStat.mtime);
+    markdown = ensuredUuid.markdown;
+  }
+
   const id = relativeId(rootPath, filePath);
   const contextId = contextIdForFactId(id);
   const relations = factRelationsFromMarkdown(markdown);
@@ -109,6 +118,7 @@ export async function readFact(rootPath, filePath) {
     createdAt: fileStat.birthtime.toISOString(),
     modifiedAt: fileStat.mtime.toISOString(),
     properties,
+    uuid: ensuredUuid.uuid,
     ...(relations.length > 0 ? { relations } : {}),
     title,
     type: factTypeFromMarkdown(markdown) ?? 'fact',

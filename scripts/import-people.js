@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import {
@@ -210,6 +211,7 @@ export function factMarkdownFromCell(row, column, options = {}) {
 
   return buildFactMarkdown(`${column}: ${factTitleValueForCell(column, sourceValue)}`, {
     body: factBodyForCell(column, sourceValue),
+    id: options.id ?? randomUUID(),
     properties,
     relations,
     type: factType

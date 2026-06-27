@@ -40,6 +40,10 @@ import { createEnumRegistry, enumValues } from '../src/enums.js';
 import { filenameBaseForTitle, titleForFactText } from '../src/facts.js';
 import { createLensRegistry } from '../src/lenses.js';
 
+function markdownWithoutFactUuid(markdown) {
+  return markdown.replace(/^id: [0-9a-f-]+\n/mu, '');
+}
+
 test(':switch switches context without creating a fact', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -71,7 +75,7 @@ test(':switch switches context without creating a fact', async () => {
     const files = await readdir(state.currentContextDirectory);
     assert.equal(files.length, 1);
     assert.equal(
-      await readFile(path.join(state.currentContextDirectory, files[0]), 'utf8'),
+      markdownWithoutFactUuid(await readFile(path.join(state.currentContextDirectory, files[0]), 'utf8')),
       '---\ntitle: "Captured in context."\ntype: fact\n---\n\nCaptured in context.\n'
     );
     assert.equal(
@@ -288,7 +292,7 @@ test('saves typed text as a titled fact with linked mentions in the body', async
     const files = await readdir(rootDirectory);
     const factFile = files.find((file) => path.extname(file) === '.md');
     assert.equal(
-      await readFile(path.join(rootDirectory, factFile), 'utf8'),
+      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, factFile), 'utf8')),
       '---\ntitle: "Talk to @Steve Ma."\ntype: fact\n---\n\nTalk to [Steve Ma](/people/Steve Ma).\n'
     );
   } finally {
@@ -309,7 +313,7 @@ test(':new saves a titled fact', async () => {
     const files = await readdir(rootDirectory);
     const factFile = files.find((file) => path.extname(file) === '.md');
     assert.equal(
-      await readFile(path.join(rootDirectory, factFile), 'utf8'),
+      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, factFile), 'utf8')),
       '---\ntitle: "Follow up with Alex"\ntype: fact\n---\n\nFollow up with Alex\n'
     );
   } finally {
@@ -329,7 +333,7 @@ test('%type saves a fact with the matching type', async () => {
       message: `saved ${path.join('facts', 'get-milk.md')}`
     });
     assert.equal(
-      await readFile(path.join(rootDirectory, 'get-milk.md'), 'utf8'),
+      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, 'get-milk.md'), 'utf8')),
       '---\ntitle: "Get milk"\ntype: todo\n---\n\nGet milk\n'
     );
     assert.equal(state.model.facts.get('get-milk.md').type, 'todo');
@@ -360,7 +364,7 @@ test('%type asks before adding an unknown fact type', async () => {
     });
     assert.equal(state.pendingFactTypeConfirmation, null);
     assert.equal(
-      await readFile(path.join(rootDirectory, 'get-milk.md'), 'utf8'),
+      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, 'get-milk.md'), 'utf8')),
       '---\ntitle: "Get milk"\ntype: blocked\n---\n\nGet milk\n'
     );
     assert.deepEqual(
@@ -422,7 +426,7 @@ test(':paste writes clipboard contents and a fact pointing to the file', async (
       'clipboard contents\nsecond line'
     );
     assert.equal(
-      await readFile(path.join(currentContext, 'pasted-2026-06-25t14-03-04-005-04-00.md'), 'utf8'),
+      markdownWithoutFactUuid(await readFile(path.join(currentContext, 'pasted-2026-06-25t14-03-04-005-04-00.md'), 'utf8')),
       '---\ntitle: "Pasted 2026-06-25T14-03-04.005-04-00"\ntype: fact\nfile: "pasted-2026-06-25t14-03-04-005-04-00.txt"\n---\n\n\n'
     );
     assert.equal(
@@ -462,7 +466,7 @@ test(':paste uses a typed prompted name for the companion fact', async () => {
       'clipboard contents'
     );
     assert.equal(
-      await readFile(path.join(currentContext, 'meeting-notes.md'), 'utf8'),
+      markdownWithoutFactUuid(await readFile(path.join(currentContext, 'meeting-notes.md'), 'utf8')),
       '---\ntitle: "Meeting notes"\ntype: fact\nfile: "meeting-notes.txt"\n---\n\n\n'
     );
   } finally {
@@ -540,7 +544,7 @@ test(':paste writes clipboard image contents and embeds the image fact', async (
       pngBytes
     );
     assert.equal(
-      await readFile(path.join(currentContext, 'screenshot.md'), 'utf8'),
+      markdownWithoutFactUuid(await readFile(path.join(currentContext, 'screenshot.md'), 'utf8')),
       '---\ntitle: Screenshot\ntype: fact\nfile: "screenshot.png"\n---\n\n1. ![screenshot](screenshot.png)\n'
     );
   } finally {
@@ -963,7 +967,7 @@ test(':new prompts for a missing title', async () => {
     const files = await readdir(rootDirectory);
     const factFile = files.find((file) => path.extname(file) === '.md');
     assert.equal(
-      await readFile(path.join(rootDirectory, factFile), 'utf8'),
+      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, factFile), 'utf8')),
       '---\ntitle: "Prompted capture"\ntype: fact\n---\n\nPrompted capture\n'
     );
   } finally {
@@ -2135,7 +2139,7 @@ test('saving while peeking creates in the current context and relates to peek', 
       ['follow-up-with-alex.md']
     );
     assert.equal(
-      await readFile(path.join(currentContext, 'follow-up-with-alex.md'), 'utf8'),
+      markdownWithoutFactUuid(await readFile(path.join(currentContext, 'follow-up-with-alex.md'), 'utf8')),
       '---\ntitle: "Follow up with Alex"\ntype: fact\nrelatedContexts: ["people/Alex"]\n---\n\nFollow up with Alex\n'
     );
     assert.deepEqual(
@@ -2218,7 +2222,7 @@ test('type command changes a listed item type', async () => {
 
     const result = await handleEntry(':type 1 foo', state);
     const files = await readdir(rootDirectory);
-    const firstFact = await readFile(path.join(rootDirectory, files.sort()[0]), 'utf8');
+    const firstFact = markdownWithoutFactUuid(await readFile(path.join(rootDirectory, files.sort()[0]), 'utf8'));
 
     assert.deepEqual(result, {
       action: 'continue',
@@ -2264,7 +2268,7 @@ test('type command targets the active lens list', async () => {
       'done'
     );
     assert.equal(
-      await readFile(waitingPath, 'utf8'),
+      markdownWithoutFactUuid(await readFile(waitingPath, 'utf8')),
       '---\ntype: done\n---\n\nWaiting item.\n'
     );
   } finally {
@@ -2294,7 +2298,7 @@ test('typed fact type shorthand changes a listed item type', async () => {
       message: 'set item 2 type to done'
     });
     assert.equal(
-      await readFile(secondFactPath, 'utf8'),
+      markdownWithoutFactUuid(await readFile(secondFactPath, 'utf8')),
       '---\ntype: done\n---\n\nSecond fact.\n'
     );
   } finally {
@@ -2357,7 +2361,7 @@ test('commands show source folders for facts related to the active context', asy
       message: 'set item 2 type to todo'
     });
     assert.equal(
-      await readFile(relatedPath, 'utf8'),
+      markdownWithoutFactUuid(await readFile(relatedPath, 'utf8')),
       '---\ntype: todo\nrelatedContexts: ["people/Steve Ma"]\n---\n\nRelated fact.\n'
     );
   } finally {
@@ -2471,7 +2475,7 @@ test('due command sets a normalized due date property', async () => {
       message: 'set item 1 due to 2026-06-24'
     });
     assert.equal(
-      await readFile(factPath, 'utf8'),
+      markdownWithoutFactUuid(await readFile(factPath, 'utf8')),
       '---\ntype: fact\ndue: 2026-06-24\n---\n\nExisting fact.\n'
     );
   } finally {
@@ -2664,7 +2668,7 @@ test(':delete command trashes a listed item', async () => {
     ]);
     await assert.rejects(readFile(firstFactPath, 'utf8'), { code: 'ENOENT' });
     assert.equal(
-      await readFile(path.join(rootDirectory, '.trash', path.basename(firstFactPath)), 'utf8'),
+      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, '.trash', path.basename(firstFactPath)), 'utf8')),
       '---\ntype: fact\n---\n\nFirst fact.\n'
     );
     assert.deepEqual(
@@ -2769,7 +2773,7 @@ test(':delete command targets the active lens list', async () => {
       path.basename(todoPath)
     ]);
     assert.equal(
-      await readFile(path.join(rootDirectory, '.trash', path.basename(waitingPath)), 'utf8'),
+      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, '.trash', path.basename(waitingPath)), 'utf8')),
       '---\ntype: waiting\n---\n\nWaiting item.\n'
     );
   } finally {
@@ -2814,7 +2818,7 @@ test(':relate command relates a listed item to a context', async () => {
       message: 'related item 1 to people/Steve Ma'
     });
     assert.equal(
-      await readFile(factPath, 'utf8'),
+      markdownWithoutFactUuid(await readFile(factPath, 'utf8')),
       '---\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nFirst fact.\n'
     );
     assert.deepEqual(
@@ -2853,7 +2857,7 @@ test('named relate prompts for item and context', async () => {
       message: 'related item 1 to people/Steve Ma'
     });
     assert.equal(
-      await readFile(factPath, 'utf8'),
+      markdownWithoutFactUuid(await readFile(factPath, 'utf8')),
       '---\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nFirst fact.\n'
     );
     assert.equal(state.pendingCommand, null);

@@ -1,10 +1,12 @@
 import { access, mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
 const pad = (value, width = 2) => String(value).padStart(width, '0');
 const factTypePattern = /^[A-Za-z][A-Za-z0-9 _-]*$/u;
 const frontMatterPropertyPattern = /^[A-Za-z][A-Za-z0-9_-]*$/u;
 const trashDirectoryName = '.trash';
+const factIdField = 'id';
 const relatedContextsField = 'relatedContexts';
 const maxFilenameBaseLength = 120;
 const maxFactTitleLength = 80;
@@ -79,10 +81,12 @@ export function titleForFactText(text, maxLength = maxFactTitleLength) {
 export function buildFactMarkdown(title, options = {}) {
   const {
     body = '',
+    id = null,
     properties = {},
     relations = [],
     type = 'fact'
   } = options;
+  const idLines = id ? [`${factIdField}: ${quoteFrontMatterScalar(id)}`] : [];
   const relationLines = relations.length > 0
     ? [`${relatedContextsField}: [${relations.map(quoteFrontMatterString).join(', ')}]`]
     : [];
@@ -98,6 +102,7 @@ export function buildFactMarkdown(title, options = {}) {
     '---',
     `title: ${quoteFrontMatterScalar(title)}`,
     `type: ${quoteFrontMatterScalar(type)}`,
+    ...idLines,
     ...propertyLines,
     ...relationLines,
     '---',
@@ -181,10 +186,16 @@ export function factTypeFromMarkdown(markdown) {
   return type ? unquoteFrontMatterScalar(type) : null;
 }
 
+export function factUuidFromMarkdown(markdown) {
+  const id = frontMatterScalar(markdownFrontMatter(markdown), factIdField);
+
+  return id ? unquoteFrontMatterScalar(id) : null;
+}
+
 export function factPropertiesFromMarkdown(markdown) {
   const frontMatter = markdownFrontMatter(markdown);
   const properties = {};
-  const reservedKeys = new Set(['title', 'type', relatedContextsField]);
+  const reservedKeys = new Set(['title', 'type', factIdField, relatedContextsField]);
 
   for (const line of frontMatter.split(/\r?\n/u)) {
     const match = line.match(/^(?<key>[A-Za-z][A-Za-z0-9_-]*):\s*(?<value>.+?)\s*$/u);
@@ -256,6 +267,26 @@ export function markdownWithFrontMatterProperty(markdown, property, value) {
   const body = markdown.slice(frontMatterMatch[0].length);
 
   return `---\n${nextFrontMatter.trimEnd()}\n---\n${body}`;
+}
+
+export function ensureFactUuidInMarkdown(markdown, options = {}) {
+  const uuid = factUuidFromMarkdown(markdown);
+
+  if (uuid) {
+    return {
+      changed: false,
+      markdown,
+      uuid
+    };
+  }
+
+  const nextUuid = options.id ?? options.uuid ?? randomUUID();
+
+  return {
+    changed: true,
+    markdown: markdownWithFrontMatterProperty(markdown, factIdField, nextUuid),
+    uuid: nextUuid
+  };
 }
 
 function quoteFrontMatterString(value) {
@@ -561,6 +592,7 @@ export async function saveFact(text, options = {}) {
   const {
     body = null,
     contextLinks = [],
+    id = randomUUID(),
     relations = [],
     properties = {},
     title = text,
@@ -590,7 +622,7 @@ export async function saveFact(text, options = {}) {
     const filePath = path.join(destinationDirectory, filename);
 
     try {
-      await writeFile(filePath, buildFactMarkdown(factTitle, { body: factBody, properties, relations, type }), { flag: 'wx' });
+      await writeFile(filePath, buildFactMarkdown(factTitle, { body: factBody, id, properties, relations, type }), { flag: 'wx' });
       return filePath;
     } catch (error) {
       if (error.code !== 'EEXIST') {

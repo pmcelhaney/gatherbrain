@@ -34,6 +34,7 @@ test('loads contexts and facts with workspace-relative ids', async () => {
 
     assert.match(fact.createdAt, /^\d{4}-\d{2}-\d{2}T/u);
     assert.match(fact.modifiedAt, /^\d{4}-\d{2}-\d{2}T/u);
+    assert.match(fact.uuid, /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
     assert.deepEqual(fact, {
       id: 'people/alex/follow-up.md',
       path: path.join(directory, 'people', 'alex', 'follow-up.md'),
@@ -42,11 +43,16 @@ test('loads contexts and facts with workspace-relative ids', async () => {
       createdAt: fact.createdAt,
       modifiedAt: fact.modifiedAt,
       properties: {},
+      uuid: fact.uuid,
       relations: ['projects/app'],
       title: 'Follow up',
       type: 'task',
       text: 'Send the notes.'
     });
+    assert.match(
+      await readFile(path.join(directory, 'people', 'alex', 'follow-up.md'), 'utf8'),
+      /^---\ntitle: Follow up\ntype: task\nrelatedContexts: \["projects\/app"\]\nid: [0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\n---\n\nSend the notes\.\n$/u
+    );
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

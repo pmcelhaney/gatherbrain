@@ -35,6 +35,10 @@ function factIds(facts) {
   return facts.map((fact) => fact.id);
 }
 
+function markdownWithoutFactUuid(markdown) {
+  return markdown.replace(/^id: [0-9a-f-]+\n/mu, '');
+}
+
 test('creates facts and refreshes the workspace model', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-api-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -51,9 +55,10 @@ test('creates facts and refreshes the workspace model', async () => {
       relativePath: path.join('facts', 'call-steve.md')
     });
     assert.equal(
-      await readFile(savedFact.path, 'utf8'),
+      markdownWithoutFactUuid(await readFile(savedFact.path, 'utf8')),
       '---\ntitle: "Call Steve"\ntype: todo\n---\n\nCall Steve\n'
     );
+    assert.match(state.model.facts.get('call-steve.md').uuid, /^[0-9a-f-]{36}$/u);
     assert.equal(state.model.facts.get('call-steve.md').type, 'todo');
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -114,7 +119,7 @@ test('mutates facts through the workspace API', async () => {
     await deleteWorkspaceFact(state, fact);
     assert.equal(state.model.facts.has('ask-steve.md'), false);
     assert.equal(
-      await readFile(path.join(rootDirectory, '.trash', 'ask-steve.md'), 'utf8'),
+      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, '.trash', 'ask-steve.md'), 'utf8')),
       '---\ntitle: "Ask Steve"\ntype: waiting\ndue: 2026-07-04\nrelatedContexts: ["people/Steve Ma"]\n---\n\nAsk Steve\n'
     );
     assert.equal(savedFact.relativePath, path.join('facts', 'ask-steve.md'));

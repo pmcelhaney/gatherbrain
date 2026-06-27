@@ -5,12 +5,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildFactMarkdown,
+  ensureFactUuidInMarkdown,
   factAtIndex,
   factPropertiesFromMarkdown,
   factRelationsFromMarkdown,
   factTitleFromMarkdown,
   factTypeFromMarkdown,
   factTextFromMarkdown,
+  factUuidFromMarkdown,
   listContextDirectories,
   listFacts,
   markdownWithContextLinks,
@@ -54,6 +56,16 @@ test('builds fact Markdown with custom properties', () => {
   );
 });
 
+test('builds fact Markdown with a UUID id', () => {
+  assert.equal(
+    buildFactMarkdown('The sky is blue.', {
+      id: '11111111-1111-4111-8111-111111111111',
+      type: 'note'
+    }),
+    '---\ntitle: "The sky is blue."\ntype: note\nid: 11111111-1111-4111-8111-111111111111\n---\n\n\n'
+  );
+});
+
 test('extracts fact title from Markdown front matter', () => {
   assert.equal(
     factTitleFromMarkdown('---\ntitle: "The sky is blue."\ntype: fact\n---\n\n'),
@@ -75,9 +87,16 @@ test('extracts fact type from Markdown front matter', () => {
   );
 });
 
+test('extracts fact UUID id from Markdown front matter', () => {
+  assert.equal(
+    factUuidFromMarkdown('---\ntitle: Test\nid: 11111111-1111-4111-8111-111111111111\n---\n\n'),
+    '11111111-1111-4111-8111-111111111111'
+  );
+});
+
 test('extracts non-reserved front matter properties', () => {
   assert.deepEqual(
-    factPropertiesFromMarkdown('---\ntitle: Test\ntype: todo\ndue: 2026-06-24\npriority: "high value"\nrelatedContexts: ["projects/app"]\n---\n\nBody.\n'),
+    factPropertiesFromMarkdown('---\ntitle: Test\ntype: todo\nid: 11111111-1111-4111-8111-111111111111\ndue: 2026-06-24\npriority: "high value"\nrelatedContexts: ["projects/app"]\n---\n\nBody.\n'),
     {
       due: '2026-06-24',
       priority: 'high value'
@@ -114,6 +133,30 @@ test('converts context mentions to Markdown links', () => {
       contextLinks: [{ folder: 'Steve Ma', name: 'people/Steve Ma' }]
     }),
     'Talk to [Steve Ma](/people/Steve Ma).'
+  );
+});
+
+test('adds a UUID id to Markdown that does not have one', () => {
+  assert.deepEqual(
+    ensureFactUuidInMarkdown('---\ntitle: Test\n---\n\nBody.\n', {
+      id: '11111111-1111-4111-8111-111111111111'
+    }),
+    {
+      changed: true,
+      markdown: '---\ntitle: Test\nid: 11111111-1111-4111-8111-111111111111\n---\n\nBody.\n',
+      uuid: '11111111-1111-4111-8111-111111111111'
+    }
+  );
+});
+
+test('keeps an existing UUID id in Markdown', () => {
+  assert.deepEqual(
+    ensureFactUuidInMarkdown('---\ntitle: Test\nid: existing-id\n---\n\nBody.\n'),
+    {
+      changed: false,
+      markdown: '---\ntitle: Test\nid: existing-id\n---\n\nBody.\n',
+      uuid: 'existing-id'
+    }
   );
 });
 
@@ -195,6 +238,7 @@ test('saves a fact to a slug-named Markdown file', async () => {
 
   try {
     const savedPath = await saveFact('Captured from the prompt.', {
+      id: '11111111-1111-4111-8111-111111111111',
       rootDirectory: directory
     });
 
@@ -202,7 +246,7 @@ test('saves a fact to a slug-named Markdown file', async () => {
     assert.equal(path.basename(savedPath), 'captured-from-the-prompt.md');
     assert.equal(
       await readFile(savedPath, 'utf8'),
-      '---\ntitle: "Captured from the prompt."\ntype: fact\n---\n\nCaptured from the prompt.\n'
+      '---\ntitle: "Captured from the prompt."\ntype: fact\nid: 11111111-1111-4111-8111-111111111111\n---\n\nCaptured from the prompt.\n'
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -239,13 +283,14 @@ test('does not save facts to the reserved context metadata filename', async () =
 
   try {
     const savedPath = await saveFact('index', {
+      id: '11111111-1111-4111-8111-111111111111',
       rootDirectory: directory
     });
 
     assert.equal(path.basename(savedPath), 'index-2.md');
     assert.equal(
       await readFile(savedPath, 'utf8'),
-      '---\ntitle: index\ntype: fact\n---\n\nindex\n'
+      '---\ntitle: index\ntype: fact\nid: 11111111-1111-4111-8111-111111111111\n---\n\nindex\n'
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
