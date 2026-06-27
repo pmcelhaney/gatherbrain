@@ -125,6 +125,8 @@ export function createPromptState(options = {}) {
     pendingFactTypeConfirmation: null,
     pendingTimeboxCancellation: null,
     temporaryBodyLines: null,
+    temporaryBodyType: null,
+    temporaryBodyDate: null,
     lensBackStack: [],
     lensForwardStack: [],
     debugKeys: false,
@@ -2002,6 +2004,8 @@ export function createReadlineCompleter(state) {
 
 function clearTemporaryBody(state) {
   state.temporaryBodyLines = null;
+  state.temporaryBodyType = null;
+  state.temporaryBodyDate = null;
 }
 
 function showCommandHelp(state, message = null) {
@@ -2244,17 +2248,57 @@ function dateForTimeboxCommand(state) {
 async function showPlanner(state) {
   const date = dateForTimeboxCommand(state);
 
+  return refreshPlannerView(state, {
+    date,
+    resetPage: true,
+    statusMessage: `plan ${date}`
+  });
+}
+
+async function refreshPlannerView(state, options = {}) {
+  const date = options.date ?? state.temporaryBodyDate ?? dateForTimeboxCommand(state);
+
   state.settings ??= await loadSettings({ rootDirectory: state.rootDirectory });
   state.temporaryBodyLines = await plannerLines(state.rootDirectory, date, {
     workday: state.settings.workday
   });
-  state.pageStartIndex = 0;
-  state.statusMessage = `plan ${date}`;
+  state.temporaryBodyType = 'plan';
+  state.temporaryBodyDate = date;
+
+  if (options.resetPage) {
+    state.pageStartIndex = 0;
+  }
+
+  state.statusMessage = options.statusMessage ?? `plan ${date}`;
 
   return {
     action: 'continue',
     message: state.statusMessage
   };
+}
+
+async function refreshPlannerViewIfActive(state, statusMessage) {
+  if (state.temporaryBodyType !== 'plan') {
+    state.statusMessage = '';
+    clearTemporaryBody(state);
+
+    return false;
+  }
+
+  await refreshPlannerView(state, {
+    resetPage: false,
+    statusMessage
+  });
+
+  return true;
+}
+
+function setStatusPreservingPlannerView(state, statusMessage) {
+  state.statusMessage = statusMessage;
+
+  if (state.temporaryBodyType !== 'plan') {
+    clearTemporaryBody(state);
+  }
 }
 
 async function planTimebox(parsedEntry, state) {
@@ -2267,16 +2311,14 @@ async function planTimebox(parsedEntry, state) {
       range: parsedEntry.range
     });
 
-    state.statusMessage = '';
-    clearTemporaryBody(state);
+    await refreshPlannerViewIfActive(state, `planned ${timebox.start}-${timebox.end} ${timebox.context}`);
 
     return {
       action: 'continue',
       message: `planned ${timebox.start}-${timebox.end} ${timebox.context}`
     };
   } catch (error) {
-    state.statusMessage = error.message;
-    clearTemporaryBody(state);
+    setStatusPreservingPlannerView(state, error.message);
 
     return {
       action: 'continue',
@@ -2305,8 +2347,7 @@ async function cancelPlannedTimebox(parsedEntry, state) {
     });
 
     if (result.matches.length === 0) {
-      state.statusMessage = `no timebox matches ${parsedEntry.range.start}-${parsedEntry.range.end} ${context}`;
-      clearTemporaryBody(state);
+      setStatusPreservingPlannerView(state, `no timebox matches ${parsedEntry.range.start}-${parsedEntry.range.end} ${context}`);
 
       return {
         action: 'continue',
@@ -2323,7 +2364,7 @@ async function cancelPlannedTimebox(parsedEntry, state) {
         prompt: cancellationPrompt(result.matches)
       };
       state.statusMessage = state.pendingTimeboxCancellation.prompt;
-      clearTemporaryBody(state);
+      setStatusPreservingPlannerView(state, state.pendingTimeboxCancellation.prompt);
 
       return {
         action: 'continue',
@@ -2333,16 +2374,14 @@ async function cancelPlannedTimebox(parsedEntry, state) {
 
     const cancelled = result.cancelled[0];
     const message = `cancelled ${cancelled.start}-${cancelled.end} ${cancelled.context}`;
-    state.statusMessage = '';
-    clearTemporaryBody(state);
+    await refreshPlannerViewIfActive(state, message);
 
     return {
       action: 'continue',
       message
     };
   } catch (error) {
-    state.statusMessage = error.message;
-    clearTemporaryBody(state);
+    setStatusPreservingPlannerView(state, error.message);
 
     return {
       action: 'continue',
@@ -2375,8 +2414,7 @@ async function handlePendingTimeboxCancellation(entry, state) {
   });
   const cancelled = result.cancelled[0];
   const message = `cancelled ${cancelled.start}-${cancelled.end} ${cancelled.context}`;
-  state.statusMessage = '';
-  clearTemporaryBody(state);
+  await refreshPlannerViewIfActive(state, message);
 
   return {
     action: 'continue',

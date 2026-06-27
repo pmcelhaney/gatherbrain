@@ -595,6 +595,66 @@ test(':plan appends a timebox row and :plan displays the planner', async () => {
   }
 });
 
+test('editing timeboxes keeps the planner view active', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'arb-prep'), { recursive: true });
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      now: () => new Date(2026, 5, 29, 8, 0)
+    });
+
+    await handleEntry(':plan', state);
+    state.pageStartIndex = 4;
+
+    assert.deepEqual(await handleEntry(':plan 9-10 /arb-prep', state), {
+      action: 'continue',
+      message: 'planned 09:00-10:00 /arb-prep'
+    });
+    assert.equal(state.temporaryBodyType, 'plan');
+    assert.equal(state.pageStartIndex, 4);
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        rows: 6,
+        columns: 80
+      }),
+      [
+        'facts | planned 09:00-10:00 /arb-prep',
+        '--------------------------------------------------------------------------------',
+        '09:00  /arb-prep',
+        '09:15',
+        '09:30'
+      ]
+    );
+
+    assert.deepEqual(await handleEntry(':cancel 9 /arb-prep', state), {
+      action: 'continue',
+      message: 'cancelled 09:00-10:00 /arb-prep'
+    });
+    assert.equal(state.temporaryBodyType, 'plan');
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        rows: 6,
+        columns: 80
+      }),
+      [
+        'facts | cancelled 09:00-10:00 /arb-prep',
+        '--------------------------------------------------------------------------------',
+        '09:00',
+        '09:15',
+        '09:30'
+      ]
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test(':cancel removes matching timeboxes and prompts for ambiguous matches', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
