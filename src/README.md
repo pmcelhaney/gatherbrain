@@ -83,15 +83,20 @@ Enum registry loader. It merges `default-config/enums.json` with workspace-local
 
 Natural-language date parsing and ISO date formatting for command arguments. It handles stable values such as `today`, `tomorrow`, weekdays, and calendar dates.
 
+### `settings.js`
+
+Workspace settings loader. It merges `default-config/settings.json` with workspace-local `.gatherbrain/settings.json`. Current settings include the planner workday range used by `timeboxes.js`.
+
 ### `config-watch.js`
 
-Filesystem watcher for workspace-local configuration under `.gatherbrain`. It reports changes to commands, enums, lenses, and templates so `index.js` can reload registries and clear template caches.
+Filesystem watcher for workspace-local configuration under `.gatherbrain`. It reports changes to commands, enums, lenses, settings, and templates so `index.js` can reload registries/settings and clear template caches.
 
 ## Configuration Outside `src`
 
 - `default-config/commands.json`: built-in command DSL definitions.
 - `default-config/enums.json`: built-in enum definitions.
 - `default-config/lenses.json`: built-in lens definitions.
+- `default-config/settings.json`: built-in workspace settings.
 - `default-config/templates/facts.hbs`: default facts body template.
 - `scripts/import-people.js`: Notion collaborators CSV importer that creates one context per person and one source-traceable fact per imported cell.
 

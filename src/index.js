@@ -52,6 +52,7 @@ import {
   clearTemplateCache,
   renderTemplateLines
 } from './templates.js';
+import { loadSettings } from './settings.js';
 import {
   addWorkspaceEnumValue,
   contextDirectoryForId,
@@ -112,6 +113,7 @@ export function createPromptState(options = {}) {
     peekContextDirectory: null,
     commandRegistry: options.commandRegistry ?? null,
     lensRegistry: options.lensRegistry ?? null,
+    settings: options.settings ?? null,
     currentLensId: defaultLensId,
     peekLensId: defaultLensId,
     itemNumberAssignments: new Map(),
@@ -2053,6 +2055,9 @@ export async function reloadWorkspaceConfig(state) {
   state.lensRegistry = await loadLensRegistry({
     rootDirectory: state.rootDirectory
   });
+  state.settings = await loadSettings({
+    rootDirectory: state.rootDirectory
+  });
 }
 
 function contextCreationPrompt(contextDirectory) {
@@ -2239,7 +2244,10 @@ function dateForTimeboxCommand(state) {
 async function showPlanner(state) {
   const date = dateForTimeboxCommand(state);
 
-  state.temporaryBodyLines = await plannerLines(state.rootDirectory, date);
+  state.settings ??= await loadSettings({ rootDirectory: state.rootDirectory });
+  state.temporaryBodyLines = await plannerLines(state.rootDirectory, date, {
+    workday: state.settings.workday
+  });
   state.pageStartIndex = 0;
   state.statusMessage = `plan ${date}`;
 
@@ -2881,6 +2889,9 @@ async function main() {
       rootDirectory: effectiveRootDirectory
     }),
     lensRegistry: await loadLensRegistry({
+      rootDirectory: effectiveRootDirectory
+    }),
+    settings: await loadSettings({
       rootDirectory: effectiveRootDirectory
     }),
     model: await loadWorkspaceModel({

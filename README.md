@@ -78,7 +78,7 @@ Hidden directories are ignored, including `.trash`, `.gatherbrain`, and any dire
 
 Each context may include a reserved `index.md` file for metadata about the context itself. The model attaches that file to the context and does not render it as a normal fact.
 
-Timeboxes are stored separately under `.gatherbrain/timeboxes/` as one TSV file per day. Each row stores a context path, start time, and end time; later rows overlay earlier rows when resolving who owns a moment.
+Timeboxes are stored separately under `.gatherbrain/timeboxes/` as one TSV file per day. Each row stores a context path, start time, and end time; later rows overlay earlier rows when resolving who owns a moment. The planner shows the configured workday by default, `08:00-18:00` unless changed in workspace settings.
 
 This format keeps the data useful outside the app. Editors, scripts, search tools, Git, backups, importers, and LLM-based tools can all work with the same files.
 

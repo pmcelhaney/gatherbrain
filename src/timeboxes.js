@@ -77,7 +77,7 @@ export function parseClockTime(value) {
   return hour * 60 + minute;
 }
 
-function parseStoredClockTime(value) {
+export function parseStoredClockTime(value) {
   const match = value.trim().match(/^(?<hour>\d{2}):(?<minute>\d{2})$/u);
 
   if (!match) {
@@ -285,25 +285,38 @@ function durationText(minutes) {
   return hours === 1 ? '1 hour free' : `${hours} hours free`;
 }
 
-export function plannerLinesForDay(timeboxes) {
+function plannerDisplayRange(timeboxes, options = {}) {
+  const workdayStartMinutes = options.workday?.startMinutes ?? 8 * 60;
+  const workdayEndMinutes = options.workday?.endMinutes ?? 18 * 60;
+  const earliestTimeboxStart = Math.min(workdayStartMinutes, ...timeboxes.map((timebox) => timebox.startMinutes));
+  const latestTimeboxEnd = Math.max(workdayEndMinutes, ...timeboxes.map((timebox) => timebox.endMinutes));
+
+  return {
+    startMinutes: Math.floor(earliestTimeboxStart / plannerRowMinutes) * plannerRowMinutes,
+    endMinutes: Math.ceil(latestTimeboxEnd / plannerRowMinutes) * plannerRowMinutes
+  };
+}
+
+export function plannerLinesForDay(timeboxes, options = {}) {
+  const { startMinutes, endMinutes } = plannerDisplayRange(timeboxes, options);
   const lines = [];
   let previousContext = null;
   let freeBlockEnd = 0;
 
-  for (let minutes = 0; minutes < minutesPerDay; minutes += plannerRowMinutes) {
+  for (let minutes = startMinutes; minutes < endMinutes; minutes += plannerRowMinutes) {
     const context = resolveTimeboxContext(timeboxes, minutes);
     let label = '';
 
     if (context !== previousContext) {
       if (context === '/') {
-        const nextClaimedMinute = nextContextBoundary(timeboxes, minutes, context);
+        const nextClaimedMinute = nextContextBoundary(timeboxes, minutes, context, endMinutes);
         freeBlockEnd = nextClaimedMinute;
         label = `[${durationText(nextClaimedMinute - minutes)}]`;
       } else {
         label = context;
       }
     } else if (context === '/' && minutes >= freeBlockEnd) {
-      freeBlockEnd = nextContextBoundary(timeboxes, minutes, context);
+      freeBlockEnd = nextContextBoundary(timeboxes, minutes, context, endMinutes);
       label = `[${durationText(freeBlockEnd - minutes)}]`;
     }
 
@@ -314,18 +327,18 @@ export function plannerLinesForDay(timeboxes) {
   return lines;
 }
 
-function nextContextBoundary(timeboxes, startMinutes, context) {
-  for (let minutes = startMinutes + plannerRowMinutes; minutes < minutesPerDay; minutes += plannerRowMinutes) {
+function nextContextBoundary(timeboxes, startMinutes, context, endMinutes = minutesPerDay) {
+  for (let minutes = startMinutes + plannerRowMinutes; minutes < endMinutes; minutes += plannerRowMinutes) {
     if (resolveTimeboxContext(timeboxes, minutes) !== context) {
       return minutes;
     }
   }
 
-  return minutesPerDay;
+  return endMinutes;
 }
 
-export async function plannerLines(rootDirectory, date) {
-  return plannerLinesForDay(await readTimeboxes(rootDirectory, date));
+export async function plannerLines(rootDirectory, date, options = {}) {
+  return plannerLinesForDay(await readTimeboxes(rootDirectory, date), options);
 }
 
 export async function contextsOverlappingTime(rootDirectory, options = {}) {

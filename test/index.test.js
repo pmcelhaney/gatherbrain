@@ -573,7 +573,7 @@ test(':plan appends a timebox row and :plan displays the planner', async () => {
       action: 'continue',
       message: 'plan 2026-06-29'
     });
-    state.pageStartIndex = 36;
+    state.pageStartIndex = 4;
     assert.deepEqual(
       buildTuiLines({
         state,
@@ -683,6 +683,51 @@ test(':cancel completes only contexts overlapping the supplied time', async () =
 
     assert.deepEqual(await completeEntry(':cancel 11 /a', state), [['/arb-prep'], '/a']);
     assert.deepEqual(await completeEntry(':cancel 11 /t', state), [[], '/t']);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':plan display uses workspace workday settings', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, '.gatherbrain'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, '.gatherbrain', 'settings.json'),
+      JSON.stringify({
+        settings: {
+          workday: {
+            start: '09:00',
+            end: '10:00'
+          }
+        }
+      })
+    );
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      now: () => new Date(2026, 5, 29, 8, 0)
+    });
+
+    await handleEntry(':plan', state);
+
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        rows: 8,
+        columns: 80
+      }),
+      [
+        'facts | plan 2026-06-29',
+        '--------------------------------------------------------------------------------',
+        '09:00  [1 hour free]',
+        '09:15',
+        '09:30',
+        '09:45'
+      ]
+    );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

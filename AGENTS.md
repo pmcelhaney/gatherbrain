@@ -20,9 +20,10 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
 - Handlebars template rendering and color filters: `src/templates.js`
 - Enum config and autocomplete values: `src/enums.js`
 - Natural-language dates: `src/dates.js`
+- Workspace settings config: `src/settings.js`
 - Timebox planner TSV storage, parsing, overlay resolution, and planner rows: `src/timeboxes.js`
 - Workspace config watchers: `src/config-watch.js`
-- Default command/lens/enum/template config: `default-config/`
+- Default command/lens/enum/settings/template config: `default-config/`
 - Notion people import script: `scripts/import-people.js`
 - Tests mirror source files under `test/`.
 
@@ -44,6 +45,7 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
 - Timeboxes are stored outside the fact model under `.gatherbrain/timeboxes/YYYY-MM-DD.tsv`.
 - Timeboxes are append-only overlays during planning; resolving a moment uses the last matching row and falls back to `/`.
 - The root context `/` is never stored as a timebox row.
+- Planner rendering defaults to the configured workday and expands only when timeboxes fall outside it.
 
 ## Fact Creation Details
 
@@ -78,6 +80,7 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
 - If the change affects screen layout, wrapping, prompt mode, paste, editor/open integration, or key handling, start in `src/index.js`.
 - If the change affects command syntax or arguments, update `default-config/commands.json` and `src/commands.js`.
 - If the change affects user-configurable views, update `default-config/lenses.json`, `default-config/templates/`, `src/lenses.js`, or `src/templates.js` as appropriate.
+- If the change affects workspace settings, update `default-config/settings.json`, `src/settings.js`, and tests.
 - If the change affects default autocomplete values for enum arguments, update `default-config/enums.json` and tests.
 - If the change affects planner storage, time parsing, overlay resolution, or planner rows, start in `src/timeboxes.js`.
 
@@ -88,6 +91,7 @@ Workspace-local configuration lives under `.gatherbrain/` in the selected worksp
 - `.gatherbrain/commands.json`
 - `.gatherbrain/enums.json`
 - `.gatherbrain/lenses.json`
+- `.gatherbrain/settings.json`
 - `.gatherbrain/templates/*.hbs`
 
 Default config is loaded first, then local config overrides or extends it.

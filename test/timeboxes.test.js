@@ -109,7 +109,10 @@ test('renders 15-minute planner rows with free block markers', async () => {
 
     const lines = plannerLinesForDay(await readTimeboxes(rootDirectory, '2026-06-29'));
 
-    assert.deepEqual(lines.slice(36, 57), [
+    assert.equal(lines[0], '08:00  [1 hour free]');
+    assert.equal(lines.at(-1), '17:45');
+    assert.equal(lines.length, 40);
+    assert.deepEqual(lines.slice(4, 25), [
       '09:00  /arb-prep',
       '09:15',
       '09:30',
@@ -135,6 +138,39 @@ test('renders 15-minute planner rows with free block markers', async () => {
   } finally {
     await rm(rootDirectory, { recursive: true, force: true });
   }
+});
+
+test('expands planner rows when timeboxes fall outside the workday', () => {
+  const lines = plannerLinesForDay([
+    {
+      context: '/early',
+      startMinutes: 7 * 60,
+      endMinutes: 7 * 60 + 30
+    },
+    {
+      context: '/late',
+      startMinutes: 18 * 60 + 30,
+      endMinutes: 19 * 60
+    }
+  ]);
+
+  assert.equal(lines[0], '07:00  /early');
+  assert.equal(lines[2], '07:30  [11 hours free]');
+  assert.equal(lines.at(-2), '18:30  /late');
+  assert.equal(lines.at(-1), '18:45');
+});
+
+test('uses configured workday boundaries for planner rows', () => {
+  const lines = plannerLinesForDay([], {
+    workday: {
+      startMinutes: 9 * 60,
+      endMinutes: 17 * 60
+    }
+  });
+
+  assert.equal(lines[0], '09:00  [8 hours free]');
+  assert.equal(lines.at(-1), '16:45');
+  assert.equal(lines.length, 32);
 });
 
 test('cancels matching rows and completes overlapping contexts', async () => {

@@ -10,7 +10,7 @@ The root directory and every non-hidden subdirectory are contexts. Hidden direct
 
 Each context can include an optional reserved `index.md` file for context metadata. The app loads that file onto the context and does not show it as a normal fact.
 
-The workspace is loaded into an in-memory model at startup. Visible workspace directories are watched while the TUI is running, so external Markdown edits and newly created contexts are reflected in the model without restarting the app. Workspace configuration in `.gatherbrain` is also watched, so command, lens, enum, and template changes are reloaded while the app runs.
+The workspace is loaded into an in-memory model at startup. Visible workspace directories are watched while the TUI is running, so external Markdown edits and newly created contexts are reflected in the model without restarting the app. Workspace configuration in `.gatherbrain` is also watched, so command, lens, enum, settings, and template changes are reloaded while the app runs.
 
 The top of the screen shows the current context. Existing facts in that context and its subcontexts are listed below it, and the prompt stays on the bottom line.
 
@@ -148,6 +148,8 @@ Use `:plan` without arguments to show the current day's 15-minute planner view:
 :plan
 ```
 
+The planner defaults to showing the workday from `08:00` through `18:00`. If a day has timeboxes outside that window, the visible rows expand to include them.
+
 Use `:plan <start> <context>` to create a 30-minute timebox:
 
 ```text
@@ -188,3 +190,16 @@ Default commands are defined in `default-config/commands.json`. A workspace-loca
 Command enum arguments can use workspace-local `.gatherbrain/enums.json` value lists. See [Custom Enums](custom-enums.md).
 
 Default lenses are defined in `default-config/lenses.json`. A workspace-local `.gatherbrain/lenses.json` can add lenses or override defaults with the same lens id. See [Custom Lenses](custom-lenses.md).
+
+Workspace settings live in `.gatherbrain/settings.json`. For example, to change the planner workday:
+
+```json
+{
+  "settings": {
+    "workday": {
+      "start": "09:00",
+      "end": "17:00"
+    }
+  }
+}
+```
