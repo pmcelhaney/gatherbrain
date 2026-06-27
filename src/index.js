@@ -84,7 +84,6 @@ const ansiLinkColor = '\x1b[34m';
 const ansiRelationColor = '\x1b[35m';
 const ansiSecondaryColor = '\x1b[2m';
 const ansiPlannerFreeColor = '\x1b[32m';
-const ansiPlannerCurrentColor = '\x1b[33m';
 const ansiResetColor = '\x1b[39m';
 const ansiResetIntensity = '\x1b[22m';
 const ansiCommandPromptBackground = '\x1b[48;5;236m';
@@ -837,7 +836,6 @@ function truncateVisible(line, columns) {
     || result.lastIndexOf(ansiLinkColor) > result.lastIndexOf(ansiResetColor)
     || result.lastIndexOf(ansiRelationColor) > result.lastIndexOf(ansiResetColor)
     || result.lastIndexOf(ansiPlannerFreeColor) > result.lastIndexOf(ansiResetColor)
-    || result.lastIndexOf(ansiPlannerCurrentColor) > result.lastIndexOf(ansiResetColor)
   ) {
     result += ansiResetColor;
   }
@@ -1256,14 +1254,14 @@ function buildTemporaryBodyLines(lines, rows, columns, pageStartIndex = 0, optio
 
 function colorizePlannerLine(line) {
   if (line.startsWith('> ')) {
-    return `${ansiPlannerCurrentColor}${line}${ansiResetColor}`;
+    return line;
   }
 
-  if (line.includes('◇') || line.includes('╎')) {
+  if (line.includes('free') || line.includes('◇') || line.includes('╎')) {
     return `${ansiPlannerFreeColor}${line}${ansiResetColor}`;
   }
 
-  if (line.includes('○') || line.includes('│')) {
+  if (line.includes('●') || line.includes('○') || line.includes('│')) {
     return `${ansiTypeColor}${line}${ansiResetColor}`;
   }
 

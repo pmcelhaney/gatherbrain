@@ -184,8 +184,8 @@ test('marks the exact current planner minute', () => {
     }
   }), [
     '   9:00  ◇  free',
-    '>  9:07  ╎  now',
-    '         ╎  1h'
+    '         ╎  1h',
+    '>  9:07  ╎'
   ]);
 
   assert.deepEqual(plannerLinesForDay([], {
@@ -242,13 +242,13 @@ test('scales planner rail spacing to a target row count', () => {
     }
   }), [
     '   9:00  ○  /short',
-    '         │',
     '         │  1h',
+    '         │',
     '  10:00  ○  /long',
+    '         │  3h',
     '         │',
     '         │',
-    '         │',
-    '         │  3h'
+    '         │'
   ]);
 });
 

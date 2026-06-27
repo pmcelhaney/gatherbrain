@@ -347,6 +347,7 @@ export function renderPlannerBlocks(blocks, options = {}) {
 
   for (const [index, block] of blocks.entries()) {
     lines.push(plannerBlockStartLine(block, currentMinutes));
+    lines.push(plannerBlockDurationLine(block));
 
     if (currentMinutes > block.startMinutes && currentMinutes < block.endMinutes) {
       lines.push(plannerCurrentLine(block, currentMinutes));
@@ -355,8 +356,6 @@ export function renderPlannerBlocks(blocks, options = {}) {
     for (let count = 0; count < extraRows[index]; count += 1) {
       lines.push(plannerBlockRailLine(block));
     }
-
-    lines.push(plannerBlockDurationLine(block));
   }
 
   return lines;
@@ -460,7 +459,7 @@ function plannerBlockStartLine(block, currentMinutes) {
 }
 
 function plannerCurrentLine(block, currentMinutes) {
-  return `> ${formatDisplayClockTime(currentMinutes, { padHour: true })}  ${railForPlannerBlock(block)}  now`;
+  return `> ${formatDisplayClockTime(currentMinutes, { padHour: true })}  ${railForPlannerBlock(block)}`;
 }
 
 function plannerBlockRailLine(block) {

@@ -601,12 +601,12 @@ test(':plan appends a timebox row and :plan displays the planner', async () => {
         '>  8:00  ●  free',
         '         ╎  1h',
         '   9:00  ○  /arb-prep',
-        '         │',
         '         │  3h',
+        '         │',
         '  12:00  ◇  free',
+        '         ╎  6h',
         '         ╎',
-        '         ╎',
-        '         ╎  6h'
+        '         ╎'
       ]
     );
   } finally {
@@ -664,8 +664,8 @@ test('editing timeboxes keeps the planner view active', async () => {
         'facts | cancelled 9:00-10:00 /arb-prep',
         '--------------------------------------------------------------------------------',
         '   8:00  ◇  free',
-        '>  9:20  ╎  now',
-        '         ╎  10h'
+        '         ╎  10h',
+        '>  9:20  ╎'
       ]
     );
   } finally {
@@ -879,10 +879,10 @@ test(':plan display uses workspace workday settings', async () => {
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
         '\x1b[32m   9:00  ◇  free\x1b[39m',
-        '\x1b[33m>  9:20  ╎  now\x1b[39m',
+        '\x1b[32m         ╎  1h\x1b[39m',
+        '>  9:20  ╎',
         '\x1b[32m         ╎\x1b[39m',
-        '\x1b[32m         ╎\x1b[39m',
-        '\x1b[32m         ╎  1h\x1b[39m'
+        '\x1b[32m         ╎\x1b[39m'
       ]
     );
 
@@ -896,10 +896,10 @@ test(':plan display uses workspace workday settings', async () => {
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
         '   9:00  ◇  free',
-        '>  9:20  ╎  now',
+        '         ╎  1h',
+        '>  9:20  ╎',
         '         ╎',
-        '         ╎',
-        '         ╎  1h'
+        '         ╎'
       ]
     );
   } finally {
