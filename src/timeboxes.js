@@ -101,13 +101,16 @@ export function formatClockTime(minutes) {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
-export function formatDisplayClockTime(minutes) {
+export function formatDisplayClockTime(minutes, options = {}) {
   const normalizedMinutes = Math.max(0, Math.min(minutes, minutesPerDay));
   const hour = Math.floor(normalizedMinutes / 60);
   const minute = normalizedMinutes % 60;
   const displayHour = hour % 12 || 12;
+  const paddedHour = options.padHour && displayHour < 10
+    ? ` ${displayHour}`
+    : String(displayHour);
 
-  return `${displayHour}:${String(minute).padStart(2, '0')}`;
+  return `${paddedHour}:${String(minute).padStart(2, '0')}`;
 }
 
 export function formatDisplayTimeRange(timebox) {
@@ -388,11 +391,11 @@ function plannerBlockStartLine(block, currentMinutes) {
   const marker = hasCurrentMarker ? '> ' : '  ';
   const node = hasCurrentMarker ? '●' : nodeForPlannerBlock(block);
 
-  return `${marker}${formatDisplayClockTime(block.startMinutes)}  ${node}  ${labelForPlannerBlock(block)}`;
+  return `${marker}${formatDisplayClockTime(block.startMinutes, { padHour: true })}  ${node}  ${labelForPlannerBlock(block)}`;
 }
 
 function plannerCurrentLine(block, currentMinutes) {
-  return `> ${formatDisplayClockTime(currentMinutes)}  ${railForPlannerBlock(block)}  now`;
+  return `> ${formatDisplayClockTime(currentMinutes, { padHour: true })}  ${railForPlannerBlock(block)}  now`;
 }
 
 function plannerBlockDurationLine(block) {
