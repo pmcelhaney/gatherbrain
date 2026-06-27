@@ -222,6 +222,36 @@ test('renders planner timeline blocks at exact timebox boundaries', () => {
   ]);
 });
 
+test('scales planner rail spacing to a target row count', () => {
+  assert.deepEqual(plannerLinesForDay([
+    {
+      context: '/short',
+      startMinutes: 9 * 60,
+      endMinutes: 10 * 60
+    },
+    {
+      context: '/long',
+      startMinutes: 10 * 60,
+      endMinutes: 13 * 60
+    }
+  ], {
+    targetRows: 8,
+    workday: {
+      startMinutes: 9 * 60,
+      endMinutes: 13 * 60
+    }
+  }), [
+    '   9:00  ○  /short',
+    '         │',
+    '         │  1h',
+    '  10:00  ○  /long',
+    '         │',
+    '         │',
+    '         │',
+    '         │  3h'
+  ]);
+});
+
 test('cancels matching rows and completes overlapping contexts', async () => {
   const rootDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-timeboxes-'));
 

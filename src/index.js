@@ -37,8 +37,9 @@ import {
   cancelTimebox,
   contextsOverlappingTime,
   formatDisplayTimeRange,
-  plannerLines,
+  plannerBlocks,
   plannerMinutesFromDate,
+  renderPlannerBlocks,
   resolveContextForTime,
   timeboxDate
 } from './timeboxes.js';
@@ -129,6 +130,7 @@ export function createPromptState(options = {}) {
     pendingFactTypeConfirmation: null,
     pendingTimeboxCancellation: null,
     temporaryBodyLines: null,
+    temporaryBodyPlanner: null,
     temporaryBodyType: null,
     temporaryBodyDate: null,
     lensBackStack: [],
@@ -1415,8 +1417,9 @@ export function buildTuiLines(options = {}) {
   const header = fitLine(`${currentContextName(state)}${peekText}${lensText}${status}`, columns);
   const separator = '-'.repeat(Math.max(columns, 0));
   const bodyFacts = body ? factsForBody(body) : facts;
-  const { lines: bodyLines } = state.temporaryBodyLines
-    ? buildTemporaryBodyLines(state.temporaryBodyLines, factRows, columns, state.pageStartIndex ?? 0, {
+  const temporaryBodyLines = plannerBodyLinesForRows(state, factRows) ?? state.temporaryBodyLines;
+  const { lines: bodyLines } = temporaryBodyLines
+    ? buildTemporaryBodyLines(temporaryBodyLines, factRows, columns, state.pageStartIndex ?? 0, {
       bodyType: state.temporaryBodyType,
       includeColor
     })
@@ -1435,6 +1438,17 @@ export function buildTuiLines(options = {}) {
     separator,
     ...bodyLines.slice(0, factRows)
   ];
+}
+
+function plannerBodyLinesForRows(state, rows) {
+  if (state.temporaryBodyType !== 'plan' || !state.temporaryBodyPlanner) {
+    return null;
+  }
+
+  return renderPlannerBlocks(state.temporaryBodyPlanner.blocks, {
+    currentMinutes: state.temporaryBodyPlanner.currentMinutes,
+    targetRows: rows
+  });
 }
 
 export function renderTui(options = {}) {
@@ -2074,6 +2088,7 @@ export function createReadlineCompleter(state) {
 
 function clearTemporaryBody(state) {
   state.temporaryBodyLines = null;
+  state.temporaryBodyPlanner = null;
   state.temporaryBodyType = null;
   state.temporaryBodyDate = null;
 }
@@ -2085,6 +2100,7 @@ function showCommandHelp(state, message = null) {
     'Commands:',
     ...commandHelp(state.commandRegistry)
   ];
+  state.temporaryBodyPlanner = null;
 }
 
 export function openEditor(filePath, options = {}) {
@@ -2335,10 +2351,17 @@ async function refreshPlannerView(state, options = {}) {
   const currentDate = timeboxDate(now);
 
   state.settings ??= await loadSettings({ rootDirectory: state.rootDirectory });
-  state.temporaryBodyLines = await plannerLines(state.rootDirectory, date, {
-    currentMinutes: date === currentDate ? plannerMinutesFromDate(now) : null,
+  const currentMinutes = date === currentDate ? plannerMinutesFromDate(now) : null;
+  const plannerOptions = {
+    currentMinutes,
     workday: state.settings.workday
-  });
+  };
+
+  state.temporaryBodyPlanner = {
+    blocks: await plannerBlocks(state.rootDirectory, date, plannerOptions),
+    currentMinutes
+  };
+  state.temporaryBodyLines = renderPlannerBlocks(state.temporaryBodyPlanner.blocks, plannerOptions);
   state.temporaryBodyType = 'plan';
   state.temporaryBodyDate = date;
 
@@ -3127,6 +3150,7 @@ async function main() {
     if (state.debugKeys) {
       state.statusMessage = 'key debug on';
       state.temporaryBodyLines = keyDebugLines(value, key);
+      state.temporaryBodyPlanner = null;
     }
 
     const lensNavigation = lensNavigationForKey(key);

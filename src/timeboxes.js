@@ -324,20 +324,85 @@ export function plannerLinesForDay(timeboxes, options = {}) {
   const currentMinutes = Number.isInteger(options.currentMinutes)
     ? options.currentMinutes
     : null;
-  const blocks = resolvedPlannerBlocks(timeboxes, startMinutes, endMinutes);
+  const blocks = plannerBlocksForDay(timeboxes, options);
+
+  return renderPlannerBlocks(blocks, {
+    currentMinutes,
+    targetRows: options.targetRows
+  });
+}
+
+export function plannerBlocksForDay(timeboxes, options = {}) {
+  const { startMinutes, endMinutes } = plannerDisplayRange(timeboxes, options);
+
+  return resolvedPlannerBlocks(timeboxes, startMinutes, endMinutes);
+}
+
+export function renderPlannerBlocks(blocks, options = {}) {
+  const currentMinutes = Number.isInteger(options.currentMinutes)
+    ? options.currentMinutes
+    : null;
+  const extraRows = plannerExtraRowsForBlocks(blocks, currentMinutes, options.targetRows);
   const lines = [];
 
-  for (const block of blocks) {
+  for (const [index, block] of blocks.entries()) {
     lines.push(plannerBlockStartLine(block, currentMinutes));
 
     if (currentMinutes > block.startMinutes && currentMinutes < block.endMinutes) {
       lines.push(plannerCurrentLine(block, currentMinutes));
     }
 
+    for (let count = 0; count < extraRows[index]; count += 1) {
+      lines.push(plannerBlockRailLine(block));
+    }
+
     lines.push(plannerBlockDurationLine(block));
   }
 
   return lines;
+}
+
+function plannerExtraRowsForBlocks(blocks, currentMinutes, targetRows) {
+  const baseRows = blocks.reduce((count, block) => (
+    count + 2 + (currentMinutes > block.startMinutes && currentMinutes < block.endMinutes ? 1 : 0)
+  ), 0);
+  const availableExtraRows = Number.isInteger(targetRows)
+    ? Math.max(targetRows - baseRows, 0)
+    : 0;
+
+  if (availableExtraRows === 0 || blocks.length === 0) {
+    return blocks.map(() => 0);
+  }
+
+  const totalMinutes = blocks.reduce((total, block) => total + block.endMinutes - block.startMinutes, 0);
+
+  if (totalMinutes <= 0) {
+    return blocks.map(() => 0);
+  }
+
+  const allocations = blocks.map((block, index) => {
+    const exactRows = ((block.endMinutes - block.startMinutes) / totalMinutes) * availableExtraRows;
+
+    return {
+      index,
+      rows: Math.floor(exactRows),
+      remainder: exactRows % 1
+    };
+  });
+  let remainingRows = availableExtraRows - allocations.reduce((total, allocation) => total + allocation.rows, 0);
+
+  for (const allocation of [...allocations].sort((left, right) => right.remainder - left.remainder)) {
+    if (remainingRows <= 0) {
+      break;
+    }
+
+    allocation.rows += 1;
+    remainingRows -= 1;
+  }
+
+  return allocations
+    .sort((left, right) => left.index - right.index)
+    .map((allocation) => allocation.rows);
 }
 
 function resolvedPlannerBlocks(timeboxes, startMinutes, endMinutes) {
@@ -398,6 +463,10 @@ function plannerCurrentLine(block, currentMinutes) {
   return `> ${formatDisplayClockTime(currentMinutes, { padHour: true })}  ${railForPlannerBlock(block)}  now`;
 }
 
+function plannerBlockRailLine(block) {
+  return `         ${railForPlannerBlock(block)}`;
+}
+
 function plannerBlockDurationLine(block) {
   return `         ${railForPlannerBlock(block)}  ${compactDurationText(block.endMinutes - block.startMinutes)}`;
 }
@@ -416,6 +485,10 @@ function railForPlannerBlock(block) {
 
 export async function plannerLines(rootDirectory, date, options = {}) {
   return plannerLinesForDay(await readTimeboxes(rootDirectory, date), options);
+}
+
+export async function plannerBlocks(rootDirectory, date, options = {}) {
+  return plannerBlocksForDay(await readTimeboxes(rootDirectory, date), options);
 }
 
 export async function contextsOverlappingTime(rootDirectory, options = {}) {

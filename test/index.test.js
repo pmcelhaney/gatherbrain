@@ -589,6 +589,26 @@ test(':plan appends a timebox row and :plan displays the planner', async () => {
         '  12:00  ◇  free'
       ]
     );
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        rows: 12,
+        columns: 80
+      }),
+      [
+        'facts | plan 2026-06-29',
+        '--------------------------------------------------------------------------------',
+        '>  8:00  ●  free',
+        '         ╎  1h',
+        '   9:00  ○  /arb-prep',
+        '         │',
+        '         │  3h',
+        '  12:00  ◇  free',
+        '         ╎',
+        '         ╎',
+        '         ╎  6h'
+      ]
+    );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -860,6 +880,8 @@ test(':plan display uses workspace workday settings', async () => {
         '--------------------------------------------------------------------------------',
         '\x1b[32m   9:00  ◇  free\x1b[39m',
         '\x1b[33m>  9:20  ╎  now\x1b[39m',
+        '\x1b[32m         ╎\x1b[39m',
+        '\x1b[32m         ╎\x1b[39m',
         '\x1b[32m         ╎  1h\x1b[39m'
       ]
     );
@@ -875,6 +897,8 @@ test(':plan display uses workspace workday settings', async () => {
         '--------------------------------------------------------------------------------',
         '   9:00  ◇  free',
         '>  9:20  ╎  now',
+        '         ╎',
+        '         ╎',
         '         ╎  1h'
       ]
     );
