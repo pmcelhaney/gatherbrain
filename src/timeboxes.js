@@ -353,8 +353,20 @@ export function renderPlannerBlocks(blocks, options = {}) {
     lines.push(plannerBlockStartLine(block));
 
     if (currentMinutes > block.startMinutes && currentMinutes < block.endMinutes) {
+      const { before, after } = plannerExtraRowsAroundCurrent(block, currentMinutes, extraRows[index]);
+
+      for (let count = 0; count < before; count += 1) {
+        lines.push(plannerBlockRailLine(block));
+      }
+
       lines.push(plannerCurrentLine(currentMinutes));
       lines.push(plannerBlockRailLine(block));
+
+      for (let count = 0; count < after; count += 1) {
+        lines.push(plannerBlockRailLine(block));
+      }
+
+      continue;
     }
 
     for (let count = 0; count < extraRows[index]; count += 1) {
@@ -406,6 +418,25 @@ function plannerExtraRowsForBlocks(blocks, currentMinutes, targetRows) {
   return allocations
     .sort((left, right) => left.index - right.index)
     .map((allocation) => allocation.rows);
+}
+
+function plannerExtraRowsAroundCurrent(block, currentMinutes, extraRows) {
+  const duration = block.endMinutes - block.startMinutes;
+
+  if (duration <= 0 || extraRows <= 0) {
+    return {
+      before: 0,
+      after: extraRows
+    };
+  }
+
+  const elapsed = currentMinutes - block.startMinutes;
+  const before = Math.min(extraRows, Math.max(0, Math.round((elapsed / duration) * extraRows)));
+
+  return {
+    before,
+    after: extraRows - before
+  };
 }
 
 function currentMarkerRowsForBlock(block, currentMinutes) {

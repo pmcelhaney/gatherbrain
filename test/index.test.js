@@ -879,8 +879,8 @@ test(':plan display uses workspace workday settings', async () => {
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
         '\x1b[32m   9:00  ○  free · 1h\x1b[39m',
-        '\x1b[33m         ▶ now  9:20\x1b[39m',
         '\x1b[32m         ╎\x1b[39m',
+        '\x1b[33m         ▶ now  9:20\x1b[39m',
         '\x1b[32m         ╎\x1b[39m',
         '\x1b[32m         ╎\x1b[39m'
       ]
@@ -896,8 +896,8 @@ test(':plan display uses workspace workday settings', async () => {
         'facts | plan 2026-06-29',
         '--------------------------------------------------------------------------------',
         '   9:00  ○  free · 1h',
-        '         ▶ now  9:20',
         '         ╎',
+        '         ▶ now  9:20',
         '         ╎',
         '         ╎'
       ]

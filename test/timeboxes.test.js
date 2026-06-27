@@ -240,6 +240,32 @@ test('scales planner rail spacing to a target row count', () => {
   ]);
 });
 
+test('places the current marker proportionally inside a scaled block', () => {
+  assert.deepEqual(plannerLinesForDay([
+    {
+      context: '/lunch',
+      startMinutes: 12 * 60 + 30,
+      endMinutes: 14 * 60
+    }
+  ], {
+    currentMinutes: 13 * 60 + 7,
+    targetRows: 8,
+    workday: {
+      startMinutes: 12 * 60 + 30,
+      endMinutes: 14 * 60
+    }
+  }), [
+    '  12:30  ●  /lunch · 1h 30m',
+    '         │',
+    '         │',
+    '         ▶ now  1:07',
+    '         │',
+    '         │',
+    '         │',
+    '         │'
+  ]);
+});
+
 test('cancels matching rows and completes overlapping contexts', async () => {
   const rootDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-timeboxes-'));
 
