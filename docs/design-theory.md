@@ -78,8 +78,6 @@ Once a thought has a stable ID, it can:
 
 In the current implementation, the fact's model ID is its workspace-relative file path. Each fact also has a front matter UUID, which gives other tools a durable identifier that can survive moves. Markdown is the serialization format. Durable identity is the deeper design choice.
 
-This is also why the people importer creates one fact per source cell. A statement like "Alex lives in Chicago" should be traceable as its own claim, not buried inside a profile blob.
-
 Moving a fact preserves this idea. The file can move to a better context, while `relatedContexts` records where it came from. Reorganization should add provenance, not erase it.
 
 ## Peek Models Temporary Attention

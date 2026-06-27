@@ -7,7 +7,6 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
 - Read `src/README.md` for the architecture and each source file's role.
 - Run `npm test` after behavior changes.
 - Use `npm start -- <workspace-root>` or `node src/index.js <workspace-root>` to run the TUI manually.
-- Use `npm run import:people -- <csv-path> [workspace-root]` for the people importer.
 
 ## Fast Navigation
 
@@ -25,7 +24,6 @@ This repository is a prompt-first working-memory TUI written in Node.js ESM. It 
 - Daily event log TSV storage: `src/events.js`
 - Workspace config watchers: `src/config-watch.js`
 - Default command/lens/enum/settings/template config: `default-config/`
-- Notion people import script: `scripts/import-people.js`
 - Tests mirror source files under `test/`.
 
 ## Core Invariants

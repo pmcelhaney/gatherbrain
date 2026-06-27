@@ -122,14 +122,6 @@ Configuration is part of the model. Commands, enum-backed argument values, lense
 - [Custom Enums](docs/custom-enums.md)
 - [Custom Lenses](docs/custom-lenses.md)
 
-## Import People
-
-`gatherbrain` includes a Notion collaborators CSV importer that creates one context per person and one source-traceable fact per imported cell.
-
-```sh
-npm run import:people -- /path/to/collaborators.csv /path/to/workspace
-```
-
 ## Architecture
 
 See [Source Architecture](src/README.md) for implementation details and source-file responsibilities.

@@ -103,7 +103,6 @@ Filesystem watcher for workspace-local configuration under `.gatherbrain`. It re
 - `default-config/lenses.json`: built-in lens definitions.
 - `default-config/settings.json`: built-in workspace settings.
 - `default-config/templates/facts.hbs`: default facts body template.
-- `scripts/import-people.js`: Notion collaborators CSV importer that creates one context per person and one source-traceable fact per imported cell.
 
 ## Design Guidelines
 
