@@ -13,20 +13,22 @@ test('renders default facts template', () => {
     renderTemplate('facts', {
       emptyText: 'No facts yet.',
       facts: [
-        { number: ' 1', numberSuffix: '[1]', type: '', body: 'First fact. [1]' },
+        { number: ' 1', numberPrefix: ' 1.', numberSuffix: '[1]', type: '', display: 'First fact.', body: 'First fact. [1]' },
         {
           number: ' 2',
+          numberPrefix: ' 2.',
           numberSuffix: '[2]',
           type: 'task',
           due: 'Friday',
           displaySeparator: true,
+          display: 'Second fact.',
           body: 'Second fact. [2]'
         }
       ],
       hasFacts: true,
       includeColor: false
     }),
-    'First fact. [1]\ntask Friday Second fact. [2]'
+    ' 1. First fact.\n 2. task Friday Second fact.'
   );
 });
 
@@ -35,12 +37,12 @@ test('default facts template prefers body over title', () => {
     renderTemplate('facts', {
       emptyText: 'No facts yet.',
       facts: [
-        { number: ' 1', numberSuffix: '[1]', type: '', title: 'Title fallback', body: 'Body first. [1]' }
+        { number: ' 1', numberPrefix: ' 1.', numberSuffix: '[1]', type: '', display: 'Title fallback', title: 'Title fallback', body: 'Body first. [1]' }
       ],
       hasFacts: true,
       includeColor: false
     }),
-    'Body first. [1]'
+    ' 1. Title fallback'
   );
 });
 
@@ -49,19 +51,21 @@ test('renders template lines', () => {
     renderTemplateLines('facts', {
       emptyText: 'No facts yet.',
       facts: [
-        { number: ' 1', numberSuffix: '[1]', type: '', body: 'First fact. [1]' },
+        { number: ' 1', numberPrefix: ' 1.', numberSuffix: '[1]', type: '', display: 'First fact.', body: 'First fact. [1]' },
         {
           number: ' 2',
+          numberPrefix: ' 2.',
           numberSuffix: '[2]',
           type: 'task',
           displaySeparator: true,
+          display: 'Second fact.',
           body: 'Second fact. [2]'
         }
       ],
       hasFacts: true,
       includeColor: false
     }),
-    ['First fact. [1]', 'task Second fact. [2]']
+    [' 1. First fact.', ' 2. task Second fact.']
   );
 });
 
@@ -72,17 +76,19 @@ test('supports color filters in templates', () => {
       facts: [
         {
           number: ' 1',
+          numberPrefix: '\x1b[2m 1.\x1b[22m',
           numberSuffix: '[1]',
           type: 'task',
           due: 'Friday',
           displaySeparator: true,
+          display: 'Second fact.',
           body: `Second fact. \x1b[2m[1]\x1b[22m`
         }
       ],
       hasFacts: true,
       includeColor: true
     }),
-    '\x1b[36mtask\x1b[39m \x1b[35mFriday\x1b[39m Second fact. \x1b[2m[1]\x1b[22m'
+    '\x1b[2m 1.\x1b[22m \x1b[36mtask\x1b[39m \x1b[35mFriday\x1b[39m Second fact.'
   );
 });
 
@@ -93,17 +99,19 @@ test('renders child context source names in default facts template', () => {
       facts: [
         {
           number: ' 1',
+          numberPrefix: '\x1b[2m 1.\x1b[22m',
           numberSuffix: '[1]',
           type: '',
           sourceContext: 'people/Steve Ma/reports',
           sourceContextShort: 'reports',
+          display: 'Child fact.',
           body: `Child fact. \x1b[2m[1]\x1b[22m`
         }
       ],
       hasFacts: true,
       includeColor: true
     }),
-    '\x1b[34mreports\x1b[39m Child fact. \x1b[2m[1]\x1b[22m'
+    '\x1b[2m 1.\x1b[22m \x1b[34mreports\x1b[39m Child fact.'
   );
 });
 
@@ -161,7 +169,7 @@ test('workspace-local templates override default templates', async () => {
       renderTemplate('facts', {
         emptyText: 'No facts yet.',
         facts: [
-          { number: ' 1', numberSuffix: '[1]', type: '', body: 'First fact. [1]' }
+          { number: ' 1', numberPrefix: ' 1.', numberSuffix: '[1]', type: '', display: 'First fact.', body: 'First fact. [1]' }
         ],
         hasFacts: true,
         includeColor: false

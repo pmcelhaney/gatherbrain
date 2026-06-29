@@ -1108,10 +1108,14 @@ function displayRelationSuffix(suffix, includeColor) {
     : suffix;
 }
 
-function displaySecondarySuffix(suffix, includeColor) {
+function displaySecondaryText(text, includeColor) {
   return includeColor
-    ? `${ansiSecondaryColor}${suffix}${ansiResetIntensity}`
-    : suffix;
+    ? `${ansiSecondaryColor}${text}${ansiResetIntensity}`
+    : text;
+}
+
+function displaySecondarySuffix(suffix, includeColor) {
+  return displaySecondaryText(suffix, includeColor);
 }
 
 function displayKeptInViewLine(line, includeColor) {
@@ -1195,6 +1199,7 @@ function formattedDisplayLines(text, options = {}) {
     continuationColumns,
     continuationPrefix,
     firstColumns,
+    firstLinePrefix = '',
     includeColor,
     relationSuffix = '',
     secondarySuffix = ''
@@ -1212,7 +1217,7 @@ function formattedDisplayLines(text, options = {}) {
       ? `${plainLine}${trailingSuffix ? ` ${trailingSuffix}` : ''}`
       : plainLine;
     const wrappedLines = wrapPlainText(
-      displayLine,
+      lineIndex === 0 ? `${firstLinePrefix}${displayLine}` : displayLine,
       lineIndex === 0 ? firstColumns : continuationColumns
     );
 
@@ -1269,6 +1274,7 @@ function factViewModelsForDisplay(facts, options = {}) {
     const type = fact.type ?? 'fact';
     const relationSuffix = relationSuffixText(displayRelationsForFact(fact), fact.displayRelationDirection);
     const secondarySuffix = `[${itemNumber}]`;
+    const numberPrefix = displaySecondaryText(`${String(itemNumber).padStart(numberWidth)}.`, includeColor);
     const displayType = type === 'fact' ? '' : type;
     const displayDue = fact.properties?.due ? formatFriendlyDate(fact.properties.due, { today }) : '';
     const displaySeparator = displayType.length > 0 || displayDue.length > 0;
@@ -1281,7 +1287,7 @@ function factViewModelsForDisplay(facts, options = {}) {
     ].filter((part) => part.length > 0).join(' ');
     const firstPrefixWithSpacing = firstPrefix.length > 0 ? `${firstPrefix} ` : '';
     const firstColumns = Math.max(columns - visibleLength(firstPrefixWithSpacing), 1);
-    const displayOptions = {
+    const bodyOptions = {
       columns,
       continuationColumns,
       continuationPrefix,
@@ -1290,16 +1296,22 @@ function factViewModelsForDisplay(facts, options = {}) {
       relationSuffix,
       secondarySuffix
     };
-    const bodyLines = formattedDisplayLines(bodyText, displayOptions);
+    const displayOptions = {
+      columns,
+      continuationColumns,
+      continuationPrefix,
+      firstColumns: Math.max(firstColumns - visibleLength(`${numberPrefix} `), 1),
+      includeColor,
+      relationSuffix,
+      secondarySuffix: ''
+    };
+    const bodyLines = formattedDisplayLines(bodyText.length > 0 ? bodyText : titleText, bodyOptions);
     const displayLines = formattedDisplayLines(displayText, displayOptions);
-
-    if (bodyText.length === 0 && titleText.length > 0) {
-      bodyLines.splice(0, bodyLines.length, ...displayLines);
-    }
 
     const viewModel = {
       number: String(itemNumber).padStart(numberWidth),
       numberSuffix: secondarySuffix,
+      numberPrefix,
       deletedInView: fact.deletedInView ?? false,
       keptInView: fact.keptInView ?? false,
       highlightedInView,
@@ -3507,14 +3519,16 @@ async function main() {
   const terminalRows = () => output.rows ?? 24;
   const terminalColumns = () => output.columns ?? 80;
   const factRows = () => Math.max(Math.max(terminalRows() - 1, 1) - 1, 0);
-  let renderedPromptItemNumber = null;
+  let renderedPromptPreviewKey = null;
 
-  function currentPromptItemNumber() {
-    return itemNumberForPromptLine(terminal.line);
+  function currentPromptPreviewKey() {
+    return itemNumberForPromptLine(terminal.line) === null
+      ? null
+      : terminal.line;
   }
 
   function renderCurrentScreen() {
-    renderedPromptItemNumber = currentPromptItemNumber();
+    renderedPromptPreviewKey = currentPromptPreviewKey();
     output.write(renderTui({
       state,
       body,
@@ -3525,10 +3539,10 @@ async function main() {
     }));
   }
 
-  function redrawPromptHighlightIfNeeded() {
-    const nextPromptItemNumber = currentPromptItemNumber();
+  function redrawPromptPreviewIfNeeded() {
+    const nextPromptPreviewKey = currentPromptPreviewKey();
 
-    if (nextPromptItemNumber === renderedPromptItemNumber) {
+    if (nextPromptPreviewKey === renderedPromptPreviewKey) {
       return;
     }
 
@@ -3616,7 +3630,7 @@ async function main() {
 
     setImmediate(() => {
       if (!editorOpen) {
-        redrawPromptHighlightIfNeeded();
+        redrawPromptPreviewIfNeeded();
       }
     });
   };
