@@ -3444,6 +3444,28 @@ test('completes named command arguments', async () => {
   }
 });
 
+test('completes bare metadata context words as escaped absolute paths', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Steve Stephanie Stevens'), { recursive: true });
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(
+      await completeEntry('4 Ste', state),
+      [['/people/Steve\\ Ma', '/people/Steve\\ Stephanie\\ Stevens'], 'Ste']
+    );
+    assert.deepEqual(
+      await completeEntry('Follow up -- Ste', state),
+      [['/people/Steve\\ Ma', '/people/Steve\\ Stephanie\\ Stevens'], 'Ste']
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('completes fact arguments by visible fact title', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');

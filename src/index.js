@@ -2155,12 +2155,16 @@ async function matchingMetadataUpdateCompletion(updates, state) {
   const contextAliasMatches = partial.length > 0
     ? await matchingContextAliasCompletions(partial, state)
     : [];
+  const contextNameMatches = partial.length > 0
+    ? await matchingContextNameCompletions(partial, state)
+    : [];
 
   return [
     [
       ...factTypeMatches,
       ...dateMatches,
-      ...contextAliasMatches.map((match) => contextCompletionValue(match, partialSegment.raw))
+      ...contextAliasMatches.map((match) => contextCompletionValue(match, partialSegment.raw)),
+      ...contextNameMatches.map(escapedContextCompletionValue)
     ],
     partialSegment.raw
   ];
@@ -2311,6 +2315,12 @@ async function matchingContextCompletions(partialContext, state) {
   return rankedCompletionMatches(contextNames, (contextName) => contextCompletionMatchRank(contextName, partialContext));
 }
 
+async function matchingContextNameCompletions(partialContext, state) {
+  const contextNames = await contextLinks(state);
+
+  return rankedCompletionMatches(contextNames, (contextName) => contextNameCompletionMatchRank(contextName, partialContext));
+}
+
 async function matchingContextAliasCompletions(partialAlias, state) {
   const parsedPartialAlias = splitCompletionSegments(partialAlias).map((segment) => segment.value).join(' ');
   const contextNames = await contextLinks(state);
@@ -2348,12 +2358,45 @@ function contextCompletionMatchRank(contextName, partialContext) {
     : null;
 }
 
+function contextNameCompletionMatchRank(contextName, partialContext) {
+  const parsedPartialContext = splitCompletionSegments(partialContext).map((segment) => segment.value).join(' ');
+  const comparableName = contextName.name.startsWith('/')
+    ? contextName.name
+    : `/${contextName.name}`;
+  const pathQualified = parsedPartialContext.includes('/');
+
+  if (
+    parsedPartialContext.length === 0
+    || startsWithCaseInsensitive(contextName.name, parsedPartialContext)
+    || startsWithCaseInsensitive(comparableName, parsedPartialContext)
+    || startsWithCaseInsensitive(contextName.folder, parsedPartialContext)
+  ) {
+    return 0;
+  }
+
+  if (pathQualified) {
+    return null;
+  }
+
+  return hasWordStartCaseInsensitive(contextName.name, parsedPartialContext)
+    || hasWordStartCaseInsensitive(contextName.folder, parsedPartialContext)
+    ? 1
+    : null;
+}
+
 function contextCompletionValue(context, partialContext = '') {
   const rawValue = context.completion ?? context.name;
   const value = rawValue.startsWith('/') ? rawValue : `/${rawValue}`;
   const partial = typeof partialContext === 'string' ? partialContext : '';
 
   return partial.includes('\\') ? escapedCompletionValue(value) : value;
+}
+
+function escapedContextCompletionValue(context) {
+  const rawValue = context.completion ?? context.name;
+  const value = rawValue.startsWith('/') ? rawValue : `/${rawValue}`;
+
+  return escapedCompletionValue(value);
 }
 
 function switchContextCompletionValue(context, partialContext = '') {
