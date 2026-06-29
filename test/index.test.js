@@ -3451,6 +3451,8 @@ test('completes bare metadata context words as escaped absolute paths', async ()
   try {
     await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'people', 'Steve Stephanie Stevens'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Stephanie Stephens'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Suzanne Stec'), { recursive: true });
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(

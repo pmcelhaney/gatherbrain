@@ -2156,7 +2156,7 @@ async function matchingMetadataUpdateCompletion(updates, state) {
     ? await matchingContextAliasCompletions(partial, state)
     : [];
   const contextNameMatches = partial.length > 0
-    ? await matchingContextNameCompletions(partial, state)
+    ? await matchingMetadataContextNameCompletions(partial, state)
     : [];
 
   return [
@@ -2319,6 +2319,33 @@ async function matchingContextNameCompletions(partialContext, state) {
   const contextNames = await contextLinks(state);
 
   return rankedCompletionMatches(contextNames, (contextName) => contextNameCompletionMatchRank(contextName, partialContext));
+}
+
+async function matchingMetadataContextNameCompletions(partialContext, state) {
+  const contextNames = await contextLinks(state);
+  const parsedPartialContext = splitCompletionSegments(partialContext).map((segment) => segment.value).join(' ');
+
+  if (parsedPartialContext.length === 0 || parsedPartialContext.includes('/')) {
+    return matchingContextNameCompletions(partialContext, state);
+  }
+
+  const folderPrefixMatches = contextNames
+    .filter((contextName) => startsWithCaseInsensitive(contextName.folder, parsedPartialContext));
+
+  if (folderPrefixMatches.length === 0) {
+    return matchingContextNameCompletions(partialContext, state);
+  }
+
+  const groups = Map.groupBy(folderPrefixMatches, (contextName) => (
+    contextName.folder.split(/[^\p{L}\p{N}]+/u).find((part) => startsWithCaseInsensitive(part, parsedPartialContext))
+      ?? contextName.folder
+  ).toLowerCase());
+  const largestGroup = [...groups.values()]
+    .filter((group) => group.length > 1)
+    .toSorted((left, right) => right.length - left.length)
+    .at(0);
+
+  return largestGroup ?? folderPrefixMatches;
 }
 
 async function matchingContextAliasCompletions(partialAlias, state) {
