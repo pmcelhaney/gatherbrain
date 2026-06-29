@@ -2385,6 +2385,29 @@ test('item update shorthand applies type due date and relations', async () => {
   }
 });
 
+test('item update shorthand relates to multi-word contexts', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const factPath = path.join(rootDirectory, 'follow-up.md');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await writeFile(factPath, '---\ntype: fact\n---\n\nFollow up.\n');
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(await handleEntry('1 /people/Steve Ma', state), {
+      action: 'continue',
+      message: 'updated item 1'
+    });
+    assert.equal(
+      markdownWithoutFactUuid(await readFile(factPath, 'utf8')),
+      '---\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nFollow up.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('fact capture applies metadata after delimiter', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');

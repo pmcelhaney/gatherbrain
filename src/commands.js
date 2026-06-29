@@ -206,6 +206,56 @@ function factCreationMetadataUsageError() {
   };
 }
 
+function parseFactTypeToken(tokens, index, registry) {
+  const remaining = tokens.slice(index).join(' ');
+  const matchingType = enumValues(shorthandFactTypeEnum, registry?.enumRegistry)
+    .toSorted((left, right) => right.length - left.length)
+    .find((value) => (
+      remaining.toLowerCase() === value.toLowerCase()
+      || remaining.toLowerCase().startsWith(`${value.toLowerCase()} `)
+    ));
+
+  return matchingType
+    ? { factType: matchingType, tokenCount: matchingType.split(/\s+/u).length }
+    : null;
+}
+
+function parseDateTokens(tokens, index, registry) {
+  for (let tokenCount = tokens.length - index; tokenCount > 0; tokenCount -= 1) {
+    const value = tokens.slice(index, index + tokenCount).join(' ');
+    const date = parseDateArgument(value, { today: registry?.dateToday });
+
+    if (date) {
+      return { date, tokenCount };
+    }
+  }
+
+  return null;
+}
+
+function parseContextReferenceTokens(tokens, index, registry) {
+  let tokenCount = 1;
+
+  while (index + tokenCount < tokens.length) {
+    const nextIndex = index + tokenCount;
+
+    if (
+      tokens[nextIndex].startsWith('/')
+      || parseFactTypeToken(tokens, nextIndex, registry)
+      || parseDateTokens(tokens, nextIndex, registry)
+    ) {
+      break;
+    }
+
+    tokenCount += 1;
+  }
+
+  return {
+    contextReference: tokens.slice(index, index + tokenCount).join(' '),
+    tokenCount
+  };
+}
+
 function parseFactUpdateOperations(updates, registry) {
   if (updates.length === 0) {
     return null;
@@ -220,62 +270,46 @@ function parseFactUpdateOperations(updates, registry) {
     const token = tokens[index];
 
     if (token.startsWith('/')) {
+      const parsedContext = parseContextReferenceTokens(tokens, index, registry);
+
       operations.push({
-        contextReference: token,
+        contextReference: parsedContext.contextReference,
         type: 'relate_fact'
       });
-      index += 1;
+      index += parsedContext.tokenCount;
       continue;
     }
 
-    const remaining = tokens.slice(index).join(' ');
-    const matchingType = enumValues(shorthandFactTypeEnum, registry?.enumRegistry)
-      .toSorted((left, right) => right.length - left.length)
-      .find((value) => (
-        remaining.toLowerCase() === value.toLowerCase()
-        || remaining.toLowerCase().startsWith(`${value.toLowerCase()} `)
-      ));
+    const parsedType = parseFactTypeToken(tokens, index, registry);
 
-    if (matchingType) {
+    if (parsedType) {
       if (factType) {
         return factUpdateMetadataUsageError();
       }
 
-      factType = matchingType;
+      factType = parsedType.factType;
       operations.push({
         factType,
         type: 'set_fact_type'
       });
-      index += matchingType.split(/\s+/u).length;
+      index += parsedType.tokenCount;
       continue;
     }
 
-    let parsedDate = null;
-    let parsedDateTokenCount = 0;
-
-    for (let tokenCount = tokens.length - index; tokenCount > 0; tokenCount -= 1) {
-      const value = tokens.slice(index, index + tokenCount).join(' ');
-      const date = parseDateArgument(value, { today: registry?.dateToday });
-
-      if (date) {
-        parsedDate = date;
-        parsedDateTokenCount = tokenCount;
-        break;
-      }
-    }
+    const parsedDate = parseDateTokens(tokens, index, registry);
 
     if (parsedDate) {
       if (due) {
         return factUpdateMetadataUsageError();
       }
 
-      due = parsedDate;
+      due = parsedDate.date;
       operations.push({
         property: 'due',
         type: 'set_fact_property',
-        value: parsedDate
+        value: parsedDate.date
       });
-      index += parsedDateTokenCount;
+      index += parsedDate.tokenCount;
       continue;
     }
 
