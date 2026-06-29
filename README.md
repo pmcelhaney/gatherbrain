@@ -92,6 +92,7 @@ Use `:q`, `:quit`, `:exit`, or `Ctrl+C` to leave the prompt.
 
 - Type plain text and press Enter to save a fact.
 - `%todo Get milk` saves a `todo` fact. Type `%` and press `Tab` to complete configured fact types.
+- `Follow up -- todo today /people/alex` saves a fact, then applies the same type, due date, and relation metadata used by item update shorthand.
 - `:switch projects/gatherbrain` changes context.
 - `:peek people/alex` looks at another context without leaving the current one.
 - `:lens today` changes the current lens.

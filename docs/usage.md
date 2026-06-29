@@ -58,6 +58,13 @@ Use `%<type>` to capture a fact and set its type in one step:
 
 Press `Tab` after `%` to complete values from the `factType` enum. If the type is not listed, the app asks whether to add it to the workspace enum before creating the fact.
 
+Add ` -- ` after the fact text to apply the same metadata shorthand used for visible items. Metadata can include one fact type, one due date, and `/context` relations:
+
+```text
+Follow up with Alex -- todo tomorrow /people/alex
+%waiting Ask Jordan for a decision -- friday /projects/gatherbrain
+```
+
 ## Command Mode
 
 Commands use colon-prefixed names:

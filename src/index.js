@@ -2472,10 +2472,32 @@ function factTypeConfirmationPrompt(factType) {
 }
 
 async function saveCreatedFact(parsedEntry, state) {
+  const operations = parsedEntry.operations ?? [];
+
+  try {
+    await validateFactUpdateOperations(state, operations);
+  } catch (error) {
+    state.statusMessage = error.message;
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message: state.statusMessage
+    };
+  }
+
   const savedFact = await createFact(state, {
     title: parsedEntry.title,
     type: parsedEntry.factType ?? 'fact'
   });
+
+  if (operations.length > 0) {
+    const factId = path.relative(state.rootDirectory, savedFact.path).split(path.sep).join('/');
+    const fact = state.model.facts.get(factId);
+
+    await applyFactUpdateOperations(state, fact, operations);
+  }
+
   const message = `saved ${savedFact.relativePath}`;
   state.pageStartIndex = 0;
   state.statusMessage = '';
@@ -2485,6 +2507,38 @@ async function saveCreatedFact(parsedEntry, state) {
     action: 'continue',
     message
   };
+}
+
+async function validateFactUpdateOperations(state, operations) {
+  const relationOperations = operations.filter((operation) => operation.type === 'relate_fact');
+
+  await Promise.all(
+    relationOperations.map((operation) => relationForContextReference(operation.contextReference, state))
+  );
+}
+
+async function applyFactUpdateOperations(state, initialFact, operations) {
+  let fact = initialFact;
+
+  for (const operation of operations) {
+    fact = factFromModelMatching(state, fact) ?? fact;
+
+    if (operation.type === 'set_fact_type') {
+      await setWorkspaceFactType(state, fact, operation.factType);
+      continue;
+    }
+
+    if (operation.type === 'set_fact_property') {
+      await setWorkspaceFactProperty(state, fact, operation.property, operation.value);
+      continue;
+    }
+
+    if (operation.type === 'relate_fact') {
+      await relateWorkspaceFact(state, fact, operation.contextReference);
+    }
+  }
+
+  return factFromModelMatching(state, fact) ?? fact;
 }
 
 async function switchToContextDirectory(contextDirectory, state) {
@@ -2598,7 +2652,8 @@ async function handlePendingFactTypeConfirmation(entry, state) {
     return saveCreatedFact({
       title: pendingFactTypeConfirmation.title,
       type: 'create_fact',
-      factType
+      factType,
+      operations: pendingFactTypeConfirmation.operations ?? []
     }, state);
   } catch (error) {
     state.statusMessage = error.message;
@@ -3078,7 +3133,8 @@ export async function handleEntry(entry, state) {
     } else {
       state.pendingFactTypeConfirmation = {
         factType: parsedEntry.factType,
-        title: parsedEntry.title
+        title: parsedEntry.title,
+        ...((parsedEntry.operations?.length ?? 0) > 0 ? { operations: parsedEntry.operations } : {})
       };
       state.statusMessage = factTypeConfirmationPrompt(parsedEntry.factType);
       clearTemporaryBody(state);
@@ -3375,31 +3431,10 @@ export async function handleEntry(entry, state) {
       const resolvedFact = await visibleFactForSelector(state, parsedEntry);
       itemLabel = resolvedFact.itemLabel;
       let fact = resolvedFact.fact;
-      const relationOperations = parsedEntry.operations.filter((operation) => operation.type === 'relate_fact');
 
-      await Promise.all(
-        relationOperations.map((operation) => relationForContextReference(operation.contextReference, state))
-      );
-
-      for (const operation of parsedEntry.operations) {
-        fact = factFromModelMatching(state, fact) ?? fact;
-
-        if (operation.type === 'set_fact_type') {
-          await setWorkspaceFactType(state, fact, operation.factType);
-          continue;
-        }
-
-        if (operation.type === 'set_fact_property') {
-          await setWorkspaceFactProperty(state, fact, operation.property, operation.value);
-          continue;
-        }
-
-        if (operation.type === 'relate_fact') {
-          await relateWorkspaceFact(state, fact, operation.contextReference);
-        }
-      }
-
-      await keepFactInViewIfDropped(state, factFromModelMatching(state, fact) ?? fact);
+      await validateFactUpdateOperations(state, parsedEntry.operations);
+      fact = await applyFactUpdateOperations(state, fact, parsedEntry.operations);
+      await keepFactInViewIfDropped(state, fact);
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);

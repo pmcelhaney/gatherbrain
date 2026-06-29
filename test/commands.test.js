@@ -223,10 +223,34 @@ test('parses fact commands', () => {
     title: 'Call Steve',
     type: 'create_fact'
   });
+  assert.deepEqual(parseEntry('Call Steve -- todo today /people/steve-ma', dateRegistry), {
+    title: 'Call Steve',
+    operations: [
+      { factType: 'todo', type: 'set_fact_type' },
+      { property: 'due', type: 'set_fact_property', value: '2026-06-24' },
+      { contextReference: '/people/steve-ma', type: 'relate_fact' }
+    ],
+    type: 'create_fact'
+  });
+  assert.deepEqual(parseEntry(':new Call Steve -- today', dateRegistry), {
+    title: 'Call Steve',
+    operations: [
+      { property: 'due', type: 'set_fact_property', value: '2026-06-24' }
+    ],
+    type: 'create_fact'
+  });
   assert.deepEqual(parseEntry('%todo Get milk'), {
     title: 'Get milk',
     type: 'create_fact',
     factType: 'todo'
+  });
+  assert.deepEqual(parseEntry('%todo Get milk -- tomorrow', dateRegistry), {
+    title: 'Get milk',
+    type: 'create_fact',
+    factType: 'todo',
+    operations: [
+      { property: 'due', type: 'set_fact_property', value: '2026-06-25' }
+    ]
   });
   assert.deepEqual(parseEntry('%TODO Get milk'), {
     title: 'Get milk',
@@ -389,6 +413,10 @@ test('parses fact commands', () => {
   });
   assert.deepEqual(parseEntry('17 nope'), {
     message: 'usage: <item> [type] [date] [/context ...]',
+    type: 'usage_error'
+  });
+  assert.deepEqual(parseEntry('Call Steve -- nope'), {
+    message: 'usage: <fact> -- [type] [date] [/context ...]',
     type: 'usage_error'
   });
   assert.deepEqual(parseEntry(':edit 2 extra'), {

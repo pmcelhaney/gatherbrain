@@ -396,6 +396,40 @@ test('%type asks before adding an unknown fact type', async () => {
   }
 });
 
+test('%type preserves capture metadata after confirming an unknown fact type', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const commandRegistry = createCommandRegistry(undefined, {
+    dateToday: new Date(2026, 5, 24, 12)
+  });
+
+  try {
+    const state = createPromptState({ appDirectory, commandRegistry, rootDirectory });
+
+    assert.deepEqual(await handleEntry('%blocked Get milk -- tomorrow', state), {
+      action: 'continue',
+      message: 'Fact type "blocked" is not listed. Add it? [y/N]'
+    });
+    assert.deepEqual(state.pendingFactTypeConfirmation, {
+      factType: 'blocked',
+      title: 'Get milk',
+      operations: [
+        { property: 'due', type: 'set_fact_property', value: '2026-06-25' }
+      ]
+    });
+    assert.deepEqual(await handleEntry('yes', state), {
+      action: 'continue',
+      message: `saved ${path.join('facts', 'get-milk.md')}`
+    });
+    assert.equal(
+      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, 'get-milk.md'), 'utf8')),
+      '---\ntitle: "Get milk"\ntype: blocked\ndue: 2026-06-25\n---\n\nGet milk\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('%type does not create a fact when unknown type confirmation is declined', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -2488,6 +2522,51 @@ test('item update shorthand applies type due date and relations', async () => {
       markdownWithoutFactUuid(await readFile(factPath, 'utf8')),
       '---\ntype: todo\ndue: 2026-06-24\nrelatedContexts: ["people/steve-ma", "people/john-do"]\n---\n\nFollow up.\n'
     );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('fact capture applies metadata after delimiter', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const commandRegistry = createCommandRegistry(undefined, {
+    dateToday: new Date(2026, 5, 24, 12)
+  });
+
+  try {
+    await mkdir(path.join(rootDirectory, 'people', 'steve-ma'), { recursive: true });
+    const state = createPromptState({ appDirectory, commandRegistry, rootDirectory });
+
+    assert.deepEqual(await handleEntry('Follow up -- todo today /people/steve-ma', state), {
+      action: 'continue',
+      message: `saved ${path.join('facts', 'follow-up.md')}`
+    });
+    assert.equal(
+      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, 'follow-up.md'), 'utf8')),
+      '---\ntitle: "Follow up"\ntype: todo\ndue: 2026-06-24\nrelatedContexts: ["people/steve-ma"]\n---\n\nFollow up\n'
+    );
+    assert.equal(state.model.facts.get('follow-up.md').type, 'todo');
+    assert.equal(state.model.facts.get('follow-up.md').properties.due, '2026-06-24');
+    assert.deepEqual(state.model.facts.get('follow-up.md').relations, ['people/steve-ma']);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('fact capture metadata validates relations before saving', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(rootDirectory, { recursive: true });
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(await handleEntry('Follow up -- todo /missing', state), {
+      action: 'continue',
+      message: 'context /missing does not exist'
+    });
+    assert.deepEqual(await readdir(rootDirectory), []);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

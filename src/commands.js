@@ -12,6 +12,7 @@ import { parseTimeRange } from './timeboxes.js';
 const itemNumberPattern = '[1-9]\\d*';
 const typeNamePattern = '[A-Za-z][A-Za-z0-9_-]*';
 const shorthandFactTypeEnum = 'factType';
+const factMetadataDelimiterPattern = /\s--\s/u;
 const commandConfigPath = path.join('.gatherbrain', 'commands.json');
 const defaultCommandConfigPath = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -171,6 +172,7 @@ function parseNamedCommand(command, registry) {
 
   if (commandDefinition) {
     return parseCommandArguments(commandDefinition, args, {
+      registry,
       enumRegistry: registry?.enumRegistry,
       dateToday: registry?.dateToday,
       promptForMissing: true
@@ -210,11 +212,7 @@ function parseTypedFactCommand(command, registry) {
     const title = args.slice(matchingValue.length).trim();
 
     return title.length > 0
-      ? {
-        type: 'create_fact',
-        title,
-        factType: matchingValue
-      }
+      ? createFactActionFromTitle(title, registry, { factType: matchingValue })
       : {
         type: 'usage_error',
         message: 'usage: %<type> <fact>'
@@ -232,12 +230,10 @@ function parseTypedFactCommand(command, registry) {
     };
   }
 
-  return {
-    type: 'create_fact',
-    title,
+  return createFactActionFromTitle(title, registry, {
     factType,
     confirmFactType: true
-  };
+  });
 }
 
 function parseTypedFactTypeCommand(command, registry) {
@@ -302,15 +298,28 @@ function parseTypedFactTypeCommand(command, registry) {
   };
 }
 
-function parseItemUpdateShorthand(command, registry) {
-  const match = command.match(/^(?<item>[1-9]\d*)(?:\s+(?<updates>.*))?$/u);
+function factUpdateMetadataUsageError() {
+  return {
+    type: 'usage_error',
+    message: 'usage: [type] [date] [/context ...]'
+  };
+}
 
-  if (!match) {
-    return null;
-  }
+function itemUpdateUsageError() {
+  return {
+    type: 'usage_error',
+    message: 'usage: <item> [type] [date] [/context ...]'
+  };
+}
 
-  const updates = match.groups.updates?.trim() ?? '';
+function factCreationMetadataUsageError() {
+  return {
+    type: 'usage_error',
+    message: 'usage: <fact> -- [type] [date] [/context ...]'
+  };
+}
 
+function parseFactUpdateOperations(updates, registry) {
   if (updates.length === 0) {
     return null;
   }
@@ -342,10 +351,7 @@ function parseItemUpdateShorthand(command, registry) {
 
     if (matchingType) {
       if (factType) {
-        return {
-          type: 'usage_error',
-          message: 'usage: <item> [type] [date] [/context ...]'
-        };
+        return factUpdateMetadataUsageError();
       }
 
       factType = matchingType;
@@ -373,10 +379,7 @@ function parseItemUpdateShorthand(command, registry) {
 
     if (parsedDate) {
       if (due) {
-        return {
-          type: 'usage_error',
-          message: 'usage: <item> [type] [date] [/context ...]'
-        };
+        return factUpdateMetadataUsageError();
       }
 
       due = parsedDate;
@@ -389,19 +392,71 @@ function parseItemUpdateShorthand(command, registry) {
       continue;
     }
 
-    return {
-      type: 'usage_error',
-      message: 'usage: <item> [type] [date] [/context ...]'
-    };
+    return factUpdateMetadataUsageError();
   }
 
-  return operations.length > 0
+  return operations;
+}
+
+function parseItemUpdateShorthand(command, registry) {
+  const match = command.match(/^(?<item>[1-9]\d*)(?:\s+(?<updates>.*))?$/u);
+
+  if (!match) {
+    return null;
+  }
+
+  const updates = match.groups.updates?.trim() ?? '';
+
+  if (updates.length === 0) {
+    return null;
+  }
+
+  const parsedOperations = parseFactUpdateOperations(updates, registry);
+
+  if (parsedOperations?.type === 'usage_error') {
+    return itemUpdateUsageError();
+  }
+
+  return parsedOperations?.length > 0
     ? {
       itemNumber: positiveItemNumber(match.groups.item),
-      operations,
+      operations: parsedOperations,
       type: 'update_fact_shorthand'
     }
     : null;
+}
+
+function createFactActionFromTitle(rawTitle, registry, options = {}) {
+  const delimiterMatch = rawTitle.match(factMetadataDelimiterPattern);
+
+  if (!delimiterMatch) {
+    return {
+      type: 'create_fact',
+      title: rawTitle,
+      ...options
+    };
+  }
+
+  const delimiterIndex = delimiterMatch.index;
+  const title = rawTitle.slice(0, delimiterIndex).trim();
+  const metadata = rawTitle.slice(delimiterIndex + delimiterMatch[0].length).trim();
+
+  if (title.length === 0 || metadata.length === 0) {
+    return factCreationMetadataUsageError();
+  }
+
+  const parsedOperations = parseFactUpdateOperations(metadata, registry);
+
+  if (parsedOperations?.type === 'usage_error' || !parsedOperations || parsedOperations.length === 0) {
+    return factCreationMetadataUsageError();
+  }
+
+  return {
+    type: 'create_fact',
+    title,
+    ...options,
+    operations: parsedOperations
+  };
 }
 
 function parseCommandArguments(commandDefinition, args, options = {}) {
@@ -461,7 +516,7 @@ function parseCommandArguments(commandDefinition, args, options = {}) {
     return usageErrorForCommand(commandDefinition);
   }
 
-  return buildCommandAction(commandDefinition, parsedArguments);
+  return buildCommandAction(commandDefinition, parsedArguments, { registry: options.registry });
 }
 
 function parseTrailingCommandArguments(commandDefinition, args, options = {}) {
@@ -498,7 +553,7 @@ function parseTrailingCommandArguments(commandDefinition, args, options = {}) {
       return buildCommandAction(commandDefinition, {
         [itemArgument.name]: itemValue,
         [trailingArgument.name]: trailingValue
-      });
+      }, { registry: options.registry });
     }
   }
 
@@ -731,10 +786,10 @@ export function continuePromptedCommand(pendingCommand, value) {
     return promptForArgument(commandDefinition, values, nextArgument);
   }
 
-  return buildCommandAction(commandDefinition, values);
+  return buildCommandAction(commandDefinition, values, { registry });
 }
 
-function buildCommandAction(commandDefinition, values) {
+function buildCommandAction(commandDefinition, values, options = {}) {
   if (commandDefinition.action === 'switch_context') {
     return { type: 'switch_context', context: values.context };
   }
@@ -791,7 +846,7 @@ function buildCommandAction(commandDefinition, values) {
   }
 
   if (commandDefinition.action === 'create_fact') {
-    return { type: 'create_fact', title: values.title };
+    return createFactActionFromTitle(values.title, options.registry);
   }
 
   if (commandDefinition.action === 'edit_fact') {
@@ -896,8 +951,5 @@ export function parseEntry(entry, registry = defaultCommandRegistry) {
     };
   }
 
-  return {
-    title: entry,
-    type: 'create_fact'
-  };
+  return createFactActionFromTitle(entry, registry);
 }
