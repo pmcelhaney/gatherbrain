@@ -14,12 +14,19 @@ test('renders default facts template', () => {
       emptyText: 'No facts yet.',
       facts: [
         { number: ' 1', numberSuffix: '[1]', type: '', body: 'First fact. [1]' },
-        { number: ' 2', numberSuffix: '[2]', type: 'task', body: 'Second fact. [2]' }
+        {
+          number: ' 2',
+          numberSuffix: '[2]',
+          type: 'task',
+          due: 'Friday',
+          displaySeparator: true,
+          body: 'Second fact. [2]'
+        }
       ],
       hasFacts: true,
       includeColor: false
     }),
-    'First fact. [1]\ntask Second fact. [2]'
+    'First fact. [1]\ntask Friday Second fact. [2]'
   );
 });
 
@@ -43,7 +50,13 @@ test('renders template lines', () => {
       emptyText: 'No facts yet.',
       facts: [
         { number: ' 1', numberSuffix: '[1]', type: '', body: 'First fact. [1]' },
-        { number: ' 2', numberSuffix: '[2]', type: 'task', body: 'Second fact. [2]' }
+        {
+          number: ' 2',
+          numberSuffix: '[2]',
+          type: 'task',
+          displaySeparator: true,
+          body: 'Second fact. [2]'
+        }
       ],
       hasFacts: true,
       includeColor: false
@@ -57,12 +70,19 @@ test('supports color filters in templates', () => {
     renderTemplate('facts', {
       emptyText: 'No facts yet.',
       facts: [
-        { number: ' 1', numberSuffix: '[1]', type: 'task', body: `Second fact. \x1b[2m[1]\x1b[22m` }
+        {
+          number: ' 1',
+          numberSuffix: '[1]',
+          type: 'task',
+          due: 'Friday',
+          displaySeparator: true,
+          body: `Second fact. \x1b[2m[1]\x1b[22m`
+        }
       ],
       hasFacts: true,
       includeColor: true
     }),
-    '\x1b[36mtask\x1b[39m Second fact. \x1b[2m[1]\x1b[22m'
+    '\x1b[36mtask\x1b[39m \x1b[35mFriday\x1b[39m Second fact. \x1b[2m[1]\x1b[22m'
   );
 });
 

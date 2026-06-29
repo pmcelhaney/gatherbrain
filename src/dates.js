@@ -18,6 +18,29 @@ const weekdayIndexes = new Map([
   ['sat', 6]
 ]);
 
+const weekdayNames = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday'
+];
+const monthNames = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec'
+];
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/u;
 
 function localDateAtNoon(date) {
@@ -31,12 +54,65 @@ function dateWithOffset(date, days) {
   return nextDate;
 }
 
+function dateFromIsoDateString(value) {
+  const match = value.match(/^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/u);
+
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match.groups.year);
+  const month = Number(match.groups.month);
+  const day = Number(match.groups.day);
+  const date = new Date(year, month - 1, day, 12);
+
+  return date.getFullYear() === year
+    && date.getMonth() === month - 1
+    && date.getDate() === day
+    ? date
+    : null;
+}
+
 function pad(value) {
   return String(value).padStart(2, '0');
 }
 
 export function formatDateArgument(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+export function formatFriendlyDate(value, options = {}) {
+  const todayInput = options.today ?? new Date();
+  const today = typeof todayInput === 'string'
+    ? dateFromIsoDateString(todayInput) ?? localDateAtNoon(new Date())
+    : localDateAtNoon(todayInput);
+  const date = typeof value === 'string'
+    ? dateFromIsoDateString(value)
+    : localDateAtNoon(value);
+
+  if (!date) {
+    return '';
+  }
+
+  const dayDifference = Math.round((date.getTime() - today.getTime()) / 86400000);
+
+  if (dayDifference === 0) {
+    return 'today';
+  }
+
+  if (dayDifference === 1) {
+    return 'tomorrow';
+  }
+
+  if (dayDifference === -1) {
+    return 'yesterday';
+  }
+
+  if (Math.abs(dayDifference) <= 7) {
+    return weekdayNames[date.getDay()];
+  }
+
+  return `${monthNames[date.getMonth()]} ${date.getDate()}`;
 }
 
 function validIsoDate(value) {

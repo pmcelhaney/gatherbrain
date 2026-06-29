@@ -117,11 +117,11 @@ export function markdownWithContextLinks(text, options = {}) {
 
   return contextLinks.reduce((nextText, contextLink) => {
     const mentionPattern = new RegExp(`(^|\\s)@${escapeRegExp(contextLink.folder)}(?=$|\\s|[.,;:!?])`, 'gu');
+    const absoluteMentionPattern = new RegExp(`(^|\\s)@/${escapeRegExp(contextLink.name)}(?=$|\\s|[.,;:!?])`, 'gu');
 
-    return nextText.replace(
-      mentionPattern,
-      `$1[${contextLink.folder}](/${contextLink.name})`
-    );
+    return nextText
+      .replace(absoluteMentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`)
+      .replace(mentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`);
   }, text);
 }
 

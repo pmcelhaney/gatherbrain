@@ -134,6 +134,12 @@ test('converts context mentions to Markdown links', () => {
     }),
     'Talk to [Steve Ma](/people/Steve Ma).'
   );
+  assert.equal(
+    markdownWithContextLinks('Talk to @/people/Steve Ma.', {
+      contextLinks: [{ folder: 'Steve Ma', name: 'people/Steve Ma' }]
+    }),
+    'Talk to [Steve Ma](/people/Steve Ma).'
+  );
 });
 
 test('adds a UUID id to Markdown that does not have one', () => {

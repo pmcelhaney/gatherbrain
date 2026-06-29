@@ -28,6 +28,7 @@ import {
   filenameBaseForTitle,
   timestampForFilename
 } from './facts.js';
+import { formatFriendlyDate } from './dates.js';
 import {
   loadWorkspaceModel,
   watchWorkspaceModel
@@ -1055,6 +1056,7 @@ function factViewModelsForDisplay(facts, options = {}) {
   const {
     columns = 80,
     includeColor = false,
+    today = new Date(),
     template = 'facts',
     templateRootDirectory = null
   } = options;
@@ -1072,11 +1074,14 @@ function factViewModelsForDisplay(facts, options = {}) {
     const relationSuffix = relationSuffixText(displayRelationsForFact(fact), fact.displayRelationDirection);
     const secondarySuffix = `[${itemNumber}]`;
     const displayType = type === 'fact' ? '' : type;
+    const displayDue = fact.properties?.due ? formatFriendlyDate(fact.properties.due, { today }) : '';
+    const displaySeparator = displayType.length > 0 || displayDue.length > 0;
     const sourceContext = fact.sourceContext ?? '';
     const sourceContextShort = fact.sourceContextShort ?? '';
     const firstPrefix = [
       sourceContextShort,
-      displayType
+      displayType,
+      displayDue
     ].filter((part) => part.length > 0).join(' ');
     const firstPrefixWithSpacing = firstPrefix.length > 0 ? `${firstPrefix} ` : '';
     const firstColumns = Math.max(columns - visibleLength(firstPrefixWithSpacing), 1);
@@ -1100,6 +1105,8 @@ function factViewModelsForDisplay(facts, options = {}) {
       number: String(itemNumber).padStart(numberWidth),
       numberSuffix: secondarySuffix,
       type: displayType,
+      due: displayDue,
+      displaySeparator,
       sourceContext,
       sourceContextShort,
       title: titleText,
@@ -1133,6 +1140,9 @@ export function buildPagedFactLines(options = {}) {
     state = null
   } = options;
   const factRows = Math.max(rows, 0);
+  const today = state?.dateToday instanceof Date
+    ? state.dateToday
+    : state?.now?.() ?? new Date();
 
   if (factRows === 0) {
     return {
@@ -1163,6 +1173,7 @@ export function buildPagedFactLines(options = {}) {
   const factViewModels = factViewModelsForDisplay(numberedFacts, {
     columns,
     includeColor,
+    today,
     template,
     templateRootDirectory
   });
@@ -1585,7 +1596,7 @@ export async function completeEntry(line, state) {
   if (state.pendingCommand?.argument?.type === 'context') {
     const matches = await matchingContextCompletions(line, state);
 
-    return [matches.map((context) => context.name), line];
+    return [matches.map(contextCompletionValue), line];
   }
 
   if (state.pendingCommand?.argument?.type === 'lens') {
@@ -1691,7 +1702,7 @@ export async function completeEntry(line, state) {
       ? await matchingSwitchContextCompletions(partialContext, state)
       : await matchingContextCompletions(partialContext, state);
 
-    return [matches.map((context) => context.name), partialContext];
+    return [matches.map(contextCompletionValue), partialContext];
   }
 
   const namedRelationCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+[1-9]\d*\s+(?<partial>.*)$/u);
@@ -1707,11 +1718,8 @@ export async function completeEntry(line, state) {
   ) {
     const partialContext = namedRelationCompletion.groups.partial ?? '';
     const matches = await matchingContextCompletions(partialContext, state);
-    const relationCompletions = partialContext.includes('/')
-      ? matches.map((context) => `/${context.name}`)
-      : matches.map((context) => context.folder);
 
-    return [relationCompletions, partialContext];
+    return [matches.map(contextCompletionValue), partialContext];
   }
 
   const namedContextArgumentCompletion = await matchingNamedContextArgument(line, state);
@@ -1739,7 +1747,7 @@ export async function completeEntry(line, state) {
     const partialContext = partialMention.slice(1);
     const matches = await matchingContextCompletions(partialContext, state);
 
-    return [matches.map((context) => `@${context.folder}`), partialMention];
+    return [matches.map(contextMentionCompletionValue), partialMention];
   }
 
   return [[], line];
@@ -1877,7 +1885,7 @@ async function matchingNamedContextArgument(line, state) {
 
   const matches = await matchingContextCompletions(argumentCompletion.partialValue, state);
 
-  return [matches.map((context) => context.name), argumentCompletion.partialValue];
+  return [matches.map(contextCompletionValue), argumentCompletion.partialValue];
 }
 
 function matchingNamedEnumArgument(line, state) {
@@ -2027,6 +2035,14 @@ function contextCompletionMatchRank(contextName, partialContext) {
     : null;
 }
 
+function contextCompletionValue(context) {
+  return context.name.startsWith('/') ? context.name : `/${context.name}`;
+}
+
+function contextMentionCompletionValue(context) {
+  return `@${contextCompletionValue(context)}`;
+}
+
 function contextReferenceParts(contextReference) {
   return contextReference.split('/').filter((pathPart) => pathPart.length > 0);
 }
@@ -2040,7 +2056,7 @@ async function matchingSwitchContextCompletions(partialContext, state) {
 
     return contexts
       .filter((contextId) => startsWithCaseInsensitive(contextId, partialId))
-      .map((contextId) => ({ name: `/${contextId}` }));
+      .map((contextId) => ({ name: contextId }));
   }
 
   if (partialContext.startsWith('./') || partialContext === '.') {
@@ -2050,7 +2066,7 @@ async function matchingSwitchContextCompletions(partialContext, state) {
     return contexts
       .filter((contextId) => startsWithCaseInsensitive(contextId, `${prefix}${childPartial}`))
       .filter((contextId) => contextId !== currentContextId)
-      .map((contextId) => ({ name: `./${contextId.slice(prefix.length)}` }));
+      .map((contextId) => ({ name: contextId }));
   }
 
   if (partialContext.startsWith('../') || partialContext === '..') {
@@ -2069,9 +2085,7 @@ async function matchingSwitchContextCompletions(partialContext, state) {
     return contexts
       .filter((contextId) => targetPrefix.length === 0 || startsWithCaseInsensitive(contextId, targetPrefix))
       .filter((contextId) => contextId !== baseId)
-      .map((contextId) => ({
-        name: `${referencePrefix}${baseId.length === 0 ? contextId : contextId.slice(baseId.length + 1)}`
-      }));
+      .map((contextId) => ({ name: contextId }));
   }
 
   return matchingContextCompletions(partialContext, state);
