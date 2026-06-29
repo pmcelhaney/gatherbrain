@@ -2302,14 +2302,14 @@ function contextCompletionValue(context) {
   return context.name.startsWith('/') ? context.name : `/${context.name}`;
 }
 
-function quotedCompletionValue(value) {
-  return /\s/u.test(value)
-    ? `"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`
-    : value;
+function escapedCompletionValue(value) {
+  return value
+    .replaceAll('\\', '\\\\')
+    .replace(/\s/gu, (space) => `\\${space}`);
 }
 
 function contextMentionCompletionValue(context) {
-  return `@${quotedCompletionValue(context.folder)}`;
+  return `@${escapedCompletionValue(context.folder)}`;
 }
 
 function contextReferenceParts(contextReference) {

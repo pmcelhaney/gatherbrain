@@ -135,7 +135,7 @@ test('converts context mentions to Markdown links', () => {
     'Talk to [Steve Ma](/people/Steve Ma).'
   );
   assert.equal(
-    markdownWithContextLinks('Talk to @"Steve Ma".', {
+    markdownWithContextLinks('Talk to @Steve\\ Ma.', {
       contextLinks: [{ folder: 'Steve Ma', name: 'people/Steve Ma' }]
     }),
     'Talk to [Steve Ma](/people/Steve Ma).'
@@ -147,7 +147,7 @@ test('converts context mentions to Markdown links', () => {
     'Talk to [Steve Ma](/people/Steve Ma).'
   );
   assert.equal(
-    markdownWithContextLinks('Talk to @"/people/Steve Ma".', {
+    markdownWithContextLinks('Talk to @/people/Steve\\ Ma.', {
       contextLinks: [{ folder: 'Steve Ma', name: 'people/Steve Ma' }]
     }),
     'Talk to [Steve Ma](/people/Steve Ma).'

@@ -67,6 +67,7 @@ export function filenameBaseForTitle(title) {
 
 export function titleForFactText(text, maxLength = maxFactTitleLength) {
   const plainTitle = text
+    .replace(/\\(\s)/gu, '$1')
     .replace(/\r?\n/gu, ' ')
     .replace(/\s+/gu, ' ')
     .trim();
@@ -118,26 +119,28 @@ export function markdownWithContextLinks(text, options = {}) {
   return contextLinks.reduce((nextText, contextLink) => {
     const mentionBoundary = '(?=$|\\s|[.,;:!?])';
     const mentionPattern = new RegExp(`(^|\\s)@${escapeRegExp(contextLink.folder)}${mentionBoundary}`, 'gu');
-    const quotedMentionPattern = new RegExp(
-      `(^|\\s)@"${escapeRegExp(quotedMentionValue(contextLink.folder))}"${mentionBoundary}`,
+    const escapedMentionPattern = new RegExp(
+      `(^|\\s)@${escapeRegExp(escapedMentionValue(contextLink.folder))}${mentionBoundary}`,
       'gu'
     );
     const absoluteMentionPattern = new RegExp(`(^|\\s)@/${escapeRegExp(contextLink.name)}${mentionBoundary}`, 'gu');
-    const quotedAbsoluteMentionPattern = new RegExp(
-      `(^|\\s)@"${escapeRegExp(`/${quotedMentionValue(contextLink.name)}`)}"${mentionBoundary}`,
+    const escapedAbsoluteMentionPattern = new RegExp(
+      `(^|\\s)@/${escapeRegExp(escapedMentionValue(contextLink.name))}${mentionBoundary}`,
       'gu'
     );
 
     return nextText
-      .replace(quotedAbsoluteMentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`)
+      .replace(escapedAbsoluteMentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`)
       .replace(absoluteMentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`)
-      .replace(quotedMentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`)
+      .replace(escapedMentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`)
       .replace(mentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`);
   }, text);
 }
 
-function quotedMentionValue(value) {
-  return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
+function escapedMentionValue(value) {
+  return value
+    .replaceAll('\\', '\\\\')
+    .replace(/\s/gu, (space) => `\\${space}`);
 }
 
 function escapeRegExp(value) {
