@@ -3151,9 +3151,10 @@ async function switchToCurrentTimebox(state) {
   try {
     await ensureWorkspaceModel(state);
     const now = state.now();
+    const transitionTime = new Date(now.getTime() + 3 * 60 * 1000);
     const context = await resolveContextForTime(state.rootDirectory, {
-      date: timeboxDate(now),
-      now
+      date: timeboxDate(transitionTime),
+      now: transitionTime
     });
     const contextId = context === '/' ? '' : context.replace(/^\/+/u, '');
 
@@ -3165,7 +3166,7 @@ async function switchToCurrentTimebox(state) {
     await logEvent(state, 'context.switched_to_current_timebox', {
       context,
       contextId: contextId || '/',
-      date: timeboxDate(now)
+      date: timeboxDate(transitionTime)
     });
 
     return {

@@ -731,7 +731,7 @@ test(':cancel removes matching timeboxes and prompts for ambiguous matches', asy
   }
 });
 
-test(':now switches to the context that owns the current time', async () => {
+test(':now switches to the context that will be active in three minutes', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -747,6 +747,14 @@ test(':now switches to the context that owns the current time', async () => {
     await handleEntry(':plan 9-12 /arb-prep', state);
     await handleEntry(':plan 2-3 /team-meeting/2026-06-29', state);
 
+    state.now = () => new Date(2026, 5, 29, 13, 58);
+    assert.deepEqual(await handleEntry(':now', state), {
+      action: 'continue',
+      message: 'context team-meeting/2026-06-29'
+    });
+    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'team-meeting', '2026-06-29'));
+
+    state.now = () => new Date(2026, 5, 29, 14, 15);
     assert.deepEqual(await handleEntry(':now', state), {
       action: 'continue',
       message: 'context team-meeting/2026-06-29'
