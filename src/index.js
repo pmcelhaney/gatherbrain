@@ -2322,6 +2322,7 @@ function contextCompletionMatchRank(contextName, partialContext) {
   const comparableName = contextName.name.startsWith('/')
     ? contextName.name
     : `/${contextName.name}`;
+  const pathQualified = parsedPartialContext.includes('/');
 
   if (
     parsedPartialContext.length === 0
@@ -2331,6 +2332,10 @@ function contextCompletionMatchRank(contextName, partialContext) {
     || contextName.aliases?.some((alias) => startsWithCaseInsensitive(alias, parsedPartialContext))
   ) {
     return 0;
+  }
+
+  if (pathQualified) {
+    return null;
   }
 
   return hasWordStartCaseInsensitive(contextName.name, parsedPartialContext)

@@ -3131,6 +3131,9 @@ test('completes :switch context names', async () => {
     await mkdir(path.join(rootDirectory, 'alpha', 'sibling-project'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'my-cool-project'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'other-project'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Megan Wright'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Stephanie Stephens'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(
@@ -3147,7 +3150,7 @@ test('completes :switch context names', async () => {
     );
     assert.deepEqual(
       await completeEntry(':switch ', state),
-      [['/alpha', '/alpha/deep project', '/alpha/deep-project', '/alpha/deep-project/child', '/alpha/sibling-project', '/my-cool-project', '/other-project'], '']
+      [['/alpha', '/alpha/deep project', '/alpha/deep-project', '/alpha/deep-project/child', '/alpha/sibling-project', '/my-cool-project', '/other-project', '/people', '/people/Megan Wright', '/people/Stephanie Stephens', '/people/Steve Ma'], '']
     );
     assert.deepEqual(
       await completeEntry(':switch /my', state),
@@ -3160,6 +3163,10 @@ test('completes :switch context names', async () => {
     assert.deepEqual(
       await completeEntry(':switch /MY', state),
       [['/my-cool-project'], '/MY']
+    );
+    assert.deepEqual(
+      await completeEntry(':switch /people/Ste', state),
+      [['/people/Stephanie Stephens', '/people/Steve Ma'], '/people/Ste']
     );
 
     await handleEntry(':switch alpha/deep-project', state);
