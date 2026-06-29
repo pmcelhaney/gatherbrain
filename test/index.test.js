@@ -3138,15 +3138,15 @@ test('completes :switch context names', async () => {
 
     assert.deepEqual(
       await completeEntry(':switch my', state),
-      [['/my-cool-project'], 'my']
+      [['my-cool-project'], 'my']
     );
     assert.deepEqual(
       await completeEntry(':SWITCH MY', state),
-      [['/my-cool-project'], 'MY']
+      [['my-cool-project'], 'MY']
     );
     assert.deepEqual(
       await completeEntry(':switch deep', state),
-      [['/alpha/deep project', '/alpha/deep-project', '/alpha/deep-project/child'], 'deep']
+      [['deep project', 'deep-project', 'deep-project/child'], 'deep']
     );
     assert.deepEqual(
       await completeEntry(':switch ', state),
@@ -3168,8 +3168,16 @@ test('completes :switch context names', async () => {
       await completeEntry(':switch /people/Ste', state),
       [['/people/Stephanie Stephens', '/people/Steve Ma'], '/people/Ste']
     );
+    assert.deepEqual(
+      await completeEntry(':switch Ste', state),
+      [['Stephanie Stephens', 'Steve Ma'], 'Ste']
+    );
+    assert.deepEqual(await handleEntry(':switch Steve Ma', state), {
+      action: 'continue',
+      message: 'context people/Steve Ma'
+    });
 
-    await handleEntry(':switch alpha/deep-project', state);
+    await handleEntry(':switch /alpha/deep-project', state);
 
     assert.deepEqual(
       await completeEntry(':switch ../s', state),
@@ -3347,7 +3355,7 @@ test('completes named command arguments', async () => {
 
     assert.deepEqual(
       await completeEntry(':switch gather', state),
-      [['/projects/gatherbrain'], 'gather']
+      [['gatherbrain'], 'gather']
     );
     assert.deepEqual(
       await completeEntry(':peek Steve', state),
@@ -3555,7 +3563,7 @@ test('readline completer returns :switch completions', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
     const completer = createReadlineCompleter(state);
 
-    assert.deepEqual(await completer(':switch my'), [['/my-cool-project'], 'my']);
+    assert.deepEqual(await completer(':switch my'), [['my-cool-project'], 'my']);
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

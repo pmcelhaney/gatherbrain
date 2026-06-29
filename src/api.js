@@ -339,6 +339,12 @@ export async function resolveExistingSwitchContextId(contextReference, state) {
     if (model.contexts.has(rootRelativeContextId)) {
       return rootRelativeContextId;
     }
+
+    const suffixContextId = uniqueContextIdForSuffix(requestedContext, model);
+
+    if (suffixContextId) {
+      return suffixContextId;
+    }
   }
 
   throw new Error(`context ${contextReference} does not exist`);
@@ -374,6 +380,32 @@ function contextIdsForAlias(contextReference, model) {
 
 function uniqueContextIdForAlias(contextReference, model) {
   const matches = contextIdsForAlias(contextReference, model);
+
+  if (matches.length > 1) {
+    throw new Error(`context ${contextReference} is ambiguous`);
+  }
+
+  return matches.at(0) ?? null;
+}
+
+function contextIdHasSuffix(contextId, contextReference) {
+  const contextParts = contextReferenceParts(contextId);
+  const referenceParts = contextReferenceParts(contextReference);
+
+  if (referenceParts.length === 0 || referenceParts.length > contextParts.length) {
+    return false;
+  }
+
+  const suffixParts = contextParts.slice(contextParts.length - referenceParts.length);
+
+  return suffixParts.every((part, index) => part === referenceParts[index]);
+}
+
+function uniqueContextIdForSuffix(contextReference, model) {
+  const matches = [...model.contexts.values()]
+    .filter((context) => context.id !== '' && contextIdHasSuffix(context.id, contextReference))
+    .map((context) => context.id)
+    .sort();
 
   if (matches.length > 1) {
     throw new Error(`context ${contextReference} is ambiguous`);

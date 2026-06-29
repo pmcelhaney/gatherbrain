@@ -1946,8 +1946,11 @@ export async function completeEntry(line, state) {
     const matches = namedContextCompletion.groups.commandName.toLowerCase() === 'switch'
       ? await matchingSwitchContextCompletions(partialContext, state)
       : await matchingContextCompletions(partialContext, state);
+    const completionValue = namedContextCompletion.groups.commandName.toLowerCase() === 'switch'
+      ? switchContextCompletionValue
+      : contextCompletionValue;
 
-    return [matches.map((match) => contextCompletionValue(match, partialContext)), partialContext];
+    return [matches.map((match) => completionValue(match, partialContext)), partialContext];
   }
 
   const namedRelationCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+[1-9]\d*\s+(?<partial>.*)$/u);
@@ -2346,10 +2349,21 @@ function contextCompletionMatchRank(contextName, partialContext) {
 }
 
 function contextCompletionValue(context, partialContext = '') {
-  const value = context.name.startsWith('/') ? context.name : `/${context.name}`;
+  const rawValue = context.completion ?? context.name;
+  const value = rawValue.startsWith('/') ? rawValue : `/${rawValue}`;
   const partial = typeof partialContext === 'string' ? partialContext : '';
 
   return partial.includes('\\') ? escapedCompletionValue(value) : value;
+}
+
+function switchContextCompletionValue(context, partialContext = '') {
+  if (!context.completion) {
+    return contextCompletionValue(context, partialContext);
+  }
+
+  const partial = typeof partialContext === 'string' ? partialContext : '';
+
+  return partial.includes('\\') ? escapedCompletionValue(context.completion) : context.completion;
 }
 
 function escapedCompletionValue(value) {
@@ -2364,6 +2378,23 @@ function contextMentionCompletionValue(context) {
 
 function contextReferenceParts(contextReference) {
   return contextReference.split('/').filter((pathPart) => pathPart.length > 0);
+}
+
+function contextPathSegmentCompletion(contextName, partialContext) {
+  const parsedPartialContext = splitCompletionSegments(partialContext).map((segment) => segment.value).join(' ');
+
+  if (parsedPartialContext.length === 0 || parsedPartialContext.includes('/')) {
+    return null;
+  }
+
+  const pathParts = contextReferenceParts(contextName.name);
+  const matchingIndex = pathParts.findIndex((pathPart) => hasWordStartCaseInsensitive(pathPart, parsedPartialContext));
+
+  if (matchingIndex === -1) {
+    return null;
+  }
+
+  return pathParts.slice(matchingIndex).join('/');
 }
 
 async function matchingSwitchContextCompletions(partialContext, state) {
@@ -2408,7 +2439,16 @@ async function matchingSwitchContextCompletions(partialContext, state) {
       .map((contextId) => ({ name: contextId }));
   }
 
-  return matchingContextCompletions(partialContext, state);
+  const matches = await matchingContextCompletions(partialContext, state);
+
+  return matches.map((match) => {
+    const completion = contextPathSegmentCompletion(match, partialContext);
+
+    return {
+      ...match,
+      ...(completion ? { completion } : {})
+    };
+  });
 }
 
 export function createReadlineCompleter(state) {
