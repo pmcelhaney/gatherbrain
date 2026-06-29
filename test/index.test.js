@@ -2130,6 +2130,49 @@ test('item update shorthand changes a listed item type', async () => {
   }
 });
 
+test('dot item shorthand updates visible items by row position', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const secondFactPath = path.join(rootDirectory, '2026-06-23T09-05-07.012-04-00.md');
+  const thirdFactPath = path.join(rootDirectory, '2026-06-23T09-06-07.012-04-00.md');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(rootDirectory, { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+    await writeFile(
+      secondFactPath,
+      '---\ntype: fact\n---\n\nSecond fact.\n'
+    );
+    await writeFile(
+      thirdFactPath,
+      '---\ntype: fact\n---\n\nThird fact.\n'
+    );
+
+    assert.deepEqual(await handleEntry('. done', state), {
+      action: 'continue',
+      message: 'updated item 3'
+    });
+    assert.deepEqual(await handleEntry('.. waiting', state), {
+      action: 'continue',
+      message: 'updated item 2'
+    });
+    assert.equal(
+      markdownWithoutFactUuid(await readFile(thirdFactPath, 'utf8')),
+      '---\ntype: done\n---\n\nThird fact.\n'
+    );
+    assert.equal(
+      markdownWithoutFactUuid(await readFile(secondFactPath, 'utf8')),
+      '---\ntype: waiting\n---\n\nSecond fact.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('item update shorthand targets the active lens list', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -2599,6 +2642,55 @@ test(':edit command targets the active lens list', async () => {
   }
 });
 
+test('dot item shorthand selects visible rows for fact commands', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const secondFactPath = path.join(rootDirectory, '2026-06-23T09-05-07.012-04-00.md');
+  const thirdFactPath = path.join(rootDirectory, '2026-06-23T09-06-07.012-04-00.md');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(rootDirectory, { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+    await writeFile(
+      secondFactPath,
+      '---\ntype: fact\n---\n\nSecond fact.\n'
+    );
+    await writeFile(
+      thirdFactPath,
+      '---\ntype: fact\n---\n\nThird fact.\n'
+    );
+
+    assert.deepEqual(await handleEntry(':edit .', state), {
+      action: 'edit',
+      filePath: thirdFactPath,
+      itemLabel: '3',
+      itemNumber: 3
+    });
+    assert.deepEqual(await handleEntry(':edit ..', state), {
+      action: 'edit',
+      filePath: secondFactPath,
+      itemLabel: '2',
+      itemNumber: 2
+    });
+    assert.deepEqual(await handleEntry(':edit', state), {
+      action: 'continue',
+      message: 'Edit which fact?'
+    });
+    assert.deepEqual(await handleEntry('.', state), {
+      action: 'edit',
+      filePath: thirdFactPath,
+      itemLabel: '3',
+      itemNumber: 3
+    });
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test(':edit command reports missing item', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -3048,6 +3140,16 @@ test('previews item update shorthand on the highlighted item', () => {
     }),
     '\x1b[2J\x1b[Hfacts\n----------------------------------------\n\x1b[7m\x1b[2m 1.\x1b[22m \x1b[36mwaiting\x1b[39m \x1b[35mtoday\x1b[39m Follow up.\x1b[27m\x1b[4;1H'
   );
+  assert.equal(
+    renderTui({
+      state,
+      facts: [{ text: 'Follow up.', type: 'todo' }],
+      rows: 4,
+      columns: 40,
+      promptLine: '. waiting today'
+    }),
+    '\x1b[2J\x1b[Hfacts\n----------------------------------------\n\x1b[7m\x1b[2m 1.\x1b[22m \x1b[36mwaiting\x1b[39m \x1b[35mtoday\x1b[39m Follow up.\x1b[27m\x1b[4;1H'
+  );
 });
 
 test('renders peek mode with a screen background color', () => {
@@ -3351,6 +3453,10 @@ test('completes named command arguments', async () => {
       '---\ntitle: "Steve Ma"\ntype: context\naliases: [sma]\n---\n'
     );
     await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md'),
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(
@@ -3370,11 +3476,19 @@ test('completes named command arguments', async () => {
       [['/people/Steve Ma'], '/people/S']
     );
     assert.deepEqual(
+      await completeEntry(':move . /people/S', state),
+      [['/people/Steve Ma'], '/people/S']
+    );
+    assert.deepEqual(
       await completeEntry(':move 1 /people/Steve\\ M', state),
       [['/people/Steve\\ Ma'], '/people/Steve\\ M']
     );
     assert.deepEqual(
       await completeEntry('1 d', state),
+      [['done'], 'd']
+    );
+    assert.deepEqual(
+      await completeEntry('. d', state),
       [['done'], 'd']
     );
     assert.deepEqual(

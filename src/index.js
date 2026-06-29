@@ -1130,10 +1130,111 @@ function displayHighlightedItemLine(line, includeColor) {
     : line;
 }
 
-function itemNumberForPromptLine(line) {
+function itemNumberForPromptLine(line, facts = []) {
   const match = String(line ?? '').match(/^(?<itemNumber>[1-9]\d*)(?:\s|$)/u);
 
-  return match ? Number(match.groups.itemNumber) : null;
+  if (match) {
+    return Number(match.groups.itemNumber);
+  }
+
+  const dotMatch = String(line ?? '').match(/^(?<item>\.+)(?:\s|$)/u);
+
+  return dotMatch ? facts[dotMatch.groups.item.length - 1]?.itemNumber ?? null : null;
+}
+
+function expandedPromptLineForNumberedFacts(line, facts) {
+  const match = String(line ?? '').match(/^(?<item>\.+)(?<suffix>\s+.*)$/u);
+
+  if (!match) {
+    return line;
+  }
+
+  const itemNumber = itemNumberForPromptLine(line, facts);
+
+  return itemNumber === null ? line : `${itemNumber}${match.groups.suffix}`;
+}
+
+async function itemNumberForVisibleDotShorthand(dotToken, state) {
+  if (!/^\.+$/u.test(dotToken)) {
+    return null;
+  }
+
+  const facts = visibleFactsWithItemNumbers(await visibleFactsForState(state), state);
+  return facts[dotToken.length - 1]?.itemNumber ?? null;
+}
+
+async function expandedDotItemShorthandEntry(entry, state, options = {}) {
+  const command = String(entry ?? '').trim();
+  const missingItem = (dotToken) => ({
+    error: {
+      message: `item ${dotToken} does not exist`,
+      type: 'usage_error'
+    }
+  });
+  const replaceDotToken = async (dotToken, replacer) => {
+    const itemNumber = await itemNumberForVisibleDotShorthand(dotToken, state);
+
+    return itemNumber === null
+      ? missingItem(dotToken)
+      : { entry: replacer(String(itemNumber)) };
+  };
+
+  if (options.pendingCommand?.argument?.type === 'fact') {
+    const dotToken = command.match(/^\.+$/u)?.[0];
+
+    return dotToken
+      ? replaceDotToken(dotToken, (itemNumber) => itemNumber)
+      : { entry };
+  }
+
+  const itemUpdateMatch = entry.match(/^(?<prefix>\s*)(?<item>\.+)(?<suffix>\s+.*)$/u);
+
+  if (itemUpdateMatch) {
+    return replaceDotToken(
+      itemUpdateMatch.groups.item,
+      (itemNumber) => `${itemUpdateMatch.groups.prefix}${itemNumber}${itemUpdateMatch.groups.suffix}`
+    );
+  }
+
+  const namedCommandMatch = entry.match(/^(?<prefix>\s*:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+)(?<args>.*)$/u);
+
+  if (!namedCommandMatch) {
+    return { entry };
+  }
+
+  const argumentsDefinition = commandArgumentsForCompletion(namedCommandMatch.groups.commandName, state);
+  const factArgumentIndex = argumentsDefinition?.findIndex((argument) => argument.type === 'fact') ?? -1;
+
+  if (factArgumentIndex === -1) {
+    return { entry };
+  }
+
+  const args = namedCommandMatch.groups.args;
+  const replaceNamedCommandArgs = (nextArgs) => `${namedCommandMatch.groups.prefix}${nextArgs}`;
+
+  if (factArgumentIndex === 0) {
+    const firstArgMatch = args.match(/^(?<item>\.+)(?<suffix>(?:\s+.*)?)$/u);
+
+    if (firstArgMatch) {
+      return replaceDotToken(
+        firstArgMatch.groups.item,
+        (itemNumber) => replaceNamedCommandArgs(`${itemNumber}${firstArgMatch.groups.suffix}`)
+      );
+    }
+  }
+
+  if (factArgumentIndex === argumentsDefinition.length - 1) {
+    const lastArgMatch = args.match(/^(?<prefix>.*?)(?<item>\.+)$/u);
+
+    if (lastArgMatch && (lastArgMatch.groups.prefix.length === 0 || /\s$/u.test(lastArgMatch.groups.prefix))) {
+      return replaceDotToken(
+        lastArgMatch.groups.item,
+        (itemNumber) => replaceNamedCommandArgs(`${lastArgMatch.groups.prefix}${itemNumber}`)
+      );
+    }
+  }
+
+  return { entry };
 }
 
 function relationLabelForPreview(contextReference) {
@@ -1174,13 +1275,13 @@ function previewFactForOperations(fact, operations) {
 }
 
 function previewFactsForPromptLine(facts, promptLine, state) {
-  const promptItemNumber = itemNumberForPromptLine(promptLine);
+  const promptItemNumber = itemNumberForPromptLine(promptLine, facts);
 
   if (promptItemNumber === null) {
     return facts;
   }
 
-  const parsedEntry = parseEntry(promptLine, state?.commandRegistry);
+  const parsedEntry = parseEntry(expandedPromptLineForNumberedFacts(promptLine, facts), state?.commandRegistry);
 
   if (parsedEntry.type !== 'update_fact_shorthand') {
     return facts;
@@ -1396,9 +1497,10 @@ export function buildPagedFactLines(options = {}) {
 
   const numberedFacts = visibleFactsWithItemNumbers(facts, state);
   const previewFacts = previewFactsForPromptLine(numberedFacts, promptLine, state);
+  const effectiveHighlightItemNumber = highlightItemNumber ?? itemNumberForPromptLine(promptLine, numberedFacts);
   const factViewModels = factViewModelsForDisplay(previewFacts, {
     columns,
-    highlightItemNumber,
+    highlightItemNumber: effectiveHighlightItemNumber,
     includeColor,
     today,
     template,
@@ -1860,10 +1962,15 @@ export async function completeEntry(line, state) {
     return [matches, line];
   }
 
-  if (state.pendingCommand?.argument?.type === 'fact') {
-    const matches = await matchingFactCompletions(line, state);
+  const expandedShorthand = await expandedDotItemShorthandEntry(line, state, {
+    pendingCommand: state.pendingCommand
+  });
+  const completionLine = expandedShorthand.entry ?? line;
 
-    return [matches, line];
+  if (state.pendingCommand?.argument?.type === 'fact') {
+    const matches = await matchingFactCompletions(completionLine, state);
+
+    return [matches, completionLine];
   }
 
   if (state.pendingCommand?.argument?.type === 'context') {
@@ -1885,7 +1992,7 @@ export async function completeEntry(line, state) {
     return [matches, line];
   }
 
-  const commandCompletion = line.match(/^:(?<partial>[A-Za-z0-9_-]*)$/u);
+  const commandCompletion = completionLine.match(/^:(?<partial>[A-Za-z0-9_-]*)$/u);
 
   if (commandCompletion) {
     const partialCommand = commandCompletion.groups.partial;
@@ -1893,45 +2000,45 @@ export async function completeEntry(line, state) {
       .filter((commandName) => startsWithCaseInsensitive(commandName, partialCommand))
       .map((commandName) => `:${commandName} `);
 
-    return [matches, line];
+    return [matches, completionLine];
   }
 
-  const itemUpdateShorthandCompletion = await matchingItemUpdateShorthandCompletion(line, state);
+  const itemUpdateShorthandCompletion = await matchingItemUpdateShorthandCompletion(completionLine, state);
 
   if (itemUpdateShorthandCompletion) {
     return itemUpdateShorthandCompletion;
   }
 
-  const factCaptureMetadataCompletion = await matchingFactCaptureMetadataCompletion(line, state);
+  const factCaptureMetadataCompletion = await matchingFactCaptureMetadataCompletion(completionLine, state);
 
   if (factCaptureMetadataCompletion) {
     return factCaptureMetadataCompletion;
   }
 
-  const trailingNamedArgumentCompletion = await matchingTrailingNamedArgument(line, state);
+  const trailingNamedArgumentCompletion = await matchingTrailingNamedArgument(completionLine, state);
 
   if (trailingNamedArgumentCompletion) {
     return trailingNamedArgumentCompletion;
   }
 
-  const namedEnumCompletion = matchingNamedEnumArgument(line, state);
+  const namedEnumCompletion = matchingNamedEnumArgument(completionLine, state);
 
   if (namedEnumCompletion) {
     return namedEnumCompletion;
   }
 
-  const namedFactCompletion = await matchingNamedFactArgument(line, state);
+  const namedFactCompletion = await matchingNamedFactArgument(completionLine, state);
 
   if (namedFactCompletion) {
     return namedFactCompletion;
   }
 
-  const namedContextCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+(?<partial>.*)$/u);
+  const namedContextCompletion = completionLine.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+(?<partial>.*)$/u);
   const namedContextArguments = namedContextCompletion
     ? commandArgumentsForCompletion(namedContextCompletion.groups.commandName, state)
     : null;
 
-  const cancelContextCompletion = await matchingCancelContextCompletion(line, state);
+  const cancelContextCompletion = await matchingCancelContextCompletion(completionLine, state);
 
   if (cancelContextCompletion) {
     return cancelContextCompletion;
@@ -1953,7 +2060,7 @@ export async function completeEntry(line, state) {
     return [matches.map((match) => completionValue(match, partialContext)), partialContext];
   }
 
-  const namedRelationCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+[1-9]\d*\s+(?<partial>.*)$/u);
+  const namedRelationCompletion = completionLine.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+[1-9]\d*\s+(?<partial>.*)$/u);
   const namedRelationArguments = namedRelationCompletion
     ? commandArgumentsForCompletion(namedRelationCompletion.groups.commandName, state)
     : null;
@@ -1970,13 +2077,13 @@ export async function completeEntry(line, state) {
     return [matches.map((match) => contextCompletionValue(match, partialContext)), partialContext];
   }
 
-  const namedContextArgumentCompletion = await matchingNamedContextArgument(line, state);
+  const namedContextArgumentCompletion = await matchingNamedContextArgument(completionLine, state);
 
   if (namedContextArgumentCompletion) {
     return namedContextArgumentCompletion;
   }
 
-  const namedLensCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+(?<partial>.*)$/u);
+  const namedLensCompletion = completionLine.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+(?<partial>.*)$/u);
   const namedLensArguments = namedLensCompletion
     ? commandArgumentsForCompletion(namedLensCompletion.groups.commandName, state)
     : null;
@@ -1988,7 +2095,7 @@ export async function completeEntry(line, state) {
     return [matches, partialLens];
   }
 
-  const mentionCompletion = line.match(/(^|\s)(@[^\s]*)$/u);
+  const mentionCompletion = completionLine.match(/(^|\s)(@[^\s]*)$/u);
 
   if (mentionCompletion) {
     const partialMention = mentionCompletion[2];
@@ -1998,7 +2105,7 @@ export async function completeEntry(line, state) {
     return [matches.map(contextMentionCompletionValue), partialMention];
   }
 
-  return [[], line];
+  return [[], completionLine];
 }
 
 async function matchingTrailingNamedArgument(line, state) {
@@ -3101,13 +3208,16 @@ export async function handleEntry(entry, state) {
   }
 
   const pendingCommand = state.pendingCommand;
+  const expandedShorthand = await expandedDotItemShorthandEntry(entry, state, {
+    pendingCommand
+  });
   let parsedEntry = pendingCommand
-    ? continuePromptedCommand(pendingCommand, entry)
-    : parseEntry(entry, state.commandRegistry);
+    ? continuePromptedCommand(pendingCommand, expandedShorthand.entry ?? entry)
+    : expandedShorthand.error ?? parseEntry(expandedShorthand.entry ?? entry, state.commandRegistry);
   state.pendingCommand = null;
 
   if (!pendingCommand && parsedEntry.type === 'usage_error' && parsedEntry.message === 'usage: <item> [type] [date] [/context ...]') {
-    parsedEntry = await parseAliasItemUpdateShorthand(entry, state) ?? parsedEntry;
+    parsedEntry = await parseAliasItemUpdateShorthand(expandedShorthand.entry ?? entry, state) ?? parsedEntry;
   }
 
   if (parsedEntry.type === 'quit') {
