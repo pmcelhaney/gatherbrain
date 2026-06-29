@@ -2149,8 +2149,18 @@ async function matchingMetadataUpdateCompletion(updates, state) {
     enum: factTypeEnumName
   }, state.commandRegistry).filter((value) => startsWithCaseInsensitive(value, partial));
   const dateMatches = dateCompletionValues.filter((value) => startsWithCaseInsensitive(value, partial));
+  const contextAliasMatches = partial.length > 0
+    ? await matchingContextAliasCompletions(partial, state)
+    : [];
 
-  return [[...factTypeMatches, ...dateMatches], partial];
+  return [
+    [
+      ...factTypeMatches,
+      ...dateMatches,
+      ...contextAliasMatches.map((match) => contextCompletionValue(match, partialSegment.raw))
+    ],
+    partialSegment.raw
+  ];
 }
 
 async function matchingNamedFactArgument(line, state) {
@@ -2296,6 +2306,15 @@ async function matchingContextCompletions(partialContext, state) {
   const contextNames = await contextLinks(state);
 
   return rankedCompletionMatches(contextNames, (contextName) => contextCompletionMatchRank(contextName, partialContext));
+}
+
+async function matchingContextAliasCompletions(partialAlias, state) {
+  const parsedPartialAlias = splitCompletionSegments(partialAlias).map((segment) => segment.value).join(' ');
+  const contextNames = await contextLinks(state);
+
+  return rankedCompletionMatches(contextNames, (contextName) => (
+    contextName.aliases?.some((alias) => startsWithCaseInsensitive(alias, parsedPartialAlias)) ? 0 : null
+  ));
 }
 
 function contextCompletionMatchRank(contextName, partialContext) {
@@ -2931,6 +2950,32 @@ async function switchToCurrentTimebox(state) {
   }
 }
 
+async function parseAliasItemUpdateShorthand(entry, state) {
+  const match = entry.trim().match(/^(?<item>[1-9]\d*)\s+(?<alias>[A-Za-z0-9_-]+)$/u);
+
+  if (!match) {
+    return null;
+  }
+
+  const links = await contextLinks(state);
+  const aliasMatches = links.filter((link) => link.aliases?.includes(match.groups.alias));
+
+  if (aliasMatches.length === 0) {
+    return null;
+  }
+
+  return {
+    itemNumber: Number(match.groups.item),
+    operations: [
+      {
+        contextReference: match.groups.alias,
+        type: 'relate_fact'
+      }
+    ],
+    type: 'update_fact_shorthand'
+  };
+}
+
 export async function handleEntry(entry, state) {
   if (state.pendingTimeboxCancellation) {
     return handlePendingTimeboxCancellation(entry, state);
@@ -2941,10 +2986,14 @@ export async function handleEntry(entry, state) {
   }
 
   const pendingCommand = state.pendingCommand;
-  const parsedEntry = pendingCommand
+  let parsedEntry = pendingCommand
     ? continuePromptedCommand(pendingCommand, entry)
     : parseEntry(entry, state.commandRegistry);
   state.pendingCommand = null;
+
+  if (!pendingCommand && parsedEntry.type === 'usage_error' && parsedEntry.message === 'usage: <item> [type] [date] [/context ...]') {
+    parsedEntry = await parseAliasItemUpdateShorthand(entry, state) ?? parsedEntry;
+  }
 
   if (parsedEntry.type === 'quit') {
     return { action: 'quit' };

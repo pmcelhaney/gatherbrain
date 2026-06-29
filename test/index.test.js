@@ -2408,6 +2408,33 @@ test('item update shorthand relates to multi-word contexts', async () => {
   }
 });
 
+test('item update shorthand relates through context aliases', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const factPath = path.join(rootDirectory, 'follow-up.md');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'people', 'Steve Ma', 'index.md'),
+      '---\ntitle: "Steve Ma"\ntype: context\naliases: [sma]\n---\n'
+    );
+    await writeFile(factPath, '---\ntype: fact\n---\n\nFollow up.\n');
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(await handleEntry('1 sma', state), {
+      action: 'continue',
+      message: 'updated item 1'
+    });
+    assert.equal(
+      markdownWithoutFactUuid(await readFile(factPath, 'utf8')),
+      '---\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nFollow up.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('fact capture applies metadata after delimiter', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -3304,6 +3331,10 @@ test('completes named command arguments', async () => {
 
   try {
     await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'people', 'Steve Ma', 'index.md'),
+      '---\ntitle: "Steve Ma"\ntype: context\naliases: [sma]\n---\n'
+    );
     await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
     const state = createPromptState({ appDirectory, rootDirectory });
 
@@ -3348,6 +3379,10 @@ test('completes named command arguments', async () => {
       [['/people/Steve\\ Ma'], '/people/Steve\\ ']
     );
     assert.deepEqual(
+      await completeEntry('1 sma', state),
+      [['/people/Steve Ma'], 'sma']
+    );
+    assert.deepEqual(
       await completeEntry(':lens t', state),
       [['todo', 'today'], 't']
     );
@@ -3366,6 +3401,10 @@ test('completes named command arguments', async () => {
     assert.deepEqual(
       await completeEntry('Follow up -- /people/Steve\\ M', state),
       [['/people/Steve\\ Ma'], '/people/Steve\\ M']
+    );
+    assert.deepEqual(
+      await completeEntry('Follow up -- sma', state),
+      [['/people/Steve Ma'], 'sma']
     );
     assert.deepEqual(
       await completeEntry(':new Follow up -- wa', state),
