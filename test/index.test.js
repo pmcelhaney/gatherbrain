@@ -19,6 +19,7 @@ import {
   pageNavigationForBody,
   pageNavigationForKey,
   pageNavigationForFacts,
+  promptPreviewKeyForLine,
   readClipboard,
   reloadWorkspaceConfig,
   refreshEditedFact,
@@ -3149,6 +3150,25 @@ test('previews item update shorthand on the highlighted item', () => {
       promptLine: '. waiting today'
     }),
     '\x1b[2J\x1b[Hfacts\n----------------------------------------\n\x1b[7m\x1b[2m 1.\x1b[22m \x1b[36mwaiting\x1b[39m \x1b[35mtoday\x1b[39m Follow up.\x1b[27m\x1b[4;1H'
+  );
+});
+
+test('uses dot item shorthand for prompt preview redraw keys', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const firstState = createPromptState({ appDirectory, rootDirectory });
+  const secondState = createPromptState({ appDirectory, rootDirectory });
+
+  assert.equal(
+    promptPreviewKeyForLine('. done', [{ id: 'first.md', text: 'Follow up.', type: 'todo' }], firstState),
+    '1 done'
+  );
+  assert.equal(
+    promptPreviewKeyForLine('.. done', [
+      { id: 'first.md', text: 'First.', type: 'todo' },
+      { id: 'second.md', text: 'Second.', type: 'todo' }
+    ], secondState),
+    '1 done'
   );
 });
 

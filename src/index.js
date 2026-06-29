@@ -1297,6 +1297,13 @@ function previewFactsForPromptLine(facts, promptLine, state) {
   ));
 }
 
+export function promptPreviewKeyForLine(line, facts, state = null) {
+  const numberedFacts = visibleFactsWithItemNumbers(facts, state);
+  const effectiveLine = expandedDotItemShorthandEntry(line, numberedFacts).entry ?? line;
+
+  return itemNumberForPromptLine(effectiveLine) === null ? null : effectiveLine;
+}
+
 function formattedDisplayLines(text, options = {}) {
   const {
     columns,
@@ -3776,9 +3783,7 @@ async function main() {
   let renderedPromptPreviewKey = null;
 
   function currentPromptPreviewKey() {
-    return itemNumberForPromptLine(terminal.line) === null
-      ? null
-      : terminal.line;
+    return promptPreviewKeyForLine(terminal.line, factsForBody(body), state);
   }
 
   function renderCurrentScreen() {
