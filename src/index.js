@@ -1794,6 +1794,57 @@ function commandArgumentsForCompletion(commandName, state) {
     : null;
 }
 
+function splitCompletionSegments(value) {
+  const segments = [];
+  let raw = '';
+  let parsed = '';
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    const nextCharacter = value[index + 1];
+
+    if (character === '\\' && /\s/u.test(nextCharacter ?? '')) {
+      raw += `${character}${nextCharacter}`;
+      parsed += nextCharacter;
+      index += 1;
+      continue;
+    }
+
+    if (/\s/u.test(character)) {
+      if (raw.length > 0) {
+        segments.push({ raw, value: parsed });
+        raw = '';
+        parsed = '';
+      }
+
+      continue;
+    }
+
+    raw += character;
+    parsed += character;
+  }
+
+  if (raw.length > 0) {
+    segments.push({ raw, value: parsed });
+  }
+
+  return segments;
+}
+
+function endsWithUnescapedWhitespace(value) {
+  if (!/\s/u.test(value.at(-1) ?? '')) {
+    return false;
+  }
+
+  let slashCount = 0;
+
+  for (let index = value.length - 2; index >= 0 && value[index] === '\\'; index -= 1) {
+    slashCount += 1;
+  }
+
+  return slashCount % 2 === 0;
+}
+
 export async function completeEntry(line, state) {
   if (state.pendingTimeboxCancellation) {
     const matches = state.pendingTimeboxCancellation.matches
@@ -1896,7 +1947,7 @@ export async function completeEntry(line, state) {
       ? await matchingSwitchContextCompletions(partialContext, state)
       : await matchingContextCompletions(partialContext, state);
 
-    return [matches.map(contextCompletionValue), partialContext];
+    return [matches.map((match) => contextCompletionValue(match, partialContext)), partialContext];
   }
 
   const namedRelationCompletion = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)\s+[1-9]\d*\s+(?<partial>.*)$/u);
@@ -1913,7 +1964,7 @@ export async function completeEntry(line, state) {
     const partialContext = namedRelationCompletion.groups.partial ?? '';
     const matches = await matchingContextCompletions(partialContext, state);
 
-    return [matches.map(contextCompletionValue), partialContext];
+    return [matches.map((match) => contextCompletionValue(match, partialContext)), partialContext];
   }
 
   const namedContextArgumentCompletion = await matchingNamedContextArgument(line, state);
@@ -2081,13 +2132,16 @@ async function matchingFactCaptureMetadataCompletion(line, state) {
 }
 
 async function matchingMetadataUpdateCompletion(updates, state) {
-  const tokens = updates.split(/\s+/u);
-  const partial = updates.endsWith(' ') ? '' : tokens.at(-1) ?? '';
+  const segments = splitCompletionSegments(updates);
+  const partialSegment = endsWithUnescapedWhitespace(updates)
+    ? { raw: '', value: '' }
+    : segments.at(-1) ?? { raw: '', value: '' };
+  const partial = partialSegment.value;
 
   if (partial.startsWith('/')) {
     const matches = await matchingContextCompletions(partial, state);
 
-    return [matches.map(contextCompletionValue), partial];
+    return [matches.map((match) => contextCompletionValue(match, partialSegment.raw)), partialSegment.raw];
   }
 
   const factTypeMatches = commandArgumentValues({
@@ -2120,7 +2174,7 @@ async function matchingNamedContextArgument(line, state) {
 
   const matches = await matchingContextCompletions(argumentCompletion.partialValue, state);
 
-  return [matches.map(contextCompletionValue), argumentCompletion.partialValue];
+  return [matches.map((match) => contextCompletionValue(match, argumentCompletion.partialValue)), argumentCompletion.partialValue];
 }
 
 function matchingNamedEnumArgument(line, state) {
@@ -2245,29 +2299,33 @@ async function matchingContextCompletions(partialContext, state) {
 }
 
 function contextCompletionMatchRank(contextName, partialContext) {
+  const parsedPartialContext = splitCompletionSegments(partialContext).map((segment) => segment.value).join(' ');
   const comparableName = contextName.name.startsWith('/')
     ? contextName.name
     : `/${contextName.name}`;
 
   if (
-    partialContext.length === 0
-    || startsWithCaseInsensitive(contextName.name, partialContext)
-    || startsWithCaseInsensitive(comparableName, partialContext)
-    || startsWithCaseInsensitive(contextName.folder, partialContext)
-    || contextName.aliases?.some((alias) => startsWithCaseInsensitive(alias, partialContext))
+    parsedPartialContext.length === 0
+    || startsWithCaseInsensitive(contextName.name, parsedPartialContext)
+    || startsWithCaseInsensitive(comparableName, parsedPartialContext)
+    || startsWithCaseInsensitive(contextName.folder, parsedPartialContext)
+    || contextName.aliases?.some((alias) => startsWithCaseInsensitive(alias, parsedPartialContext))
   ) {
     return 0;
   }
 
-  return hasWordStartCaseInsensitive(contextName.name, partialContext)
-    || hasWordStartCaseInsensitive(contextName.folder, partialContext)
-    || contextName.aliases?.some((alias) => hasWordStartCaseInsensitive(alias, partialContext))
+  return hasWordStartCaseInsensitive(contextName.name, parsedPartialContext)
+    || hasWordStartCaseInsensitive(contextName.folder, parsedPartialContext)
+    || contextName.aliases?.some((alias) => hasWordStartCaseInsensitive(alias, parsedPartialContext))
     ? 1
     : null;
 }
 
-function contextCompletionValue(context) {
-  return context.name.startsWith('/') ? context.name : `/${context.name}`;
+function contextCompletionValue(context, partialContext = '') {
+  const value = context.name.startsWith('/') ? context.name : `/${context.name}`;
+  const partial = typeof partialContext === 'string' ? partialContext : '';
+
+  return partial.includes('\\') ? escapedCompletionValue(value) : value;
 }
 
 function escapedCompletionValue(value) {
@@ -2289,7 +2347,8 @@ async function matchingSwitchContextCompletions(partialContext, state) {
   const currentContextId = contextIdForDirectory(state, state.currentContextDirectory);
 
   if (partialContext.startsWith('/')) {
-    const partialId = contextReferenceParts(partialContext).join('/');
+    const parsedPartialContext = splitCompletionSegments(partialContext).map((segment) => segment.value).join(' ');
+    const partialId = contextReferenceParts(parsedPartialContext).join('/');
 
     return contexts
       .filter((contextId) => startsWithCaseInsensitive(contextId, partialId))
