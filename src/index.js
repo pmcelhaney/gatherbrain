@@ -129,6 +129,7 @@ export function createPromptState(options = {}) {
     settings: options.settings ?? null,
     currentLensId: defaultLensId,
     peekLensId: defaultLensId,
+    keptInViewFacts: new Map(),
     itemNumberAssignments: new Map(),
     nextItemNumber: 1,
     model: options.model ?? null,
@@ -155,8 +156,13 @@ function resetItemNumbers(state) {
   state.nextItemNumber = 1;
 }
 
+function resetKeptInViewFacts(state) {
+  state.keptInViewFacts = new Map();
+}
+
 function factIdentity(fact, fallbackIndex = 0) {
-  return fact?.id
+  return fact?.uuid
+    ?? fact?.id
     ?? fact?.path
     ?? fact?.filename
     ?? `visible:${fallbackIndex}`;
@@ -243,6 +249,7 @@ function applyLens(state, lens) {
   }
   state.pageStartIndex = 0;
   state.statusMessage = '';
+  resetKeptInViewFacts(state);
   clearTemporaryBody(state);
 }
 
@@ -705,7 +712,72 @@ export function filterFactsForLensId(facts, lens = defaultLensId) {
   return filterFactsForLens(facts, lens);
 }
 
-export async function visibleBodyForState(state) {
+function cloneFactForKeptView(fact, options = {}) {
+  return {
+    ...fact,
+    keptInView: true,
+    ...(options.deleted ? { deletedInView: true } : {}),
+    ...(fact.properties ? { properties: { ...fact.properties } } : {}),
+    ...(fact.relations ? { relations: [...fact.relations] } : {}),
+    ...(fact.displayRelations ? { displayRelations: [...fact.displayRelations] } : {})
+  };
+}
+
+function assignedItemNumberForFact(state, fact) {
+  return state.itemNumberAssignments instanceof Map
+    ? state.itemNumberAssignments.get(factIdentity(fact))
+    : undefined;
+}
+
+function sortFactsByAssignedItemNumber(facts, state) {
+  return facts
+    .map((fact, index) => ({
+      fact,
+      index,
+      itemNumber: assignedItemNumberForFact(state, fact)
+    }))
+    .toSorted((left, right) => (
+      Number.isInteger(left.itemNumber) && Number.isInteger(right.itemNumber)
+        ? right.itemNumber - left.itemNumber
+        : left.index - right.index
+    ))
+    .map(({ fact }) => fact);
+}
+
+function bodyWithKeptInViewFacts(body, state) {
+  if (body?.type !== 'facts' || !Array.isArray(body.facts)) {
+    return body;
+  }
+
+  if (!(state.keptInViewFacts instanceof Map) || state.keptInViewFacts.size === 0) {
+    return body;
+  }
+
+  const naturalKeys = new Set(body.facts.map((fact) => factIdentity(fact)));
+  const keptFacts = [];
+
+  for (const [key, fact] of state.keptInViewFacts.entries()) {
+    if (naturalKeys.has(key)) {
+      state.keptInViewFacts.delete(key);
+    } else {
+      keptFacts.push(fact);
+    }
+  }
+
+  if (keptFacts.length === 0) {
+    return body;
+  }
+
+  return {
+    ...body,
+    facts: sortFactsByAssignedItemNumber([
+      ...body.facts,
+      ...keptFacts
+    ], state)
+  };
+}
+
+export async function visibleBodyForState(state, options = {}) {
   const model = await ensureWorkspaceModel(state);
   const lensModel = presentLens({
     model,
@@ -717,11 +789,15 @@ export async function visibleBodyForState(state) {
     lensId: currentLensIdForState(state)
   });
 
-  return lensModel.body ?? {
+  const body = lensModel.body ?? {
     type: 'facts',
     template: 'facts',
     facts: lensModel.facts ?? []
   };
+
+  return options.includeKept === false
+    ? body
+    : bodyWithKeptInViewFacts(body, state);
 }
 
 function factsForBody(body) {
@@ -730,8 +806,45 @@ function factsForBody(body) {
     : [];
 }
 
-export async function visibleFactsForState(state) {
-  return factsForBody(await visibleBodyForState(state));
+export async function visibleFactsForState(state, options = {}) {
+  return factsForBody(await visibleBodyForState(state, options));
+}
+
+function factFromModelMatching(state, fact) {
+  if (!fact || !state.model?.facts) {
+    return null;
+  }
+
+  if (fact.uuid) {
+    const uuidMatch = [...state.model.facts.values()].find((candidate) => candidate.uuid === fact.uuid);
+
+    if (uuidMatch) {
+      return uuidMatch;
+    }
+  }
+
+  return state.model.facts.get(fact.id) ?? null;
+}
+
+async function keepFactInViewIfDropped(state, fact, options = {}) {
+  if (!fact) {
+    return;
+  }
+
+  const key = factIdentity(fact);
+  const naturalFacts = await visibleFactsForState(state, { includeKept: false });
+  const naturallyVisible = naturalFacts.some((candidate) => factIdentity(candidate) === key);
+
+  if (!(state.keptInViewFacts instanceof Map)) {
+    resetKeptInViewFacts(state);
+  }
+
+  if (naturallyVisible) {
+    state.keptInViewFacts.delete(key);
+    return;
+  }
+
+  state.keptInViewFacts.set(key, cloneFactForKeptView(fact, options));
 }
 
 async function visibleFactAtIndex(state, index) {
@@ -998,6 +1111,12 @@ function displaySecondarySuffix(suffix, includeColor) {
     : suffix;
 }
 
+function displayKeptInViewLine(line, includeColor) {
+  return includeColor
+    ? `${ansiSecondaryColor}${line}${ansiResetIntensity}`
+    : line;
+}
+
 function formattedDisplayLines(text, options = {}) {
   const {
     columns,
@@ -1067,8 +1186,11 @@ function factViewModelsForDisplay(facts, options = {}) {
 
   return facts.map((fact, factIndex) => {
     const itemNumber = fact.itemNumber ?? facts.length - factIndex;
-    const bodyText = fact.text ?? '';
-    const titleText = fact.title?.trim() ?? '';
+    const deletedMarker = fact.deletedInView ? '[deleted] ' : '';
+    const rawBodyText = fact.text ?? '';
+    const rawTitleText = fact.title?.trim() ?? '';
+    const bodyText = rawBodyText.length > 0 ? `${deletedMarker}${rawBodyText}` : '';
+    const titleText = rawTitleText.length > 0 ? `${deletedMarker}${rawTitleText}` : '';
     const displayText = bodyText.length > 0 ? bodyText : titleText;
     const type = fact.type ?? 'fact';
     const relationSuffix = relationSuffixText(displayRelationsForFact(fact), fact.displayRelationDirection);
@@ -1104,6 +1226,8 @@ function factViewModelsForDisplay(facts, options = {}) {
     const viewModel = {
       number: String(itemNumber).padStart(numberWidth),
       numberSuffix: secondarySuffix,
+      deletedInView: fact.deletedInView ?? false,
+      keptInView: fact.keptInView ?? false,
       type: displayType,
       due: displayDue,
       displaySeparator,
@@ -1114,16 +1238,20 @@ function factViewModelsForDisplay(facts, options = {}) {
       display: displayLines.join('\n')
     };
 
+    const blockLines = renderTemplateLines(template, {
+      emptyText: 'No facts yet.',
+      facts: [viewModel],
+      hasFacts: true,
+      includeColor
+    }, {
+      rootDirectory: templateRootDirectory
+    });
+
     return {
       ...viewModel,
-      blockLines: renderTemplateLines(template, {
-        emptyText: 'No facts yet.',
-        facts: [viewModel],
-        hasFacts: true,
-        includeColor
-      }, {
-        rootDirectory: templateRootDirectory
-      })
+      blockLines: fact.keptInView
+        ? blockLines.map((line) => displayKeptInViewLine(line, includeColor))
+        : blockLines
     };
   });
 }
@@ -1211,7 +1339,8 @@ export function buildPagedFactLines(options = {}) {
   }
 
   const previousPageStartIndex = startIndex > 0 ? Math.max(startIndex - 1, 0) : null;
-  const pageLines = renderPageTemplate
+  const pageHasKeptInViewFact = pageFacts.some((fact) => fact.keptInView);
+  const pageLines = renderPageTemplate && !(includeColor && pageHasKeptInViewFact)
     ? renderTemplateLines(template, {
       emptyText: 'No facts yet.',
       facts: pageFacts,
@@ -2144,7 +2273,11 @@ export function openEditor(filePath, options = {}) {
 }
 
 export async function refreshEditedFact(state, filePath) {
+  const previousFact = state.model
+    ? [...state.model.facts.values()].find((fact) => path.resolve(fact.path) === path.resolve(filePath))
+    : null;
   const fact = await refreshWorkspaceFact(state, filePath);
+  await keepFactInViewIfDropped(state, fact ?? previousFact);
 
   await logEvent(state, 'fact.edited', {
     factId: fact?.id,
@@ -2880,6 +3013,7 @@ export async function handleEntry(entry, state) {
     state.peekContextDirectory = null;
     state.peekLensId = defaultLensId;
     resetItemNumbers(state);
+    resetKeptInViewFacts(state);
     state.statusMessage = '';
     clearTemporaryBody(state);
 
@@ -2912,6 +3046,7 @@ export async function handleEntry(entry, state) {
     const peekContextId = contextIdMetadataForDirectory(state, state.peekContextDirectory);
     state.peekLensId = defaultLensId;
     resetItemNumbers(state);
+    resetKeptInViewFacts(state);
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);
@@ -3013,6 +3148,7 @@ export async function handleEntry(entry, state) {
       const { fact } = resolvedFact;
 
       await deleteWorkspaceFact(state, fact);
+      await keepFactInViewIfDropped(state, fact, { deleted: true });
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);
@@ -3038,6 +3174,7 @@ export async function handleEntry(entry, state) {
     try {
       const { fact, itemLabel } = await visibleFactForSelector(state, parsedEntry);
       const relation = await relateWorkspaceFact(state, fact, parsedEntry.contextReference);
+      await keepFactInViewIfDropped(state, factFromModelMatching(state, fact) ?? fact);
 
       const message = `related item ${itemLabel} to ${relation}`;
       state.statusMessage = '';
@@ -3063,6 +3200,7 @@ export async function handleEntry(entry, state) {
       const { fact, itemLabel } = await visibleFactForSelector(state, parsedEntry);
       const moved = await moveWorkspaceFact(state, fact, parsedEntry.contextReference);
       const targetContext = moved.toContextId || '/';
+      await keepFactInViewIfDropped(state, moved.fact ?? fact);
 
       const message = `moved item ${itemLabel} to ${targetContext}`;
       state.pageStartIndex = 0;
@@ -3103,6 +3241,7 @@ export async function handleEntry(entry, state) {
       const { fact } = resolvedFact;
 
       await setWorkspaceFactType(state, fact, parsedEntry.factType);
+      await keepFactInViewIfDropped(state, factFromModelMatching(state, fact) ?? fact);
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);
@@ -3133,6 +3272,7 @@ export async function handleEntry(entry, state) {
       const { fact } = resolvedFact;
 
       await setWorkspaceFactProperty(state, fact, parsedEntry.property, parsedEntry.value);
+      await keepFactInViewIfDropped(state, factFromModelMatching(state, fact) ?? fact);
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);

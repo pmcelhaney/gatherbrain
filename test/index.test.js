@@ -2232,6 +2232,18 @@ test('type command targets the active lens list', async () => {
       markdownWithoutFactUuid(await readFile(waitingPath, 'utf8')),
       '---\ntype: done\n---\n\nWaiting item.\n'
     );
+    assert.deepEqual(
+      (await visibleFactsForState(state)).map((fact) => ({
+        keptInView: fact.keptInView ?? false,
+        text: fact.text,
+        type: fact.type
+      })),
+      [
+        { keptInView: false, text: 'Todo item.', type: 'todo' },
+        { keptInView: true, text: 'Waiting item.', type: 'done' },
+        { keptInView: false, text: 'First fact.', type: 'fact' }
+      ]
+    );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -2634,7 +2646,15 @@ test(':delete command trashes a listed item', async () => {
     );
     assert.deepEqual(
       (await visibleFactsForState(state)).map((fact) => fact.text),
-      ['Second fact.']
+      ['Second fact.', 'First fact.']
+    );
+    assert.deepEqual(
+      (await visibleFactsForState(state)).map((fact) => fact.keptInView ?? false),
+      [false, true]
+    );
+    assert.deepEqual(
+      (await visibleFactsForState(state)).map((fact) => fact.deletedInView ?? false),
+      [false, true]
     );
     assert.equal(state.model.facts.has(path.basename(firstFactPath)), false);
   } finally {
@@ -2685,15 +2705,30 @@ test('item numbers stay stable after deleting a visible item', async () => {
       buildTuiLines({
         state,
         body: await visibleBodyForState(state),
-        rows: 5,
+        rows: 6,
         columns: 80
       }),
       [
         'facts',
         '--------------------------------------------------------------------------------',
         'Third fact. [3]',
+        '[deleted] Second fact. [2]',
         'First fact. [1]'
       ]
+    );
+    assert.match(
+      renderTui({
+        state,
+        body: await visibleBodyForState(state),
+        rows: 6,
+        columns: 80
+      }),
+      /\x1b\[2m\[deleted\] Second fact\. \x1b\[2m\[2\]\x1b\[22m\x1b\[22m/u
+    );
+    await handleEntry(':lens todo', state);
+    assert.deepEqual(
+      (await visibleFactsForState(state)).map((fact) => fact.text),
+      ['Third fact.', 'First fact.']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
