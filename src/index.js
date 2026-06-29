@@ -1168,12 +1168,12 @@ function expandedDotItemShorthandEntry(entry, facts, options = {}) {
       : { entry };
   }
 
-  const itemUpdateMatch = entry.match(/^(?<prefix>\s*)(?<item>\.+)(?<suffix>\s+.*)$/u);
+  const itemUpdateMatch = entry.match(/^(?<prefix>\s*)(?<item>\.+)(?<suffix>\s*.*)$/u);
 
   if (itemUpdateMatch) {
     return replaceDotToken(
       itemUpdateMatch.groups.item,
-      (itemNumber) => `${itemUpdateMatch.groups.prefix}${itemNumber}${itemUpdateMatch.groups.suffix}`
+      (itemNumber) => `${itemUpdateMatch.groups.prefix}${itemNumber} ${itemUpdateMatch.groups.suffix.trimStart()}`
     );
   }
 
@@ -1223,7 +1223,7 @@ function entryMayContainDotItemShorthand(entry, options = {}) {
 
   return Boolean(
     (options.pendingCommand?.argument?.type === 'fact' && /^\.+$/u.test(command))
-    || /(^|\s)\.+(?:\s|$)/u.test(String(entry ?? ''))
+    || /(^|\s)\.+(?:\S|\s|$)/u.test(String(entry ?? ''))
   );
 }
 
