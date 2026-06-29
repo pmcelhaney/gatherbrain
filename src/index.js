@@ -1902,6 +1902,12 @@ export async function completeEntry(line, state) {
     return itemUpdateShorthandCompletion;
   }
 
+  const factCaptureMetadataCompletion = await matchingFactCaptureMetadataCompletion(line, state);
+
+  if (factCaptureMetadataCompletion) {
+    return factCaptureMetadataCompletion;
+  }
+
   const trailingNamedArgumentCompletion = await matchingTrailingNamedArgument(line, state);
 
   if (trailingNamedArgumentCompletion) {
@@ -2111,6 +2117,21 @@ async function matchingItemUpdateShorthandCompletion(line, state) {
   }
 
   const updates = match.groups.updates ?? '';
+
+  return matchingMetadataUpdateCompletion(updates, state);
+}
+
+async function matchingFactCaptureMetadataCompletion(line, state) {
+  const match = line.match(/\s--\s(?<updates>.*)$/u);
+
+  if (!match) {
+    return null;
+  }
+
+  return matchingMetadataUpdateCompletion(match.groups.updates ?? '', state);
+}
+
+async function matchingMetadataUpdateCompletion(updates, state) {
   const tokens = updates.split(/\s+/u);
   const partial = updates.endsWith(' ') ? '' : tokens.at(-1) ?? '';
 

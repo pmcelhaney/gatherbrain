@@ -3662,6 +3662,22 @@ test('completes named command arguments', async () => {
       await completeEntry('%in', state),
       [['%in progress '], '%in']
     );
+    assert.deepEqual(
+      await completeEntry('Follow up -- to', state),
+      [['todo', 'today', 'tomorrow'], 'to']
+    );
+    assert.deepEqual(
+      await completeEntry('Follow up -- /people/S', state),
+      [['/people/Steve Ma'], '/people/S']
+    );
+    assert.deepEqual(
+      await completeEntry('%todo Get milk -- tom', state),
+      [['tomorrow'], 'tom']
+    );
+    assert.deepEqual(
+      await completeEntry(':new Follow up -- wa', state),
+      [['waiting'], 'wa']
+    );
 
     state.lensRegistry = createLensRegistry([
       {
