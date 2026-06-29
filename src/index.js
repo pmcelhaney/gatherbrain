@@ -2014,10 +2014,34 @@ export async function completeEntry(line, state) {
     return [matches, completionLine];
   }
 
+  const itemPrefixedCommandCompletion = completionLine.match(/^[1-9]\d*\s+:(?<partial>[A-Za-z0-9_-]*)$/u);
+
+  if (itemPrefixedCommandCompletion) {
+    const partialCommand = itemPrefixedCommandCompletion.groups.partial;
+    const matches = commandNames(state.commandRegistry)
+      .filter((commandName) => commandArgumentsForCompletion(commandName, state)?.some((argument) => argument.type === 'fact'))
+      .filter((commandName) => startsWithCaseInsensitive(commandName, partialCommand))
+      .map((commandName) => `:${commandName} `);
+
+    return [matches, `:${partialCommand}`];
+  }
+
   const itemUpdateShorthandCompletion = await matchingItemUpdateShorthandCompletion(completionLine, state);
 
   if (itemUpdateShorthandCompletion) {
     return itemUpdateShorthandCompletion;
+  }
+
+  const itemPrefixedEnumCompletion = matchingItemPrefixedNamedEnumArgument(completionLine, state);
+
+  if (itemPrefixedEnumCompletion) {
+    return itemPrefixedEnumCompletion;
+  }
+
+  const itemPrefixedContextCompletion = await matchingItemPrefixedNamedContextArgument(completionLine, state);
+
+  if (itemPrefixedContextCompletion) {
+    return itemPrefixedContextCompletion;
   }
 
   const factCaptureMetadataCompletion = await matchingFactCaptureMetadataCompletion(completionLine, state);
@@ -2323,6 +2347,67 @@ function matchingNamedEnumArgument(line, state) {
     .filter((value) => startsWithCaseInsensitive(value, argumentCompletion.partialValue));
 
   return matches.length > 0 ? [matches, argumentCompletion.partialValue] : null;
+}
+
+function matchingItemPrefixedNamedEnumArgument(line, state) {
+  const argumentCompletion = matchingItemPrefixedNamedArgument(line, state);
+
+  if (!argumentCompletion || !enumCompletableArgument(argumentCompletion.argument)) {
+    return null;
+  }
+
+  const matches = commandArgumentValues(argumentCompletion.argument, state.commandRegistry)
+    .filter((value) => startsWithCaseInsensitive(value, argumentCompletion.partialValue));
+
+  return matches.length > 0 ? [matches, argumentCompletion.partialValue] : null;
+}
+
+async function matchingItemPrefixedNamedContextArgument(line, state) {
+  const argumentCompletion = matchingItemPrefixedNamedArgument(line, state);
+
+  if (argumentCompletion?.argument?.type !== 'context') {
+    return null;
+  }
+
+  const matches = await matchingContextCompletions(argumentCompletion.partialValue, state);
+
+  return [matches.map((match) => contextCompletionValue(match, argumentCompletion.partialValue)), argumentCompletion.partialValue];
+}
+
+function matchingItemPrefixedNamedArgument(line, state) {
+  const match = line.match(/^[1-9]\d*\s+:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)(?:\s+(?<args>.*))?$/u);
+
+  if (!match) {
+    return null;
+  }
+
+  const args = match.groups.args ?? '';
+  const argumentsDefinition = commandArgumentsForCompletion(match.groups.commandName, state);
+
+  if (!argumentsDefinition?.some((argument) => argument.type === 'fact')) {
+    return null;
+  }
+
+  const itemlessArguments = argumentsDefinition.filter((argument) => argument.type !== 'fact');
+
+  if (itemlessArguments.length === 0) {
+    return null;
+  }
+
+  const tokens = args.length > 0 ? args.split(/\s+/u) : [];
+  const argumentIndex = args.endsWith(' ') ? tokens.length : Math.max(tokens.length - 1, 0);
+  const argument = itemlessArguments[argumentIndex];
+
+  if (!argument) {
+    return null;
+  }
+
+  return {
+    argument,
+    partialValue: argument.consume === 'rest'
+      ? args
+      : (args.endsWith(' ') ? '' : (tokens.at(-1) ?? ''))
+  };
 }
 
 function matchingNamedArgument(line, state) {

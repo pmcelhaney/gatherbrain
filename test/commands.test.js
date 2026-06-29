@@ -23,10 +23,10 @@ test('lists built-in command help', () => {
     ':clear-peek',
     ':lens <lens>',
     ':new <title>',
-    ':edit <item>',
-    ':open [item]',
-    ':delete <item>',
-    ':move <item> <context>',
+    '<item> :edit',
+    ':open | <item> :open',
+    '<item> :delete',
+    '<item> :move <context>',
     ':paste <title>',
     ':plan <range> <context>',
     ':cancel <range> <context>',
@@ -35,7 +35,7 @@ test('lists built-in command help', () => {
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :move <item> <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -237,11 +237,11 @@ test('parses fact commands', () => {
     },
     prompt: 'Title?'
   });
-  assert.deepEqual(parseEntry(':edit 2'), {
+  assert.deepEqual(parseEntry('2 :edit'), {
     itemNumber: 2,
     type: 'edit_fact'
   });
-  assert.deepEqual(parseEntry(':open 2'), {
+  assert.deepEqual(parseEntry('2 :open'), {
     itemNumber: 2,
     type: 'open_reference'
   });
@@ -249,16 +249,16 @@ test('parses fact commands', () => {
     itemTitle: 'Pasted file',
     type: 'open_reference'
   });
-  assert.deepEqual(parseEntry(':delete 3'), {
+  assert.deepEqual(parseEntry('3 :delete'), {
     itemNumber: 3,
     type: 'delete_fact'
   });
-  assert.deepEqual(parseEntry(':move 4 people/alex'), {
+  assert.deepEqual(parseEntry('4 :move people/alex'), {
     contextReference: 'people/alex',
     itemNumber: 4,
     type: 'move_fact'
   });
-  assert.deepEqual(parseEntry(':move 4 /people/Steve\\ Ma'), {
+  assert.deepEqual(parseEntry('4 :move /people/Steve\\ Ma'), {
     contextReference: '/people/Steve Ma',
     itemNumber: 4,
     type: 'move_fact'
@@ -340,8 +340,12 @@ test('parses fact commands', () => {
     message: 'usage: <fact> -- [type] [date] [/context ...]',
     type: 'usage_error'
   });
+  assert.deepEqual(parseEntry(':edit 2'), {
+    message: 'usage: <item> :edit',
+    type: 'usage_error'
+  });
   assert.deepEqual(parseEntry(':edit 2 extra'), {
-    message: 'usage: :edit <item>',
+    message: 'usage: <item> :edit',
     type: 'usage_error'
   });
 });
@@ -481,12 +485,12 @@ test('parses enum command arguments from configured values', () => {
   });
 
   assert.deepEqual(commandArgumentValues(commandArguments('mark', registry).at(0), registry), ['todo', 'waiting', 'in progress']);
-  assert.deepEqual(parseEntry(':mark todo 3', registry), {
+  assert.deepEqual(parseEntry('3 :mark todo', registry), {
     factType: 'todo',
     itemNumber: 3,
     type: 'set_fact_type'
   });
-  assert.deepEqual(parseEntry(':mark in progress 3', registry), {
+  assert.deepEqual(parseEntry('3 :mark in progress', registry), {
     factType: 'in progress',
     itemNumber: 3,
     type: 'set_fact_type'
@@ -497,10 +501,14 @@ test('parses enum command arguments from configured values', () => {
     type: 'set_fact_type'
   });
   assert.deepEqual(parseEntry(':mark done 3', registry), {
-    message: 'usage: :mark <type> <item>',
+    message: 'usage: <item> :mark <type>',
     type: 'usage_error'
   });
   assert.deepEqual(parseEntry(':mark IN PROGRESS 3', registry), {
+    message: 'usage: <item> :mark <type>',
+    type: 'usage_error'
+  });
+  assert.deepEqual(parseEntry('3 :mark IN PROGRESS', registry), {
     factType: 'in progress',
     itemNumber: 3,
     type: 'set_fact_type'

@@ -1095,7 +1095,7 @@ test('keeps prompted commands active after invalid arguments', async () => {
 
     assert.deepEqual(await handleEntry('done', state), {
       action: 'continue',
-      message: 'usage: :mark <type> <item>. Set which status?'
+      message: 'usage: <item> :mark <type>. Set which status?'
     });
     assert.deepEqual(state.pendingCommand, {
       commandName: 'mark',
@@ -1123,7 +1123,7 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :move <item> <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
@@ -1141,10 +1141,10 @@ test(':help lists commands without saving a fact', async () => {
         ':clear-peek',
         ':lens <lens>',
         ':new <title>',
-        ':edit <item>',
-        ':open [item]',
-        ':delete <item>',
-        ':move <item> <context>',
+        '<item> :edit',
+        ':open | <item> :open',
+        '<item> :delete',
+        '<item> :move <context>',
         ':paste <title>',
         ':plan <range> <context>',
         ':cancel <range> <context>',
@@ -2397,7 +2397,7 @@ test('custom date command sets a normalized due date property', async () => {
     await writeFile(factPath, '---\ntype: fact\n---\n\nExisting fact.\n');
     const state = createPromptState({ appDirectory, commandRegistry, rootDirectory });
 
-    assert.deepEqual(await handleEntry(':deadline 1 today', state), {
+    assert.deepEqual(await handleEntry('1 :deadline today', state), {
       action: 'continue',
       message: 'set item 1 due to 2026-06-24'
     });
@@ -2605,7 +2605,7 @@ test(':edit command returns an edit action for a listed item', async () => {
     );
 
     assert.deepEqual(
-      await handleEntry(':edit 2', state),
+      await handleEntry('2 :edit', state),
       {
         action: 'edit',
         filePath: secondFactPath,
@@ -2640,7 +2640,7 @@ test(':edit command targets the active lens list', async () => {
       '---\ntype: todo\n---\n\nTodo item.\n'
     );
 
-    assert.deepEqual(await handleEntry(':edit 2', state), {
+    assert.deepEqual(await handleEntry('2 :edit', state), {
       action: 'edit',
       filePath: waitingPath,
       itemLabel: '2',
@@ -2673,13 +2673,13 @@ test('dot item shorthand selects visible rows for fact commands', async () => {
       '---\ntype: fact\n---\n\nThird fact.\n'
     );
 
-    assert.deepEqual(await handleEntry(':edit .', state), {
+    assert.deepEqual(await handleEntry('. :edit', state), {
       action: 'edit',
       filePath: thirdFactPath,
       itemLabel: '3',
       itemNumber: 3
     });
-    assert.deepEqual(await handleEntry(':edit ..', state), {
+    assert.deepEqual(await handleEntry('.. :edit', state), {
       action: 'edit',
       filePath: secondFactPath,
       itemLabel: '2',
@@ -2708,7 +2708,7 @@ test(':edit command reports missing item', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(
-      await handleEntry(':edit 3', state),
+      await handleEntry('3 :edit', state),
       {
         action: 'continue',
         message: 'item 3 does not exist'
@@ -2761,7 +2761,7 @@ test(':open with an item opens the referenced file', async () => {
       '---\ntitle: Pasted\ntype: fact\nfile: pasted.txt\n---\n\n'
     );
 
-    assert.deepEqual(await handleEntry(':open 1', state), {
+    assert.deepEqual(await handleEntry('1 :open', state), {
       action: 'continue',
       message: 'opened item 1 file'
     });
@@ -2783,7 +2783,7 @@ test(':open reports facts without referenced files', async () => {
       '---\ntitle: Fact\ntype: fact\n---\n\n'
     );
 
-    assert.deepEqual(await handleEntry(':open 1', state), {
+    assert.deepEqual(await handleEntry('1 :open', state), {
       action: 'continue',
       message: 'item 1 does not reference a file'
     });
@@ -2810,7 +2810,7 @@ test(':delete command trashes a listed item', async () => {
       '---\ntype: fact\n---\n\nSecond fact.\n'
     );
 
-    assert.deepEqual(await handleEntry(':delete 1', state), {
+    assert.deepEqual(await handleEntry('1 :delete', state), {
       action: 'continue',
       message: 'trashed item 1'
     });
@@ -2876,7 +2876,7 @@ test('item numbers stay stable after deleting a visible item', async () => {
       ' 1. First fact.'
     ]
     );
-    assert.deepEqual(await handleEntry(':delete 2', state), {
+    assert.deepEqual(await handleEntry('2 :delete', state), {
       action: 'continue',
       message: 'trashed item 2'
     });
@@ -2938,7 +2938,7 @@ test(':delete command targets the active lens list', async () => {
       '---\ntype: todo\n---\n\nTodo item.\n'
     );
 
-    assert.deepEqual(await handleEntry(':delete 2', state), {
+    assert.deepEqual(await handleEntry('2 :delete', state), {
       action: 'continue',
       message: 'trashed item 2'
     });
@@ -2964,7 +2964,7 @@ test(':delete command reports missing item', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(
-      await handleEntry(':delete 3', state),
+      await handleEntry('3 :delete', state),
       {
         action: 'continue',
         message: 'item 3 does not exist'
@@ -2992,7 +2992,7 @@ test(':move command moves a listed item to a context', async () => {
       '---\ntitle: "Follow up"\ntype: todo\n---\n\nFollow up\n'
     );
 
-    assert.deepEqual(await handleEntry(':move 1 /people/Steve Ma', state), {
+    assert.deepEqual(await handleEntry('1 :move /people/Steve Ma', state), {
       action: 'continue',
       message: 'moved item 1 to people/Steve Ma'
     });
@@ -3514,15 +3514,19 @@ test('completes named command arguments', async () => {
       [['/projects/gatherbrain'], 'gather']
     );
     assert.deepEqual(
-      await completeEntry(':move 1 /people/S', state),
+      await completeEntry('1 :move /people/S', state),
       [['/people/Steve Ma'], '/people/S']
     );
     assert.deepEqual(
-      await completeEntry(':move . /people/S', state),
+      await completeEntry('. :move /people/S', state),
       [['/people/Steve Ma'], '/people/S']
     );
     assert.deepEqual(
-      await completeEntry(':move 1 /people/Steve\\ M', state),
+      await completeEntry('1 :m', state),
+      [[':move '], ':m']
+    );
+    assert.deepEqual(
+      await completeEntry('1 :move /people/Steve\\ M', state),
       [['/people/Steve\\ Ma'], '/people/Steve\\ M']
     );
     assert.deepEqual(

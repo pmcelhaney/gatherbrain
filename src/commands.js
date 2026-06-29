@@ -28,6 +28,24 @@ function positiveItemNumber(value) {
 }
 
 function usageForCommandDefinition(commandDefinition) {
+  const factArgumentIndex = commandDefinition.arguments.findIndex((argument) => argument.type === 'fact');
+
+  if (factArgumentIndex !== -1) {
+    const argumentUsage = commandDefinition.arguments
+      .filter((argument) => argument.type !== 'fact')
+      .map((argument) => (argument.optional ? `[${argument.name}]` : `<${argument.name}>`))
+      .join(' ');
+    const commandUsage = argumentUsage.length > 0
+      ? `:${commandDefinition.name} ${argumentUsage}`
+      : `:${commandDefinition.name}`;
+
+    if (commandDefinition.arguments[factArgumentIndex].optional) {
+      return `${commandUsage} | <item> :${commandDefinition.name}`;
+    }
+
+    return `<item> ${commandUsage}`;
+  }
+
   const argumentUsage = commandDefinition.arguments
     .map((argument) => (argument.optional ? `[${argument.name}]` : `<${argument.name}>`))
     .join(' ');
@@ -171,6 +189,12 @@ function parseNamedCommand(command, registry) {
     .find((candidate) => valuesAreEqualCaseInsensitive(candidate.name, name));
 
   if (commandDefinition) {
+    const numericFactArgument = numericFactArgumentInCommandPosition(commandDefinition, args);
+
+    if (numericFactArgument) {
+      return usageErrorForCommand(commandDefinition);
+    }
+
     return parseCommandArguments(commandDefinition, args, {
       registry,
       enumRegistry: registry?.enumRegistry,
@@ -183,6 +207,77 @@ function parseNamedCommand(command, registry) {
     commandName: `:${name}`,
     type: 'unknown_command'
   };
+}
+
+function parseItemPrefixedNamedCommand(command, registry) {
+  const match = command.match(/^(?<item>[1-9]\d*)\s+:(?<name>[A-Za-z][A-Za-z0-9_-]*)(?:\s+(?<args>.*))?$/u);
+
+  if (!match) {
+    return null;
+  }
+
+  const name = match.groups.name;
+  const args = match.groups.args?.trim() ?? '';
+  const commandDefinition = commandDefinitionsFor(registry)
+    .find((candidate) => valuesAreEqualCaseInsensitive(candidate.name, name));
+
+  if (!commandDefinition) {
+    return {
+      commandName: `:${name}`,
+      type: 'unknown_command'
+    };
+  }
+
+  const factArgumentIndex = commandDefinition.arguments.findIndex((argument) => argument.type === 'fact');
+
+  if (factArgumentIndex === -1) {
+    return usageErrorForCommand(commandDefinition);
+  }
+
+  return parseCommandArguments(
+    commandDefinition,
+    argsWithItemAtFactArgumentPosition(commandDefinition, match.groups.item, args),
+    {
+      registry,
+      enumRegistry: registry?.enumRegistry,
+      dateToday: registry?.dateToday,
+      promptForMissing: false
+    }
+  );
+}
+
+function argsWithItemAtFactArgumentPosition(commandDefinition, item, args) {
+  const factArgumentIndex = commandDefinition.arguments.findIndex((argument) => argument.type === 'fact');
+
+  if (factArgumentIndex === 0) {
+    return [item, args].filter((part) => part.length > 0).join(' ');
+  }
+
+  if (factArgumentIndex === commandDefinition.arguments.length - 1) {
+    return [args, item].filter((part) => part.length > 0).join(' ');
+  }
+
+  return args;
+}
+
+function numericFactArgumentInCommandPosition(commandDefinition, args) {
+  const factArgumentIndex = commandDefinition.arguments.findIndex((argument) => argument.type === 'fact');
+
+  if (factArgumentIndex === -1 || args.trim().length === 0) {
+    return false;
+  }
+
+  const tokens = splitCommandTokens(args.trim());
+
+  if (factArgumentIndex === 0) {
+    return new RegExp(`^${itemNumberPattern}$`, 'u').test(tokens.at(0) ?? '');
+  }
+
+  if (factArgumentIndex === commandDefinition.arguments.length - 1) {
+    return new RegExp(`^${itemNumberPattern}$`, 'u').test(tokens.at(-1) ?? '');
+  }
+
+  return false;
 }
 
 function factUpdateMetadataUsageError() {
@@ -882,6 +977,12 @@ export function parseEntry(entry, registry = defaultCommandRegistry) {
 
   if (namedCommand) {
     return namedCommand;
+  }
+
+  const itemPrefixedNamedCommand = parseItemPrefixedNamedCommand(command, registry);
+
+  if (itemPrefixedNamedCommand) {
+    return itemPrefixedNamedCommand;
   }
 
   const itemUpdateShorthand = parseItemUpdateShorthand(command, registry);

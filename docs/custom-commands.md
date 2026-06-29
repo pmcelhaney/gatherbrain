@@ -160,9 +160,9 @@ Add a shorter command for setting type:
 }
 ```
 
-This adds `:mark todo 3`.
+This adds `3 :mark todo`.
 
-For `fact` arguments, completion lets the user search by title. For example, if a visible fact is titled `Call Steve`, typing `:edit Call` and pressing `Tab` completes the argument to `Call Steve`. Commands still accept visible item numbers such as `:edit 3`.
+For `fact` arguments, completion lets the user search by title. For example, if a visible fact is titled `Call Steve`, typing `:edit Call` and pressing `Tab` completes the argument to `Call Steve`. Commands accept visible item numbers before the command name, such as `3 :edit`.
 
 Create facts through a named command:
 

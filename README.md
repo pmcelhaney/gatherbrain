@@ -95,10 +95,10 @@ Use `:q`, `:quit`, `:exit`, or `Ctrl+C` to leave the prompt.
 - `:switch projects/gatherbrain` changes context.
 - `:peek people/alex` looks at another context without leaving the current one.
 - `:lens today` changes the current lens.
-- `:edit 3` opens the third visible fact in `$EDITOR`.
-- `:delete 3` moves the third visible fact to `.trash`.
-- `:move 3 /projects/gatherbrain` moves a fact and relates it to the context it came from.
-- `:open` opens the current context directory; `:open 3` opens a referenced file.
+- `3 :edit` opens the third visible fact in `$EDITOR`.
+- `3 :delete` moves the third visible fact to `.trash`.
+- `3 :move /projects/gatherbrain` moves a fact and relates it to the context it came from.
+- `:open` opens the current context directory; `3 :open` opens a referenced file.
 - `:paste` saves the current clipboard contents and creates a companion fact.
 - `:plan 9-12 /projects/gatherbrain` assigns focus time to a context.
 - `:plan` shows the current day's planner timeline.

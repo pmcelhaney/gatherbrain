@@ -72,7 +72,7 @@ If a command is missing an argument, the prompt asks for the next argument. Fact
 For example, these can both edit the same visible fact:
 
 ```text
-:edit 3
+3 :edit
 :edit Feed the cat
 ```
 
@@ -130,7 +130,7 @@ When peek is active, `:lens` changes the peek lens. The current context keeps it
 Use `:edit` to open a visible fact in `$EDITOR`:
 
 ```text
-:edit 3
+3 :edit
 ```
 
 Use `:open` without an item to open the current context directory in the system file viewer:
@@ -139,10 +139,10 @@ Use `:open` without an item to open the current context directory in the system 
 :open
 ```
 
-Use `:open <item>` to open the file referenced by that fact's `file` front matter property:
+Use `<item> :open` to open the file referenced by that fact's `file` front matter property:
 
 ```text
-:open 3
+3 :open
 ```
 
 ## Moving, Deleting, And Relating
@@ -150,13 +150,13 @@ Use `:open <item>` to open the file referenced by that fact's `file` front matte
 Use `:delete` to move a fact to `.trash` inside its context directory:
 
 ```text
-:delete 3
+3 :delete
 ```
 
 Use `:move` to move a fact to another context:
 
 ```text
-:move 3 /projects/gatherbrain
+3 :move /projects/gatherbrain
 ```
 
 Moving a fact also adds a `relatedContexts` relation to the context it came from. If the destination already has a file with the same name, the moved file gets a numeric suffix instead of overwriting the existing file.
