@@ -116,13 +116,28 @@ export function markdownWithContextLinks(text, options = {}) {
   const { contextLinks = [] } = options;
 
   return contextLinks.reduce((nextText, contextLink) => {
-    const mentionPattern = new RegExp(`(^|\\s)@${escapeRegExp(contextLink.folder)}(?=$|\\s|[.,;:!?])`, 'gu');
-    const absoluteMentionPattern = new RegExp(`(^|\\s)@/${escapeRegExp(contextLink.name)}(?=$|\\s|[.,;:!?])`, 'gu');
+    const mentionBoundary = '(?=$|\\s|[.,;:!?])';
+    const mentionPattern = new RegExp(`(^|\\s)@${escapeRegExp(contextLink.folder)}${mentionBoundary}`, 'gu');
+    const quotedMentionPattern = new RegExp(
+      `(^|\\s)@"${escapeRegExp(quotedMentionValue(contextLink.folder))}"${mentionBoundary}`,
+      'gu'
+    );
+    const absoluteMentionPattern = new RegExp(`(^|\\s)@/${escapeRegExp(contextLink.name)}${mentionBoundary}`, 'gu');
+    const quotedAbsoluteMentionPattern = new RegExp(
+      `(^|\\s)@"${escapeRegExp(`/${quotedMentionValue(contextLink.name)}`)}"${mentionBoundary}`,
+      'gu'
+    );
 
     return nextText
+      .replace(quotedAbsoluteMentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`)
       .replace(absoluteMentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`)
+      .replace(quotedMentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`)
       .replace(mentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`);
   }, text);
+}
+
+function quotedMentionValue(value) {
+  return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
 }
 
 function escapeRegExp(value) {

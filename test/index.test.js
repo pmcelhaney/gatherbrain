@@ -291,14 +291,14 @@ test('saves typed text as a titled fact with linked mentions in the body', async
     const state = createPromptState({ appDirectory, rootDirectory });
     await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
 
-    const saveResult = await handleEntry('Talk to @Steve Ma.', state);
+    const saveResult = await handleEntry('Talk to @"Steve Ma".', state);
 
     assert.equal(saveResult.action, 'continue');
     const files = await readdir(rootDirectory);
     const factFile = files.find((file) => path.extname(file) === '.md');
     assert.equal(
       markdownWithoutFactUuid(await readFile(path.join(rootDirectory, factFile), 'utf8')),
-      '---\ntitle: "Talk to @Steve Ma."\ntype: fact\n---\n\nTalk to [Steve Ma](/people/Steve Ma).\n'
+      '---\ntitle: "Talk to @\\"Steve Ma\\"."\ntype: fact\n---\n\nTalk to [Steve Ma](/people/Steve Ma).\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -3387,15 +3387,15 @@ test('completes context mentions in fact text', async () => {
 
     assert.deepEqual(
       await completeEntry('Talk to @St', state),
-      [['@/people/Steve Ma'], '@St']
+      [['@"Steve Ma"'], '@St']
     );
     assert.deepEqual(
       await completeEntry('Talk to @st', state),
-      [['@/people/Steve Ma'], '@st']
+      [['@"Steve Ma"'], '@st']
     );
     assert.deepEqual(
       await completeEntry('Talk to @sis', state),
-      [['@/people/Sis Project', '@/people/Mike Sisto'], '@sis']
+      [['@"Sis Project"', '@"Mike Sisto"'], '@sis']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

@@ -2302,8 +2302,14 @@ function contextCompletionValue(context) {
   return context.name.startsWith('/') ? context.name : `/${context.name}`;
 }
 
+function quotedCompletionValue(value) {
+  return /\s/u.test(value)
+    ? `"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`
+    : value;
+}
+
 function contextMentionCompletionValue(context) {
-  return `@${contextCompletionValue(context)}`;
+  return `@${quotedCompletionValue(context.folder)}`;
 }
 
 function contextReferenceParts(contextReference) {
