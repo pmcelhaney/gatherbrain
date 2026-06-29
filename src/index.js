@@ -1130,40 +1130,21 @@ function displayHighlightedItemLine(line, includeColor) {
     : line;
 }
 
-function itemNumberForPromptLine(line, facts = []) {
+function itemNumberForPromptLine(line) {
   const match = String(line ?? '').match(/^(?<itemNumber>[1-9]\d*)(?:\s|$)/u);
 
-  if (match) {
-    return Number(match.groups.itemNumber);
-  }
-
-  const dotMatch = String(line ?? '').match(/^(?<item>\.+)(?:\s|$)/u);
-
-  return dotMatch ? facts[dotMatch.groups.item.length - 1]?.itemNumber ?? null : null;
+  return match ? Number(match.groups.itemNumber) : null;
 }
 
-function expandedPromptLineForNumberedFacts(line, facts) {
-  const match = String(line ?? '').match(/^(?<item>\.+)(?<suffix>\s+.*)$/u);
-
-  if (!match) {
-    return line;
-  }
-
-  const itemNumber = itemNumberForPromptLine(line, facts);
-
-  return itemNumber === null ? line : `${itemNumber}${match.groups.suffix}`;
-}
-
-async function itemNumberForVisibleDotShorthand(dotToken, state) {
+function itemNumberForDotToken(dotToken, facts) {
   if (!/^\.+$/u.test(dotToken)) {
     return null;
   }
 
-  const facts = visibleFactsWithItemNumbers(await visibleFactsForState(state), state);
   return facts[dotToken.length - 1]?.itemNumber ?? null;
 }
 
-async function expandedDotItemShorthandEntry(entry, state, options = {}) {
+function expandedDotItemShorthandEntry(entry, facts, options = {}) {
   const command = String(entry ?? '').trim();
   const missingItem = (dotToken) => ({
     error: {
@@ -1171,8 +1152,8 @@ async function expandedDotItemShorthandEntry(entry, state, options = {}) {
       type: 'usage_error'
     }
   });
-  const replaceDotToken = async (dotToken, replacer) => {
-    const itemNumber = await itemNumberForVisibleDotShorthand(dotToken, state);
+  const replaceDotToken = (dotToken, replacer) => {
+    const itemNumber = itemNumberForDotToken(dotToken, facts);
 
     return itemNumber === null
       ? missingItem(dotToken)
@@ -1202,7 +1183,7 @@ async function expandedDotItemShorthandEntry(entry, state, options = {}) {
     return { entry };
   }
 
-  const argumentsDefinition = commandArgumentsForCompletion(namedCommandMatch.groups.commandName, state);
+  const argumentsDefinition = options.commandArgumentsForCommand?.(namedCommandMatch.groups.commandName) ?? null;
   const factArgumentIndex = argumentsDefinition?.findIndex((argument) => argument.type === 'fact') ?? -1;
 
   if (factArgumentIndex === -1) {
@@ -1235,6 +1216,28 @@ async function expandedDotItemShorthandEntry(entry, state, options = {}) {
   }
 
   return { entry };
+}
+
+function entryMayContainDotItemShorthand(entry, options = {}) {
+  const command = String(entry ?? '').trim();
+
+  return Boolean(
+    (options.pendingCommand?.argument?.type === 'fact' && /^\.+$/u.test(command))
+    || /(^|\s)\.+(?:\s|$)/u.test(String(entry ?? ''))
+  );
+}
+
+async function expandedDotItemShorthandEntryForState(entry, state, options = {}) {
+  if (!entryMayContainDotItemShorthand(entry, options)) {
+    return { entry };
+  }
+
+  const numberedFacts = visibleFactsWithItemNumbers(await visibleFactsForState(state), state);
+
+  return expandedDotItemShorthandEntry(entry, numberedFacts, {
+    commandArgumentsForCommand: (commandName) => commandArgumentsForCompletion(commandName, state),
+    pendingCommand: options.pendingCommand
+  });
 }
 
 function relationLabelForPreview(contextReference) {
@@ -1275,13 +1278,13 @@ function previewFactForOperations(fact, operations) {
 }
 
 function previewFactsForPromptLine(facts, promptLine, state) {
-  const promptItemNumber = itemNumberForPromptLine(promptLine, facts);
+  const promptItemNumber = itemNumberForPromptLine(promptLine);
 
   if (promptItemNumber === null) {
     return facts;
   }
 
-  const parsedEntry = parseEntry(expandedPromptLineForNumberedFacts(promptLine, facts), state?.commandRegistry);
+  const parsedEntry = parseEntry(promptLine, state?.commandRegistry);
 
   if (parsedEntry.type !== 'update_fact_shorthand') {
     return facts;
@@ -1496,8 +1499,9 @@ export function buildPagedFactLines(options = {}) {
   }
 
   const numberedFacts = visibleFactsWithItemNumbers(facts, state);
-  const previewFacts = previewFactsForPromptLine(numberedFacts, promptLine, state);
-  const effectiveHighlightItemNumber = highlightItemNumber ?? itemNumberForPromptLine(promptLine, numberedFacts);
+  const effectivePromptLine = expandedDotItemShorthandEntry(promptLine, numberedFacts).entry ?? promptLine;
+  const previewFacts = previewFactsForPromptLine(numberedFacts, effectivePromptLine, state);
+  const effectiveHighlightItemNumber = highlightItemNumber ?? itemNumberForPromptLine(effectivePromptLine);
   const factViewModels = factViewModelsForDisplay(previewFacts, {
     columns,
     highlightItemNumber: effectiveHighlightItemNumber,
@@ -1962,7 +1966,7 @@ export async function completeEntry(line, state) {
     return [matches, line];
   }
 
-  const expandedShorthand = await expandedDotItemShorthandEntry(line, state, {
+  const expandedShorthand = await expandedDotItemShorthandEntryForState(line, state, {
     pendingCommand: state.pendingCommand
   });
   const completionLine = expandedShorthand.entry ?? line;
@@ -3208,7 +3212,7 @@ export async function handleEntry(entry, state) {
   }
 
   const pendingCommand = state.pendingCommand;
-  const expandedShorthand = await expandedDotItemShorthandEntry(entry, state, {
+  const expandedShorthand = await expandedDotItemShorthandEntryForState(entry, state, {
     pendingCommand
   });
   let parsedEntry = pendingCommand
