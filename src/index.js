@@ -1376,11 +1376,11 @@ function factViewModelsForDisplay(facts, options = {}) {
   return facts.map((fact, factIndex) => {
     const itemNumber = fact.itemNumber ?? facts.length - factIndex;
     const highlightedInView = itemNumber === highlightItemNumber;
-    const deletedMarker = fact.deletedInView ? '[deleted] ' : '';
+    const deletedMarker = fact.deletedInView ? '[deleted]' : '';
     const rawBodyText = fact.text ?? '';
     const rawTitleText = fact.title?.trim() ?? '';
-    const bodyText = rawBodyText.length > 0 ? `${deletedMarker}${rawBodyText}` : '';
-    const titleText = rawTitleText.length > 0 ? `${deletedMarker}${rawTitleText}` : '';
+    const bodyText = rawBodyText.length > 0 ? rawBodyText : '';
+    const titleText = rawTitleText.length > 0 ? rawTitleText : '';
     const displayText = bodyText.length > 0 ? bodyText : titleText;
     const type = fact.type ?? 'fact';
     const relationSuffix = relationSuffixText(displayRelationsForFact(fact), fact.displayRelationDirection);
@@ -1392,6 +1392,7 @@ function factViewModelsForDisplay(facts, options = {}) {
     const sourceContext = fact.sourceContext ?? '';
     const sourceContextShort = fact.sourceContextShort ?? '';
     const firstPrefix = [
+      deletedMarker,
       sourceContextShort,
       displayType,
       displayDue
@@ -1423,6 +1424,7 @@ function factViewModelsForDisplay(facts, options = {}) {
       number: String(itemNumber).padStart(numberWidth),
       numberSuffix: secondarySuffix,
       numberPrefix,
+      deletedMarker,
       deletedInView: fact.deletedInView ?? false,
       keptInView: fact.keptInView ?? false,
       highlightedInView,

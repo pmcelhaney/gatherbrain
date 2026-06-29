@@ -18,6 +18,7 @@ test('renders default facts template', () => {
           number: ' 2',
           numberPrefix: ' 2.',
           numberSuffix: '[2]',
+          deletedMarker: '[deleted]',
           type: 'task',
           due: 'Friday',
           displaySeparator: true,
@@ -28,7 +29,7 @@ test('renders default facts template', () => {
       hasFacts: true,
       includeColor: false
     }),
-    ' 1. First fact.\n 2. task Friday Second fact.'
+    ' 1. First fact.\n 2. [deleted] task Friday Second fact.'
   );
 });
 

@@ -2854,7 +2854,7 @@ test('item numbers stay stable after deleting a visible item', async () => {
     );
     await writeFile(
       path.join(rootDirectory, '2026-06-23T09-05-07.012-04-00.md'),
-      '---\ntype: fact\n---\n\nSecond fact.\n'
+      '---\ntype: todo\n---\n\nSecond fact.\n'
     );
     await writeFile(
       path.join(rootDirectory, '2026-06-23T09-06-07.012-04-00.md'),
@@ -2872,7 +2872,7 @@ test('item numbers stay stable after deleting a visible item', async () => {
       'facts',
       '--------------------------------------------------------------------------------',
       ' 3. Third fact.',
-      ' 2. Second fact.',
+      ' 2. todo Second fact.',
       ' 1. First fact.'
     ]
     );
@@ -2891,7 +2891,7 @@ test('item numbers stay stable after deleting a visible item', async () => {
       'facts',
       '--------------------------------------------------------------------------------',
       ' 3. Third fact.',
-      ' 2. [deleted] Second fact.',
+      ' 2. [deleted] todo Second fact.',
       ' 1. First fact.'
     ]
     );
@@ -2902,7 +2902,7 @@ test('item numbers stay stable after deleting a visible item', async () => {
       rows: 6,
       columns: 80
     }),
-    /\x1b\[2m\x1b\[2m 2\.\x1b\[22m \[deleted\] Second fact\.\x1b\[22m/u
+    /\x1b\[2m\x1b\[2m 2\.\x1b\[22m \[deleted\] \x1b\[36mtodo\x1b\[39m Second fact\.\x1b\[22m/u
   );
     await handleEntry(':lens todo', state);
     assert.deepEqual(
