@@ -215,6 +215,10 @@ test('parses context and lens commands', () => {
 });
 
 test('parses fact commands', () => {
+  const dateRegistry = createCommandRegistry(undefined, {
+    dateToday: new Date(2026, 5, 24, 12)
+  });
+
   assert.deepEqual(parseEntry(':new Call Steve'), {
     title: 'Call Steve',
     type: 'create_fact'
@@ -354,6 +358,38 @@ test('parses fact commands', () => {
     property: 'due',
     type: 'set_fact_property',
     value: '2026-07-04'
+  });
+  assert.deepEqual(parseEntry('14 done'), {
+    itemNumber: 14,
+    operations: [
+      { factType: 'done', type: 'set_fact_type' }
+    ],
+    type: 'update_fact_shorthand'
+  });
+  assert.deepEqual(parseEntry('17 todo today', dateRegistry), {
+    itemNumber: 17,
+    operations: [
+      { factType: 'todo', type: 'set_fact_type' },
+      { property: 'due', type: 'set_fact_property', value: '2026-06-24' }
+    ],
+    type: 'update_fact_shorthand'
+  });
+  assert.deepEqual(parseEntry('35 waiting /people/steve-ma /people/john-do'), {
+    itemNumber: 35,
+    operations: [
+      { factType: 'waiting', type: 'set_fact_type' },
+      { contextReference: '/people/steve-ma', type: 'relate_fact' },
+      { contextReference: '/people/john-do', type: 'relate_fact' }
+    ],
+    type: 'update_fact_shorthand'
+  });
+  assert.deepEqual(parseEntry('17 todo waiting'), {
+    message: 'usage: <item> [type] [date] [/context ...]',
+    type: 'usage_error'
+  });
+  assert.deepEqual(parseEntry('17 nope'), {
+    message: 'usage: <item> [type] [date] [/context ...]',
+    type: 'usage_error'
   });
   assert.deepEqual(parseEntry(':edit 2 extra'), {
     message: 'usage: :edit <item>',

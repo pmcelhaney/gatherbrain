@@ -302,6 +302,108 @@ function parseTypedFactTypeCommand(command, registry) {
   };
 }
 
+function parseItemUpdateShorthand(command, registry) {
+  const match = command.match(/^(?<item>[1-9]\d*)(?:\s+(?<updates>.*))?$/u);
+
+  if (!match) {
+    return null;
+  }
+
+  const updates = match.groups.updates?.trim() ?? '';
+
+  if (updates.length === 0) {
+    return null;
+  }
+
+  const tokens = updates.split(/\s+/u);
+  const operations = [];
+  let factType = null;
+  let due = null;
+
+  for (let index = 0; index < tokens.length;) {
+    const token = tokens[index];
+
+    if (token.startsWith('/')) {
+      operations.push({
+        contextReference: token,
+        type: 'relate_fact'
+      });
+      index += 1;
+      continue;
+    }
+
+    const remaining = tokens.slice(index).join(' ');
+    const matchingType = enumValues(shorthandFactTypeEnum, registry?.enumRegistry)
+      .toSorted((left, right) => right.length - left.length)
+      .find((value) => (
+        remaining.toLowerCase() === value.toLowerCase()
+        || remaining.toLowerCase().startsWith(`${value.toLowerCase()} `)
+      ));
+
+    if (matchingType) {
+      if (factType) {
+        return {
+          type: 'usage_error',
+          message: 'usage: <item> [type] [date] [/context ...]'
+        };
+      }
+
+      factType = matchingType;
+      operations.push({
+        factType,
+        type: 'set_fact_type'
+      });
+      index += matchingType.split(/\s+/u).length;
+      continue;
+    }
+
+    let parsedDate = null;
+    let parsedDateTokenCount = 0;
+
+    for (let tokenCount = tokens.length - index; tokenCount > 0; tokenCount -= 1) {
+      const value = tokens.slice(index, index + tokenCount).join(' ');
+      const date = parseDateArgument(value, { today: registry?.dateToday });
+
+      if (date) {
+        parsedDate = date;
+        parsedDateTokenCount = tokenCount;
+        break;
+      }
+    }
+
+    if (parsedDate) {
+      if (due) {
+        return {
+          type: 'usage_error',
+          message: 'usage: <item> [type] [date] [/context ...]'
+        };
+      }
+
+      due = parsedDate;
+      operations.push({
+        property: 'due',
+        type: 'set_fact_property',
+        value: parsedDate
+      });
+      index += parsedDateTokenCount;
+      continue;
+    }
+
+    return {
+      type: 'usage_error',
+      message: 'usage: <item> [type] [date] [/context ...]'
+    };
+  }
+
+  return operations.length > 0
+    ? {
+      itemNumber: positiveItemNumber(match.groups.item),
+      operations,
+      type: 'update_fact_shorthand'
+    }
+    : null;
+}
+
 function parseCommandArguments(commandDefinition, args, options = {}) {
   const {
     enumRegistry = null,
@@ -779,6 +881,12 @@ export function parseEntry(entry, registry = defaultCommandRegistry) {
 
   if (typedFactTypeCommand) {
     return typedFactTypeCommand;
+  }
+
+  const itemUpdateShorthand = parseItemUpdateShorthand(command, registry);
+
+  if (itemUpdateShorthand) {
+    return itemUpdateShorthand;
   }
 
   if (command.startsWith('/')) {

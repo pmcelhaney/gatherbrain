@@ -72,6 +72,7 @@ import {
   ensureWorkspaceModel,
   moveWorkspaceFact,
   referencedFilePathForFact,
+  relationForContextReference,
   relateWorkspaceFact,
   resolveExistingContextDirectory,
   resolveExistingSwitchContextDirectory,
@@ -88,8 +89,10 @@ const ansiRelationColor = '\x1b[35m';
 const ansiSecondaryColor = '\x1b[2m';
 const ansiPlannerFreeColor = '\x1b[32m';
 const ansiPlannerCurrentColor = '\x1b[33m';
+const ansiHighlightedItem = '\x1b[7m';
 const ansiResetColor = '\x1b[39m';
 const ansiResetIntensity = '\x1b[22m';
+const ansiResetHighlightedItem = '\x1b[27m';
 const ansiCommandPromptBackground = '\x1b[48;5;236m';
 const ansiPeekBackground = '\x1b[48;5;234m';
 const ansiResetAll = '\x1b[0m';
@@ -1117,6 +1120,75 @@ function displayKeptInViewLine(line, includeColor) {
     : line;
 }
 
+function displayHighlightedItemLine(line, includeColor) {
+  return includeColor
+    ? `${ansiHighlightedItem}${line}${ansiResetHighlightedItem}`
+    : line;
+}
+
+function itemNumberForPromptLine(line) {
+  const match = String(line ?? '').match(/^(?<itemNumber>[1-9]\d*)(?:\s|$)/u);
+
+  return match ? Number(match.groups.itemNumber) : null;
+}
+
+function relationLabelForPreview(contextReference) {
+  return contextReference.replace(/^\/+/u, '') || '/';
+}
+
+function previewFactForOperations(fact, operations) {
+  const previewFact = {
+    ...fact,
+    properties: {
+      ...(fact.properties ?? {})
+    },
+    relations: [...(fact.relations ?? [])],
+    displayRelations: [...(fact.displayRelations ?? [])]
+  };
+
+  for (const operation of operations) {
+    if (operation.type === 'set_fact_type') {
+      previewFact.type = operation.factType;
+      continue;
+    }
+
+    if (operation.type === 'set_fact_property') {
+      previewFact.properties[operation.property] = operation.value;
+      continue;
+    }
+
+    if (operation.type === 'relate_fact') {
+      const relationLabel = relationLabelForPreview(operation.contextReference);
+
+      if (!previewFact.displayRelations.includes(relationLabel)) {
+        previewFact.displayRelations.push(relationLabel);
+      }
+    }
+  }
+
+  return previewFact;
+}
+
+function previewFactsForPromptLine(facts, promptLine, state) {
+  const promptItemNumber = itemNumberForPromptLine(promptLine);
+
+  if (promptItemNumber === null) {
+    return facts;
+  }
+
+  const parsedEntry = parseEntry(promptLine, state?.commandRegistry);
+
+  if (parsedEntry.type !== 'update_fact_shorthand') {
+    return facts;
+  }
+
+  return facts.map((fact) => (
+    fact.itemNumber === parsedEntry.itemNumber
+      ? previewFactForOperations(fact, parsedEntry.operations)
+      : fact
+  ));
+}
+
 function formattedDisplayLines(text, options = {}) {
   const {
     columns,
@@ -1175,6 +1247,7 @@ function factViewModelsForDisplay(facts, options = {}) {
   const {
     columns = 80,
     includeColor = false,
+    highlightItemNumber = null,
     today = new Date(),
     template = 'facts',
     templateRootDirectory = null
@@ -1186,6 +1259,7 @@ function factViewModelsForDisplay(facts, options = {}) {
 
   return facts.map((fact, factIndex) => {
     const itemNumber = fact.itemNumber ?? facts.length - factIndex;
+    const highlightedInView = itemNumber === highlightItemNumber;
     const deletedMarker = fact.deletedInView ? '[deleted] ' : '';
     const rawBodyText = fact.text ?? '';
     const rawTitleText = fact.title?.trim() ?? '';
@@ -1228,6 +1302,7 @@ function factViewModelsForDisplay(facts, options = {}) {
       numberSuffix: secondarySuffix,
       deletedInView: fact.deletedInView ?? false,
       keptInView: fact.keptInView ?? false,
+      highlightedInView,
       type: displayType,
       due: displayDue,
       displaySeparator,
@@ -1247,11 +1322,19 @@ function factViewModelsForDisplay(facts, options = {}) {
       rootDirectory: templateRootDirectory
     });
 
+    let blockLinesForDisplay = blockLines;
+
+    if (fact.keptInView) {
+      blockLinesForDisplay = blockLinesForDisplay.map((line) => displayKeptInViewLine(line, includeColor));
+    }
+
+    if (highlightedInView) {
+      blockLinesForDisplay = blockLinesForDisplay.map((line) => displayHighlightedItemLine(line, includeColor));
+    }
+
     return {
       ...viewModel,
-      blockLines: fact.keptInView
-        ? blockLines.map((line) => displayKeptInViewLine(line, includeColor))
-        : blockLines
+      blockLines: blockLinesForDisplay
     };
   });
 }
@@ -1265,6 +1348,8 @@ export function buildPagedFactLines(options = {}) {
     rows = 0,
     template = 'facts',
     templateRootDirectory = null,
+    highlightItemNumber = null,
+    promptLine = '',
     state = null
   } = options;
   const factRows = Math.max(rows, 0);
@@ -1298,8 +1383,10 @@ export function buildPagedFactLines(options = {}) {
   }
 
   const numberedFacts = visibleFactsWithItemNumbers(facts, state);
-  const factViewModels = factViewModelsForDisplay(numberedFacts, {
+  const previewFacts = previewFactsForPromptLine(numberedFacts, promptLine, state);
+  const factViewModels = factViewModelsForDisplay(previewFacts, {
     columns,
+    highlightItemNumber,
     includeColor,
     today,
     template,
@@ -1339,8 +1426,8 @@ export function buildPagedFactLines(options = {}) {
   }
 
   const previousPageStartIndex = startIndex > 0 ? Math.max(startIndex - 1, 0) : null;
-  const pageHasKeptInViewFact = pageFacts.some((fact) => fact.keptInView);
-  const pageLines = renderPageTemplate && !(includeColor && pageHasKeptInViewFact)
+  const pageHasStyledFact = pageFacts.some((fact) => fact.keptInView || fact.highlightedInView);
+  const pageLines = renderPageTemplate && !(includeColor && pageHasStyledFact)
     ? renderTemplateLines(template, {
       emptyText: 'No facts yet.',
       facts: pageFacts,
@@ -1540,7 +1627,8 @@ export function buildTuiLines(options = {}) {
     facts = [],
     rows = 24,
     columns = 80,
-    includeColor = false
+    includeColor = false,
+    promptLine = ''
   } = options;
   const visibleRows = Math.max(rows - 1, 1);
   const promptQuestion = promptQuestionForState(state);
@@ -1566,6 +1654,8 @@ export function buildTuiLines(options = {}) {
       state,
       template: body?.template ?? 'facts',
       templateRootDirectory: state.rootDirectory,
+      highlightItemNumber: itemNumberForPromptLine(promptLine),
+      promptLine,
       pageStartIndex: state.pageStartIndex ?? 0,
       rows: factRows
     });
@@ -1792,6 +1882,12 @@ export async function completeEntry(line, state) {
     }
   }
 
+  const itemUpdateShorthandCompletion = await matchingItemUpdateShorthandCompletion(line, state);
+
+  if (itemUpdateShorthandCompletion) {
+    return itemUpdateShorthandCompletion;
+  }
+
   const trailingNamedArgumentCompletion = await matchingTrailingNamedArgument(line, state);
 
   if (trailingNamedArgumentCompletion) {
@@ -1991,6 +2087,32 @@ function trailingArgumentCompletionValues(argument, state) {
   }
 
   return [];
+}
+
+async function matchingItemUpdateShorthandCompletion(line, state) {
+  const match = line.match(/^(?<item>[1-9]\d*)\s+(?<updates>.*)$/u);
+
+  if (!match) {
+    return null;
+  }
+
+  const updates = match.groups.updates ?? '';
+  const tokens = updates.split(/\s+/u);
+  const partial = updates.endsWith(' ') ? '' : tokens.at(-1) ?? '';
+
+  if (partial.startsWith('/')) {
+    const matches = await matchingContextCompletions(partial, state);
+
+    return [matches.map(contextCompletionValue), partial];
+  }
+
+  const factTypeMatches = commandArgumentValues({
+    type: 'factType',
+    enum: factTypeEnumName
+  }, state.commandRegistry).filter((value) => startsWithCaseInsensitive(value, partial));
+  const dateMatches = dateCompletionValues.filter((value) => startsWithCaseInsensitive(value, partial));
+
+  return [[...factTypeMatches, ...dateMatches], partial];
 }
 
 async function matchingNamedFactArgument(line, state) {
@@ -3232,6 +3354,59 @@ export async function handleEntry(entry, state) {
     };
   }
 
+  if (parsedEntry.type === 'update_fact_shorthand') {
+    let itemLabel;
+
+    try {
+      const resolvedFact = await visibleFactForSelector(state, parsedEntry);
+      itemLabel = resolvedFact.itemLabel;
+      let fact = resolvedFact.fact;
+      const relationOperations = parsedEntry.operations.filter((operation) => operation.type === 'relate_fact');
+
+      await Promise.all(
+        relationOperations.map((operation) => relationForContextReference(operation.contextReference, state))
+      );
+
+      for (const operation of parsedEntry.operations) {
+        fact = factFromModelMatching(state, fact) ?? fact;
+
+        if (operation.type === 'set_fact_type') {
+          await setWorkspaceFactType(state, fact, operation.factType);
+          continue;
+        }
+
+        if (operation.type === 'set_fact_property') {
+          await setWorkspaceFactProperty(state, fact, operation.property, operation.value);
+          continue;
+        }
+
+        if (operation.type === 'relate_fact') {
+          await relateWorkspaceFact(state, fact, operation.contextReference);
+        }
+      }
+
+      await keepFactInViewIfDropped(state, factFromModelMatching(state, fact) ?? fact);
+    } catch (error) {
+      state.statusMessage = error.message;
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
+
+    const message = `updated item ${itemLabel}`;
+    state.pageStartIndex = 0;
+    state.statusMessage = '';
+    clearTemporaryBody(state);
+
+    return {
+      action: 'continue',
+      message
+    };
+  }
+
   if (parsedEntry.type === 'set_fact_type') {
     let itemLabel;
 
@@ -3332,15 +3507,33 @@ async function main() {
   const terminalRows = () => output.rows ?? 24;
   const terminalColumns = () => output.columns ?? 80;
   const factRows = () => Math.max(Math.max(terminalRows() - 1, 1) - 1, 0);
+  let renderedPromptItemNumber = null;
+
+  function currentPromptItemNumber() {
+    return itemNumberForPromptLine(terminal.line);
+  }
 
   function renderCurrentScreen() {
+    renderedPromptItemNumber = currentPromptItemNumber();
     output.write(renderTui({
       state,
       body,
       rows: terminalRows(),
       columns: terminalColumns(),
+      promptLine: terminal.line,
       includeAnsi: output.isTTY
     }));
+  }
+
+  function redrawPromptHighlightIfNeeded() {
+    const nextPromptItemNumber = currentPromptItemNumber();
+
+    if (nextPromptItemNumber === renderedPromptItemNumber) {
+      return;
+    }
+
+    renderCurrentScreen();
+    redrawPrompt();
   }
 
   function redrawPrompt() {
@@ -3417,6 +3610,15 @@ async function main() {
       return;
     }
 
+    if (key?.name === 'return' || key?.name === 'enter') {
+      return;
+    }
+
+    setImmediate(() => {
+      if (!editorOpen) {
+        redrawPromptHighlightIfNeeded();
+      }
+    });
   };
   const modelWatcher = watchWorkspaceModel(state.model, {
     onChange: async () => {

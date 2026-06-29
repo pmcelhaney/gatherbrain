@@ -2456,6 +2456,87 @@ test('due command sets a normalized due date property', async () => {
   }
 });
 
+test('item update shorthand applies type due date and relations', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const factPath = path.join(rootDirectory, 'follow-up.md');
+  const commandRegistry = createCommandRegistry(undefined, {
+    dateToday: new Date(2026, 5, 24, 12)
+  });
+
+  try {
+    await mkdir(path.join(rootDirectory, 'people', 'steve-ma'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'john-do'), { recursive: true });
+    await writeFile(factPath, '---\ntype: fact\n---\n\nFollow up.\n');
+    const state = createPromptState({ appDirectory, commandRegistry, rootDirectory });
+
+    assert.deepEqual(await handleEntry('1 todo today /people/steve-ma /people/john-do', state), {
+      action: 'continue',
+      message: 'updated item 1'
+    });
+    assert.equal(
+      markdownWithoutFactUuid(await readFile(factPath, 'utf8')),
+      '---\ntype: todo\ndue: 2026-06-24\nrelatedContexts: ["people/steve-ma", "people/john-do"]\n---\n\nFollow up.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('item update shorthand validates before mutating', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const factPath = path.join(rootDirectory, 'follow-up.md');
+
+  try {
+    await mkdir(rootDirectory, { recursive: true });
+    await writeFile(factPath, '---\ntype: fact\n---\n\nFollow up.\n');
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(await handleEntry('1 done /missing', state), {
+      action: 'continue',
+      message: 'context /missing does not exist'
+    });
+    assert.equal(
+      markdownWithoutFactUuid(await readFile(factPath, 'utf8')),
+      '---\ntype: fact\n---\n\nFollow up.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('item update shorthand keeps item visible when it leaves the lens', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    state.currentLensId = 'todo';
+    await mkdir(rootDirectory, { recursive: true });
+    await writeFile(path.join(rootDirectory, 'first.md'), '---\ntype: fact\n---\n\nFirst.\n');
+    await writeFile(path.join(rootDirectory, 'second.md'), '---\ntype: waiting\n---\n\nSecond.\n');
+
+    assert.deepEqual(await handleEntry('1 done', state), {
+      action: 'continue',
+      message: 'updated item 1'
+    });
+    assert.deepEqual(
+      (await visibleFactsForState(state)).map((fact) => ({
+        keptInView: fact.keptInView ?? false,
+        text: fact.text,
+        type: fact.type
+      })),
+      [
+        { keptInView: false, text: 'Second.', type: 'waiting' },
+        { keptInView: true, text: 'First.', type: 'done' }
+      ]
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test(':edit command returns an edit action for a listed item', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -3060,6 +3141,40 @@ test('renders the prompt target on the bottom row', () => {
   );
 });
 
+test('highlights the item number at the start of the prompt', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const state = createPromptState({ appDirectory, rootDirectory });
+
+  assert.equal(
+    renderTui({
+      state,
+      facts: [{ text: 'Follow up.' }],
+      rows: 4,
+      columns: 40,
+      promptLine: '1'
+    }),
+    '\x1b[2J\x1b[Hfacts\n----------------------------------------\n\x1b[7mFollow up. \x1b[2m[1]\x1b[22m\x1b[27m\x1b[4;1H'
+  );
+});
+
+test('previews item update shorthand on the highlighted item', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const state = createPromptState({ appDirectory, rootDirectory });
+
+  assert.equal(
+    renderTui({
+      state,
+      facts: [{ text: 'Follow up.', type: 'todo' }],
+      rows: 4,
+      columns: 40,
+      promptLine: '1 done'
+    }),
+    '\x1b[2J\x1b[Hfacts\n----------------------------------------\n\x1b[7m\x1b[36mdone\x1b[39m Follow up. \x1b[2m[1]\x1b[22m\x1b[27m\x1b[4;1H'
+  );
+});
+
 test('renders peek mode with a screen background color', () => {
   const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -3358,6 +3473,18 @@ test('completes named command arguments', async () => {
     );
     assert.deepEqual(
       await completeEntry(':move 1 /people/S', state),
+      [['/people/Steve Ma'], '/people/S']
+    );
+    assert.deepEqual(
+      await completeEntry('1 d', state),
+      [['done'], 'd']
+    );
+    assert.deepEqual(
+      await completeEntry('1 to', state),
+      [['todo', 'today', 'tomorrow'], 'to']
+    );
+    assert.deepEqual(
+      await completeEntry('1 /people/S', state),
       [['/people/Steve Ma'], '/people/S']
     );
     assert.deepEqual(
