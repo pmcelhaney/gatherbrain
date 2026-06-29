@@ -185,119 +185,6 @@ function parseNamedCommand(command, registry) {
   };
 }
 
-function parseTypedFactCommand(command, registry) {
-  const match = command.match(/^%(?<args>.*)$/u);
-
-  if (!match) {
-    return null;
-  }
-
-  const args = match.groups.args.trim();
-
-  if (args.length === 0) {
-    return {
-      type: 'usage_error',
-      message: 'usage: %<type> <fact>'
-    };
-  }
-
-  const normalizedArgs = args.toLowerCase();
-  const matchingValue = enumValues(shorthandFactTypeEnum, registry?.enumRegistry)
-    .toSorted((left, right) => right.length - left.length)
-    .find((value) => (
-      normalizedArgs.startsWith(`${value.toLowerCase()} `)
-    ));
-
-  if (matchingValue) {
-    const title = args.slice(matchingValue.length).trim();
-
-    return title.length > 0
-      ? createFactActionFromTitle(title, registry, { factType: matchingValue })
-      : {
-        type: 'usage_error',
-        message: 'usage: %<type> <fact>'
-      };
-  }
-
-  const unknownType = args.match(/^(?<factType>\S+)(?:\s+(?<title>.*))?$/u);
-  const factType = unknownType?.groups.factType ?? '';
-  const title = unknownType?.groups.title?.trim() ?? '';
-
-  if (!new RegExp(`^${typeNamePattern}$`, 'u').test(factType) || title.length === 0) {
-    return {
-      type: 'usage_error',
-      message: 'usage: %<type> <fact>'
-    };
-  }
-
-  return createFactActionFromTitle(title, registry, {
-    factType,
-    confirmFactType: true
-  });
-}
-
-function parseTypedFactTypeCommand(command, registry) {
-  const match = command.match(/^\.(?<args>.*)$/u);
-
-  if (!match) {
-    return null;
-  }
-
-  const args = match.groups.args.trim();
-
-  if (args.length === 0) {
-    return {
-      type: 'usage_error',
-      message: 'usage: .<type> <item>'
-    };
-  }
-
-  const normalizedArgs = args.toLowerCase();
-  const matchingValue = enumValues(shorthandFactTypeEnum, registry?.enumRegistry)
-    .toSorted((left, right) => right.length - left.length)
-    .find((value) => (
-      normalizedArgs === value.toLowerCase()
-      || normalizedArgs.startsWith(`${value.toLowerCase()} `)
-    ));
-
-  if (matchingValue) {
-    const item = args.slice(matchingValue.length).trim();
-
-    if (item.length === 0) {
-      return promptForArgument({
-        name: 'type',
-        action: 'set_fact_type',
-        arguments: commandArguments('type', registry)
-      }, {}, {
-        name: 'item',
-        type: 'fact',
-        prompt: 'Change which fact?'
-      });
-    }
-
-    const parsedItem = parseArgumentValue({ name: 'item', type: 'fact' }, item, {
-      enumRegistry: registry?.enumRegistry,
-      dateToday: registry?.dateToday
-    });
-
-    return parsedItem === null
-      ? {
-        type: 'usage_error',
-        message: 'usage: .<type> <item>'
-      }
-      : {
-        type: 'set_fact_type',
-        factType: matchingValue,
-        ...factSelectorProperties(parsedItem)
-      };
-  }
-
-  return {
-    type: 'usage_error',
-    message: 'usage: .<type> <item>'
-  };
-}
-
 function factUpdateMetadataUsageError() {
   return {
     type: 'usage_error',
@@ -924,18 +811,6 @@ export function parseEntry(entry, registry = defaultCommandRegistry) {
 
   if (namedCommand) {
     return namedCommand;
-  }
-
-  const typedFactCommand = parseTypedFactCommand(command, registry);
-
-  if (typedFactCommand) {
-    return typedFactCommand;
-  }
-
-  const typedFactTypeCommand = parseTypedFactTypeCommand(command, registry);
-
-  if (typedFactTypeCommand) {
-    return typedFactTypeCommand;
   }
 
   const itemUpdateShorthand = parseItemUpdateShorthand(command, registry);

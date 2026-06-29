@@ -91,7 +91,6 @@ Use `:q`, `:quit`, `:exit`, or `Ctrl+C` to leave the prompt.
 ## Common Commands
 
 - Type plain text and press Enter to save a fact.
-- `%todo Get milk` saves a `todo` fact. Type `%` and press `Tab` to complete configured fact types.
 - `Follow up -- todo today /people/alex` saves a fact, then applies the same type, due date, and relation metadata used by item update shorthand.
 - `:switch projects/gatherbrain` changes context.
 - `:peek people/alex` looks at another context without leaving the current one.
@@ -99,9 +98,6 @@ Use `:q`, `:quit`, `:exit`, or `Ctrl+C` to leave the prompt.
 - `:edit 3` opens the third visible fact in `$EDITOR`.
 - `:delete 3` moves the third visible fact to `.trash`.
 - `:move 3 /projects/gatherbrain` moves a fact and relates it to the context it came from.
-- `:relate 3 people/alex` relates a fact to another context without moving it.
-- `:type 3 done` changes a fact's type.
-- `:due 3 today` sets a normalized due date.
 - `:open` opens the current context directory; `:open 3` opens a referenced file.
 - `:paste` saves the current clipboard contents and creates a companion fact.
 - `:plan 9-12 /projects/gatherbrain` assigns focus time to a context.

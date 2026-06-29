@@ -526,7 +526,7 @@ export async function relationForContextReference(contextReference, state) {
   const requestedContext = contextReference.trim();
 
   if (requestedContext.length === 0) {
-    throw new Error('usage: :relate <item> <context>');
+    throw new Error('context is required');
   }
 
   const normalizedContext = requestedContext.replace(/^\/+/u, '');

@@ -230,7 +230,7 @@ Further reading:
 | Facts need stable identities | Each fact has a workspace-relative path ID and a front matter UUID. |
 | Attention can look aside | Peek relates new facts to what the user is looking at without changing where they are. |
 | Views should not duplicate data | Lenses render facts without moving them. |
-| Relationships should be explicit | Peek, `:relate`, and `:move` write `relatedContexts`. |
+| Relationships should be explicit | Peek, item update shorthand, and `:move` write `relatedContexts`. |
 | Planning should follow context | Timeboxes assign focus time to contexts and `:now` switches to the current owner of time. |
 | Trails should be inspectable | Event logs are daily TSV files with JSON metadata. |
 | Semantics should be user-shaped | Commands, enums, lenses, and templates are configurable DSLs. |

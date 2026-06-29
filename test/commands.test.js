@@ -26,10 +26,7 @@ test('lists built-in command help', () => {
     ':edit <item>',
     ':open [item]',
     ':delete <item>',
-    ':relate <item> <context>',
     ':move <item> <context>',
-    ':type <item> <type>',
-    ':due <item> <value>',
     ':paste <title>',
     ':plan <range> <context>',
     ':cancel <range> <context>',
@@ -38,7 +35,7 @@ test('lists built-in command help', () => {
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :move <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :move <item> <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -49,31 +46,16 @@ test('lists built-in command help', () => {
     'edit',
     'open',
     'delete',
-    'relate',
     'move',
-    'type',
-    'due',
     'paste',
     'plan',
     'cancel',
     'now',
     'restart'
   ]);
-  assert.deepEqual(commandArguments('relate'), [
-    { name: 'item', type: 'fact', prompt: 'Relate which fact?' },
-    { name: 'context', type: 'context', consume: 'rest', prompt: 'Relate it to which context?' }
-  ]);
   assert.deepEqual(commandArguments('move'), [
     { name: 'item', type: 'fact', prompt: 'Move which fact?' },
     { name: 'context', type: 'context', consume: 'rest', prompt: 'Move it to which context?' }
-  ]);
-  assert.deepEqual(commandArguments('type'), [
-    { name: 'item', type: 'fact', prompt: 'Change which fact?' },
-    { name: 'type', type: 'factType', enum: 'factType', prompt: 'Set which type?' }
-  ]);
-  assert.deepEqual(commandArguments('due'), [
-    { name: 'item', type: 'fact', prompt: 'Set due date on which fact?' },
-    { name: 'value', type: 'date', prompt: 'Due when?' }
   ]);
   assert.deepEqual(commandArguments('new'), [
     { name: 'title', type: 'text', consume: 'rest', prompt: 'Title?' }
@@ -239,34 +221,9 @@ test('parses fact commands', () => {
     ],
     type: 'create_fact'
   });
-  assert.deepEqual(parseEntry('%todo Get milk'), {
-    title: 'Get milk',
-    type: 'create_fact',
-    factType: 'todo'
-  });
-  assert.deepEqual(parseEntry('%todo Get milk -- tomorrow', dateRegistry), {
-    title: 'Get milk',
-    type: 'create_fact',
-    factType: 'todo',
-    operations: [
-      { property: 'due', type: 'set_fact_property', value: '2026-06-25' }
-    ]
-  });
-  assert.deepEqual(parseEntry('%TODO Get milk'), {
-    title: 'Get milk',
-    type: 'create_fact',
-    factType: 'todo'
-  });
-  assert.deepEqual(parseEntry('%in progress Get milk'), {
-    title: 'Get milk',
-    type: 'create_fact',
-    factType: 'in progress'
-  });
-  assert.deepEqual(parseEntry('%someday Get milk'), {
-    title: 'Get milk',
-    type: 'create_fact',
-    factType: 'someday',
-    confirmFactType: true
+  assert.deepEqual(parseEntry('%literal text'), {
+    title: '%literal text',
+    type: 'create_fact'
   });
   assert.deepEqual(parseEntry(':new'), {
     type: 'prompt_command_argument',
@@ -296,92 +253,10 @@ test('parses fact commands', () => {
     itemNumber: 3,
     type: 'delete_fact'
   });
-  assert.deepEqual(parseEntry(':relate 4 people/alex'), {
-    contextReference: 'people/alex',
-    itemNumber: 4,
-    type: 'relate_fact'
-  });
   assert.deepEqual(parseEntry(':move 4 people/alex'), {
     contextReference: 'people/alex',
     itemNumber: 4,
     type: 'move_fact'
-  });
-  assert.deepEqual(parseEntry(':type 5 done'), {
-    factType: 'done',
-    itemNumber: 5,
-    type: 'set_fact_type'
-  });
-  assert.deepEqual(parseEntry(':TYPE 5 WAITING'), {
-    factType: 'waiting',
-    itemNumber: 5,
-    type: 'set_fact_type'
-  });
-  assert.deepEqual(parseEntry(':type 5 in progress'), {
-    factType: 'in progress',
-    itemNumber: 5,
-    type: 'set_fact_type'
-  });
-  assert.deepEqual(parseEntry(':type Call Steve task'), {
-    factType: 'task',
-    itemTitle: 'Call Steve',
-    type: 'set_fact_type'
-  });
-  assert.deepEqual(parseEntry(':type Call Steve in progress'), {
-    factType: 'in progress',
-    itemTitle: 'Call Steve',
-    type: 'set_fact_type'
-  });
-  assert.deepEqual(parseEntry('.done 5'), {
-    factType: 'done',
-    itemNumber: 5,
-    type: 'set_fact_type'
-  });
-  assert.deepEqual(parseEntry('.WAITING 5'), {
-    factType: 'waiting',
-    itemNumber: 5,
-    type: 'set_fact_type'
-  });
-  assert.deepEqual(parseEntry('.in progress 5'), {
-    factType: 'in progress',
-    itemNumber: 5,
-    type: 'set_fact_type'
-  });
-  assert.deepEqual(parseEntry('.done'), {
-    type: 'prompt_command_argument',
-    commandName: 'type',
-    values: {},
-    argument: {
-      name: 'item',
-      type: 'fact',
-      prompt: 'Change which fact?'
-    },
-    prompt: 'Change which fact?'
-  });
-  assert.deepEqual(parseEntry('.bad:type 5'), {
-    message: 'usage: .<type> <item>',
-    type: 'usage_error'
-  });
-  assert.deepEqual(parseEntry(':type 5'), {
-    type: 'prompt_command_argument',
-    commandName: 'type',
-    values: { item: { kind: 'number', value: 5 } },
-    argument: {
-      name: 'type',
-      type: 'factType',
-      enum: 'factType',
-      prompt: 'Set which type?'
-    },
-    prompt: 'Set which type?'
-  });
-  assert.deepEqual(parseEntry(':type 5 bad:type'), {
-    message: 'usage: :type <item> <type>',
-    type: 'usage_error'
-  });
-  assert.deepEqual(parseEntry(':due 2 2026-07-04'), {
-    itemNumber: 2,
-    property: 'due',
-    type: 'set_fact_property',
-    value: '2026-07-04'
   });
   assert.deepEqual(parseEntry('14 done'), {
     itemNumber: 14,
@@ -426,52 +301,6 @@ test('parses fact commands', () => {
 });
 
 test('continues prompted commands', () => {
-  const pendingType = parseEntry(':type 5');
-
-  assert.deepEqual(continuePromptedCommand(pendingType, 'done'), {
-    factType: 'done',
-    itemNumber: 5,
-    type: 'set_fact_type'
-  });
-  assert.deepEqual(continuePromptedCommand(parseEntry('.done'), '5'), {
-    type: 'prompt_command_argument',
-    commandName: 'type',
-    values: {
-      item: {
-        kind: 'number',
-        value: 5
-      }
-    },
-    argument: {
-      name: 'type',
-      type: 'factType',
-      enum: 'factType',
-      prompt: 'Set which type?'
-    },
-    prompt: 'Set which type?'
-  });
-  assert.deepEqual(continuePromptedCommand(parseEntry(':relate'), '4'), {
-    type: 'prompt_command_argument',
-    commandName: 'relate',
-    values: {
-      item: {
-        kind: 'number',
-        value: 4
-      }
-    },
-    argument: {
-      name: 'context',
-      type: 'context',
-      consume: 'rest',
-      prompt: 'Relate it to which context?'
-    },
-    prompt: 'Relate it to which context?'
-  });
-  assert.deepEqual(continuePromptedCommand(continuePromptedCommand(parseEntry(':relate'), '4'), 'people/alex'), {
-    contextReference: 'people/alex',
-    itemNumber: 4,
-    type: 'relate_fact'
-  });
   assert.deepEqual(continuePromptedCommand(parseEntry(':move'), '4'), {
     type: 'prompt_command_argument',
     commandName: 'move',
@@ -512,55 +341,6 @@ test('continues prompted commands', () => {
   });
 });
 
-test('normalizes date command arguments', async () => {
-  const registry = await loadCommandRegistry({
-    dateToday: new Date(2026, 5, 24, 12)
-  });
-
-  assert.deepEqual(parseEntry(':due 4 today', registry), {
-    itemNumber: 4,
-    property: 'due',
-    type: 'set_fact_property',
-    value: '2026-06-24'
-  });
-  assert.deepEqual(parseEntry(':due 4 in 2 weeks', registry), {
-    itemNumber: 4,
-    property: 'due',
-    type: 'set_fact_property',
-    value: '2026-07-08'
-  });
-  assert.deepEqual(parseEntry(':due Call Steve next Friday', registry), {
-    itemTitle: 'Call Steve',
-    property: 'due',
-    type: 'set_fact_property',
-    value: '2026-06-26'
-  });
-  assert.deepEqual(parseEntry(':due Call Steve in 2 weeks', registry), {
-    itemTitle: 'Call Steve',
-    property: 'due',
-    type: 'set_fact_property',
-    value: '2026-07-08'
-  });
-  assert.deepEqual(parseEntry(':due 4 someday', registry), {
-    message: 'usage: :due <item> <value>',
-    type: 'usage_error'
-  });
-  assert.deepEqual(continuePromptedCommand({
-    ...parseEntry(':due', registry),
-    registry
-  }, '4'), {
-    type: 'prompt_command_argument',
-    commandName: 'due',
-    values: { item: { kind: 'number', value: 4 } },
-    argument: {
-      name: 'value',
-      type: 'date',
-      prompt: 'Due when?'
-    },
-    prompt: 'Due when?'
-  });
-});
-
 test('loads workspace command definitions from config', async () => {
   const rootDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-commands-'));
 
@@ -597,10 +377,7 @@ test('loads workspace command definitions from config', async () => {
       'edit',
       'open',
       'delete',
-      'relate',
       'move',
-      'type',
-      'due',
       'paste',
       'plan',
       'cancel',
@@ -720,10 +497,7 @@ test('workspace command config overrides default commands by name', async () => 
       'edit',
       'open',
       'delete',
-      'relate',
       'move',
-      'type',
-      'due',
       'paste',
       'plan',
       'cancel',

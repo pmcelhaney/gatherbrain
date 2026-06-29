@@ -160,7 +160,7 @@ Add a shorter command for setting type:
 }
 ```
 
-This adds `:mark todo 3` without removing `:type`.
+This adds `:mark todo 3`.
 
 For `fact` arguments, completion lets the user search by title. For example, if a visible fact is titled `Call Steve`, typing `:edit Call` and pressing `Tab` completes the argument to `Call Steve`. Commands still accept visible item numbers such as `:edit 3`.
 
@@ -242,12 +242,6 @@ Add a command that sets a date property:
 ```
 
 This adds commands such as `:deadline today 3`, using the argument order defined above, which writes `due: 2026-06-24`.
-
-The built-in `:due` command uses item-first order, `:due <item> <value>`, so the same update is written as:
-
-```text
-:due 3 today
-```
 
 Add an alias for moving facts:
 

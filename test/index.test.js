@@ -35,7 +35,7 @@ import {
   lensNavigationForKey
 } from '../src/index.js';
 import { createCommandRegistry } from '../src/commands.js';
-import { createEnumRegistry, enumValues } from '../src/enums.js';
+import { createEnumRegistry } from '../src/enums.js';
 import { filenameBaseForTitle, titleForFactText } from '../src/facts.js';
 import { createLensRegistry } from '../src/lenses.js';
 
@@ -332,117 +332,6 @@ test(':new saves a titled fact', async () => {
       markdownWithoutFactUuid(await readFile(path.join(rootDirectory, factFile), 'utf8')),
       '---\ntitle: "Follow up with Alex"\ntype: fact\n---\n\nFollow up with Alex\n'
     );
-  } finally {
-    await rm(appDirectory, { recursive: true, force: true });
-  }
-});
-
-test('%type saves a fact with the matching type', async () => {
-  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
-  const rootDirectory = path.join(appDirectory, 'facts');
-
-  try {
-    const state = createPromptState({ appDirectory, rootDirectory });
-
-    assert.deepEqual(await handleEntry('%todo Get milk', state), {
-      action: 'continue',
-      message: `saved ${path.join('facts', 'get-milk.md')}`
-    });
-    assert.equal(
-      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, 'get-milk.md'), 'utf8')),
-      '---\ntitle: "Get milk"\ntype: todo\n---\n\nGet milk\n'
-    );
-    assert.equal(state.model.facts.get('get-milk.md').type, 'todo');
-  } finally {
-    await rm(appDirectory, { recursive: true, force: true });
-  }
-});
-
-test('%type asks before adding an unknown fact type', async () => {
-  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
-  const rootDirectory = path.join(appDirectory, 'facts');
-
-  try {
-    const state = createPromptState({ appDirectory, rootDirectory });
-
-    assert.deepEqual(await handleEntry('%blocked Get milk', state), {
-      action: 'continue',
-      message: 'Fact type "blocked" is not listed. Add it? [y/N]'
-    });
-    assert.deepEqual(state.pendingFactTypeConfirmation, {
-      factType: 'blocked',
-      title: 'Get milk'
-    });
-    assert.deepEqual(await completeEntry('y', state), [['yes'], 'y']);
-    assert.deepEqual(await handleEntry('yes', state), {
-      action: 'continue',
-      message: `saved ${path.join('facts', 'get-milk.md')}`
-    });
-    assert.equal(state.pendingFactTypeConfirmation, null);
-    assert.equal(
-      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, 'get-milk.md'), 'utf8')),
-      '---\ntitle: "Get milk"\ntype: blocked\n---\n\nGet milk\n'
-    );
-    assert.deepEqual(
-      enumValues('factType', state.commandRegistry.enumRegistry),
-      ['fact', 'todo', 'waiting', 'in progress', 'done', 'blocked']
-    );
-    assert.deepEqual(
-      JSON.parse(await readFile(path.join(rootDirectory, '.gatherbrain', 'enums.json'), 'utf8')).enums.factType.values,
-      ['fact', 'todo', 'waiting', 'in progress', 'done', 'blocked']
-    );
-  } finally {
-    await rm(appDirectory, { recursive: true, force: true });
-  }
-});
-
-test('%type preserves capture metadata after confirming an unknown fact type', async () => {
-  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
-  const rootDirectory = path.join(appDirectory, 'facts');
-  const commandRegistry = createCommandRegistry(undefined, {
-    dateToday: new Date(2026, 5, 24, 12)
-  });
-
-  try {
-    const state = createPromptState({ appDirectory, commandRegistry, rootDirectory });
-
-    assert.deepEqual(await handleEntry('%blocked Get milk -- tomorrow', state), {
-      action: 'continue',
-      message: 'Fact type "blocked" is not listed. Add it? [y/N]'
-    });
-    assert.deepEqual(state.pendingFactTypeConfirmation, {
-      factType: 'blocked',
-      title: 'Get milk',
-      operations: [
-        { property: 'due', type: 'set_fact_property', value: '2026-06-25' }
-      ]
-    });
-    assert.deepEqual(await handleEntry('yes', state), {
-      action: 'continue',
-      message: `saved ${path.join('facts', 'get-milk.md')}`
-    });
-    assert.equal(
-      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, 'get-milk.md'), 'utf8')),
-      '---\ntitle: "Get milk"\ntype: blocked\ndue: 2026-06-25\n---\n\nGet milk\n'
-    );
-  } finally {
-    await rm(appDirectory, { recursive: true, force: true });
-  }
-});
-
-test('%type does not create a fact when unknown type confirmation is declined', async () => {
-  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
-  const rootDirectory = path.join(appDirectory, 'facts');
-
-  try {
-    const state = createPromptState({ appDirectory, rootDirectory });
-
-    await handleEntry('%blocked Get milk', state);
-    assert.deepEqual(await handleEntry('no', state), {
-      action: 'continue',
-      message: 'fact type blocked not added'
-    });
-    await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -1225,7 +1114,7 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :relate <item> <context> | :move <item> <context> | :type <item> <type> | :due <item> <value> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | :edit <item> | :open [item] | :delete <item> | :move <item> <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
@@ -1246,13 +1135,12 @@ test(':help lists commands without saving a fact', async () => {
         ':edit <item>',
         ':open [item]',
         ':delete <item>',
-        ':relate <item> <context>',
         ':move <item> <context>',
-        ':type <item> <type>',
-        ':due <item> <value>',
         ':paste <title>',
         ':plan <range> <context>',
-        ':cancel <range> <context>'
+        ':cancel <range> <context>',
+        ':now',
+        ':restart'
       ]
     );
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
@@ -2205,7 +2093,7 @@ test(':peek clears peek', async () => {
   }
 });
 
-test('type command changes a listed item type', async () => {
+test('item update shorthand changes a listed item type', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -2225,24 +2113,24 @@ test('type command changes a listed item type', async () => {
       '---\ntype: fact\n---\n\nThird fact.\n'
     );
 
-    const result = await handleEntry(':type 1 foo', state);
+    const result = await handleEntry('1 done', state);
     const files = (await readdir(rootDirectory)).filter((file) => path.extname(file) === '.md');
     const firstFact = markdownWithoutFactUuid(await readFile(path.join(rootDirectory, files.sort()[0]), 'utf8'));
 
     assert.deepEqual(result, {
       action: 'continue',
-      message: 'set item 1 type to foo'
+      message: 'updated item 1'
     });
     assert.equal(
       firstFact,
-      '---\ntype: foo\n---\n\nFirst fact.\n'
+      '---\ntype: done\n---\n\nFirst fact.\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
 });
 
-test('type command targets the active lens list', async () => {
+test('item update shorthand targets the active lens list', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const waitingPath = path.join(rootDirectory, '2026-06-23T09-05-07.012-04-00.md');
@@ -2264,9 +2152,9 @@ test('type command targets the active lens list', async () => {
       '---\ntype: todo\n---\n\nTodo item.\n'
     );
 
-    assert.deepEqual(await handleEntry(':type 2 done', state), {
+    assert.deepEqual(await handleEntry('2 done', state), {
       action: 'continue',
-      message: 'set item 2 type to done'
+      message: 'updated item 2'
     });
     assert.equal(
       state.model.facts.get(path.basename(waitingPath)).type,
@@ -2287,36 +2175,6 @@ test('type command targets the active lens list', async () => {
         { keptInView: true, text: 'Waiting item.', type: 'done' },
         { keptInView: false, text: 'First fact.', type: 'fact' }
       ]
-    );
-  } finally {
-    await rm(appDirectory, { recursive: true, force: true });
-  }
-});
-
-test('typed fact type shorthand changes a listed item type', async () => {
-  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
-  const rootDirectory = path.join(appDirectory, 'facts');
-  const secondFactPath = path.join(rootDirectory, 'second-fact.md');
-
-  try {
-    const state = createPromptState({ appDirectory, rootDirectory });
-    await mkdir(rootDirectory, { recursive: true });
-    await writeFile(
-      path.join(rootDirectory, 'first-fact.md'),
-      '---\ntype: fact\n---\n\nFirst fact.\n'
-    );
-    await writeFile(
-      secondFactPath,
-      '---\ntype: waiting\n---\n\nSecond fact.\n'
-    );
-
-    assert.deepEqual(await handleEntry('.done 2', state), {
-      action: 'continue',
-      message: 'set item 2 type to done'
-    });
-    assert.equal(
-      markdownWithoutFactUuid(await readFile(secondFactPath, 'utf8')),
-      '---\ntype: done\n---\n\nSecond fact.\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -2373,9 +2231,9 @@ test('commands show source folders for facts related to the active context', asy
         ' 1. Direct fact.'
       ]
     );
-    assert.deepEqual(await handleEntry(':type 2 todo', state), {
+    assert.deepEqual(await handleEntry('2 todo', state), {
       action: 'continue',
-      message: 'set item 2 type to todo'
+      message: 'updated item 2'
     });
     assert.equal(
       markdownWithoutFactUuid(await readFile(relatedPath, 'utf8')),
@@ -2437,7 +2295,7 @@ test('commands show outbound relations for direct facts in the active context', 
   }
 });
 
-test('type command reports missing item', async () => {
+test('item update shorthand reports missing item', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -2445,7 +2303,7 @@ test('type command reports missing item', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(
-      await handleEntry(':type 3 foo', state),
+      await handleEntry('3 done', state),
       {
         action: 'continue',
         message: 'item 3 does not exist'
@@ -2456,13 +2314,13 @@ test('type command reports missing item', async () => {
   }
 });
 
-test('due command sets a normalized due date property', async () => {
+test('custom date command sets a normalized due date property', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const factPath = path.join(rootDirectory, '2026-06-23T09-05-07.012-04-00.md');
   const commandRegistry = createCommandRegistry([
     {
-      name: 'due',
+      name: 'deadline',
       action: 'set_fact_property',
       property: 'due',
       arguments: [
@@ -2487,7 +2345,7 @@ test('due command sets a normalized due date property', async () => {
     await writeFile(factPath, '---\ntype: fact\n---\n\nExisting fact.\n');
     const state = createPromptState({ appDirectory, commandRegistry, rootDirectory });
 
-    assert.deepEqual(await handleEntry(':due 1 today', state), {
+    assert.deepEqual(await handleEntry(':deadline 1 today', state), {
       action: 'continue',
       message: 'set item 1 due to 2026-06-24'
     });
@@ -2966,98 +2824,6 @@ test(':delete command reports missing item', async () => {
   }
 });
 
-test(':relate command relates a listed item to a context', async () => {
-  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
-  const rootDirectory = path.join(appDirectory, 'facts');
-  const factPath = path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md');
-
-  try {
-    const state = createPromptState({ appDirectory, rootDirectory });
-    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
-    await writeFile(
-      path.join(rootDirectory, 'people', 'Steve Ma', 'index.md'),
-      '---\ntitle: "Steve Ma"\ntype: context\naliases: [sma]\n---\n'
-    );
-    await writeFile(
-      factPath,
-      '---\ntype: fact\n---\n\nFirst fact.\n'
-    );
-
-    assert.deepEqual(await handleEntry(':relate 1 sma', state), {
-      action: 'continue',
-      message: 'related item 1 to people/Steve Ma'
-    });
-    assert.equal(
-      markdownWithoutFactUuid(await readFile(factPath, 'utf8')),
-      '---\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nFirst fact.\n'
-    );
-    assert.deepEqual(
-      state.model.facts.get(path.basename(factPath)).relations,
-      ['people/Steve Ma']
-    );
-  } finally {
-    await rm(appDirectory, { recursive: true, force: true });
-  }
-});
-
-test('named relate prompts for item and context', async () => {
-  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
-  const rootDirectory = path.join(appDirectory, 'facts');
-  const factPath = path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md');
-
-  try {
-    const state = createPromptState({ appDirectory, rootDirectory });
-    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
-    await writeFile(
-      factPath,
-      '---\ntype: fact\n---\n\nFirst fact.\n'
-    );
-
-    assert.deepEqual(await handleEntry(':relate', state), {
-      action: 'continue',
-      message: 'Relate which fact?'
-    });
-    assert.deepEqual(await handleEntry('1', state), {
-      action: 'continue',
-      message: 'Relate it to which context?'
-    });
-    assert.deepEqual(await completeEntry('Steve', state), [['/people/Steve Ma'], 'Steve']);
-    assert.deepEqual(await handleEntry('Steve Ma', state), {
-      action: 'continue',
-      message: 'related item 1 to people/Steve Ma'
-    });
-    assert.equal(
-      markdownWithoutFactUuid(await readFile(factPath, 'utf8')),
-      '---\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nFirst fact.\n'
-    );
-    assert.equal(state.pendingCommand, null);
-  } finally {
-    await rm(appDirectory, { recursive: true, force: true });
-  }
-});
-
-test(':relate command accepts full context paths', async () => {
-  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
-  const rootDirectory = path.join(appDirectory, 'facts');
-  const factPath = path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md');
-
-  try {
-    const state = createPromptState({ appDirectory, rootDirectory });
-    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
-    await writeFile(
-      factPath,
-      '---\ntype: fact\n---\n\nFirst fact.\n'
-    );
-
-    assert.deepEqual(await handleEntry(':relate 1 /people/Steve Ma', state), {
-      action: 'continue',
-      message: 'related item 1 to people/Steve Ma'
-    });
-  } finally {
-    await rm(appDirectory, { recursive: true, force: true });
-  }
-});
-
 test(':move command moves a listed item to a context', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -3085,44 +2851,6 @@ test(':move command moves a listed item to a context', async () => {
       markdownWithoutFactUuid(await readFile(path.join(targetContext, 'follow-up.md'), 'utf8')),
       '---\ntitle: "Follow up"\ntype: todo\nrelatedContexts: ["projects"]\n---\n\nFollow up\n'
     );
-  } finally {
-    await rm(appDirectory, { recursive: true, force: true });
-  }
-});
-
-test(':relate command reports ambiguous context names', async () => {
-  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
-  const rootDirectory = path.join(appDirectory, 'facts');
-
-  try {
-    const state = createPromptState({ appDirectory, rootDirectory });
-    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
-    await mkdir(path.join(rootDirectory, 'vendors', 'Steve Ma'), { recursive: true });
-    await writeFile(
-      path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md'),
-      '---\ntype: fact\n---\n\nFirst fact.\n'
-    );
-
-    assert.deepEqual(await handleEntry(':relate 1 Steve Ma', state), {
-      action: 'continue',
-      message: 'context Steve Ma is ambiguous'
-    });
-  } finally {
-    await rm(appDirectory, { recursive: true, force: true });
-  }
-});
-
-test(':relate command reports missing context usage', async () => {
-  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
-  const rootDirectory = path.join(appDirectory, 'facts');
-
-  try {
-    const state = createPromptState({ appDirectory, rootDirectory });
-
-    assert.deepEqual(await handleEntry(':relate 1', state), {
-      action: 'continue',
-      message: 'Relate it to which context?'
-    });
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -3437,46 +3165,6 @@ test('completes :peek context names', async () => {
   }
 });
 
-test('completes :relate context folder names', async () => {
-  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
-  const rootDirectory = path.join(appDirectory, 'facts');
-
-  try {
-    await mkdir(path.join(rootDirectory, 'people', 'Mike Sisto'), { recursive: true });
-    await mkdir(path.join(rootDirectory, 'people', 'Sis Project'), { recursive: true });
-    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
-    await writeFile(
-      path.join(rootDirectory, 'people', 'Steve Ma', 'index.md'),
-      '---\ntitle: "Steve Ma"\ntype: context\naliases: [sma]\n---\n'
-    );
-    await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
-    const state = createPromptState({ appDirectory, rootDirectory });
-
-    assert.deepEqual(
-      await completeEntry(':relate 1 Steve', state),
-      [['/people/Steve Ma'], 'Steve']
-    );
-    assert.deepEqual(
-      await completeEntry(':relate 1 steve', state),
-      [['/people/Steve Ma'], 'steve']
-    );
-    assert.deepEqual(
-      await completeEntry(':relate 1 sis', state),
-      [['/people/Sis Project', '/people/Mike Sisto'], 'sis']
-    );
-    assert.deepEqual(
-      await completeEntry(':relate 1 /people/S', state),
-      [['/people/Sis Project', '/people/Steve Ma'], '/people/S']
-    );
-    assert.deepEqual(
-      await completeEntry(':relate 1 sma', state),
-      [['/people/Steve Ma'], 'sma']
-    );
-  } finally {
-    await rm(appDirectory, { recursive: true, force: true });
-  }
-});
-
 test('completes context mentions in fact text', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -3572,10 +3260,7 @@ test('completes colon command names', async () => {
       ':edit ',
       ':open ',
       ':delete ',
-      ':relate ',
       ':move ',
-      ':type ',
-      ':due ',
       ':paste ',
       ':plan ',
       ':cancel ',
@@ -3607,10 +3292,6 @@ test('completes named command arguments', async () => {
       [['/projects/gatherbrain'], 'gather']
     );
     assert.deepEqual(
-      await completeEntry(':relate 1 /people/S', state),
-      [['/people/Steve Ma'], '/people/S']
-    );
-    assert.deepEqual(
       await completeEntry(':move 1 /people/S', state),
       [['/people/Steve Ma'], '/people/S']
     );
@@ -3635,44 +3316,12 @@ test('completes named command arguments', async () => {
       [['todo', 'today'], 'T']
     );
     assert.deepEqual(
-      await completeEntry(':type 1 wa', state),
-      [['waiting'], 'wa']
-    );
-    assert.deepEqual(
-      await completeEntry(':type 1 WA', state),
-      [['waiting'], 'WA']
-    );
-    assert.deepEqual(
-      await completeEntry('.', state),
-      [['.fact ', '.todo ', '.waiting ', '.in progress ', '.done '], '.']
-    );
-    assert.deepEqual(
-      await completeEntry('.d', state),
-      [['.done '], '.d']
-    );
-    assert.deepEqual(
-      await completeEntry('%', state),
-      [['%fact ', '%todo ', '%waiting ', '%in progress ', '%done '], '%']
-    );
-    assert.deepEqual(
-      await completeEntry('%t', state),
-      [['%todo '], '%t']
-    );
-    assert.deepEqual(
-      await completeEntry('%in', state),
-      [['%in progress '], '%in']
-    );
-    assert.deepEqual(
       await completeEntry('Follow up -- to', state),
       [['todo', 'today', 'tomorrow'], 'to']
     );
     assert.deepEqual(
       await completeEntry('Follow up -- /people/S', state),
       [['/people/Steve Ma'], '/people/S']
-    );
-    assert.deepEqual(
-      await completeEntry('%todo Get milk -- tom', state),
-      [['tomorrow'], 'tom']
     );
     assert.deepEqual(
       await completeEntry(':new Follow up -- wa', state),
@@ -3728,26 +3377,6 @@ test('completes fact arguments by visible fact title', async () => {
       await completeEntry(':delete feed the', state),
       [['Feed the cat'], 'feed the']
     );
-    assert.deepEqual(
-      await completeEntry(':type Cal', state),
-      [['Call Steve', 'Steve Call'], 'Cal']
-    );
-    assert.deepEqual(
-      await completeEntry(':type Feed the', state),
-      [['Feed the cat'], 'Feed the']
-    );
-    assert.deepEqual(
-      await completeEntry(':type Call Steve in', state),
-      [['in progress'], 'in']
-    );
-    assert.deepEqual(
-      await completeEntry(':due Call Steve to', state),
-      [['today', 'tomorrow'], 'to']
-    );
-    assert.deepEqual(
-      await completeEntry('.done Cal', state),
-      [['Call Steve', 'Steve Call'], 'Cal']
-    );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -3779,15 +3408,34 @@ test('completes prompted fact arguments by visible fact title', async () => {
   }
 });
 
-test('executes commands with fact titles completed as final arguments', async () => {
+test('executes custom commands with fact titles completed as final arguments', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
+  const commandRegistry = createCommandRegistry([
+    {
+      name: 'mark',
+      action: 'set_fact_type',
+      arguments: [
+        {
+          name: 'type',
+          type: 'factType',
+          enum: 'factType',
+          prompt: 'Set which type?'
+        },
+        {
+          name: 'item',
+          type: 'fact',
+          prompt: 'Change which fact?'
+        }
+      ]
+    }
+  ]);
 
   try {
-    const state = createPromptState({ appDirectory, rootDirectory });
+    const state = createPromptState({ appDirectory, commandRegistry, rootDirectory });
     await handleEntry('Call Steve', state);
 
-    assert.deepEqual(await handleEntry(':type Call Steve task', state), {
+    assert.deepEqual(await handleEntry(':mark task Call Steve', state), {
       action: 'continue',
       message: 'set item Call Steve type to task'
     });
