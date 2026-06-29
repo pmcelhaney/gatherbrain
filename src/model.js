@@ -2,6 +2,7 @@ import { watch } from 'node:fs';
 import { readdir, readFile, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
+  contextAliasesFromMarkdown,
   ensureFactUuidInMarkdown,
   factRelationsFromMarkdown,
   factPropertiesFromMarkdown,
@@ -134,12 +135,14 @@ export async function readContextMetadata(rootPath, filePath) {
   const properties = factPropertiesFromMarkdown(markdown);
   const title = factTitleFromMarkdown(markdown);
   const body = factTextFromMarkdown(markdown);
+  const aliases = contextAliasesFromMarkdown(markdown);
 
   return {
     id,
     path: filePath,
     contextId,
     filename: id,
+    aliases,
     createdAt: fileStat.birthtime.toISOString(),
     modifiedAt: fileStat.mtime.toISOString(),
     properties,

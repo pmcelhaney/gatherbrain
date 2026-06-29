@@ -52,10 +52,17 @@ export async function contextIds(state) {
 }
 
 export async function contextLinks(state) {
-  return (await contextIds(state)).map((contextId) => ({
-    folder: contextId.split('/').at(-1) ?? contextId,
-    name: contextId
-  }));
+  const model = await ensureWorkspaceModel(state);
+
+  return (await contextIds(state)).map((contextId) => {
+    const metadata = model.contexts.get(contextId)?.metadata;
+
+    return {
+      aliases: metadata?.aliases ?? [],
+      folder: contextId.split('/').at(-1) ?? contextId,
+      name: contextId
+    };
+  });
 }
 
 export async function contextMetadata(state, contextId = currentContextId(state)) {
@@ -280,22 +287,39 @@ export async function resolveExistingContextDirectory(contextReference, state) {
     rootDirectory: state.rootDirectory
   });
   const normalizedContext = contextIdForDirectory(state, contextDirectory);
-  const knownContexts = await contextIds(state);
+  const model = await ensureWorkspaceModel(state);
 
-  if (!knownContexts.includes(normalizedContext)) {
-    throw new Error(`context ${contextReference} does not exist`);
+  if (model.contexts.has(normalizedContext)) {
+    return contextDirectory;
   }
 
-  return contextDirectory;
+  const aliasContextId = uniqueContextIdForAlias(contextReference, model);
+
+  if (aliasContextId) {
+    return contextDirectoryForId(state, aliasContextId);
+  }
+
+  throw new Error(`context ${contextReference} does not exist`);
 }
 
 export async function resolveExistingSwitchContextDirectory(contextReference, state) {
+  const contextId = await resolveExistingSwitchContextId(contextReference, state);
+
+  return contextDirectoryForId(state, contextId);
+}
+
+export async function resolveExistingSwitchContextId(contextReference, state) {
   const contextId = contextIdForSwitchReference(contextReference, state);
-  const contextDirectory = contextDirectoryForId(state, contextId);
   const model = await ensureWorkspaceModel(state);
 
   if (model.contexts.has(contextId)) {
-    return contextDirectory;
+    return contextId;
+  }
+
+  const aliasContextId = uniqueContextIdForAlias(contextReference, model);
+
+  if (aliasContextId) {
+    return aliasContextId;
   }
 
   const requestedContext = contextReference.trim();
@@ -313,7 +337,7 @@ export async function resolveExistingSwitchContextDirectory(contextReference, st
     const rootRelativeContextId = contextIdForDirectory(state, rootRelativeContextDirectory);
 
     if (model.contexts.has(rootRelativeContextId)) {
-      return rootRelativeContextDirectory;
+      return rootRelativeContextId;
     }
   }
 
@@ -322,6 +346,40 @@ export async function resolveExistingSwitchContextDirectory(contextReference, st
 
 export function contextDirectoryForSwitchReference(contextReference, state) {
   return contextDirectoryForId(state, contextIdForSwitchReference(contextReference, state));
+}
+
+function contextAliasMatches(context, contextReference) {
+  const requestedContext = contextReference.trim().replace(/^@/u, '');
+
+  if (
+    requestedContext.length === 0
+    || requestedContext.startsWith('/')
+    || requestedContext.startsWith('./')
+    || requestedContext.startsWith('../')
+    || requestedContext === '.'
+    || requestedContext === '..'
+  ) {
+    return false;
+  }
+
+  return context.metadata?.aliases?.some((alias) => alias === requestedContext) ?? false;
+}
+
+function contextIdsForAlias(contextReference, model) {
+  return [...model.contexts.values()]
+    .filter((context) => context.id !== '' && contextAliasMatches(context, contextReference))
+    .map((context) => context.id)
+    .sort();
+}
+
+function uniqueContextIdForAlias(contextReference, model) {
+  const matches = contextIdsForAlias(contextReference, model);
+
+  if (matches.length > 1) {
+    throw new Error(`context ${contextReference} is ambiguous`);
+  }
+
+  return matches.at(0) ?? null;
 }
 
 export function contextHasHiddenPathPart(contextDirectory, state) {
@@ -424,8 +482,11 @@ function metadataContextId(contextId) {
 }
 
 export async function moveWorkspaceFact(state, fact, contextReference) {
-  const targetContextId = contextIdForSwitchReference(contextReference, state);
   const model = await ensureWorkspaceModel(state);
+  const requestedTargetContextId = contextIdForSwitchReference(contextReference, state);
+  const targetContextId = model.contexts.has(requestedTargetContextId)
+    ? requestedTargetContextId
+    : uniqueContextIdForAlias(contextReference, model) ?? requestedTargetContextId;
 
   if (!model.contexts.has(targetContextId)) {
     throw new Error(`context ${contextReference} does not exist`);
@@ -469,6 +530,7 @@ export async function relationForContextReference(contextReference, state) {
   }
 
   const normalizedContext = requestedContext.replace(/^\/+/u, '');
+  const model = await ensureWorkspaceModel(state);
   const knownContexts = await contextIds(state);
   const matches = knownContexts.filter((contextName) => {
     const contextFolder = contextName.split('/').at(-1) ?? contextName;
@@ -478,7 +540,17 @@ export async function relationForContextReference(contextReference, state) {
   });
 
   if (matches.length === 0) {
-    throw new Error(`context ${requestedContext} does not exist`);
+    const aliasMatches = contextIdsForAlias(requestedContext, model);
+
+    if (aliasMatches.length === 0) {
+      throw new Error(`context ${requestedContext} does not exist`);
+    }
+
+    if (aliasMatches.length > 1) {
+      throw new Error(`context ${requestedContext} is ambiguous`);
+    }
+
+    return aliasMatches[0];
   }
 
   if (matches.length > 1) {

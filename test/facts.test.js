@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildFactMarkdown,
+  contextAliasesFromMarkdown,
   ensureFactUuidInMarkdown,
   factAtIndex,
   factPropertiesFromMarkdown,
@@ -127,6 +128,15 @@ test('deduplicates related contexts', () => {
   );
 });
 
+test('extracts context aliases from Markdown front matter', () => {
+  assert.deepEqual(
+    contextAliasesFromMarkdown(
+      '---\ntype: context\naliases: ["sma", "sma", steve]\n---\n\n'
+    ),
+    ['sma', 'steve']
+  );
+});
+
 test('converts context mentions to Markdown links', () => {
   assert.equal(
     markdownWithContextLinks('Talk to @Steve Ma.', {
@@ -149,6 +159,12 @@ test('converts context mentions to Markdown links', () => {
   assert.equal(
     markdownWithContextLinks('Talk to @/people/Steve\\ Ma.', {
       contextLinks: [{ folder: 'Steve Ma', name: 'people/Steve Ma' }]
+    }),
+    'Talk to [Steve Ma](/people/Steve Ma).'
+  );
+  assert.equal(
+    markdownWithContextLinks('Talk to @sma.', {
+      contextLinks: [{ aliases: ['sma'], folder: 'Steve Ma', name: 'people/Steve Ma' }]
     }),
     'Talk to [Steve Ma](/people/Steve Ma).'
   );

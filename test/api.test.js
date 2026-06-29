@@ -318,6 +318,7 @@ test('reads context metadata through the workspace API', async () => {
       path: path.join(rootDirectory, 'projects', 'gatherbrain', 'index.md'),
       contextId: 'projects/gatherbrain',
       filename: 'projects/gatherbrain/index.md',
+      aliases: [],
       createdAt: metadata.createdAt,
       modifiedAt: metadata.modifiedAt,
       properties: {

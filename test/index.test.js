@@ -100,6 +100,11 @@ test(':switch supports unix-like context identifiers', async () => {
     await mkdir(path.join(rootDirectory, 'gatherbrain', 'sandbox', 'child'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'gatherbrain', 'sibling'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'people'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'people', 'Steve Ma', 'index.md'),
+      '---\ntitle: "Steve Ma"\ntype: context\naliases: [sma]\n---\n'
+    );
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(await handleEntry(':switch gatherbrain/sandbox', state), {
@@ -136,6 +141,12 @@ test(':switch supports unix-like context identifiers', async () => {
       message: 'context gatherbrain'
     });
     assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'gatherbrain'));
+
+    assert.deepEqual(await handleEntry(':switch sma', state), {
+      action: 'continue',
+      message: 'context people/Steve Ma'
+    });
+    assert.equal(state.currentContextDirectory, path.join(rootDirectory, 'people', 'Steve Ma'));
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -2885,11 +2896,15 @@ test(':relate command relates a listed item to a context', async () => {
     const state = createPromptState({ appDirectory, rootDirectory });
     await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
     await writeFile(
+      path.join(rootDirectory, 'people', 'Steve Ma', 'index.md'),
+      '---\ntitle: "Steve Ma"\ntype: context\naliases: [sma]\n---\n'
+    );
+    await writeFile(
       factPath,
       '---\ntype: fact\n---\n\nFirst fact.\n'
     );
 
-    assert.deepEqual(await handleEntry(':relate 1 Steve Ma', state), {
+    assert.deepEqual(await handleEntry(':relate 1 sma', state), {
       action: 'continue',
       message: 'related item 1 to people/Steve Ma'
     });
@@ -3351,6 +3366,10 @@ test('completes :relate context folder names', async () => {
     await mkdir(path.join(rootDirectory, 'people', 'Mike Sisto'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'people', 'Sis Project'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'people', 'Steve Ma', 'index.md'),
+      '---\ntitle: "Steve Ma"\ntype: context\naliases: [sma]\n---\n'
+    );
     await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
     const state = createPromptState({ appDirectory, rootDirectory });
 
@@ -3370,6 +3389,10 @@ test('completes :relate context folder names', async () => {
       await completeEntry(':relate 1 /people/S', state),
       [['/people/Sis Project', '/people/Steve Ma'], '/people/S']
     );
+    assert.deepEqual(
+      await completeEntry(':relate 1 sma', state),
+      [['/people/Steve Ma'], 'sma']
+    );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -3383,6 +3406,10 @@ test('completes context mentions in fact text', async () => {
     await mkdir(path.join(rootDirectory, 'people', 'Mike Sisto'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'people', 'Sis Project'), { recursive: true });
     await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'people', 'Steve Ma', 'index.md'),
+      '---\ntitle: "Steve Ma"\ntype: context\naliases: [sma]\n---\n'
+    );
     const state = createPromptState({ appDirectory, rootDirectory });
 
     assert.deepEqual(
@@ -3396,6 +3423,36 @@ test('completes context mentions in fact text', async () => {
     assert.deepEqual(
       await completeEntry('Talk to @sis', state),
       [['@Sis\\ Project', '@Mike\\ Sisto'], '@sis']
+    );
+    assert.deepEqual(
+      await completeEntry('Talk to @sma', state),
+      [['@Steve\\ Ma'], '@sma']
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('saves context aliases as context links in fact text', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'people', 'Steve Ma', 'index.md'),
+      '---\ntitle: "Steve Ma"\ntype: context\naliases: [sma]\n---\n'
+    );
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    await handleEntry('Talk to @sma.', state);
+
+    const factFile = (await readdir(rootDirectory)).find((entry) => entry.endsWith('.md'));
+    const markdown = await readFile(path.join(rootDirectory, factFile), 'utf8');
+
+    assert.equal(
+      markdownWithoutFactUuid(markdown),
+      '---\ntitle: "Talk to @sma."\ntype: fact\n---\n\nTalk to [Steve Ma](/people/Steve Ma).\n'
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

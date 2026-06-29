@@ -95,7 +95,7 @@ test('loads index markdown as context metadata instead of facts', async () => {
     );
     await writeFile(
       path.join(directory, 'projects', 'gatherbrain', 'index.md'),
-      '---\ntitle: Gatherbrain\ndefaultLens: current\n---\n\nProject scope.\n'
+      '---\ntitle: Gatherbrain\ndefaultLens: current\naliases: [gb]\n---\n\nProject scope.\n'
     );
     await writeFile(
       path.join(directory, 'projects', 'gatherbrain', 'fact.md'),
@@ -114,6 +114,7 @@ test('loads index markdown as context metadata instead of facts', async () => {
       path: path.join(directory, 'index.md'),
       contextId: '',
       filename: 'index.md',
+      aliases: [],
       createdAt: rootContext.metadata.createdAt,
       modifiedAt: rootContext.metadata.modifiedAt,
       properties: {
@@ -128,6 +129,7 @@ test('loads index markdown as context metadata instead of facts', async () => {
       path: path.join(directory, 'projects', 'gatherbrain', 'index.md'),
       contextId: 'projects/gatherbrain',
       filename: 'projects/gatherbrain/index.md',
+      aliases: ['gb'],
       createdAt: projectContext.metadata.createdAt,
       modifiedAt: projectContext.metadata.modifiedAt,
       properties: {

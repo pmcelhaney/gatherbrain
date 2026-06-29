@@ -66,6 +66,7 @@ import {
   contextIdForDirectory,
   contextIdForSwitchReference,
   contextIds,
+  contextLinks,
   createContext,
   createFact,
   deleteWorkspaceFact,
@@ -75,6 +76,7 @@ import {
   relationForContextReference,
   relateWorkspaceFact,
   resolveExistingContextDirectory,
+  resolveExistingSwitchContextId,
   resolveExistingSwitchContextDirectory,
   setWorkspaceFactProperty,
   setWorkspaceFactType,
@@ -2267,13 +2269,7 @@ async function matchingFactCompletions(partialTitle, state) {
 }
 
 async function matchingContextCompletions(partialContext, state) {
-  const contexts = await contextIdsForState(state);
-
-  const contextNames = contexts
-    .map((contextName) => ({
-      folder: contextName.split('/').at(-1) ?? contextName,
-      name: contextName
-    }));
+  const contextNames = await contextLinks(state);
 
   return rankedCompletionMatches(contextNames, (contextName) => contextCompletionMatchRank(contextName, partialContext));
 }
@@ -2288,12 +2284,14 @@ function contextCompletionMatchRank(contextName, partialContext) {
     || startsWithCaseInsensitive(contextName.name, partialContext)
     || startsWithCaseInsensitive(comparableName, partialContext)
     || startsWithCaseInsensitive(contextName.folder, partialContext)
+    || contextName.aliases?.some((alias) => startsWithCaseInsensitive(alias, partialContext))
   ) {
     return 0;
   }
 
   return hasWordStartCaseInsensitive(contextName.name, partialContext)
     || hasWordStartCaseInsensitive(contextName.folder, partialContext)
+    || contextName.aliases?.some((alias) => hasWordStartCaseInsensitive(alias, partialContext))
     ? 1
     : null;
 }
@@ -2613,15 +2611,11 @@ async function handlePendingFactTypeConfirmation(entry, state) {
   }
 }
 
-function timeboxContextIdForReference(contextReference, state) {
-  const contextId = contextIdForSwitchReference(contextReference, state);
+async function timeboxContextIdForReference(contextReference, state) {
+  const contextId = await resolveExistingSwitchContextId(contextReference, state);
 
   if (contextId === '') {
     throw new Error('root context cannot be stored as a timebox');
-  }
-
-  if (!state.model?.contexts?.has(contextId)) {
-    throw new Error(`context ${contextReference} does not exist`);
   }
 
   return contextId;
@@ -2713,13 +2707,15 @@ function setStatusPreservingPlannerView(state, statusMessage) {
 async function planTimebox(parsedEntry, state) {
   try {
     await ensureWorkspaceModel(state);
-    const contextId = contextIdForSwitchReference(parsedEntry.context, state);
+    let contextId;
 
-    if (contextId === '') {
-      throw new Error('root context cannot be stored as a timebox');
-    }
+    try {
+      contextId = await timeboxContextIdForReference(parsedEntry.context, state);
+    } catch (error) {
+      if (error.message === 'root context cannot be stored as a timebox') {
+        throw error;
+      }
 
-    if (!state.model?.contexts?.has(contextId)) {
       const contextDirectory = contextDirectoryForSwitchReference(parsedEntry.context, state);
 
       if (contextHasHiddenPathPart(contextDirectory, state)) {
@@ -2781,7 +2777,7 @@ function cancellationPrompt(matches) {
 async function cancelPlannedTimebox(parsedEntry, state) {
   try {
     await ensureWorkspaceModel(state);
-    const contextId = timeboxContextIdForReference(parsedEntry.context, state);
+    const contextId = await timeboxContextIdForReference(parsedEntry.context, state);
     const date = dateForTimeboxCommand(state);
     const context = timeboxContextLabel(contextId);
     const result = await cancelTimebox(state.rootDirectory, {

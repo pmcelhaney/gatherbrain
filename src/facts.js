@@ -8,6 +8,7 @@ const frontMatterPropertyPattern = /^[A-Za-z][A-Za-z0-9_-]*$/u;
 const trashDirectoryName = '.trash';
 const factIdField = 'id';
 const relatedContextsField = 'relatedContexts';
+const contextAliasesField = 'aliases';
 const maxFilenameBaseLength = 120;
 const maxFactTitleLength = 80;
 const reservedFactFilenames = new Set(['index.md']);
@@ -118,22 +119,31 @@ export function markdownWithContextLinks(text, options = {}) {
 
   return contextLinks.reduce((nextText, contextLink) => {
     const mentionBoundary = '(?=$|\\s|[.,;:!?])';
-    const mentionPattern = new RegExp(`(^|\\s)@${escapeRegExp(contextLink.folder)}${mentionBoundary}`, 'gu');
-    const escapedMentionPattern = new RegExp(
-      `(^|\\s)@${escapeRegExp(escapedMentionValue(contextLink.folder))}${mentionBoundary}`,
-      'gu'
-    );
+    const mentionValues = [
+      contextLink.folder,
+      ...(contextLink.aliases ?? [])
+    ].filter((value, index, values) => value.length > 0 && values.indexOf(value) === index);
     const absoluteMentionPattern = new RegExp(`(^|\\s)@/${escapeRegExp(contextLink.name)}${mentionBoundary}`, 'gu');
     const escapedAbsoluteMentionPattern = new RegExp(
       `(^|\\s)@/${escapeRegExp(escapedMentionValue(contextLink.name))}${mentionBoundary}`,
       'gu'
     );
 
-    return nextText
+    const nextTextWithAbsoluteLinks = nextText
       .replace(escapedAbsoluteMentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`)
-      .replace(absoluteMentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`)
-      .replace(escapedMentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`)
-      .replace(mentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`);
+      .replace(absoluteMentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`);
+
+    return mentionValues.reduce((textWithLinks, mentionValue) => {
+      const mentionPattern = new RegExp(`(^|\\s)@${escapeRegExp(mentionValue)}${mentionBoundary}`, 'gu');
+      const escapedMentionPattern = new RegExp(
+        `(^|\\s)@${escapeRegExp(escapedMentionValue(mentionValue))}${mentionBoundary}`,
+        'gu'
+      );
+
+      return textWithLinks
+        .replace(escapedMentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`)
+        .replace(mentionPattern, `$1[${contextLink.folder}](/${contextLink.name})`);
+    }, nextTextWithAbsoluteLinks);
   }, text);
 }
 
@@ -213,7 +223,7 @@ export function factUuidFromMarkdown(markdown) {
 export function factPropertiesFromMarkdown(markdown) {
   const frontMatter = markdownFrontMatter(markdown);
   const properties = {};
-  const reservedKeys = new Set(['title', 'type', factIdField, relatedContextsField]);
+  const reservedKeys = new Set(['title', 'type', factIdField, relatedContextsField, contextAliasesField]);
 
   for (const line of frontMatter.split(/\r?\n/u)) {
     const match = line.match(/^(?<key>[A-Za-z][A-Za-z0-9_-]*):\s*(?<value>.+?)\s*$/u);
@@ -340,6 +350,12 @@ export function factRelationsFromMarkdown(markdown) {
   const relations = frontMatterStringList(markdownFrontMatter(markdown), relatedContextsField);
 
   return [...new Set(relations)];
+}
+
+export function contextAliasesFromMarkdown(markdown) {
+  const aliases = frontMatterStringList(markdownFrontMatter(markdown), contextAliasesField);
+
+  return [...new Set(aliases)];
 }
 
 export function markdownWithRelation(markdown, relation) {
