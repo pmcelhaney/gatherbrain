@@ -206,6 +206,43 @@ function factCreationMetadataUsageError() {
   };
 }
 
+function splitCommandTokens(value) {
+  const tokens = [];
+  let token = '';
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    const nextCharacter = value[index + 1];
+
+    if (character === '\\' && /\s/u.test(nextCharacter ?? '')) {
+      token += nextCharacter;
+      index += 1;
+      continue;
+    }
+
+    if (/\s/u.test(character)) {
+      if (token.length > 0) {
+        tokens.push(token);
+        token = '';
+      }
+
+      continue;
+    }
+
+    token += character;
+  }
+
+  if (token.length > 0) {
+    tokens.push(token);
+  }
+
+  return tokens;
+}
+
+function unescapeCommandValue(value) {
+  return value.replace(/\\(\s)/gu, '$1');
+}
+
 function parseFactTypeToken(tokens, index, registry) {
   const remaining = tokens.slice(index).join(' ');
   const matchingType = enumValues(shorthandFactTypeEnum, registry?.enumRegistry)
@@ -261,7 +298,7 @@ function parseFactUpdateOperations(updates, registry) {
     return null;
   }
 
-  const tokens = updates.split(/\s+/u);
+  const tokens = splitCommandTokens(updates);
   const operations = [];
   let factType = null;
   let due = null;
@@ -462,7 +499,7 @@ function parseTrailingCommandArguments(commandDefinition, args, options = {}) {
       : usageErrorForCommand(commandDefinition);
   }
 
-  const tokens = trimmedArgs.split(/\s+/u);
+  const tokens = splitCommandTokens(trimmedArgs);
 
   for (let splitIndex = 1; splitIndex < tokens.length; splitIndex += 1) {
     const itemValueText = tokens.slice(0, splitIndex).join(' ');
@@ -518,7 +555,7 @@ function readArgumentValue(argument, remainingArgs, options = {}) {
 
   if (argument.consume === 'rest') {
     return {
-      value: remainingArgs,
+      value: unescapeCommandValue(remainingArgs),
       remainingArgs: ''
     };
   }
@@ -541,7 +578,7 @@ function readArgumentValue(argument, remainingArgs, options = {}) {
   }
 
   if (argument.type === 'date') {
-    const tokens = remainingArgs.split(/\s+/u);
+    const tokens = splitCommandTokens(remainingArgs);
 
     for (let tokenCount = tokens.length; tokenCount > 0; tokenCount -= 1) {
       const value = tokens.slice(0, tokenCount).join(' ');
@@ -556,12 +593,12 @@ function readArgumentValue(argument, remainingArgs, options = {}) {
   }
 
   if (argument.type === 'timeRange') {
-    const match = remainingArgs.match(/^(?<value>\S+)(?:\s+(?<remaining>.*))?$/u);
+    const tokens = splitCommandTokens(remainingArgs);
 
-    return match
+    return tokens.length > 0
       ? {
-        value: match.groups.value,
-        remainingArgs: (match.groups.remaining ?? '').trim()
+        value: tokens[0],
+        remainingArgs: tokens.slice(1).join(' ')
       }
       : null;
   }
@@ -582,12 +619,12 @@ function readArgumentValue(argument, remainingArgs, options = {}) {
     };
   }
 
-  const match = remainingArgs.match(/^(?<value>\S+)(?:\s+(?<remaining>.*))?$/u);
+  const tokens = splitCommandTokens(remainingArgs);
 
-  return match
+  return tokens.length > 0
     ? {
-      value: match.groups.value,
-      remainingArgs: (match.groups.remaining ?? '').trim()
+      value: tokens[0],
+      remainingArgs: tokens.slice(1).join(' ')
     }
     : null;
 }

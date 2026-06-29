@@ -258,6 +258,11 @@ test('parses fact commands', () => {
     itemNumber: 4,
     type: 'move_fact'
   });
+  assert.deepEqual(parseEntry(':move 4 /people/Steve\\ Ma'), {
+    contextReference: '/people/Steve Ma',
+    itemNumber: 4,
+    type: 'move_fact'
+  });
   assert.deepEqual(parseEntry('14 done'), {
     itemNumber: 14,
     operations: [
@@ -289,7 +294,23 @@ test('parses fact commands', () => {
     ],
     type: 'update_fact_shorthand'
   });
+  assert.deepEqual(parseEntry('1 /people/Steve\\ Ma'), {
+    itemNumber: 1,
+    operations: [
+      { contextReference: '/people/Steve Ma', type: 'relate_fact' }
+    ],
+    type: 'update_fact_shorthand'
+  });
   assert.deepEqual(parseEntry('1 /people/Steve Ma today waiting', dateRegistry), {
+    itemNumber: 1,
+    operations: [
+      { contextReference: '/people/Steve Ma', type: 'relate_fact' },
+      { property: 'due', type: 'set_fact_property', value: '2026-06-24' },
+      { factType: 'waiting', type: 'set_fact_type' }
+    ],
+    type: 'update_fact_shorthand'
+  });
+  assert.deepEqual(parseEntry('1 /people/Steve\\ Ma today waiting', dateRegistry), {
     itemNumber: 1,
     operations: [
       { contextReference: '/people/Steve Ma', type: 'relate_fact' },

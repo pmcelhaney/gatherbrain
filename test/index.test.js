@@ -2395,7 +2395,7 @@ test('item update shorthand relates to multi-word contexts', async () => {
     await writeFile(factPath, '---\ntype: fact\n---\n\nFollow up.\n');
     const state = createPromptState({ appDirectory, rootDirectory });
 
-    assert.deepEqual(await handleEntry('1 /people/Steve Ma', state), {
+    assert.deepEqual(await handleEntry('1 /people/Steve\\ Ma', state), {
       action: 'continue',
       message: 'updated item 1'
     });
