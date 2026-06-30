@@ -5,7 +5,7 @@ import path from "node:path";
 import { SelectionActionRegistry } from "./actions/index.js";
 import { defaultAppConfig, loadAppConfig, mergeAppConfig } from "./config/index.js";
 import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
-import { FactRepository, SessionRepository, Workspace } from "./persistence/index.js";
+import { AppStateRepository, FactRepository, SessionRepository, Workspace } from "./persistence/index.js";
 import { PlanParser, TimeBoxRepository } from "./planning/index.js";
 import { FactIndex, SearchEngine, SearchQueryParser, SearchResultSet } from "./search/index.js";
 import { AppState } from "./state/index.js";
@@ -19,6 +19,7 @@ export function createAppRuntime({
   const appConfig = mergeAppConfig(defaultAppConfig(), config);
   const state = new AppState();
   const workspace = new Workspace(workspacePath);
+  const appStateRepository = new AppStateRepository({ workspace });
   const factRepository = new FactRepository({ workspace });
   const sessionRepository = new SessionRepository({ workspace });
   const timeBoxRepository = new TimeBoxRepository({ workspace });
@@ -55,9 +56,25 @@ export function createAppRuntime({
     completionService,
     async initialize() {
       const today = clock().toISOString().slice(0, 10);
-      const facts = await factIndex.list();
+      const savedState = await appStateRepository.load();
 
-      resultSet = new SearchResultSet(facts);
+      if (savedState) {
+        state.restart();
+        if (savedState.currentSession) {
+          state.switchSession(savedState.currentSession);
+        }
+        if (savedState.currentQuery) {
+          state.setQuery(savedState.currentQuery);
+        }
+      }
+
+      resultSet = await initialResultSet({
+        state,
+        factIndex,
+        searchEngine,
+        searchQueryParser,
+        clock
+      });
       timeBoxes = await timeBoxRepository.listByDate(today);
     },
     async submit(line) {
@@ -104,6 +121,8 @@ export function createAppRuntime({
         timeBoxes = [];
         helpLines = null;
       }
+
+      await appStateRepository.save(state);
 
       return result;
     },
@@ -334,6 +353,28 @@ async function searchCurrentFacts({
   return searchEngine.search(facts, ast, {
     today: clock().toISOString().slice(0, 10)
   });
+}
+
+async function initialResultSet({
+  state,
+  factIndex,
+  searchEngine,
+  searchQueryParser,
+  clock
+}) {
+  const currentFacts = await searchCurrentFacts({
+    state,
+    factIndex,
+    searchEngine,
+    searchQueryParser,
+    clock
+  });
+
+  if (currentFacts) {
+    return currentFacts;
+  }
+
+  return new SearchResultSet(await factIndex.list());
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

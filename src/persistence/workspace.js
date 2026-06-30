@@ -34,6 +34,10 @@ export class Workspace {
   timeBoxPath(date) {
     return path.join(this.rootPath, "timeboxes", `${normalizeDate(date)}.txt`);
   }
+
+  appStatePath() {
+    return path.join(this.rootPath, ".gatherbrain-state.json");
+  }
 }
 
 export function normalizeDate(date) {

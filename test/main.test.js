@@ -115,6 +115,50 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("restores the last session and query on startup", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-state-restore-"));
+    const clock = () => new Date("2026-06-30T12:00:00.000Z");
+    const firstRuntime = createAppRuntime({ workspacePath, clock });
+
+    await firstRuntime.submit(":switch Steve");
+    await firstRuntime.submit("Steve-only fact.");
+    await firstRuntime.submit(":switch new session");
+    await firstRuntime.submit("New-session fact.");
+
+    const secondRuntime = createAppRuntime({ workspacePath, clock });
+    await secondRuntime.initialize();
+    const rendered = secondRuntime.render();
+
+    assert.match(rendered, /sessions\/2026-06-30\/new session/);
+    assert.match(rendered, /New-session fact/);
+    assert.doesNotMatch(rendered, /Steve-only fact/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
+  it("restores the last explicit query on startup", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-query-restore-"));
+    const clock = () => new Date("2026-06-30T12:00:00.000Z");
+    const firstRuntime = createAppRuntime({ workspacePath, clock });
+
+    await firstRuntime.submit(":switch Steve");
+    await firstRuntime.submit("Visible todo.");
+    await firstRuntime.submit(". todo");
+    await firstRuntime.submit("Hidden fact.");
+    await firstRuntime.submit("/type:todo");
+
+    const secondRuntime = createAppRuntime({ workspacePath, clock });
+    await secondRuntime.initialize();
+    const rendered = secondRuntime.render();
+
+    assert.match(rendered, /Visible todo/);
+    assert.doesNotMatch(rendered, /Hidden fact/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("clears retained screen state on restart", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-restart-"));

@@ -1,3 +1,4 @@
+export { AppStateRepository } from "./app-state-repository.js";
 export { FactRepository } from "./fact-repository.js";
 export { MarkdownFactCodec } from "./markdown-fact-codec.js";
 export { SessionRepository } from "./session-repository.js";
