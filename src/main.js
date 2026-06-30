@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { PromptClassifier, PromptController } from "./interaction/index.js";
 import { FactRepository, Workspace } from "./persistence/index.js";
-import { TimeBoxRepository } from "./planning/index.js";
+import { PlanParser, TimeBoxRepository } from "./planning/index.js";
 import { SearchEngine, SearchQueryParser } from "./search/index.js";
 import { AppState } from "./state/index.js";
 import { ansi, InputBuffer, TerminalApp } from "./terminal/index.js";
@@ -20,6 +20,7 @@ export function createAppRuntime({
   const searchEngine = new SearchEngine();
   const searchQueryParser = new SearchQueryParser();
   const promptClassifier = new PromptClassifier();
+  const planParser = new PlanParser();
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;
   let timeBoxes = [];
@@ -66,7 +67,7 @@ export function createAppRuntime({
       colorEnabled = false
     } = {}) {
       return terminalApp.render({
-        state: stateForPreview({ state, input, promptClassifier }),
+        state: stateForPreview({ state, input, promptClassifier, planParser, clock }),
         resultSet,
         timeBoxes,
         input,
@@ -81,14 +82,25 @@ export function createAppRuntime({
   };
 }
 
-function stateForPreview({ state, input, promptClassifier }) {
+function stateForPreview({ state, input, promptClassifier, planParser, clock }) {
   if (!input) {
     return state;
   }
 
-  return {
+  const currentMode = promptClassifier.classify(input);
+  const previewState = {
     ...state,
-    currentMode: promptClassifier.classify(input)
+    currentMode
+  };
+
+  if (currentMode === "Plan") {
+    previewState.planPreview = planParser.parse(input, {
+      today: clock().toISOString().slice(0, 10)
+    });
+  }
+
+  return {
+    ...previewState
   };
 }
 

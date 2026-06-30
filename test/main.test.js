@@ -56,10 +56,27 @@ describe("createAppRuntime", () => {
 
     const rendered = runtime.render({ input: ";", showCursor: true });
 
-    assert.match(rendered, /\(no time boxes\)/);
+    assert.match(rendered, /Plan input is required/);
     assert.doesNotMatch(rendered, /Follow up with Steve/);
     assert.match(rendered, /> ;█/);
     assert.equal(runtime.state.currentMode, "Capture");
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
+  it("previews plan input without committing it", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-plan-preview-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    const rendered = runtime.render({ input: "; 9-10 Steve", showCursor: true });
+
+    assert.match(rendered, /\? 09:00-10:00 Steve/);
+    assert.equal(runtime.state.planPreview, null);
+    assert.equal(fs.existsSync(path.join(workspacePath, "timeboxes", "2026-06-30.txt")), false);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
