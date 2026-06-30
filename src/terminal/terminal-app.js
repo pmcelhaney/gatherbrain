@@ -24,6 +24,7 @@ export class TerminalApp {
     input = "",
     cursor = input.length,
     showCursor = false,
+    status = "",
     width = 80,
     height = 24,
     today = null,
@@ -38,7 +39,8 @@ export class TerminalApp {
       cursor,
       showCursor
     });
-    const bodyHeight = Math.max(1, height - 4);
+    const statusLines = status ? [status] : [];
+    const bodyHeight = Math.max(1, height - 3 - statusLines.length);
     const bodyLines = this.bodyRenderer.render({
       state,
       resultSet,
@@ -55,6 +57,7 @@ export class TerminalApp {
       header,
       divider,
       ...paddedBody,
+      ...statusLines,
       prompt
     ].join("\n");
   }

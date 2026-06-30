@@ -109,8 +109,25 @@ describe("terminal renderers", () => {
       "----------------------------------------",
       " 1. todo Follow up with Steve.",
       "    due:tomorrow",
+      "",
       ">"
     ].join("\n"));
+  });
+
+  it("renders status above the prompt without changing total height", () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const app = new TerminalApp({ state });
+    const rendered = app.render({
+      resultSet: new SearchResultSet([buildFact()]),
+      width: 40,
+      height: 6,
+      today: "2026-06-30",
+      status: "captured fact"
+    }).split("\n");
+
+    assert.equal(rendered.length, 6);
+    assert.equal(rendered.at(-2), "captured fact");
+    assert.equal(rendered.at(-1), ">");
   });
 });
 

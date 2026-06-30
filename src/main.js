@@ -100,6 +100,7 @@ export function createAppRuntime({
       input = "",
       cursor = input.length,
       showCursor = false,
+      status = "",
       width = output.columns ?? 80,
       height = output.rows ?? 24,
       colorEnabled = false
@@ -112,6 +113,7 @@ export function createAppRuntime({
         input,
         cursor,
         showCursor,
+        status,
         width,
         height,
         today: clock().toISOString().slice(0, 10),
@@ -203,13 +205,11 @@ async function runTui(runtime) {
       input: buffer.text,
       cursor: buffer.cursor,
       showCursor: true,
+      status,
       width: output.columns ?? 80,
       height: output.rows ?? 24,
       colorEnabled: true
     }));
-    if (status) {
-      output.write(`\n${status}`);
-    }
   };
 
   redraw();
