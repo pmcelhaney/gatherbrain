@@ -64,6 +64,27 @@ describe("PromptController", () => {
     assert.equal(state.currentMode, AppMode.SEARCH);
   });
 
+  it("uses the current query when search input is empty", async () => {
+    await controller.submit("Follow up with Steve.");
+
+    const result = await controller.submit("/");
+
+    assert.equal(result.action, "search");
+    assert.equal(result.query, "session:Steve");
+    assert.equal(result.resultSet.count, 1);
+  });
+
+  it("lists all facts for empty search when no query exists", async () => {
+    await controller.submit("Follow up with Steve.");
+    state.restart();
+
+    const result = await controller.submit("/");
+
+    assert.equal(result.action, "search");
+    assert.equal(result.query, "*");
+    assert.equal(result.resultSet.count, 1);
+  });
+
   it("executes commands through the interaction layer", async () => {
     const result = await controller.submit(":switch Architecture Review Board");
 

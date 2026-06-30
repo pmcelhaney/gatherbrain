@@ -10,6 +10,8 @@ export class SearchEngine {
 
 function evaluate(node, fact, context) {
   switch (node.type) {
+    case "all":
+      return true;
     case "and":
       return evaluate(node.left, fact, context) && evaluate(node.right, fact, context);
     case "or":

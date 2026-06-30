@@ -109,12 +109,13 @@ export class PromptController {
     const expandedQuery = this.searchShortcutRegistry.expand(input, {
       currentSession: this.state.currentSession
     });
-    const ast = this.searchQueryParser.parse(expandedQuery);
+    const query = queryForSearch(expandedQuery, this.state);
+    const ast = query === "*" ? { type: "all" } : this.searchQueryParser.parse(query);
     const facts = await this.factSource.list();
     const today = this.clock().toISOString().slice(0, 10);
     const resultSet = this.searchEngine.search(facts, ast, { today });
 
-    this.state.setQuery(expandedQuery.replace(/^\//, ""));
+    this.state.setQuery(query);
 
     return InteractionResult.searched({
       mode: AppMode.SEARCH,
@@ -166,6 +167,24 @@ export class PromptController {
       timeBox
     });
   }
+}
+
+function queryForSearch(rawQuery, state) {
+  const query = rawQuery.trim().replace(/^\//, "").trim();
+
+  if (query) {
+    return query;
+  }
+
+  if (state.currentQuery) {
+    return state.currentQuery;
+  }
+
+  if (state.currentSession) {
+    return `session:"${state.currentSession.name}"`;
+  }
+
+  return "*";
 }
 
 function parseSelectionInput(input) {
