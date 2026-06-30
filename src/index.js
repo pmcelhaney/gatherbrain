@@ -1495,10 +1495,11 @@ function factViewModelsForDisplay(facts, options = {}) {
     const currentContextMarker = fact.currentContextMarker ?? '';
     const sourceContext = fact.sourceContext ?? '';
     const sourceContextShort = fact.sourceContextShort ?? '';
+    const sourceContextDisplay = fact.sourceContextDisplay ?? sourceContextShort;
     const firstPrefix = [
       deletedMarker,
       currentContextMarker,
-      sourceContextShort,
+      sourceContextDisplay,
       displayType,
       displayDue
     ].filter((part) => part.length > 0).join(' ');
@@ -1541,6 +1542,7 @@ function factViewModelsForDisplay(facts, options = {}) {
       currentContextMarker,
       sourceContext,
       sourceContextShort,
+      sourceContextDisplay,
       title: titleText,
       body: bodyLines.join('\n'),
       display: displayLines.join('\n')
@@ -2963,9 +2965,26 @@ function markTemporarySearchFactGathered(state, fact) {
   };
 }
 
+function shortContextName(contextId) {
+  return contextId.split('/').at(-1) ?? contextId;
+}
+
+function searchResultFactView(fact) {
+  const sourceContext = fact.contextId ?? '';
+  const sourceContextDisplay = sourceContext.length > 0 ? sourceContext : '/';
+
+  return {
+    ...fact,
+    sourceContext,
+    sourceContextShort: sourceContext.length > 0 ? shortContextName(sourceContext) : '/',
+    sourceContextDisplay
+  };
+}
+
 async function showSearchResults(parsedEntry, state) {
   const previousView = state.temporaryBodyType ?? 'facts';
-  const facts = searchFactsOutsideCurrentContext(await searchFacts(state, parsedEntry.query), state);
+  const facts = searchFactsOutsideCurrentContext(await searchFacts(state, parsedEntry.query), state)
+    .map(searchResultFactView);
   const matchText = `${facts.length} ${facts.length === 1 ? 'match' : 'matches'}`;
 
   state.temporaryBody = {

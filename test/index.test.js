@@ -1207,8 +1207,8 @@ test(':search lists matching facts by last updated descending', async () => {
       [
         'facts | search "search" (2 matches)',
         '--------------------------------------------------------------------------------',
-        ' 2. No direct match.',
-        ' 1. Need search directly.'
+        ' 2. projects/gatherbrain No direct match.',
+        ' 1. projects/gatherbrain Need search directly.'
       ]
     );
   } finally {
@@ -1263,7 +1263,7 @@ test(':search excludes facts that are already in the current context', async () 
       [
         'projects/gatherbrain | search "search" (1 match)',
         '--------------------------------------------------------------------------------',
-        ' 1. Need search with Steve.'
+        ' 1. people/Steve Ma Need search with Steve.'
       ]
     );
   } finally {
@@ -3321,8 +3321,8 @@ test(':gather command keeps the current visible list active', async () => {
       [
         'projects | search "Follow up" (2 matches)',
         '--------------------------------------------------------------------------------',
-        ' 2. Follow up with the roadmap.',
-        ' 1. Follow up with Steve.'
+        ' 2. / Follow up with the roadmap.',
+        ' 1. people/Steve Ma Follow up with Steve.'
       ]
     );
 
@@ -3344,8 +3344,8 @@ test(':gather command keeps the current visible list active', async () => {
       [
         'projects',
         '--------------------------------------------------------------------------------',
-        ' 2. Follow up with the roadmap.',
-        ' 1. + Follow up with Steve.'
+        ' 2. / Follow up with the roadmap.',
+        ' 1. + people/Steve Ma Follow up with Steve.'
       ]
     );
     assert.equal(state.temporaryBodyType, 'search');
