@@ -279,7 +279,7 @@ Examples:
 
 /due:today and "Steve Ma"
 
-/session:Architecture Review Board
+/session:"Architecture Review Board"
 ```
 
 Search supports:

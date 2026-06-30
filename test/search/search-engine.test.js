@@ -1,0 +1,55 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
+import { Fact } from "../../src/domain/index.js";
+import { SearchEngine, SearchQueryParser } from "../../src/search/index.js";
+
+describe("SearchEngine", () => {
+  const parser = new SearchQueryParser();
+  const engine = new SearchEngine();
+
+  it("searches terms and session filters", () => {
+    const result = engine.search(
+      facts(),
+      parser.parse('/session:"Architecture Review Board" AND "async architecture"')
+    );
+
+    assert.deepEqual(result.facts.map((fact) => fact.id), [
+      "6f2308de-02e9-45db-8ff0-65ac793f4a24"
+    ]);
+    assert.equal(result.factIdForNumber(1), "6f2308de-02e9-45db-8ff0-65ac793f4a24");
+  });
+
+  it("supports due comparisons with dynamic today", () => {
+    const result = engine.search(
+      facts(),
+      parser.parse("(type:todo OR type:waiting) AND due<=today"),
+      { today: "2026-06-30" }
+    );
+
+    assert.deepEqual(result.facts.map((fact) => fact.id), [
+      "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
+    ]);
+  });
+});
+
+function facts() {
+  return [
+    new Fact({
+      id: "6f2308de-02e9-45db-8ff0-65ac793f4a24",
+      content: "Mike prefers async architecture reviews.",
+      type: "observation",
+      createdAt: "2026-06-30T14:15:23.000Z",
+      homeSession: "Architecture Review Board",
+      associatedSessions: ["Steve"]
+    }),
+    new Fact({
+      id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
+      content: "Follow up with Steve.",
+      type: "todo",
+      createdAt: "2026-06-30T15:45:00.000Z",
+      dueDate: "2026-06-30",
+      homeSession: "Steve"
+    })
+  ];
+}
