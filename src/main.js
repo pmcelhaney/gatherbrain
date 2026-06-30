@@ -76,6 +76,12 @@ export function createAppRuntime({
         helpLines = result.helpLines;
       }
 
+      if (result.action === "restart") {
+        resultSet = null;
+        timeBoxes = [];
+        helpLines = null;
+      }
+
       return result;
     },
     render({

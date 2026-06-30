@@ -114,4 +114,29 @@ describe("createAppRuntime", () => {
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
+
+  it("clears retained screen state on restart", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-restart-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit("Follow up with Steve.");
+    await runtime.submit("; 9-10 Steve");
+    await runtime.submit(":help");
+    await runtime.submit(":restart");
+
+    const rendered = runtime.render();
+    const planRendered = runtime.render({ input: ";" });
+
+    assert.doesNotMatch(rendered, /Follow up with Steve/);
+    assert.doesNotMatch(rendered, /:switch <session>/);
+    assert.match(rendered, /\.\.\./);
+    assert.doesNotMatch(planRendered, /09:00-10:00 Steve/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
 });
