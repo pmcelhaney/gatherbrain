@@ -192,4 +192,29 @@ describe("createAppRuntime", () => {
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
+
+  it("shows only facts associated with the switched session", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-switch-view-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit("Steve-only fact.");
+    await runtime.submit(":switch new session");
+
+    let rendered = runtime.render();
+    assert.doesNotMatch(rendered, /Steve-only fact/);
+    assert.match(rendered, /\.\.\./);
+
+    await runtime.submit("New-session fact.");
+    rendered = runtime.render();
+
+    assert.match(rendered, /New-session fact/);
+    assert.doesNotMatch(rendered, /Steve-only fact/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
 });

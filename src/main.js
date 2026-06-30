@@ -72,6 +72,17 @@ export function createAppRuntime({
         timeBoxes = await timeBoxRepository.listByDate(result.timeBox.date);
       }
 
+      if (result.action === "switch_session") {
+        resultSet = await searchCurrentFacts({
+          state,
+          factIndex,
+          searchEngine,
+          searchQueryParser,
+          clock
+        });
+        helpLines = null;
+      }
+
       if (result.fact || result.action === "selection_action") {
         factIndex.invalidate();
         resultSet = await searchCurrentFacts({
