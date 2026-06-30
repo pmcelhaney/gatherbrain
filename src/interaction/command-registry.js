@@ -1,4 +1,5 @@
 import { AppMode } from "../state/index.js";
+import { TimeBox } from "../domain/index.js";
 import { InteractionResult } from "./interaction-result.js";
 
 export class CommandRegistry {
@@ -80,6 +81,8 @@ class HelpCommand {
         ":sessions           list known sessions",
         ":session <number>   switch to a numbered session",
         ":inspect <number>   show visible fact details",
+        ":timebox <number> <range> <session>  update a timebox",
+        ":timebox delete <number>             delete a timebox",
         ":undo               undo the last selection action",
         ":restart            clear current app state",
         ":paste              recognized; not implemented yet",
@@ -187,6 +190,53 @@ class SessionCommand {
   }
 }
 
+class TimeBoxCommand {
+  async execute(args, { timeBoxRepository, timeBoxes, today }) {
+    if (!timeBoxRepository) {
+      throw new Error(":timebox requires a time box repository");
+    }
+
+    const tokens = args.trim().split(/\s+/).filter(Boolean);
+
+    if (tokens[0] === "delete") {
+      const timeBox = resolveTimeBoxNumber(tokens[1], timeBoxes);
+      await timeBoxRepository.delete(timeBox);
+      return InteractionResult.timeBoxChanged({
+        mode: AppMode.COMMAND,
+        action: "timebox_delete",
+        message: `deleted timebox ${tokens[1]}`,
+        timeBoxDate: timeBox.date
+      });
+    }
+
+    const timeBox = resolveTimeBoxNumber(tokens.shift(), timeBoxes);
+    const rangeToken = tokens.shift();
+    const session = tokens.join(" ").trim();
+
+    if (!rangeToken || !session) {
+      throw new Error(":timebox update requires a number, range, and session");
+    }
+
+    const [startsAt, endsAt] = parseTimeRange(rangeToken);
+    const updatedTimeBox = new TimeBox({
+      ...timeBox.toSerializable(),
+      date: today ?? timeBox.date,
+      startsAt,
+      endsAt,
+      session
+    });
+
+    await timeBoxRepository.save(updatedTimeBox);
+
+    return InteractionResult.timeBoxChanged({
+      mode: AppMode.COMMAND,
+      action: "timebox_update",
+      message: `updated timebox ${timeBoxNumberFor(timeBox, timeBoxes)}`,
+      timeBoxDate: updatedTimeBox.date
+    });
+  }
+}
+
 function defaultCommands() {
   return {
     help: new HelpCommand(),
@@ -194,10 +244,58 @@ function defaultCommands() {
     session: new SessionCommand(),
     sessions: new SessionsCommand(),
     switch: new SwitchSessionCommand(),
+    timebox: new TimeBoxCommand(),
     undo: new UndoCommand(),
     restart: new RestartCommand(),
     paste: new PasteCommand()
   };
+}
+
+function resolveTimeBoxNumber(numberText, timeBoxes = []) {
+  if (!/^\d+$/.test(numberText ?? "")) {
+    throw new Error(":timebox requires a visible timebox number");
+  }
+
+  const sorted = sortedTimeBoxes(timeBoxes);
+  const timeBox = sorted[Number(numberText) - 1];
+
+  if (!timeBox) {
+    throw new Error(`No timebox numbered ${numberText}`);
+  }
+
+  return timeBox;
+}
+
+function timeBoxNumberFor(timeBox, timeBoxes) {
+  return String(sortedTimeBoxes(timeBoxes).findIndex((candidate) => candidate.id === timeBox.id) + 1);
+}
+
+function sortedTimeBoxes(timeBoxes = []) {
+  return [...timeBoxes].sort((left, right) => left.startsAt.localeCompare(right.startsAt));
+}
+
+function parseTimeRange(rangeToken) {
+  const match = rangeToken.match(/^(\d{1,2})(?::(\d{2}))?-(\d{1,2})(?::(\d{2}))?$/);
+
+  if (!match) {
+    throw new Error("Timebox range must look like 9-10 or 09:30-10:00");
+  }
+
+  return [
+    normalizeTime(match[1], match[2] ?? "00"),
+    normalizeTime(match[3], match[4] ?? "00")
+  ];
+}
+
+function normalizeTime(hoursValue, minutesValue) {
+  const hours = Number(hoursValue);
+  const minutes = Number(minutesValue);
+
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    throw new Error("Timebox range contains an invalid local time");
+  }
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 function factDetailLines(fact, filePath) {

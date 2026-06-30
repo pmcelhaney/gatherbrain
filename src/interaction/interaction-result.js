@@ -8,6 +8,7 @@ export class InteractionResult {
     resultSet = null,
     query = null,
     timeBox = null,
+    timeBoxDate = null,
     helpLines = null,
     undoSnapshot = null
   } = {}) {
@@ -19,6 +20,7 @@ export class InteractionResult {
     this.resultSet = resultSet;
     this.query = query;
     this.timeBox = timeBox;
+    this.timeBoxDate = timeBoxDate;
     this.helpLines = helpLines;
     this.undoSnapshot = undoSnapshot;
   }
@@ -80,6 +82,15 @@ export class InteractionResult {
       action,
       message,
       helpLines
+    });
+  }
+
+  static timeBoxChanged({ mode, action, message, timeBoxDate }) {
+    return new InteractionResult({
+      mode,
+      action,
+      message,
+      timeBoxDate
     });
   }
 }

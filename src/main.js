@@ -33,7 +33,7 @@ export function createAppRuntime({
   const completionService = new CompletionService({
     sessionRepository,
     actionRegistry: selectionActionRegistry,
-    commandNames: ["help", "inspect", "paste", "restart", "session", "sessions", "switch", "undo"]
+    commandNames: ["help", "inspect", "paste", "restart", "session", "sessions", "switch", "timebox", "undo"]
   });
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;
@@ -49,7 +49,8 @@ export function createAppRuntime({
     timeBoxRepository,
     clock,
     defaultFactType: appConfig.defaultFactType,
-    currentResultSetProvider: () => resultSet
+    currentResultSetProvider: () => resultSet,
+    currentTimeBoxesProvider: () => timeBoxes
   });
 
   return {
@@ -108,6 +109,10 @@ export function createAppRuntime({
 
       if (result.timeBox) {
         timeBoxes = await timeBoxRepository.listByDate(result.timeBox.date);
+      }
+
+      if (result.timeBoxDate) {
+        timeBoxes = await timeBoxRepository.listByDate(result.timeBoxDate);
       }
 
       if (result.action === "switch_session") {

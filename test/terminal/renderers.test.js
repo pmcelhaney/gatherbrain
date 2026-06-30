@@ -71,7 +71,7 @@ describe("terminal renderers", () => {
         timeBoxes: [buildTimeBox("actual", "09:00", "10:00", "Steve")],
         planPreview: state.planPreview
       }).join("\n"),
-      "09:00-10:00 Steve\n? 11:00-12:00 Counterfact"
+      " 1. 09:00-10:00 Steve\n? 11:00-12:00 Counterfact"
     );
   });
 

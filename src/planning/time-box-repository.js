@@ -26,6 +26,19 @@ export class TimeBoxRepository {
     return nextTimeBox;
   }
 
+  async delete(timeBox) {
+    const target = TimeBox.from(timeBox);
+    const timeBoxes = await this.listByDate(target.date);
+    const nextTimeBoxes = timeBoxes.filter((existing) => existing.id !== target.id);
+
+    if (nextTimeBoxes.length === timeBoxes.length) {
+      throw new Error(`Time box not found: ${target.id}`);
+    }
+
+    await this.writeDate(target.date, nextTimeBoxes);
+    return target;
+  }
+
   async listByDate(date) {
     const filePath = this.workspace.timeBoxPath(date);
 

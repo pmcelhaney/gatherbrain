@@ -41,6 +41,17 @@ describe("TimeBoxRepository", () => {
 
     assert.deepEqual(timeBoxes.map((timeBox) => timeBox.id), ["first", "second"]);
   });
+
+  it("deletes a time box from its daily file", async () => {
+    const first = buildTimeBox("first", "2026-06-30", "09:00", "10:00", "Steve");
+    await repository.save(first);
+    await repository.save(buildTimeBox("second", "2026-06-30", "11:00", "12:00", "Counterfact"));
+
+    await repository.delete(first);
+
+    const timeBoxes = await repository.listByDate("2026-06-30");
+    assert.deepEqual(timeBoxes.map((timeBox) => timeBox.id), ["second"]);
+  });
 });
 
 function buildTimeBox(id, date, startsAt, endsAt, session) {

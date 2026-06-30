@@ -294,6 +294,45 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("updates visible timeboxes by number", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-timebox-update-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit("; 9-10 Steve");
+    await runtime.submit(":timebox 1 10-11 Architecture Review Board");
+
+    const rendered = runtime.render({ input: ";" });
+
+    assert.match(rendered, /1\. 10:00-11:00 Architecture Review Board/);
+    assert.doesNotMatch(rendered, /09:00-10:00 Steve/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
+  it("deletes visible timeboxes by number", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-timebox-delete-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit("; 9-10 Steve");
+    await runtime.submit("; 11-12 Counterfact");
+    await runtime.submit(":timebox delete 1");
+
+    const rendered = runtime.render({ input: ";" });
+
+    assert.doesNotMatch(rendered, /09:00-10:00 Steve/);
+    assert.match(rendered, /1\. 11:00-12:00 Counterfact/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("uses configured fact type and selection actions", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-config-runtime-"));

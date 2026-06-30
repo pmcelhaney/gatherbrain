@@ -26,6 +26,7 @@ export class PromptController {
     sessionRepository = null,
     selectionActionRegistry = SelectionActionRegistry.fromConfig(),
     currentResultSetProvider = () => null,
+    currentTimeBoxesProvider = () => [],
     planParser = null,
     timeBoxRepository = null,
     clock = () => new Date(),
@@ -43,6 +44,7 @@ export class PromptController {
     this.sessionRepository = sessionRepository;
     this.selectionActionRegistry = selectionActionRegistry;
     this.currentResultSetProvider = currentResultSetProvider;
+    this.currentTimeBoxesProvider = currentTimeBoxesProvider;
     this.planParser = planParser;
     this.timeBoxRepository = timeBoxRepository;
     this.clock = clock;
@@ -63,7 +65,10 @@ export class PromptController {
         state: this.state,
         sessionRepository: this.sessionRepository,
         factRepository: this.factRepository,
-        resultSet: this.currentResultSetProvider()
+        resultSet: this.currentResultSetProvider(),
+        timeBoxRepository: this.timeBoxRepository,
+        timeBoxes: this.currentTimeBoxesProvider(),
+        today: this.clock().toISOString().slice(0, 10)
       });
     }
 

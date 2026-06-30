@@ -2,7 +2,7 @@ export class CalendarRenderer {
   render({ timeBoxes = [], planPreview = null, height = 20 } = {}) {
     const rows = [...timeBoxes]
       .sort((left, right) => left.startsAt.localeCompare(right.startsAt))
-      .map((timeBox) => renderTimeBox(timeBox));
+      .map((timeBox, index) => `${String(index + 1).padStart(2, " ")}. ${renderTimeBox(timeBox)}`);
 
     if (planPreview?.timeBox) {
       rows.push(`? ${renderTimeBox(planPreview.timeBox)}`);
