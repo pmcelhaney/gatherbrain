@@ -33,6 +33,10 @@ export class SelectionActionRegistry {
   async execute(keyword, context) {
     return this.resolve(keyword).execute(context);
   }
+
+  keywords() {
+    return [...this.actions.keys()].sort();
+  }
 }
 
 function buildAction(definition) {

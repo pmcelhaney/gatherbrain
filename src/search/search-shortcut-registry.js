@@ -23,6 +23,10 @@ export class SearchShortcutRegistry {
 
     return typeof shortcut === "function" ? shortcut(context) : shortcut;
   }
+
+  names() {
+    return [...this.shortcuts.keys()].sort();
+  }
 }
 
 function defaultShortcuts() {

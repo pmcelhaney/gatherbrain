@@ -2,8 +2,8 @@ import readline from "node:readline";
 import { stdin as input, stdout as output } from "node:process";
 import path from "node:path";
 
-import { PromptClassifier, PromptController } from "./interaction/index.js";
-import { FactRepository, Workspace } from "./persistence/index.js";
+import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
+import { FactRepository, SessionRepository, Workspace } from "./persistence/index.js";
 import { PlanParser, TimeBoxRepository } from "./planning/index.js";
 import { SearchEngine, SearchQueryParser } from "./search/index.js";
 import { AppState } from "./state/index.js";
@@ -16,11 +16,13 @@ export function createAppRuntime({
   const state = new AppState();
   const workspace = new Workspace(workspacePath);
   const factRepository = new FactRepository({ workspace });
+  const sessionRepository = new SessionRepository({ workspace });
   const timeBoxRepository = new TimeBoxRepository({ workspace });
   const searchEngine = new SearchEngine();
   const searchQueryParser = new SearchQueryParser();
   const promptClassifier = new PromptClassifier();
   const planParser = new PlanParser();
+  const completionService = new CompletionService({ sessionRepository });
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;
   let timeBoxes = [];
@@ -35,6 +37,7 @@ export function createAppRuntime({
   return {
     state,
     terminalApp,
+    completionService,
     async submit(line) {
       const result = await promptController.submit(line);
 
@@ -78,6 +81,9 @@ export function createAppRuntime({
         today: clock().toISOString().slice(0, 10),
         colorEnabled
       });
+    },
+    async complete(input) {
+      return completionService.complete(input, { resultSet });
     }
   };
 }
@@ -216,6 +222,14 @@ async function runTui(runtime) {
       }
 
       if (key.name === "end") {
+        buffer.moveEnd();
+        redraw();
+        return;
+      }
+
+      if (key.name === "tab") {
+        const completed = await runtime.complete(buffer.text);
+        buffer.text = completed;
         buffer.moveEnd();
         redraw();
         return;
