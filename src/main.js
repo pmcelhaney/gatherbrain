@@ -26,6 +26,7 @@ export function createAppRuntime({
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;
   let timeBoxes = [];
+  let helpLines = null;
   const promptController = new PromptController({
     state,
     factRepository,
@@ -43,6 +44,7 @@ export function createAppRuntime({
 
       if (result.resultSet) {
         resultSet = result.resultSet;
+        helpLines = null;
       }
 
       if (result.timeBox) {
@@ -57,6 +59,11 @@ export function createAppRuntime({
           searchQueryParser,
           clock
         });
+        helpLines = null;
+      }
+
+      if (result.helpLines) {
+        helpLines = result.helpLines;
       }
 
       return result;
@@ -73,6 +80,7 @@ export function createAppRuntime({
         state: stateForPreview({ state, input, promptClassifier, planParser, clock }),
         resultSet,
         timeBoxes,
+        helpLines,
         input,
         cursor,
         showCursor,

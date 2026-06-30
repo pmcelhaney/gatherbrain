@@ -31,4 +31,12 @@ describe("CommandRegistry", () => {
     assert.equal(result.action, "paste");
     assert.equal(result.message, "paste mode is not implemented yet");
   });
+
+  it("returns help lines", async () => {
+    const state = new AppState();
+    const result = await new CommandRegistry().execute(":help", { state });
+
+    assert.equal(result.action, "help");
+    assert.match(result.helpLines.join("\n"), /:switch <session>/);
+  });
 });

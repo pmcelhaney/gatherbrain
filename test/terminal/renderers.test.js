@@ -51,6 +51,16 @@ describe("terminal renderers", () => {
     );
   });
 
+  it("renders help lines before other body modes", () => {
+    const state = new AppState({ currentMode: AppMode.PLAN });
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+
+    assert.equal(
+      renderer.render({ state, helpLines: ["Commands", ":help"], height: 10 }).join("\n"),
+      "Commands\n:help"
+    );
+  });
+
   it("renders prompt prefixes", () => {
     const state = new AppState({ currentMode: AppMode.SEARCH });
 

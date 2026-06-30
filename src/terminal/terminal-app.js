@@ -20,6 +20,7 @@ export class TerminalApp {
   render({
     resultSet = null,
     timeBoxes = [],
+    helpLines = null,
     input = "",
     cursor = input.length,
     showCursor = false,
@@ -42,6 +43,7 @@ export class TerminalApp {
       state,
       resultSet,
       timeBoxes,
+      helpLines,
       width,
       height: bodyHeight,
       colorEnabled

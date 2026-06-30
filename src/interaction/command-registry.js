@@ -66,8 +66,35 @@ class PasteCommand {
   }
 }
 
+class HelpCommand {
+  execute(args) {
+    if (args.trim()) {
+      throw new Error(":help does not accept arguments");
+    }
+
+    return InteractionResult.help({
+      mode: AppMode.COMMAND,
+      helpLines: [
+        "Commands",
+        ":switch <session>   switch or create a session",
+        ":restart            clear current app state",
+        ":paste              recognized; not implemented yet",
+        ":help               show this help",
+        ":exit / :quit       exit",
+        "",
+        "Input",
+        "plain text          capture a fact",
+        "/query              search facts",
+        ". todo              update first visible fact",
+        "; 9-10 Session      plan a timebox"
+      ]
+    });
+  }
+}
+
 function defaultCommands() {
   return {
+    help: new HelpCommand(),
     switch: new SwitchSessionCommand(),
     restart: new RestartCommand(),
     paste: new PasteCommand()

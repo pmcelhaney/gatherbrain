@@ -7,7 +7,8 @@ export class InteractionResult {
     filePath = null,
     resultSet = null,
     query = null,
-    timeBox = null
+    timeBox = null,
+    helpLines = null
   } = {}) {
     this.mode = mode;
     this.action = action;
@@ -17,6 +18,7 @@ export class InteractionResult {
     this.resultSet = resultSet;
     this.query = query;
     this.timeBox = timeBox;
+    this.helpLines = helpLines;
   }
 
   static captured({ mode, fact, filePath }) {
@@ -49,6 +51,15 @@ export class InteractionResult {
       action: "plan",
       message: `planned ${timeBox.startsAt}-${timeBox.endsAt} ${timeBox.session.name}`,
       timeBox
+    });
+  }
+
+  static help({ mode, helpLines }) {
+    return new InteractionResult({
+      mode,
+      action: "help",
+      message: "help",
+      helpLines
     });
   }
 }

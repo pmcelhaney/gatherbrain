@@ -6,7 +6,19 @@ export class BodyRenderer {
     this.calendarRenderer = calendarRenderer;
   }
 
-  render({ state, resultSet = null, timeBoxes = [], width = 80, height = 20, colorEnabled = false }) {
+  render({
+    state,
+    resultSet = null,
+    timeBoxes = [],
+    helpLines = null,
+    width = 80,
+    height = 20,
+    colorEnabled = false
+  }) {
+    if (helpLines) {
+      return helpLines.slice(0, height);
+    }
+
     if (state.currentMode === AppMode.PLAN) {
       return this.calendarRenderer.render({
         timeBoxes,

@@ -40,6 +40,18 @@ describe("main", () => {
     assert.match(result.stdout, /tomorrow applied to 1 fact/);
     assert.match(result.stdout, /planned 09:00-10:00 Steve/);
   });
+
+  it("renders help in the body", () => {
+    const result = spawnSync("node", ["src/main.js"], {
+      cwd: process.cwd(),
+      input: ":help\n:exit\n",
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /:switch <session>/);
+    assert.match(result.stdout, /plain text\s+capture a fact/);
+  });
 });
 
 describe("createAppRuntime", () => {
