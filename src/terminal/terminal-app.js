@@ -46,6 +46,7 @@ export class TerminalApp {
       helpLines,
       width,
       height: bodyHeight,
+      today,
       colorEnabled
     });
     const paddedBody = padLines(bodyLines, bodyHeight);

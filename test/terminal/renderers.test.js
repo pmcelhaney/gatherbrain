@@ -29,9 +29,33 @@ describe("terminal renderers", () => {
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
 
     assert.equal(
-      renderer.render({ state, resultSet, width: 80, height: 10 }).join("\n"),
-      " 1. todo Follow up with Steve. due:2026-07-01"
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      " 1. todo Follow up with Steve. due:tomorrow"
     );
+  });
+
+  it("renders friendly due labels", () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const resultSet = new SearchResultSet([
+      buildFact({ id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a", dueDate: "2026-06-30" }),
+      buildFact({ id: "6f2308de-02e9-45db-8ff0-65ac793f4a24", dueDate: "2026-07-01" }),
+      buildFact({ id: "0cb20b8b-4c03-4d09-9a10-0340137db913", dueDate: "2026-07-03" }),
+      buildFact({ id: "7dfc1e84-d650-404c-a227-b452615620b0", dueDate: "2026-07-10" })
+    ]);
+
+    const rendered = renderer.render({
+      state,
+      resultSet,
+      width: 80,
+      height: 10,
+      today: "2026-06-30"
+    }).join("\n");
+
+    assert.match(rendered, /due:today/);
+    assert.match(rendered, /due:tomorrow/);
+    assert.match(rendered, /due:Fri/);
+    assert.match(rendered, /due:Jul 10/);
   });
 
   it("renders calendar rows and plan previews in plan mode", () => {
@@ -84,20 +108,21 @@ describe("terminal renderers", () => {
       "sessions/2026-06-30/Steve",
       "----------------------------------------",
       " 1. todo Follow up with Steve.",
-      "    due:2026-07-01",
+      "    due:tomorrow",
       ">"
     ].join("\n"));
   });
 });
 
-function buildFact() {
+function buildFact(overrides = {}) {
   return new Fact({
     id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
     content: "Follow up with Steve.",
     type: "todo",
     createdAt: "2026-06-30T15:45:00.000Z",
     dueDate: "2026-07-01",
-    homeSession: "Steve"
+    homeSession: "Steve",
+    ...overrides
   });
 }
 
