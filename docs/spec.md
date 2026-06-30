@@ -1,0 +1,621 @@
+# Gatherbrain Core Interaction Specification
+
+This is the living project specification. It started from the original
+interaction spec and should be updated as product and architecture decisions
+are made.
+
+## Implementation Target
+
+Gatherbrain will be built in Node.js.
+
+## Design Principles
+
+Gatherbrain is a local-first terminal application for capturing knowledge while doing work.
+
+The user is always working in a session.
+
+Knowledge is captured as small facts.
+
+Planning is managed independently through time boxes.
+
+The interface is optimized for keyboard-first operation with minimal mode switching.
+
+---
+
+# Core Primitives
+
+## Session
+
+A session is the unit of work.
+
+Every interaction occurs within a current session.
+
+Examples:
+
+- Steve
+- Architecture Review Board
+- Counterfact
+- Reading: Team Topologies
+- 2026-06-30 ARB Meeting
+
+Sessions may be associated with facts and time boxes.
+
+---
+
+## Fact
+
+A fact is a single unit of knowledge.
+
+A fact has:
+
+- id
+- content
+- type
+- created timestamp
+- optional due date
+- home session
+- associated sessions
+
+Every fact belongs to exactly one home session.
+
+A fact may be associated with zero or more additional sessions.
+
+---
+
+## Search
+
+Search retrieves facts.
+
+The current search determines what appears in the body of the interface.
+
+---
+
+## Time Box
+
+A time box represents planned work.
+
+A time box associates a date and period of time with a session.
+
+Time boxes are independent of facts.
+
+Time boxes are stored in text files, one file per date. The current date is the
+normal active working set, but historical time boxes remain available by loading
+the relevant date file.
+
+---
+
+# Storage Model
+
+Facts are stored as Markdown files with front matter.
+
+Directory layout:
+
+```text
+<workspace>/
+    2026-06-30/
+        Architecture Review Board/
+            202606301015-review.md
+            202606301030-risk.md
+
+        Steve/
+            202606301145-follow-up.md
+```
+
+Each fact contains front matter similar to:
+
+```yaml
+---
+id: 202606301015
+type: observation
+created: 2026-06-30T10:15:23-04:00
+home_session: Architecture Review Board
+associated_sessions:
+  - Steve
+  - Enterprise Architecture
+due:
+---
+```
+
+Deleted facts are moved into a `.trash` directory beneath their home session.
+
+Example:
+
+```text
+2026-06-30/
+    Architecture Review Board/
+        .trash/
+```
+
+Time boxes are stored separately from facts as daily text files.
+
+Example:
+
+```text
+<workspace>/
+    timeboxes/
+        2026-06-30.txt
+        2026-07-01.txt
+```
+
+The exact text format is still to be defined, but the storage invariant is one
+time box file per date.
+
+---
+
+# State Model
+
+The application maintains the following state.
+
+```text
+current_session
+current_query
+current_selection
+current_mode
+plan_preview
+```
+
+Definitions:
+
+**current_session**
+
+The session the user is currently working in.
+
+A session must be entered before facts may be captured.
+
+**current_query**
+
+The active search query.
+
+The body always renders the results of this query.
+
+Default:
+
+```text
+session:<current_session>
+```
+
+**current_selection**
+
+The facts currently selected by the user.
+
+**current_mode**
+
+One of:
+
+- Capture
+- Search
+- Command
+- Selection
+- Plan
+
+**plan_preview**
+
+An uncommitted time box currently being edited.
+
+---
+
+# User Interface
+
+The terminal UI has three regions.
+
+## Header
+
+Displays application state.
+
+Examples:
+
+- current session
+- active query
+- current mode
+- result count
+
+---
+
+## Body
+
+Displays the result of the active query.
+
+Normally this is a list of facts.
+
+In plan mode it displays the calendar.
+
+---
+
+## Prompt
+
+Accepts user input.
+
+The prompt determines the current interaction mode.
+
+---
+
+# Prompt Modes
+
+The mode is inferred from the first character entered.
+
+| Prefix | Mode |
+| --- | --- |
+| none | Capture |
+| / | Search |
+| : | Command |
+| ; | Plan |
+| number or dots | Selection |
+
+---
+
+# Capture Mode
+
+Capture mode is the default.
+
+Anything entered becomes a new fact.
+
+Example:
+
+```text
+Mike prefers async architecture reviews.
+```
+
+Creates a new fact in the current session.
+
+---
+
+# Search Mode
+
+Search mode begins with `/`.
+
+The entered query becomes the active query.
+
+Examples:
+
+```text
+/Steve Ma
+
+/"caesar salad"
+
+/type:decision
+
+/due:today and "Steve Ma"
+
+/session:Architecture Review Board
+```
+
+Search supports:
+
+- terms
+- quoted phrases
+- field filters
+- AND
+- OR
+- NOT
+- parentheses
+
+Adjacent terms imply AND.
+
+Operator precedence:
+
+1. NOT
+2. AND
+3. OR
+
+---
+
+## Search Shortcuts
+
+Queries beginning with `//` reference named shortcuts.
+
+A shortcut expands into a complete query before parsing.
+
+Example:
+
+```text
+//current
+```
+
+expands to
+
+```text
+(type:"to do" or type:"in progress" or type:"waiting")
+and due<=today
+```
+
+Shortcuts may reference dynamic values such as:
+
+- current session
+- today
+- this week
+
+Examples:
+
+```text
+//current
+
+//today
+
+//session
+
+//overdue
+```
+
+---
+
+# Command Mode
+
+Command mode begins with `:`.
+
+Commands change application state.
+
+Initial commands:
+
+```text
+:switch <session>
+
+:restart
+
+:paste
+```
+
+### `:switch`
+
+Changes the current session.
+
+The current query becomes:
+
+```text
+session:<new session>
+```
+
+### `:restart`
+
+Returns the application to its initial state.
+
+The current session is cleared.
+
+### `:paste`
+
+Enters paste mode.
+
+Pasted text is converted into facts according to configurable import rules.
+
+---
+
+# Selection Mode
+
+Selection mode begins with one or more numbers or dot sequences.
+
+Examples:
+
+```text
+7
+
+.
+
+..
+
+...
+
+1 3 7
+
+. ..
+```
+
+## Number selectors
+
+Numbers refer to displayed fact numbers.
+
+Fact numbers remain stable until the session or search changes.
+
+Example:
+
+```text
+17
+```
+
+Selects fact number 17.
+
+---
+
+## Dot selectors
+
+Dots refer to the nth visible item.
+
+```text
+.      first
+
+..     second
+
+...    third
+```
+
+---
+
+## Selection Actions
+
+Selection is a prefix for an action.
+
+General form:
+
+```text
+<selectors> <action> [arguments]
+```
+
+Examples:
+
+```text
+. todo
+
+. .. todo
+
+7 tomorrow
+
+3 delete
+
+.. gather
+```
+
+---
+
+## Built-in Fact Actions
+
+### Set due date
+
+Assigns a due date.
+
+Example:
+
+```text
+3 tomorrow
+```
+
+---
+
+### Delete
+
+Moves the fact into the `.trash` folder within its home session.
+
+Example:
+
+```text
+5 delete
+```
+
+---
+
+### Gather
+
+Associates the selected fact with the current session.
+
+Example:
+
+```text
+7 gather
+```
+
+---
+
+### Change Type
+
+Changes the fact type.
+
+Example:
+
+```text
+. todo
+```
+
+---
+
+# Action DSL
+
+Selection actions are configurable.
+
+Keywords map to actions.
+
+Example configuration:
+
+```yaml
+actions:
+
+  todo:
+    action: set_type
+    value: todo
+
+  waiting:
+    action: set_type
+    value: waiting
+
+  done:
+    action: set_type
+    value: done
+
+  tomorrow:
+    action: set_due
+    value: tomorrow
+
+  delete:
+    action: trash
+
+  gather:
+    action: associate_current_session
+```
+
+Example:
+
+```text
+. .. todo
+```
+
+expands conceptually to:
+
+```text
+Select first and second visible facts.
+
+Set type = todo.
+```
+
+---
+
+# Plan Mode
+
+Plan mode begins with `;`.
+
+Entering plan mode replaces the body with the calendar.
+
+Planning commands associate dates and time ranges with sessions.
+
+Example:
+
+```text
+; 9-10 Steve
+```
+
+The calendar updates immediately while typing.
+
+The change is staged.
+
+Nothing is committed until Enter is pressed.
+
+Esc abandons the staged change.
+
+Examples:
+
+```text
+; 9-10 Steve
+
+; 11-12 Counterfact
+
+; tomorrow 2-3 Reading
+```
+
+Plan mode creates and edits time boxes only.
+
+It never creates facts.
+
+Committed time boxes are persisted to the text file for the planned date.
+
+---
+
+# Interaction Philosophy
+
+The interface follows five simple modes:
+
+**Capture**
+
+Remember something.
+
+**Search**
+
+Find something.
+
+**Command**
+
+Change application state.
+
+**Selection**
+
+Operate on existing facts.
+
+**Plan**
+
+Allocate time to sessions.
+
+Together these modes provide a complete keyboard-first workflow for capturing knowledge, retrieving it, organizing it, and planning future work while keeping the underlying interaction model small and predictable.

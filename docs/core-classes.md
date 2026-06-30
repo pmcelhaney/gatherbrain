@@ -4,6 +4,9 @@ This sketch treats the spec as a domain model first and a terminal UI second.
 The goal is to keep storage, parsing, state transitions, and rendering separate
 enough that each can be tested without running the full TUI.
 
+The application will be built in Node.js. Class names in this document refer to
+JavaScript classes unless a later implementation note says otherwise.
+
 ## Domain Classes
 
 ### `Session`
