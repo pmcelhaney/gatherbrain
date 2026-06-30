@@ -92,4 +92,26 @@ describe("createAppRuntime", () => {
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
+
+  it("restores persisted facts and today's timeboxes on startup", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-startup-"));
+    const clock = () => new Date("2026-06-30T12:00:00.000Z");
+    const firstRuntime = createAppRuntime({ workspacePath, clock });
+
+    await firstRuntime.submit(":switch Steve");
+    await firstRuntime.submit("Follow up with Steve.");
+    await firstRuntime.submit("; 9-10 Steve");
+
+    const secondRuntime = createAppRuntime({ workspacePath, clock });
+    await secondRuntime.initialize();
+
+    const rendered = secondRuntime.render();
+    const planRendered = secondRuntime.render({ input: ";" });
+
+    assert.match(rendered, /Follow up with Steve/);
+    assert.match(planRendered, /09:00-10:00 Steve/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
 });

@@ -5,7 +5,7 @@ import path from "node:path";
 import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
 import { FactRepository, SessionRepository, Workspace } from "./persistence/index.js";
 import { PlanParser, TimeBoxRepository } from "./planning/index.js";
-import { FactIndex, SearchEngine, SearchQueryParser } from "./search/index.js";
+import { FactIndex, SearchEngine, SearchQueryParser, SearchResultSet } from "./search/index.js";
 import { AppState } from "./state/index.js";
 import { ansi, InputBuffer, TerminalApp } from "./terminal/index.js";
 
@@ -41,6 +41,13 @@ export function createAppRuntime({
     state,
     terminalApp,
     completionService,
+    async initialize() {
+      const today = clock().toISOString().slice(0, 10);
+      const facts = await factIndex.list();
+
+      resultSet = new SearchResultSet(facts);
+      timeBoxes = await timeBoxRepository.listByDate(today);
+    },
     async submit(line) {
       const result = await promptController.submit(line);
 
@@ -125,6 +132,7 @@ export async function main(argv = process.argv.slice(2)) {
   const runtime = createAppRuntime({
     workspacePath: process.env.GATHERBRAIN_WORKSPACE
   });
+  await runtime.initialize();
 
   if (argv.includes("--render-once")) {
     output.write(`${runtime.render()}\n`);
