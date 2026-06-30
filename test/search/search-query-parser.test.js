@@ -31,6 +31,24 @@ describe("SearchQueryParser", () => {
     });
   });
 
+  it("parses unquoted spaced session field values", () => {
+    assert.deepEqual(parser.parse("/session:Architecture Review Board"), {
+      type: "field",
+      field: "session",
+      operator: ":",
+      value: "Architecture Review Board"
+    });
+  });
+
+  it("parses @ session shorthand", () => {
+    assert.deepEqual(parser.parse("/@Architecture Review Board"), {
+      type: "field",
+      field: "session",
+      operator: ":",
+      value: "Architecture Review Board"
+    });
+  });
+
   it("honors NOT before AND before OR", () => {
     assert.deepEqual(parser.parse("alpha OR NOT beta AND gamma"), {
       type: "or",

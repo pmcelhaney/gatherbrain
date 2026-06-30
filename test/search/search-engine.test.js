@@ -41,6 +41,24 @@ describe("SearchEngine", () => {
     ]);
     assert.equal(result.factIdForNumber(1), "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a");
   });
+
+  it("searches sessions through shorthand parser forms", () => {
+    const unquoted = engine.search(
+      facts(),
+      parser.parse("/session:Architecture Review Board")
+    );
+    const shorthand = engine.search(
+      facts(),
+      parser.parse("/@Architecture Review Board")
+    );
+
+    assert.deepEqual(unquoted.facts.map((fact) => fact.id), [
+      "6f2308de-02e9-45db-8ff0-65ac793f4a24"
+    ]);
+    assert.deepEqual(shorthand.facts.map((fact) => fact.id), [
+      "6f2308de-02e9-45db-8ff0-65ac793f4a24"
+    ]);
+  });
 });
 
 function facts() {

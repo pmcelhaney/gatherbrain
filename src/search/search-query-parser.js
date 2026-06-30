@@ -18,7 +18,13 @@ function normalizeQuery(rawQuery) {
     throw new Error("Search query is required");
   }
 
-  return rawQuery.trim().replace(/^\//, "").trim();
+  const query = rawQuery.trim().replace(/^\//, "").trim();
+
+  if (query.startsWith("@") && !/\s+(AND|OR|NOT)\s+/i.test(query)) {
+    return `session:"${query.slice(1).trim()}"`;
+  }
+
+  return query;
 }
 
 function tokenize(query) {
@@ -98,6 +104,23 @@ function coalesceFieldValues(tokens) {
       continue;
     }
 
+    if (field.name === "session") {
+      const values = [field.value];
+
+      while (index + 1 < tokens.length && isSessionFieldContinuation(tokens[index + 1])) {
+        index += 1;
+        values.push(tokens[index].value);
+      }
+
+      result.push({
+        type: "field",
+        name: field.name,
+        operator: field.operator,
+        value: values.join(" ").trim()
+      });
+      continue;
+    }
+
     result.push({
       type: "field",
       name: field.name,
@@ -107,6 +130,14 @@ function coalesceFieldValues(tokens) {
   }
 
   return result;
+}
+
+function isSessionFieldContinuation(token) {
+  if (!token || token.type !== "term" && token.type !== "phrase") {
+    return false;
+  }
+
+  return !parseFieldToken(token);
 }
 
 function parseFieldToken(token) {
