@@ -774,8 +774,19 @@ export async function relationForContextReference(contextReference, state) {
 export async function relateWorkspaceFact(state, fact, contextReference) {
   const relation = await relationForContextReference(contextReference, state);
 
+  return relateWorkspaceFactToContextId(state, fact, relation);
+}
+
+export async function relateWorkspaceFactToContextId(state, fact, contextId) {
+  const model = await ensureWorkspaceModel(state);
+
+  if (!model.contexts.has(contextId)) {
+    throw new Error(`context ${metadataContextId(contextId)} does not exist`);
+  }
+
+  const relation = metadataContextId(contextId);
   await addFactRelation(fact.path, relation);
-  const refreshedFact = await refreshFact(await ensureWorkspaceModel(state), fact.path);
+  const refreshedFact = await refreshFact(model, fact.path);
   await logEvent(state, 'fact.related', {
     factId: fact.id,
     uuid: refreshedFact?.uuid ?? fact.uuid,

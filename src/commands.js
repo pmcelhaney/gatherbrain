@@ -932,6 +932,13 @@ function buildCommandAction(commandDefinition, values, options = {}) {
     };
   }
 
+  if (commandDefinition.action === 'gather_fact') {
+    return {
+      type: 'gather_fact',
+      ...factSelectorProperties(values.item)
+    };
+  }
+
   if (commandDefinition.action === 'move_fact') {
     return {
       type: 'move_fact',

@@ -116,6 +116,17 @@
       ]
     },
     {
+      "name": "gather",
+      "action": "gather_fact",
+      "arguments": [
+        {
+          "name": "item",
+          "type": "fact",
+          "prompt": "Gather which fact?"
+        }
+      ]
+    },
+    {
       "name": "paste",
       "action": "paste_clipboard",
       "arguments": [

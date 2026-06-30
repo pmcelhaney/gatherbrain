@@ -74,6 +74,7 @@ import {
   referencedFilePathForFact,
   relationForContextReference,
   relateWorkspaceFact,
+  relateWorkspaceFactToContextId,
   resolveExistingContextDirectory,
   resolveExistingSwitchContextId,
   resolveExistingSwitchContextDirectory,
@@ -3763,6 +3764,32 @@ export async function handleEntry(entry, state) {
     try {
       const { fact, itemLabel } = await visibleFactForSelector(state, parsedEntry);
       const relation = await relateWorkspaceFact(state, fact, parsedEntry.contextReference);
+      await keepFactInViewIfDropped(state, factFromModelMatching(state, fact) ?? fact);
+
+      const message = `related item ${itemLabel} to ${relation}`;
+      state.statusMessage = '';
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message
+      };
+    } catch (error) {
+      state.statusMessage = error.message;
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
+  }
+
+  if (parsedEntry.type === 'gather_fact') {
+    try {
+      const { fact, itemLabel } = await visibleFactForSelector(state, parsedEntry);
+      const contextId = contextIdForDirectory(state, state.currentContextDirectory);
+      const relation = await relateWorkspaceFactToContextId(state, fact, contextId);
       await keepFactInViewIfDropped(state, factFromModelMatching(state, fact) ?? fact);
 
       const message = `related item ${itemLabel} to ${relation}`;

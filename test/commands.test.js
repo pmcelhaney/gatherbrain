@@ -28,6 +28,7 @@ test('lists built-in command help', () => {
     ':open | <item> :open',
     '<item> :delete',
     '<item> :move <context>',
+    '<item> :gather',
     ':paste <title>',
     ':plan <range> <context>',
     ':cancel <range> <context>',
@@ -36,7 +37,7 @@ test('lists built-in command help', () => {
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | :search <query> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | :search <query> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | <item> :gather | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -49,6 +50,7 @@ test('lists built-in command help', () => {
     'open',
     'delete',
     'move',
+    'gather',
     'paste',
     'plan',
     'cancel',
@@ -58,6 +60,9 @@ test('lists built-in command help', () => {
   assert.deepEqual(commandArguments('move'), [
     { name: 'item', type: 'fact', prompt: 'Move which fact?' },
     { name: 'context', type: 'context', consume: 'rest', prompt: 'Move it to which context?' }
+  ]);
+  assert.deepEqual(commandArguments('gather'), [
+    { name: 'item', type: 'fact', prompt: 'Gather which fact?' }
   ]);
   assert.equal(commandArguments('new'), null);
   assert.deepEqual(commandArguments('paste'), [
@@ -267,6 +272,10 @@ test('parses fact commands', () => {
     itemNumber: 4,
     type: 'move_fact'
   });
+  assert.deepEqual(parseEntry('5 :gather'), {
+    itemNumber: 5,
+    type: 'gather_fact'
+  });
   assert.deepEqual(parseEntry('14 done'), {
     itemNumber: 14,
     operations: [
@@ -377,6 +386,10 @@ test('continues prompted commands', () => {
     itemNumber: 4,
     type: 'move_fact'
   });
+  assert.deepEqual(continuePromptedCommand(parseEntry(':gather'), '4'), {
+    itemNumber: 4,
+    type: 'gather_fact'
+  });
   assert.deepEqual(continuePromptedCommand(parseEntry(':edit'), 'nope'), {
     itemTitle: 'nope',
     type: 'edit_fact'
@@ -433,6 +446,7 @@ test('loads workspace command definitions from config', async () => {
       'open',
       'delete',
       'move',
+      'gather',
       'paste',
       'plan',
       'cancel',
@@ -558,6 +572,7 @@ test('workspace command config overrides default commands by name', async () => 
       'open',
       'delete',
       'move',
+      'gather',
       'paste',
       'plan',
       'cancel',
