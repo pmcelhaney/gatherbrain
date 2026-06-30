@@ -1,5 +1,5 @@
 export class CalendarRenderer {
-  render({ timeBoxes = [], planPreview = null } = {}) {
+  render({ timeBoxes = [], planPreview = null, height = 20 } = {}) {
     const rows = [...timeBoxes]
       .sort((left, right) => left.startsAt.localeCompare(right.startsAt))
       .map((timeBox) => renderTimeBox(timeBox));
@@ -10,7 +10,8 @@ export class CalendarRenderer {
       rows.push(`! ${planPreview.error}`);
     }
 
-    return rows.length > 0 ? rows.join("\n") : "(no time boxes)";
+    const visibleRows = rows.length > 0 ? rows : ["(no time boxes)"];
+    return visibleRows.slice(-height);
   }
 }
 

@@ -215,6 +215,12 @@ Examples:
 - current mode
 - result count
 
+The primary header form is a workspace-style path:
+
+```text
+sessions/2026-06-30/Thinking about Gatherbrain design
+```
+
 ---
 
 ## Body
@@ -225,6 +231,9 @@ Normally this is a list of facts.
 
 In plan mode it displays the calendar.
 
+Fact rows are numbered at the left with a muted number prefix. The fact type is
+shown before the content.
+
 ---
 
 ## Prompt
@@ -232,6 +241,9 @@ In plan mode it displays the calendar.
 Accepts user input.
 
 The prompt determines the current interaction mode.
+
+The terminal UI redraws as a stable screen rather than printing a transcript of
+each interaction. The prompt remains at the bottom of the screen.
 
 ---
 

@@ -9,11 +9,11 @@ export class PromptRenderer {
 function prefixForMode(mode) {
   switch (mode) {
     case AppMode.SEARCH:
-      return "/";
+      return ">";
     case AppMode.COMMAND:
-      return ":";
+      return ">";
     case AppMode.PLAN:
-      return ";";
+      return ">";
     case AppMode.SELECTION:
       return ">";
     case AppMode.CAPTURE:

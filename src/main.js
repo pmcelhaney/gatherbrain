@@ -5,8 +5,9 @@ import path from "node:path";
 import { PromptController } from "./interaction/index.js";
 import { FactRepository, Workspace } from "./persistence/index.js";
 import { TimeBoxRepository } from "./planning/index.js";
+import { SearchEngine, SearchQueryParser } from "./search/index.js";
 import { AppState } from "./state/index.js";
-import { TerminalApp } from "./terminal/index.js";
+import { ansi, TerminalApp } from "./terminal/index.js";
 
 export function createAppRuntime({
   workspacePath = path.join(process.cwd(), "workspace"),
@@ -16,6 +17,8 @@ export function createAppRuntime({
   const workspace = new Workspace(workspacePath);
   const factRepository = new FactRepository({ workspace });
   const timeBoxRepository = new TimeBoxRepository({ workspace });
+  const searchEngine = new SearchEngine();
+  const searchQueryParser = new SearchQueryParser();
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;
   let timeBoxes = [];
@@ -41,10 +44,28 @@ export function createAppRuntime({
         timeBoxes = await timeBoxRepository.listByDate(result.timeBox.date);
       }
 
+      if (result.fact || result.action === "selection_action") {
+        resultSet = await searchCurrentFacts({
+          state,
+          factRepository,
+          searchEngine,
+          searchQueryParser,
+          clock
+        });
+      }
+
       return result;
     },
-    render() {
-      return terminalApp.render({ resultSet, timeBoxes });
+    render({ input = "", width = output.columns ?? 80, height = output.rows ?? 24, colorEnabled = false } = {}) {
+      return terminalApp.render({
+        resultSet,
+        timeBoxes,
+        input,
+        width,
+        height,
+        today: clock().toISOString().slice(0, 10),
+        colorEnabled
+      });
     }
   };
 }
@@ -59,7 +80,12 @@ export async function main(argv = process.argv.slice(2)) {
     return;
   }
 
-  const rl = readline.createInterface({ input, output, terminal: input.isTTY });
+  if (input.isTTY) {
+    await runTui(runtime);
+    return;
+  }
+
+  const rl = readline.createInterface({ input, output, terminal: false });
 
   output.write(`${runtime.render()}\n`);
 
@@ -82,6 +108,103 @@ export async function main(argv = process.argv.slice(2)) {
 
     output.write(`${runtime.render()}\n`);
   }
+}
+
+async function runTui(runtime) {
+  readline.emitKeypressEvents(input);
+  input.setRawMode(true);
+  output.write(ansi.hideCursor);
+
+  let buffer = "";
+  let status = "";
+
+  const redraw = () => {
+    output.write(`${ansi.clear}${ansi.home}`);
+    output.write(runtime.render({
+      input: buffer,
+      width: output.columns ?? 80,
+      height: output.rows ?? 24,
+      colorEnabled: true
+    }));
+    if (status) {
+      output.write(`\n${status}`);
+    }
+  };
+
+  redraw();
+
+  let onKeypress;
+
+  await new Promise((resolve) => {
+    onKeypress = async (sequence, key) => {
+      if (key.ctrl && key.name === "c") {
+        resolve();
+        return;
+      }
+
+      if (key.name === "escape") {
+        buffer = "";
+        status = "";
+        redraw();
+        return;
+      }
+
+      if (key.name === "backspace") {
+        buffer = buffer.slice(0, -1);
+        redraw();
+        return;
+      }
+
+      if (key.name === "return") {
+        const line = buffer;
+        buffer = "";
+
+        if (line === ":quit" || line === ":exit") {
+          resolve();
+          return;
+        }
+
+        try {
+          const result = await runtime.submit(line);
+          status = result?.message ?? "";
+        } catch (error) {
+          status = `error: ${error.message}`;
+        }
+
+        redraw();
+        return;
+      }
+
+      if (key.sequence && key.sequence.length === 1 && !key.ctrl && !key.meta) {
+        buffer += sequence;
+        redraw();
+      }
+    };
+
+    input.on("keypress", onKeypress);
+  }).finally(() => {
+    input.off("keypress", onKeypress);
+    input.setRawMode(false);
+    output.write(`${ansi.showCursor}\n`);
+  });
+}
+
+async function searchCurrentFacts({
+  state,
+  factRepository,
+  searchEngine,
+  searchQueryParser,
+  clock
+}) {
+  if (!state.currentQuery) {
+    return null;
+  }
+
+  const facts = await factRepository.list();
+  const ast = searchQueryParser.parse(state.currentQuery);
+  return searchEngine.search(facts, ast, {
+    today: clock().toISOString().slice(0, 10)
+  });
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

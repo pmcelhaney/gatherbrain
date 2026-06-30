@@ -18,8 +18,8 @@ describe("terminal renderers", () => {
     const resultSet = new SearchResultSet([buildFact()]);
 
     assert.equal(
-      new HeaderRenderer().render({ state, resultSet }),
-      "Session: Steve | Query: session:Steve | Mode: Command | Results: 1"
+      new HeaderRenderer().render({ state, resultSet, today: "2026-06-30" }),
+      "sessions/2026-06-30/Steve"
     );
   });
 
@@ -29,8 +29,8 @@ describe("terminal renderers", () => {
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
 
     assert.equal(
-      renderer.render({ state, resultSet }),
-      "1. [todo] Follow up with Steve. due:2026-07-01"
+      renderer.render({ state, resultSet, width: 80, height: 10 }).join("\n"),
+      " 1. todo Follow up with Steve. due:2026-07-01"
     );
   });
 
@@ -46,7 +46,7 @@ describe("terminal renderers", () => {
       renderer.render({
         timeBoxes: [buildTimeBox("actual", "09:00", "10:00", "Steve")],
         planPreview: state.planPreview
-      }),
+      }).join("\n"),
       "09:00-10:00 Steve\n? 11:00-12:00 Counterfact"
     );
   });
@@ -54,19 +54,24 @@ describe("terminal renderers", () => {
   it("renders prompt prefixes", () => {
     const state = new AppState({ currentMode: AppMode.SEARCH });
 
-    assert.equal(new PromptRenderer().render({ state, input: "Steve" }), "/ Steve");
+    assert.equal(new PromptRenderer().render({ state, input: "Steve" }), "> Steve");
   });
 
   it("composes the terminal app render", () => {
     const state = new AppState({ currentSession: "Steve" });
     const app = new TerminalApp({ state });
 
-    assert.equal(app.render({ resultSet: new SearchResultSet([buildFact()]) }), [
-      "Session: Steve | Query: session:Steve | Mode: Command | Results: 1",
-      "",
-      "1. [todo] Follow up with Steve. due:2026-07-01",
-      "",
-      ":"
+    assert.equal(app.render({
+      resultSet: new SearchResultSet([buildFact()]),
+      width: 40,
+      height: 6,
+      today: "2026-06-30"
+    }), [
+      "sessions/2026-06-30/Steve",
+      "----------------------------------------",
+      " 1. todo Follow up with Steve.",
+      "    due:2026-07-01",
+      ">"
     ].join("\n"));
   });
 });

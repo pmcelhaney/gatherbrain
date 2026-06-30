@@ -17,13 +17,44 @@ export class TerminalApp {
     this.promptRenderer = promptRenderer;
   }
 
-  render({ resultSet = null, timeBoxes = [], input = "" } = {}) {
+  render({
+    resultSet = null,
+    timeBoxes = [],
+    input = "",
+    width = 80,
+    height = 24,
+    today = null,
+    colorEnabled = false
+  } = {}) {
+    const header = this.headerRenderer.render({ state: this.state, resultSet, today });
+    const divider = "-".repeat(width);
+    const prompt = this.promptRenderer.render({ state: this.state, input });
+    const bodyHeight = Math.max(1, height - 4);
+    const bodyLines = this.bodyRenderer.render({
+      state: this.state,
+      resultSet,
+      timeBoxes,
+      width,
+      height: bodyHeight,
+      colorEnabled
+    });
+    const paddedBody = padLines(bodyLines, bodyHeight);
+
     return [
-      this.headerRenderer.render({ state: this.state, resultSet }),
-      "",
-      this.bodyRenderer.render({ state: this.state, resultSet, timeBoxes }),
-      "",
-      this.promptRenderer.render({ state: this.state, input })
+      header,
+      divider,
+      ...paddedBody,
+      prompt
     ].join("\n");
   }
+}
+
+function padLines(lines, height) {
+  const result = Array.isArray(lines) ? [...lines] : String(lines).split("\n");
+
+  while (result.length < height) {
+    result.push("");
+  }
+
+  return result.slice(0, height);
 }

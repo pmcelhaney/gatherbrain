@@ -1,9 +1,8 @@
 export class HeaderRenderer {
-  render({ state, resultSet = null }) {
-    const session = state.currentSession?.name ?? "(none)";
-    const query = state.currentQuery ?? "(none)";
-    const count = resultSet?.count ?? 0;
+  render({ state, today = null }) {
+    const date = today ?? new Date().toISOString().slice(0, 10);
+    const session = state.currentSession?.name ?? "(no session)";
 
-    return `Session: ${session} | Query: ${query} | Mode: ${state.currentMode} | Results: ${count}`;
+    return `sessions/${date}/${session}`;
   }
 }

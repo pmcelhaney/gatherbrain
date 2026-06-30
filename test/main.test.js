@@ -13,8 +13,9 @@ describe("main", () => {
     });
 
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /Session: \(none\)/);
-    assert.match(result.stdout, /Mode: Command/);
+    assert.match(result.stdout, /sessions\/2026-06-30\/\(no session\)/);
+    assert.match(result.stdout, /^-{80}$/m);
+    assert.match(result.stdout, />\n$/);
   });
 
   it("runs commands and search through npm start runtime plumbing", () => {
