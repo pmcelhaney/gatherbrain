@@ -161,4 +161,35 @@ describe("createAppRuntime", () => {
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
+
+  it("uses configured fact type and selection actions", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-config-runtime-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      config: {
+        defaultFactType: "note",
+        selectionActions: {
+          actions: {
+            idea: { action: "set_type", value: "idea" }
+          }
+        }
+      },
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit("Follow up with Steve.");
+
+    let rendered = runtime.render();
+    assert.match(rendered, /note Follow up with Steve/);
+
+    assert.equal(await runtime.complete(". i"), ". idea");
+    await runtime.submit(". idea");
+
+    rendered = runtime.render();
+    assert.match(rendered, /idea Follow up with Steve/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
 });

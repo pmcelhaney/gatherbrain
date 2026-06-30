@@ -2,6 +2,8 @@ import readline from "node:readline";
 import { stdin as input, stdout as output } from "node:process";
 import path from "node:path";
 
+import { SelectionActionRegistry } from "./actions/index.js";
+import { defaultAppConfig, loadAppConfig, mergeAppConfig } from "./config/index.js";
 import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
 import { FactRepository, SessionRepository, Workspace } from "./persistence/index.js";
 import { PlanParser, TimeBoxRepository } from "./planning/index.js";
@@ -11,8 +13,10 @@ import { ansi, InputBuffer, TerminalApp } from "./terminal/index.js";
 
 export function createAppRuntime({
   workspacePath = path.join(process.cwd(), "workspace"),
+  config = defaultAppConfig(),
   clock = () => new Date()
 } = {}) {
+  const appConfig = mergeAppConfig(defaultAppConfig(), config);
   const state = new AppState();
   const workspace = new Workspace(workspacePath);
   const factRepository = new FactRepository({ workspace });
@@ -23,7 +27,12 @@ export function createAppRuntime({
   const searchQueryParser = new SearchQueryParser();
   const promptClassifier = new PromptClassifier();
   const planParser = new PlanParser();
-  const completionService = new CompletionService({ sessionRepository });
+  const selectionActionRegistry = SelectionActionRegistry.fromConfig(appConfig.selectionActions);
+  const completionService = new CompletionService({
+    sessionRepository,
+    actionRegistry: selectionActionRegistry,
+    commandNames: ["help", "paste", "restart", "sessions", "switch"]
+  });
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;
   let timeBoxes = [];
@@ -33,8 +42,10 @@ export function createAppRuntime({
     factRepository,
     factSource: factIndex,
     sessionRepository,
+    selectionActionRegistry,
     timeBoxRepository,
     clock,
+    defaultFactType: appConfig.defaultFactType,
     currentResultSetProvider: () => resultSet
   });
 
@@ -136,7 +147,9 @@ function stateForPreview({ state, input, promptClassifier, planParser, clock }) 
 }
 
 export async function main(argv = process.argv.slice(2)) {
+  const config = await loadAppConfig();
   const runtime = createAppRuntime({
+    config,
     workspacePath: process.env.GATHERBRAIN_WORKSPACE
   });
   await runtime.initialize();
