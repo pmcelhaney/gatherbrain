@@ -317,27 +317,6 @@ test('saves typed text as a titled fact with linked mentions in the body', async
   }
 });
 
-test(':new saves a titled fact', async () => {
-  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
-  const rootDirectory = path.join(appDirectory, 'facts');
-
-  try {
-    const state = createPromptState({ appDirectory, rootDirectory });
-
-    const saveResult = await handleEntry(':new Follow up with Alex', state);
-
-    assert.equal(saveResult.action, 'continue');
-    const files = await readdir(rootDirectory);
-    const factFile = files.find((file) => path.extname(file) === '.md');
-    assert.equal(
-      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, factFile), 'utf8')),
-      '---\ntitle: "Follow up with Alex"\ntype: fact\n---\n\nFollow up with Alex\n'
-    );
-  } finally {
-    await rm(appDirectory, { recursive: true, force: true });
-  }
-});
-
 test(':paste writes clipboard contents and a fact pointing to the file', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -886,7 +865,7 @@ test('readClipboard uses osascript for macOS image clipboard contents', async ()
   });
 });
 
-test(':new prompts for a missing title', async () => {
+test(':new is not a built-in command', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -895,29 +874,10 @@ test(':new prompts for a missing title', async () => {
 
     assert.deepEqual(await handleEntry(':new', state), {
       action: 'continue',
-      message: 'Title?'
+      message: 'unknown command :new; :switch <context> | :peek <context> | :clear-peek | :lens <lens> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
     });
-    assert.deepEqual(state.pendingCommand, {
-      commandName: 'new',
-      values: {},
-      argument: {
-        name: 'title',
-        type: 'text',
-        consume: 'rest',
-        prompt: 'Title?'
-      }
-    });
-
-    const saveResult = await handleEntry('Prompted capture', state);
-
-    assert.equal(saveResult.action, 'continue');
     assert.equal(state.pendingCommand, null);
-    const files = await readdir(rootDirectory);
-    const factFile = files.find((file) => path.extname(file) === '.md');
-    assert.equal(
-      markdownWithoutFactUuid(await readFile(path.join(rootDirectory, factFile), 'utf8')),
-      '---\ntitle: "Prompted capture"\ntype: fact\n---\n\nPrompted capture\n'
-    );
+    await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -1123,7 +1083,7 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
@@ -1140,7 +1100,6 @@ test(':help lists commands without saving a fact', async () => {
         ':peek <context>',
         ':clear-peek',
         ':lens <lens>',
-        ':new <title>',
         '<item> :edit',
         ':open | <item> :open',
         '<item> :delete',
@@ -3479,7 +3438,6 @@ test('completes colon command names', async () => {
       ':peek ',
       ':clear-peek ',
       ':lens ',
-      ':new ',
       ':edit ',
       ':open ',
       ':delete ',
@@ -3591,7 +3549,7 @@ test('completes named command arguments', async () => {
       [['/people/Steve Ma'], 'sma']
     );
     assert.deepEqual(
-      await completeEntry(':new Follow up -- wa', state),
+      await completeEntry('Follow up -- wa', state),
       [['waiting'], 'wa']
     );
 

@@ -42,14 +42,6 @@ The saved fact gets:
 - Markdown links in the body for matching `@context` references,
 - `type: fact` unless a type is supplied.
 
-Use `:new` when you want the same behavior through an explicit command:
-
-```text
-:new Follow up with @Alex about the prototype
-```
-
-If you type only `:new`, the app prompts for the fact text.
-
 Add ` -- ` after the fact text to apply the same metadata shorthand used for visible items. Metadata can include one fact type, one due date, and `/context` relations:
 
 ```text

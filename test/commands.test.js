@@ -22,7 +22,6 @@ test('lists built-in command help', () => {
     ':peek <context>',
     ':clear-peek',
     ':lens <lens>',
-    ':new <title>',
     '<item> :edit',
     ':open | <item> :open',
     '<item> :delete',
@@ -35,14 +34,13 @@ test('lists built-in command help', () => {
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | :new <title> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
     'peek',
     'clear-peek',
     'lens',
-    'new',
     'edit',
     'open',
     'delete',
@@ -57,9 +55,7 @@ test('lists built-in command help', () => {
     { name: 'item', type: 'fact', prompt: 'Move which fact?' },
     { name: 'context', type: 'context', consume: 'rest', prompt: 'Move it to which context?' }
   ]);
-  assert.deepEqual(commandArguments('new'), [
-    { name: 'title', type: 'text', consume: 'rest', prompt: 'Title?' }
-  ]);
+  assert.equal(commandArguments('new'), null);
   assert.deepEqual(commandArguments('paste'), [
     { name: 'title', type: 'text', consume: 'rest', prompt: 'Name pasted item?' }
   ]);
@@ -201,10 +197,6 @@ test('parses fact commands', () => {
     dateToday: new Date(2026, 5, 24, 12)
   });
 
-  assert.deepEqual(parseEntry(':new Call Steve'), {
-    title: 'Call Steve',
-    type: 'create_fact'
-  });
   assert.deepEqual(parseEntry('Call Steve -- todo today /people/steve-ma', dateRegistry), {
     title: 'Call Steve',
     operations: [
@@ -214,7 +206,7 @@ test('parses fact commands', () => {
     ],
     type: 'create_fact'
   });
-  assert.deepEqual(parseEntry(':new Call Steve -- today', dateRegistry), {
+  assert.deepEqual(parseEntry('Call Steve -- today', dateRegistry), {
     title: 'Call Steve',
     operations: [
       { property: 'due', type: 'set_fact_property', value: '2026-06-24' }
@@ -226,16 +218,8 @@ test('parses fact commands', () => {
     type: 'create_fact'
   });
   assert.deepEqual(parseEntry(':new'), {
-    type: 'prompt_command_argument',
-    commandName: 'new',
-    values: {},
-    argument: {
-      name: 'title',
-      type: 'text',
-      consume: 'rest',
-      prompt: 'Title?'
-    },
-    prompt: 'Title?'
+    type: 'unknown_command',
+    commandName: ':new'
   });
   assert.deepEqual(parseEntry('2 :edit'), {
     itemNumber: 2,
@@ -423,7 +407,6 @@ test('loads workspace command definitions from config', async () => {
       'peek',
       'clear-peek',
       'lens',
-      'new',
       'edit',
       'open',
       'delete',
@@ -547,7 +530,6 @@ test('workspace command config overrides default commands by name', async () => 
       'peek',
       'clear-peek',
       'lens',
-      'new',
       'edit',
       'open',
       'delete',

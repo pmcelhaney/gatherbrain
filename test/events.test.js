@@ -44,7 +44,7 @@ test('commands append action events', async () => {
       now: () => new Date('2026-06-27T13:14:15.016Z')
     });
 
-    await handleEntry(':new Call Steve', state);
+    await handleEntry('Call Steve', state);
 
     const rows = (await readFile(eventLogFilePath(rootDirectory, '2026-06-27'), 'utf8'))
       .trimEnd()

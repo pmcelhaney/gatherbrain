@@ -41,18 +41,6 @@
       ]
     },
     {
-      "name": "new",
-      "action": "create_fact",
-      "arguments": [
-        {
-          "name": "title",
-          "type": "text",
-          "consume": "rest",
-          "prompt": "Title?"
-        }
-      ]
-    },
-    {
       "name": "edit",
       "action": "edit_fact",
       "arguments": [
