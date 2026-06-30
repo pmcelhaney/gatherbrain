@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Fact } from "../domain/index.js";
 import { AppMode } from "../state/index.js";
+import { CommandRegistry } from "./command-registry.js";
 import { InteractionResult } from "./interaction-result.js";
 import { PromptClassifier } from "./prompt-classifier.js";
 
@@ -10,6 +11,7 @@ export class PromptController {
     state,
     factRepository,
     classifier = new PromptClassifier(),
+    commandRegistry = new CommandRegistry(),
     clock = () => new Date(),
     idGenerator = randomUUID,
     defaultFactType = "fact"
@@ -17,6 +19,7 @@ export class PromptController {
     this.state = state;
     this.factRepository = factRepository;
     this.classifier = classifier;
+    this.commandRegistry = commandRegistry;
     this.clock = clock;
     this.idGenerator = idGenerator;
     this.defaultFactType = defaultFactType;
@@ -28,6 +31,10 @@ export class PromptController {
 
     if (mode === AppMode.CAPTURE) {
       return this.capture(input);
+    }
+
+    if (mode === AppMode.COMMAND) {
+      return this.commandRegistry.execute(input, { state: this.state });
     }
 
     return InteractionResult.classified({ mode });

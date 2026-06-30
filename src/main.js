@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { PromptController } from "./interaction/index.js";
 import { FactRepository, Workspace } from "./persistence/index.js";
-import { AppMode, AppState } from "./state/index.js";
+import { AppState } from "./state/index.js";
 import { TerminalApp } from "./terminal/index.js";
 
 export function createAppRuntime({
@@ -25,7 +25,7 @@ export function createAppRuntime({
     state,
     terminalApp,
     async submit(line) {
-      return handleLine({ line, state, promptController });
+      return promptController.submit(line);
     },
     render() {
       return terminalApp.render();
@@ -66,31 +66,6 @@ export async function main(argv = process.argv.slice(2)) {
 
     output.write(`${runtime.render()}\n`);
   }
-}
-
-async function handleLine({ line, state, promptController }) {
-  const trimmed = line.trim();
-
-  if (trimmed.startsWith(":switch ")) {
-    state.switchSession(trimmed.slice(":switch ".length));
-    return { message: `switched to ${state.currentSession.name}` };
-  }
-
-  if (trimmed === ":restart") {
-    state.restart();
-    return { message: "restarted" };
-  }
-
-  const result = await promptController.submit(line);
-
-  if ([AppMode.SEARCH, AppMode.SELECTION, AppMode.PLAN].includes(result.mode)) {
-    return {
-      ...result,
-      message: `${result.mode} input recognized; execution is not wired yet`
-    };
-  }
-
-  return result;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

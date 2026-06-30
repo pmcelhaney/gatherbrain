@@ -56,4 +56,11 @@ describe("PromptController", () => {
     assert.equal(result.mode, AppMode.SEARCH);
     assert.equal(state.currentMode, AppMode.SEARCH);
   });
+
+  it("executes commands through the interaction layer", async () => {
+    const result = await controller.submit(":switch Architecture Review Board");
+
+    assert.equal(result.action, "switch_session");
+    assert.equal(state.currentSession.name, "Architecture Review Board");
+  });
 });

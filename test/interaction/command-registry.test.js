@@ -1,0 +1,34 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
+import { CommandRegistry } from "../../src/interaction/index.js";
+import { AppState } from "../../src/state/index.js";
+
+describe("CommandRegistry", () => {
+  it("switches the current session", async () => {
+    const state = new AppState();
+    const result = await new CommandRegistry().execute(":switch Architecture Review Board", {
+      state
+    });
+
+    assert.equal(result.action, "switch_session");
+    assert.equal(state.currentSession.name, "Architecture Review Board");
+    assert.equal(state.currentQuery, "session:Architecture Review Board");
+  });
+
+  it("restarts app state", async () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const result = await new CommandRegistry().execute(":restart", { state });
+
+    assert.equal(result.action, "restart");
+    assert.equal(state.currentSession, null);
+  });
+
+  it("recognizes paste before paste mode exists", async () => {
+    const state = new AppState();
+    const result = await new CommandRegistry().execute(":paste", { state });
+
+    assert.equal(result.action, "paste");
+    assert.equal(result.message, "paste mode is not implemented yet");
+  });
+});
