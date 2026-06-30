@@ -48,6 +48,26 @@ describe("FactRepository", () => {
     assert.equal(saved.type, "decision");
   });
 
+  it("lists and looks up active facts by id", async () => {
+    const { fact } = await repository.create(buildFact());
+
+    assert.deepEqual((await repository.list()).map((saved) => saved.id), [fact.id]);
+    assert.equal((await repository.getFactById(fact.id)).content, fact.content);
+  });
+
+  it("saves and trashes facts by id", async () => {
+    const { fact } = await repository.create(buildFact());
+
+    fact.setType("waiting");
+    await repository.saveFact(fact);
+    assert.equal((await repository.getFactById(fact.id)).type, "waiting");
+
+    await repository.trashFact(fact);
+
+    assert.deepEqual(await repository.list(), []);
+    await assert.rejects(() => repository.getFactById(fact.id), /Fact not found/);
+  });
+
   it("moves deleted facts into home session trash", async () => {
     const { filePath } = await repository.create(buildFact());
 

@@ -32,9 +32,52 @@ export class FactRepository {
     return this.codec.parse(markdown);
   }
 
+  async list() {
+    const filePaths = await findMarkdownFiles(this.workspace.rootPath);
+    const facts = [];
+
+    for (const filePath of filePaths) {
+      facts.push(await this.read(filePath));
+    }
+
+    return facts;
+  }
+
+  async getFactById(factId) {
+    const filePath = await this.findPathByFactId(factId);
+
+    if (!filePath) {
+      throw new Error(`Fact not found: ${factId}`);
+    }
+
+    return this.read(filePath);
+  }
+
+  async findPathByFactId(factId) {
+    const filePaths = await findMarkdownFiles(this.workspace.rootPath);
+
+    for (const filePath of filePaths) {
+      if (path.basename(filePath).startsWith(`${factId}-`)) {
+        return filePath;
+      }
+    }
+
+    return null;
+  }
+
   async update(filePath, fact) {
     await fs.writeFile(filePath, this.codec.serialize(fact), "utf8");
     return { fact, filePath };
+  }
+
+  async saveFact(fact) {
+    const filePath = await this.findPathByFactId(fact.id);
+
+    if (!filePath) {
+      return this.create(fact);
+    }
+
+    return this.update(filePath, fact);
   }
 
   async trash(filePath) {
@@ -47,6 +90,16 @@ export class FactRepository {
     await fs.rename(filePath, targetPath);
 
     return { fact, filePath: targetPath };
+  }
+
+  async trashFact(fact) {
+    const filePath = await this.findPathByFactId(fact.id);
+
+    if (!filePath) {
+      throw new Error(`Fact not found: ${fact.id}`);
+    }
+
+    return this.trash(filePath);
   }
 }
 
@@ -66,4 +119,40 @@ function slugFor(content) {
     .slice(0, 48);
 
   return slug || "fact";
+}
+
+async function findMarkdownFiles(rootPath) {
+  const results = [];
+
+  async function walk(directory) {
+    let entries;
+
+    try {
+      entries = await fs.readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        return;
+      }
+
+      throw error;
+    }
+
+    for (const entry of entries) {
+      const entryPath = path.join(directory, entry.name);
+
+      if (entry.isDirectory()) {
+        if (entry.name !== ".trash" && entry.name !== "timeboxes") {
+          await walk(entryPath);
+        }
+        continue;
+      }
+
+      if (entry.isFile() && entry.name.endsWith(".md")) {
+        results.push(entryPath);
+      }
+    }
+  }
+
+  await walk(rootPath);
+  return results.sort();
 }
