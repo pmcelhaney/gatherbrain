@@ -1215,7 +1215,7 @@ test(':search lists matching facts by last updated descending', async () => {
   }
 });
 
-test(':search marks facts that are already in the current context', async () => {
+test(':search excludes facts that are already in the current context', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
   const currentContext = path.join(rootDirectory, 'projects', 'gatherbrain');
@@ -1226,6 +1226,10 @@ test(':search marks facts that are already in the current context', async () => 
     await writeFile(
       path.join(currentContext, 'current.md'),
       '---\ntype: fact\n---\n\nNeed search directly.\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'people', 'Steve Ma', 'already-related.md'),
+      '---\ntype: fact\nrelatedContexts: ["projects/gatherbrain"]\n---\n\nNeed search with an existing relation.\n'
     );
     await writeFile(
       path.join(rootDirectory, 'people', 'Steve Ma', 'related.md'),
@@ -1246,7 +1250,7 @@ test(':search marks facts that are already in the current context', async () => 
 
     assert.deepEqual(await handleEntry(':search search', state), {
       action: 'continue',
-      message: 'search "search" (2 matches)'
+      message: 'search "search" (1 match)'
     });
     assert.deepEqual(
       buildTuiLines({
@@ -1256,10 +1260,9 @@ test(':search marks facts that are already in the current context', async () => 
         columns: 80
       }),
       [
-        'projects/gatherbrain | search "search" (2 matches)',
+        'projects/gatherbrain | search "search" (1 match)',
         '--------------------------------------------------------------------------------',
-        ' 2. Need search with Steve.',
-        ' 1. * Need search directly.'
+        ' 1. Need search with Steve.'
       ]
     );
   } finally {
@@ -3186,6 +3189,20 @@ test(':gather command keeps the current visible list active', async () => {
       (await visibleFactsForState(state)).map((fact) => fact.text),
       ['Follow up with the roadmap.', 'Follow up with Steve.']
     );
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        body: await visibleBodyForState(state),
+        rows: 8,
+        columns: 80
+      }),
+      [
+        'projects | search "Follow up" (2 matches)',
+        '--------------------------------------------------------------------------------',
+        ' 2. Follow up with the roadmap.',
+        ' 1. Follow up with Steve.'
+      ]
+    );
 
     assert.deepEqual(await handleEntry('1 :gather', state), {
       action: 'continue',
@@ -3194,6 +3211,20 @@ test(':gather command keeps the current visible list active', async () => {
     assert.deepEqual(
       (await visibleFactsForState(state)).map((fact) => fact.text),
       ['Follow up with the roadmap.', 'Follow up with Steve.']
+    );
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        body: await visibleBodyForState(state),
+        rows: 8,
+        columns: 80
+      }),
+      [
+        'projects',
+        '--------------------------------------------------------------------------------',
+        ' 2. Follow up with the roadmap.',
+        ' 1. + Follow up with Steve.'
+      ]
     );
     assert.equal(state.temporaryBodyType, 'search');
   } finally {

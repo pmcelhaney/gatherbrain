@@ -2769,24 +2769,49 @@ function showCommandHelp(state, message = null) {
   state.temporaryBodyPlanner = null;
 }
 
-function markSearchFactsInCurrentContext(facts, state) {
+function currentContextRelationForState(state) {
   const currentContextId = contextIdForDirectory(state, state.currentContextDirectory);
 
-  return facts.map((fact) => ({
-    ...fact,
-    ...(fact.contextId === currentContextId ? { currentContextMarker: '*' } : {})
-  }));
+  return currentContextId || '/';
+}
+
+function factIsInCurrentContext(fact, state) {
+  const currentContextId = contextIdForDirectory(state, state.currentContextDirectory);
+  const currentContextRelation = currentContextRelationForState(state);
+
+  return fact.contextId === currentContextId || fact.relations?.includes(currentContextRelation);
+}
+
+function searchFactsOutsideCurrentContext(facts, state) {
+  return facts.filter((fact) => !factIsInCurrentContext(fact, state));
+}
+
+function markTemporarySearchFactGathered(state, fact) {
+  if (state.temporaryBodyType !== 'search' || state.temporaryBody?.type !== 'facts') {
+    return;
+  }
+
+  const key = factIdentity(fact);
+
+  state.temporaryBody = {
+    ...state.temporaryBody,
+    facts: state.temporaryBody.facts.map((candidate) => (
+      factIdentity(candidate) === key
+        ? { ...candidate, currentContextMarker: '+' }
+        : candidate
+    ))
+  };
 }
 
 async function showSearchResults(parsedEntry, state) {
   const previousView = state.temporaryBodyType ?? 'facts';
-  const facts = await searchFacts(state, parsedEntry.query);
+  const facts = searchFactsOutsideCurrentContext(await searchFacts(state, parsedEntry.query), state);
   const matchText = `${facts.length} ${facts.length === 1 ? 'match' : 'matches'}`;
 
   state.temporaryBody = {
     type: 'facts',
     template: 'facts',
-    facts: markSearchFactsInCurrentContext(facts, state)
+    facts
   };
   state.temporaryBodyLines = null;
   state.temporaryBodyPlanner = null;
@@ -3802,6 +3827,7 @@ export async function handleEntry(entry, state) {
       const { fact, itemLabel } = await visibleFactForSelector(state, parsedEntry);
       const contextId = contextIdForDirectory(state, state.currentContextDirectory);
       const relation = await relateWorkspaceFactToContextId(state, fact, contextId);
+      markTemporarySearchFactGathered(state, fact);
 
       const message = `related item ${itemLabel} to ${relation}`;
       state.statusMessage = '';
