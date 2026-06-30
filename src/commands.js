@@ -478,31 +478,40 @@ function parseFactUpdateOperations(updates, registry) {
 }
 
 function parseItemUpdateShorthand(command, registry) {
-  const match = command.match(/^(?<item>[1-9]\d*)(?:\s+(?<updates>.*))?$/u);
+  const tokens = splitCommandTokens(command);
 
-  if (!match) {
+  if (tokens.length < 2 || !new RegExp(`^${itemNumberPattern}$`, 'u').test(tokens[0])) {
     return null;
   }
 
-  const updates = match.groups.updates?.trim() ?? '';
+  for (let splitIndex = 1; splitIndex < tokens.length; splitIndex += 1) {
+    const itemTokens = tokens.slice(0, splitIndex);
 
-  if (updates.length === 0) {
-    return null;
-  }
-
-  const parsedOperations = parseFactUpdateOperations(updates, registry);
-
-  if (parsedOperations?.type === 'usage_error') {
-    return itemUpdateUsageError();
-  }
-
-  return parsedOperations?.length > 0
-    ? {
-      itemNumber: positiveItemNumber(match.groups.item),
-      operations: parsedOperations,
-      type: 'update_fact_shorthand'
+    if (!itemTokens.every((token) => new RegExp(`^${itemNumberPattern}$`, 'u').test(token))) {
+      break;
     }
-    : null;
+
+    const updates = tokens.slice(splitIndex).join(' ');
+    const parsedOperations = parseFactUpdateOperations(updates, registry);
+
+    if (parsedOperations?.length > 0) {
+      const itemNumbers = itemTokens.map(positiveItemNumber);
+
+      return itemNumbers.length === 1
+        ? {
+          itemNumber: itemNumbers[0],
+          operations: parsedOperations,
+          type: 'update_fact_shorthand'
+        }
+        : {
+          itemNumbers,
+          operations: parsedOperations,
+          type: 'update_fact_shorthand'
+        };
+    }
+  }
+
+  return itemUpdateUsageError();
 }
 
 function createFactActionFromTitle(rawTitle, registry, options = {}) {

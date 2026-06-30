@@ -296,11 +296,25 @@ test('parses fact commands', () => {
     ],
     type: 'update_fact_shorthand'
   });
+  assert.deepEqual(parseEntry('1 3 4 done'), {
+    itemNumbers: [1, 3, 4],
+    operations: [
+      { factType: 'done', type: 'set_fact_type' }
+    ],
+    type: 'update_fact_shorthand'
+  });
   assert.deepEqual(parseEntry('17 todo today', dateRegistry), {
     itemNumber: 17,
     operations: [
       { factType: 'todo', type: 'set_fact_type' },
       { property: 'due', type: 'set_fact_property', value: '2026-06-24' }
+    ],
+    type: 'update_fact_shorthand'
+  });
+  assert.deepEqual(parseEntry('1 3 tomorrow', dateRegistry), {
+    itemNumbers: [1, 3],
+    operations: [
+      { property: 'due', type: 'set_fact_property', value: '2026-06-25' }
     ],
     type: 'update_fact_shorthand'
   });

@@ -4038,16 +4038,18 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'update_fact_shorthand') {
-    let itemLabel;
+    let itemLabels;
 
     try {
-      const resolvedFact = await visibleFactForSelector(state, parsedEntry);
-      itemLabel = resolvedFact.itemLabel;
-      let fact = resolvedFact.fact;
+      const resolvedFacts = await visibleFactsForSelectors(state, parsedEntry);
+      itemLabels = resolvedFacts.map(({ itemLabel }) => itemLabel).join(', ');
 
       await validateFactUpdateOperations(state, parsedEntry.operations);
-      fact = await applyFactUpdateOperations(state, fact, parsedEntry.operations);
-      await keepFactInViewIfDropped(state, fact);
+
+      for (const resolvedFact of resolvedFacts) {
+        const fact = await applyFactUpdateOperations(state, resolvedFact.fact, parsedEntry.operations);
+        await keepFactInViewIfDropped(state, fact);
+      }
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);
@@ -4058,7 +4060,9 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    const message = `updated item ${itemLabel}`;
+    const message = Array.isArray(parsedEntry.itemNumbers)
+      ? `updated items ${itemLabels}`
+      : `updated item ${itemLabels}`;
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);

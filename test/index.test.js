@@ -2251,6 +2251,53 @@ test('item update shorthand changes a listed item type', async () => {
   }
 });
 
+test('item update shorthand changes multiple listed items', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const firstFactPath = path.join(rootDirectory, '2026-06-23T09-04-07.012-04-00.md');
+  const secondFactPath = path.join(rootDirectory, '2026-06-23T09-05-07.012-04-00.md');
+  const thirdFactPath = path.join(rootDirectory, '2026-06-23T09-06-07.012-04-00.md');
+
+  try {
+    const commandRegistry = createCommandRegistry(undefined, {
+      dateToday: new Date(2026, 5, 24, 12)
+    });
+    const state = createPromptState({ appDirectory, commandRegistry, rootDirectory });
+    await mkdir(rootDirectory, { recursive: true });
+    await writeFile(
+      firstFactPath,
+      '---\ntype: fact\n---\n\nFirst fact.\n'
+    );
+    await writeFile(
+      secondFactPath,
+      '---\ntype: fact\n---\n\nSecond fact.\n'
+    );
+    await writeFile(
+      thirdFactPath,
+      '---\ntype: fact\n---\n\nThird fact.\n'
+    );
+
+    assert.deepEqual(await handleEntry('1 3 todo tomorrow', state), {
+      action: 'continue',
+      message: 'updated items 1, 3'
+    });
+    assert.equal(
+      markdownWithoutFactUuid(await readFile(firstFactPath, 'utf8')),
+      '---\ntype: todo\ndue: 2026-06-25\n---\n\nFirst fact.\n'
+    );
+    assert.equal(
+      markdownWithoutFactUuid(await readFile(secondFactPath, 'utf8')),
+      '---\ntype: fact\n---\n\nSecond fact.\n'
+    );
+    assert.equal(
+      markdownWithoutFactUuid(await readFile(thirdFactPath, 'utf8')),
+      '---\ntype: todo\ndue: 2026-06-25\n---\n\nThird fact.\n'
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('dot item shorthand updates visible items by row position', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -3500,6 +3547,32 @@ test('previews and highlights multiple item selectors before a command', () => {
       promptLine: '1 3 5 :gather'
     }),
     '\x1b[2J\x1b[Hfacts\n----------------------------------------\n\x1b[7m\x1b[2m 5.\x1b[22m + First.\x1b[27m\n\x1b[2m 4.\x1b[22m Second.\n\x1b[7m\x1b[2m 3.\x1b[22m + Third.\x1b[27m\n\x1b[2m 2.\x1b[22m Fourth.\n\x1b[7m\x1b[2m 1.\x1b[22m + Fifth.\x1b[27m\x1b[8;1H'
+  );
+});
+
+test('previews multiple item update shorthand targets', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const commandRegistry = createCommandRegistry(undefined, {
+    dateToday: new Date(2026, 5, 24, 12)
+  });
+  const state = createPromptState({ appDirectory, commandRegistry, rootDirectory });
+  state.dateToday = new Date(2026, 5, 24, 12);
+
+  assert.equal(
+    renderTui({
+      state,
+      facts: [
+        { id: 'first.md', text: 'First.', type: 'fact' },
+        { id: 'second.md', text: 'Second.', type: 'fact' },
+        { id: 'third.md', text: 'Third.', type: 'fact' },
+        { id: 'fourth.md', text: 'Fourth.', type: 'fact' }
+      ],
+      rows: 7,
+      columns: 50,
+      promptLine: '1 3 todo tomorrow'
+    }),
+    '\x1b[2J\x1b[Hfacts\n--------------------------------------------------\n\x1b[2m 4.\x1b[22m First.\n\x1b[7m\x1b[2m 3.\x1b[22m \x1b[36mtodo\x1b[39m \x1b[35mtomorrow\x1b[39m Second.\x1b[27m\n\x1b[2m 2.\x1b[22m Third.\n\x1b[7m\x1b[2m 1.\x1b[22m \x1b[36mtodo\x1b[39m \x1b[35mtomorrow\x1b[39m Fourth.\x1b[27m\x1b[7;1H'
   );
 });
 
