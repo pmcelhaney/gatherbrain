@@ -3394,6 +3394,16 @@ test('previews item update shorthand on the highlighted item', () => {
     }),
     '\x1b[2J\x1b[Hfacts\n----------------------------------------\n\x1b[7m\x1b[2m 1.\x1b[22m \x1b[36mwaiting\x1b[39m \x1b[35mtoday\x1b[39m Follow up.\x1b[27m\x1b[4;1H'
   );
+  assert.equal(
+    renderTui({
+      state,
+      facts: [{ text: 'Follow up.', type: 'fact' }],
+      rows: 4,
+      columns: 40,
+      promptLine: '1 :gather'
+    }),
+    '\x1b[2J\x1b[Hfacts\n----------------------------------------\n\x1b[7m\x1b[2m 1.\x1b[22m + Follow up.\x1b[27m\x1b[4;1H'
+  );
 });
 
 test('uses dot item shorthand for prompt preview redraw keys', () => {

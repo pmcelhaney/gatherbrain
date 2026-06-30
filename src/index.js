@@ -1288,6 +1288,13 @@ function previewFactForOperations(fact, operations) {
   return previewFact;
 }
 
+function previewFactForGather(fact) {
+  return {
+    ...fact,
+    currentContextMarker: '+'
+  };
+}
+
 function previewFactsForPromptLine(facts, promptLine, state) {
   const promptItemNumber = itemNumberForPromptLine(promptLine);
 
@@ -1297,15 +1304,23 @@ function previewFactsForPromptLine(facts, promptLine, state) {
 
   const parsedEntry = parseEntry(promptLine, state?.commandRegistry);
 
-  if (parsedEntry.type !== 'update_fact_shorthand') {
-    return facts;
+  if (parsedEntry.type === 'update_fact_shorthand') {
+    return facts.map((fact) => (
+      fact.itemNumber === parsedEntry.itemNumber
+        ? previewFactForOperations(fact, parsedEntry.operations)
+        : fact
+    ));
   }
 
-  return facts.map((fact) => (
-    fact.itemNumber === parsedEntry.itemNumber
-      ? previewFactForOperations(fact, parsedEntry.operations)
-      : fact
-  ));
+  if (parsedEntry.type === 'gather_fact') {
+    return facts.map((fact) => (
+      fact.itemNumber === parsedEntry.itemNumber
+        ? previewFactForGather(fact)
+        : fact
+    ));
+  }
+
+  return facts;
 }
 
 export function promptPreviewKeyForLine(line, facts, state = null) {
