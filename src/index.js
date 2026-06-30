@@ -1169,6 +1169,18 @@ function itemNumberForPromptLine(line) {
   return match ? Number(match.groups.itemNumber) : null;
 }
 
+function itemNumbersForPromptLine(line, state = null) {
+  const parsedEntry = parseEntry(line, state?.commandRegistry);
+
+  if (Array.isArray(parsedEntry.itemNumbers)) {
+    return parsedEntry.itemNumbers;
+  }
+
+  return Number.isInteger(parsedEntry.itemNumber)
+    ? [parsedEntry.itemNumber]
+    : [];
+}
+
 function itemNumberForDotToken(dotToken, facts) {
   if (!/^\.+$/u.test(dotToken)) {
     return null;
@@ -1346,17 +1358,18 @@ function previewFactForGather(fact) {
 }
 
 function previewFactsForPromptLine(facts, promptLine, state) {
-  const promptItemNumber = itemNumberForPromptLine(promptLine);
+  const promptItemNumbers = itemNumbersForPromptLine(promptLine, state);
 
-  if (promptItemNumber === null) {
+  if (promptItemNumbers.length === 0) {
     return facts;
   }
 
   const parsedEntry = parseEntry(promptLine, state?.commandRegistry);
+  const selectedItemNumbers = new Set(promptItemNumbers);
 
   if (parsedEntry.type === 'update_fact_shorthand') {
     return facts.map((fact) => (
-      fact.itemNumber === parsedEntry.itemNumber
+      selectedItemNumbers.has(fact.itemNumber)
         ? previewFactForOperations(fact, parsedEntry.operations)
         : fact
     ));
@@ -1364,7 +1377,7 @@ function previewFactsForPromptLine(facts, promptLine, state) {
 
   if (parsedEntry.type === 'gather_fact') {
     return facts.map((fact) => (
-      fact.itemNumber === parsedEntry.itemNumber
+      selectedItemNumbers.has(fact.itemNumber)
         ? previewFactForGather(fact)
         : fact
     ));
@@ -1377,7 +1390,7 @@ export function promptPreviewKeyForLine(line, facts, state = null) {
   const numberedFacts = visibleFactsWithItemNumbers(facts, state);
   const effectiveLine = expandedDotItemShorthandEntry(line, numberedFacts).entry ?? line;
 
-  return itemNumberForPromptLine(effectiveLine) === null ? null : effectiveLine;
+  return itemNumbersForPromptLine(effectiveLine, state).length === 0 ? null : effectiveLine;
 }
 
 function formattedDisplayLines(text, options = {}) {
@@ -1440,10 +1453,17 @@ function factViewModelsForDisplay(facts, options = {}) {
     columns = 80,
     includeColor = false,
     highlightItemNumber = null,
+    highlightItemNumbers = null,
     today = new Date(),
     template = 'facts',
     templateRootDirectory = null
   } = options;
+  const highlightedItemNumbers = highlightItemNumbers instanceof Set
+    ? highlightItemNumbers
+    : new Set([
+      ...(Array.isArray(highlightItemNumbers) ? highlightItemNumbers : []),
+      ...(Number.isInteger(highlightItemNumber) ? [highlightItemNumber] : [])
+    ]);
 
   const numberWidth = Math.max(2, ...facts.map((fact) => String(fact.itemNumber ?? 0).length));
   const continuationPrefix = '    ';
@@ -1451,7 +1471,7 @@ function factViewModelsForDisplay(facts, options = {}) {
 
   return facts.map((fact, factIndex) => {
     const itemNumber = fact.itemNumber ?? facts.length - factIndex;
-    const highlightedInView = itemNumber === highlightItemNumber;
+    const highlightedInView = highlightedItemNumbers.has(itemNumber);
     const deletedMarker = fact.deletedInView ? '[deleted]' : '';
     const rawBodyText = fact.text ?? '';
     const rawTitleText = fact.title?.trim() ?? '';
@@ -1591,10 +1611,13 @@ export function buildPagedFactLines(options = {}) {
   const numberedFacts = visibleFactsWithItemNumbers(facts, state);
   const effectivePromptLine = expandedDotItemShorthandEntry(promptLine, numberedFacts).entry ?? promptLine;
   const previewFacts = previewFactsForPromptLine(numberedFacts, effectivePromptLine, state);
-  const effectiveHighlightItemNumber = highlightItemNumber ?? itemNumberForPromptLine(effectivePromptLine);
+  const effectiveHighlightItemNumbers = itemNumbersForPromptLine(effectivePromptLine, state);
+  const highlightItemNumbers = effectiveHighlightItemNumbers.length > 0
+    ? effectiveHighlightItemNumbers
+    : (Number.isInteger(highlightItemNumber) ? [highlightItemNumber] : []);
   const factViewModels = factViewModelsForDisplay(previewFacts, {
     columns,
-    highlightItemNumber: effectiveHighlightItemNumber,
+    highlightItemNumbers,
     includeColor,
     today,
     template,
