@@ -74,6 +74,9 @@ lists all facts.
 
 Search results are ordered newest first by fact creation time.
 
+Session search supports quoted values, unquoted multi-word session values, and
+`@Session Name` shorthand.
+
 ---
 
 ## Time Box
@@ -240,6 +243,8 @@ In plan mode it displays the calendar.
 Fact rows are numbered at the left with a muted number prefix. The fact type is
 shown before the content.
 
+Calendar rows are numbered so the user can update or delete visible time boxes.
+
 Due dates are displayed as friendly labels when possible:
 
 - today
@@ -288,7 +293,12 @@ The mode is inferred from the first character entered.
 | Command | Behavior |
 | --- | --- |
 | `:switch <session>` | Switches to the named session |
+| `:session <number>` | Switches to a numbered session from `:sessions` |
 | `:sessions` | Lists sessions discovered from fact folders and timebox files |
+| `:inspect <number>` | Shows full metadata and file path for a visible fact |
+| `:timebox <number> <range> <session>` | Updates a visible time box |
+| `:timebox delete <number>` | Deletes a visible time box |
+| `:undo` | Undoes the most recent selection action in memory |
 | `:help` | Shows in-app help |
 | `:restart` | Clears current session, query, selection, plan preview, and visible panels |
 | `:paste` | Reserved for a future paste/import mode |
@@ -313,6 +323,8 @@ Initial supported config:
   }
 }
 ```
+
+The repository includes `gatherbrain.config.example.json` as a starter config.
 
 ---
 

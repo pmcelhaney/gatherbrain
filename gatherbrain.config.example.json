@@ -1,0 +1,33 @@
+{
+  "defaultFactType": "fact",
+  "selectionActions": {
+    "actions": {
+      "idea": {
+        "action": "set_type",
+        "value": "idea"
+      },
+      "todo": {
+        "action": "set_type",
+        "value": "todo"
+      },
+      "waiting": {
+        "action": "set_type",
+        "value": "waiting"
+      },
+      "done": {
+        "action": "set_type",
+        "value": "done"
+      },
+      "tomorrow": {
+        "action": "set_due",
+        "value": "tomorrow"
+      },
+      "delete": {
+        "action": "trash"
+      },
+      "gather": {
+        "action": "associate_current_session"
+      }
+    }
+  }
+}

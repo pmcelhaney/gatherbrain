@@ -14,10 +14,14 @@ The app currently supports:
 - A persistent terminal screen with a header, fact body, and prompt.
 - Session switching with `:switch <session>`.
 - Session discovery with `:sessions`.
+- Numbered session navigation with `:session <number>`.
 - Capturing facts into the current session.
 - Searching persisted facts with `/...` queries and shortcuts.
+- Fact inspection with `:inspect <number>`.
 - Selection actions such as `. tomorrow`, `. todo`, `. gather`, and `. delete`.
+- Undo for the last selection action with `:undo`.
 - Planning time boxes with `; 9-10 Steve`.
+- Updating and deleting time boxes with `:timebox`.
 - Live mode, plan, and completion feedback while typing in the TUI.
 - Config loading from `gatherbrain.config.json`.
 - Markdown fact storage and daily text-file timebox storage.
@@ -83,6 +87,8 @@ Search facts:
 / 
 /Search shortcuts
 /session:"Thinking about Gatherbrain design"
+/session:Thinking about Gatherbrain design
+/@Thinking about Gatherbrain design
 /type:todo
 /due:today
 //current
@@ -105,6 +111,13 @@ Plan time:
 ```text
 ; 9-10 Thinking about Gatherbrain design
 ; tomorrow 14:30-15:00 Reading
+```
+
+Edit planned time:
+
+```text
+:timebox 1 10-11 Architecture Review Board
+:timebox delete 1
 ```
 
 Exit:
@@ -140,6 +153,9 @@ when the app starts. User settings merge over the built-in defaults.
   }
 }
 ```
+
+See [gatherbrain.config.example.json](gatherbrain.config.example.json) for a
+complete starter file.
 
 ## Development
 

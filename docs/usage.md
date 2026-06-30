@@ -47,7 +47,12 @@ List discovered sessions:
 :sessions
 ```
 
-The current session is marked with `*`.
+The current session is marked with `*`, and sessions are numbered. Switch to a
+numbered session:
+
+```text
+:session 2
+```
 
 ## Capturing Facts
 
@@ -74,6 +79,8 @@ Search mode begins with `/`.
 /type:todo
 /due:today
 /session:"Architecture Review Board"
+/session:Architecture Review Board
+/@Architecture Review Board
 ```
 
 `/` by itself refreshes the current query. If there is no current query, it uses
@@ -156,6 +163,24 @@ Current built-in actions:
 | `delete` | Moves the fact to `.trash` |
 | `gather` | Associates the fact with the current session |
 
+Undo the most recent selection action:
+
+```text
+:undo
+```
+
+Undo is in-memory and only covers the last selection action in the current app
+run.
+
+Inspect one visible fact:
+
+```text
+:inspect 1
+```
+
+The inspect view shows the fact UUID, type, created timestamp, home session,
+associated sessions, due date, file path, and content.
+
 ## Planning Time
 
 Plan mode begins with `;`.
@@ -178,12 +203,24 @@ Each line looks like:
 09:00-10:00 | Steve | 2026-06-30-0900-1000-steve
 ```
 
+Calendar rows are numbered in plan mode. Update or delete a visible time box:
+
+```text
+:timebox 1 10-11 Architecture Review Board
+:timebox delete 1
+```
+
 ## Commands
 
 | Command | Status |
 | --- | --- |
 | `:switch <session>` | Switches to a session |
+| `:session <number>` | Switches to a numbered session from `:sessions` |
 | `:sessions` | Lists sessions discovered from facts and time boxes |
+| `:inspect <number>` | Shows full details for a visible fact |
+| `:timebox <number> <range> <session>` | Updates a visible time box |
+| `:timebox delete <number>` | Deletes a visible time box |
+| `:undo` | Undoes the most recent selection action |
 | `:help` | Shows in-app help |
 | `:restart` | Clears current app state |
 | `:paste` | Recognized, but paste mode is not implemented yet |
@@ -215,6 +252,9 @@ Example:
 ```
 
 Configured selection actions are available to both execution and completion.
+
+Use [../gatherbrain.config.example.json](../gatherbrain.config.example.json) as
+a starter config.
 
 ## Storage
 
