@@ -249,6 +249,9 @@ Capture mode is the default.
 
 Anything entered becomes a new fact.
 
+Captured facts use the default type `fact` unless a later action changes the
+type.
+
 Example:
 
 ```text
