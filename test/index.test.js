@@ -925,7 +925,7 @@ test('named commands prompt for missing arguments', async () => {
         prompt: 'Switch to which context?'
       }
     });
-    assert.deepEqual(await completeEntry('my', state), [['/my-cool-project'], 'my']);
+    assert.deepEqual(await completeEntry('my', state), [['my-cool-project'], 'my']);
     assert.deepEqual(await handleEntry('my-cool-project', state), {
       action: 'continue',
       message: 'context my-cool-project'
@@ -3258,27 +3258,27 @@ test('completes :switch context names', async () => {
     );
     assert.deepEqual(
       await completeEntry(':switch deep', state),
-      [['deep project', 'deep-project', 'deep-project/child'], 'deep']
+      [['deep project', 'deep-project'], 'deep']
     );
     assert.deepEqual(
       await completeEntry(':switch ', state),
-      [['/alpha', '/alpha/deep project', '/alpha/deep-project', '/alpha/deep-project/child', '/alpha/sibling-project', '/my-cool-project', '/other-project', '/people', '/people/Megan Wright', '/people/Stephanie Stephens', '/people/Steve Ma'], '']
+      [['alpha', 'deep project', 'deep-project', 'child', 'sibling-project', 'my-cool-project', 'other-project', 'people', 'Megan Wright', 'Stephanie Stephens', 'Steve Ma'], '']
     );
     assert.deepEqual(
       await completeEntry(':switch /my', state),
-      [['/my-cool-project'], '/my']
+      [['my-cool-project'], '/my']
     );
     assert.deepEqual(
       await completeEntry(':switch /alpha/deep\\ p', state),
-      [['/alpha/deep\\ project'], '/alpha/deep\\ p']
+      [['deep\\ project'], '/alpha/deep\\ p']
     );
     assert.deepEqual(
       await completeEntry(':switch /MY', state),
-      [['/my-cool-project'], '/MY']
+      [['my-cool-project'], '/MY']
     );
     assert.deepEqual(
       await completeEntry(':switch /people/Ste', state),
-      [['/people/Stephanie Stephens', '/people/Steve Ma'], '/people/Ste']
+      [['Stephanie Stephens', 'Steve Ma'], '/people/Ste']
     );
     assert.deepEqual(
       await completeEntry(':switch Ste', state),
@@ -3293,23 +3293,23 @@ test('completes :switch context names', async () => {
 
     assert.deepEqual(
       await completeEntry(':switch ../s', state),
-      [['/alpha/sibling-project'], '../s']
+      [['sibling-project'], '../s']
     );
     assert.deepEqual(
       await completeEntry(':switch ../S', state),
-      [['/alpha/sibling-project'], '../S']
+      [['sibling-project'], '../S']
     );
     assert.deepEqual(
       await completeEntry(':switch ./c', state),
-      [['/alpha/deep-project/child'], './c']
+      [['child'], './c']
     );
     assert.deepEqual(
       await completeEntry(':switch ./C', state),
-      [['/alpha/deep-project/child'], './C']
+      [['child'], './C']
     );
     assert.deepEqual(
       await completeEntry(':switch /other', state),
-      [['/other-project'], '/other']
+      [['other-project'], '/other']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -3328,19 +3328,19 @@ test('completes :peek context names', async () => {
 
     assert.deepEqual(
       await completeEntry(':peek Al', state),
-      [['/people/Alex'], 'Al']
+      [['Alex'], 'Al']
     );
     assert.deepEqual(
       await completeEntry(':peek al', state),
-      [['/people/Alex'], 'al']
+      [['Alex'], 'al']
     );
     assert.deepEqual(
       await completeEntry(':peek sis', state),
-      [['/people/Mike Sisto'], 'sis']
+      [['Mike Sisto'], 'sis']
     );
     assert.deepEqual(
       await completeEntry(':peek ', state),
-      [['/people', '/people/Alex', '/people/Mike Sisto', '/projects', '/projects/gatherbrain'], '']
+      [['people', 'Alex', 'Mike Sisto', 'projects', 'gatherbrain'], '']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -3474,19 +3474,19 @@ test('completes named command arguments', async () => {
     );
     assert.deepEqual(
       await completeEntry(':peek Steve', state),
-      [['/people/Steve Ma'], 'Steve']
+      [['Steve Ma'], 'Steve']
     );
     assert.deepEqual(
       await completeEntry(':plan 9 gather', state),
-      [['/projects/gatherbrain'], 'gather']
+      [['gatherbrain'], 'gather']
     );
     assert.deepEqual(
       await completeEntry('1 :move /people/S', state),
-      [['/people/Steve Ma'], '/people/S']
+      [['Steve Ma'], '/people/S']
     );
     assert.deepEqual(
       await completeEntry('. :move /people/S', state),
-      [['/people/Steve Ma'], '/people/S']
+      [['Steve Ma'], '/people/S']
     );
     assert.deepEqual(
       await completeEntry('1 :m', state),
@@ -3494,7 +3494,7 @@ test('completes named command arguments', async () => {
     );
     assert.deepEqual(
       await completeEntry('1 :move /people/Steve\\ M', state),
-      [['/people/Steve\\ Ma'], '/people/Steve\\ M']
+      [['Steve\\ Ma'], '/people/Steve\\ M']
     );
     assert.deepEqual(
       await completeEntry('1 d', state),
@@ -3510,19 +3510,19 @@ test('completes named command arguments', async () => {
     );
     assert.deepEqual(
       await completeEntry('1 /people/S', state),
-      [['/people/Steve Ma'], '/people/S']
+      [['Steve Ma'], '/people/S']
     );
     assert.deepEqual(
       await completeEntry('1 /people/Steve\\ M', state),
-      [['/people/Steve\\ Ma'], '/people/Steve\\ M']
+      [['Steve\\ Ma'], '/people/Steve\\ M']
     );
     assert.deepEqual(
       await completeEntry('1 /people/Steve\\ ', state),
-      [['/people/Steve\\ Ma'], '/people/Steve\\ ']
+      [['Steve\\ Ma'], '/people/Steve\\ ']
     );
     assert.deepEqual(
       await completeEntry('1 sma', state),
-      [['/people/Steve Ma'], 'sma']
+      [['Steve Ma'], 'sma']
     );
     assert.deepEqual(
       await completeEntry(':lens t', state),
@@ -3538,15 +3538,15 @@ test('completes named command arguments', async () => {
     );
     assert.deepEqual(
       await completeEntry('Follow up -- /people/S', state),
-      [['/people/Steve Ma'], '/people/S']
+      [['Steve Ma'], '/people/S']
     );
     assert.deepEqual(
       await completeEntry('Follow up -- /people/Steve\\ M', state),
-      [['/people/Steve\\ Ma'], '/people/Steve\\ M']
+      [['Steve\\ Ma'], '/people/Steve\\ M']
     );
     assert.deepEqual(
       await completeEntry('Follow up -- sma', state),
-      [['/people/Steve Ma'], 'sma']
+      [['Steve Ma'], 'sma']
     );
     assert.deepEqual(
       await completeEntry('Follow up -- wa', state),
@@ -3571,7 +3571,7 @@ test('completes named command arguments', async () => {
   }
 });
 
-test('completes bare metadata context words as escaped absolute paths', async () => {
+test('completes bare metadata context words as escaped directory names', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
@@ -3584,11 +3584,11 @@ test('completes bare metadata context words as escaped absolute paths', async ()
 
     assert.deepEqual(
       await completeEntry('4 Ste', state),
-      [['/people/Steve\\ Ma', '/people/Steve\\ Stephanie\\ Stevens'], 'Ste']
+      [['Steve\\ Ma', 'Steve\\ Stephanie\\ Stevens'], 'Ste']
     );
     assert.deepEqual(
       await completeEntry('Follow up -- Ste', state),
-      [['/people/Steve\\ Ma', '/people/Steve\\ Stephanie\\ Stevens'], 'Ste']
+      [['Steve\\ Ma', 'Steve\\ Stephanie\\ Stevens'], 'Ste']
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });

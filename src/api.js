@@ -340,6 +340,12 @@ export async function resolveExistingSwitchContextId(contextReference, state) {
       return rootRelativeContextId;
     }
 
+    const directoryNameContextId = uniqueContextIdForDirectoryName(requestedContext, model);
+
+    if (directoryNameContextId) {
+      return directoryNameContextId;
+    }
+
     const suffixContextId = uniqueContextIdForSuffix(requestedContext, model);
 
     if (suffixContextId) {
@@ -388,6 +394,47 @@ function uniqueContextIdForAlias(contextReference, model) {
   return matches.at(0) ?? null;
 }
 
+function contextNameKey(contextName) {
+  return contextName.toLocaleLowerCase('en-US');
+}
+
+function contextDirectoryName(contextId) {
+  return contextId.split('/').at(-1) ?? contextId;
+}
+
+function contextIdsForDirectoryName(contextReference, model) {
+  const requestedContext = contextReference.trim().replace(/^@/u, '');
+
+  if (
+    requestedContext.length === 0
+    || requestedContext.includes('/')
+    || requestedContext === '.'
+    || requestedContext === '..'
+  ) {
+    return [];
+  }
+
+  const requestedKey = contextNameKey(requestedContext);
+
+  return [...model.contexts.values()]
+    .filter((context) => (
+      context.id !== ''
+      && contextNameKey(contextDirectoryName(context.id)) === requestedKey
+    ))
+    .map((context) => context.id)
+    .sort();
+}
+
+function uniqueContextIdForDirectoryName(contextReference, model) {
+  const matches = contextIdsForDirectoryName(contextReference, model);
+
+  if (matches.length > 1) {
+    throw new Error(`context ${contextReference} is ambiguous`);
+  }
+
+  return matches.at(0) ?? null;
+}
+
 function contextIdHasSuffix(contextId, contextReference) {
   const contextParts = contextReferenceParts(contextId);
   const referenceParts = contextReferenceParts(contextReference);
@@ -421,7 +468,47 @@ export function contextHasHiddenPathPart(contextDirectory, state) {
     .some((pathPart) => pathPart.startsWith('.'));
 }
 
+function contextLabel(contextId) {
+  return contextId === '' ? '/' : `/${contextId}`;
+}
+
+function duplicateContextDirectoryNameMessage(contextName, contextId) {
+  return `context directory name ${contextName} already exists at ${contextLabel(contextId)}`;
+}
+
+async function assertContextDirectoryNamesAvailable(state, contextDirectory) {
+  const model = await ensureWorkspaceModel(state);
+  const targetContextId = contextIdForDirectory(state, contextDirectory);
+  const targetParts = contextReferenceParts(targetContextId);
+  const plannedNames = new Map();
+
+  for (let index = 0; index < targetParts.length; index += 1) {
+    const candidateId = targetParts.slice(0, index + 1).join('/');
+
+    if (model.contexts.has(candidateId)) {
+      continue;
+    }
+
+    const candidateName = contextDirectoryName(candidateId);
+    const candidateKey = contextNameKey(candidateName);
+    const existingContextId = [...model.contexts.keys()]
+      .filter((contextId) => contextId !== '')
+      .find((contextId) => contextNameKey(contextDirectoryName(contextId)) === candidateKey);
+
+    if (existingContextId) {
+      throw new Error(duplicateContextDirectoryNameMessage(candidateName, existingContextId));
+    }
+
+    if (plannedNames.has(candidateKey)) {
+      throw new Error(duplicateContextDirectoryNameMessage(candidateName, plannedNames.get(candidateKey)));
+    }
+
+    plannedNames.set(candidateKey, candidateId);
+  }
+}
+
 export async function createContext(state, contextDirectory) {
+  await assertContextDirectoryNamesAvailable(state, contextDirectory);
   await mkdir(contextDirectory, { recursive: true });
   await refreshContext(await ensureWorkspaceModel(state), contextDirectory);
   const contextId = contextIdForDirectory(state, contextDirectory);
@@ -518,7 +605,9 @@ export async function moveWorkspaceFact(state, fact, contextReference) {
   const requestedTargetContextId = contextIdForSwitchReference(contextReference, state);
   const targetContextId = model.contexts.has(requestedTargetContextId)
     ? requestedTargetContextId
-    : uniqueContextIdForAlias(contextReference, model) ?? requestedTargetContextId;
+    : uniqueContextIdForAlias(contextReference, model)
+      ?? uniqueContextIdForDirectoryName(contextReference, model)
+      ?? requestedTargetContextId;
 
   if (!model.contexts.has(targetContextId)) {
     throw new Error(`context ${contextReference} does not exist`);
@@ -565,10 +654,10 @@ export async function relationForContextReference(contextReference, state) {
   const model = await ensureWorkspaceModel(state);
   const knownContexts = await contextIds(state);
   const matches = knownContexts.filter((contextName) => {
-    const contextFolder = contextName.split('/').at(-1) ?? contextName;
+    const contextFolder = contextDirectoryName(contextName);
 
-    return contextName === normalizedContext
-      || contextFolder === normalizedContext;
+    return contextNameKey(contextName) === contextNameKey(normalizedContext)
+      || contextNameKey(contextFolder) === contextNameKey(normalizedContext);
   });
 
   if (matches.length === 0) {

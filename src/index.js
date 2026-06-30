@@ -2577,8 +2577,8 @@ function contextCompletionMatchRank(contextName, partialContext) {
 
   if (
     parsedPartialContext.length === 0
-    || startsWithCaseInsensitive(contextName.name, parsedPartialContext)
-    || startsWithCaseInsensitive(comparableName, parsedPartialContext)
+    || (pathQualified && startsWithCaseInsensitive(contextName.name, parsedPartialContext))
+    || (pathQualified && startsWithCaseInsensitive(comparableName, parsedPartialContext))
     || startsWithCaseInsensitive(contextName.folder, parsedPartialContext)
     || contextName.aliases?.some((alias) => startsWithCaseInsensitive(alias, parsedPartialContext))
   ) {
@@ -2589,8 +2589,7 @@ function contextCompletionMatchRank(contextName, partialContext) {
     return null;
   }
 
-  return hasWordStartCaseInsensitive(contextName.name, parsedPartialContext)
-    || hasWordStartCaseInsensitive(contextName.folder, parsedPartialContext)
+  return hasWordStartCaseInsensitive(contextName.folder, parsedPartialContext)
     || contextName.aliases?.some((alias) => hasWordStartCaseInsensitive(alias, parsedPartialContext))
     ? 1
     : null;
@@ -2605,8 +2604,8 @@ function contextNameCompletionMatchRank(contextName, partialContext) {
 
   if (
     parsedPartialContext.length === 0
-    || startsWithCaseInsensitive(contextName.name, parsedPartialContext)
-    || startsWithCaseInsensitive(comparableName, parsedPartialContext)
+    || (pathQualified && startsWithCaseInsensitive(contextName.name, parsedPartialContext))
+    || (pathQualified && startsWithCaseInsensitive(comparableName, parsedPartialContext))
     || startsWithCaseInsensitive(contextName.folder, parsedPartialContext)
   ) {
     return 0;
@@ -2616,23 +2615,20 @@ function contextNameCompletionMatchRank(contextName, partialContext) {
     return null;
   }
 
-  return hasWordStartCaseInsensitive(contextName.name, parsedPartialContext)
-    || hasWordStartCaseInsensitive(contextName.folder, parsedPartialContext)
+  return hasWordStartCaseInsensitive(contextName.folder, parsedPartialContext)
     ? 1
     : null;
 }
 
 function contextCompletionValue(context, partialContext = '') {
-  const rawValue = context.completion ?? context.name;
-  const value = rawValue.startsWith('/') ? rawValue : `/${rawValue}`;
+  const value = context.completion ?? context.folder ?? context.name;
   const partial = typeof partialContext === 'string' ? partialContext : '';
 
   return partial.includes('\\') ? escapedCompletionValue(value) : value;
 }
 
 function escapedContextCompletionValue(context) {
-  const rawValue = context.completion ?? context.name;
-  const value = rawValue.startsWith('/') ? rawValue : `/${rawValue}`;
+  const value = context.completion ?? context.folder ?? context.name;
 
   return escapedCompletionValue(value);
 }
@@ -2661,6 +2657,13 @@ function contextReferenceParts(contextReference) {
   return contextReference.split('/').filter((pathPart) => pathPart.length > 0);
 }
 
+function contextCompletionForId(contextId) {
+  return {
+    folder: contextId.split('/').at(-1) ?? contextId,
+    name: contextId
+  };
+}
+
 function contextPathSegmentCompletion(contextName, partialContext) {
   const parsedPartialContext = splitCompletionSegments(partialContext).map((segment) => segment.value).join(' ');
 
@@ -2675,7 +2678,7 @@ function contextPathSegmentCompletion(contextName, partialContext) {
     return null;
   }
 
-  return pathParts.slice(matchingIndex).join('/');
+  return pathParts[matchingIndex];
 }
 
 async function matchingSwitchContextCompletions(partialContext, state) {
@@ -2688,7 +2691,7 @@ async function matchingSwitchContextCompletions(partialContext, state) {
 
     return contexts
       .filter((contextId) => startsWithCaseInsensitive(contextId, partialId))
-      .map((contextId) => ({ name: contextId }));
+      .map(contextCompletionForId);
   }
 
   if (partialContext.startsWith('./') || partialContext === '.') {
@@ -2698,7 +2701,7 @@ async function matchingSwitchContextCompletions(partialContext, state) {
     return contexts
       .filter((contextId) => startsWithCaseInsensitive(contextId, `${prefix}${childPartial}`))
       .filter((contextId) => contextId !== currentContextId)
-      .map((contextId) => ({ name: contextId }));
+      .map(contextCompletionForId);
   }
 
   if (partialContext.startsWith('../') || partialContext === '..') {
@@ -2717,7 +2720,7 @@ async function matchingSwitchContextCompletions(partialContext, state) {
     return contexts
       .filter((contextId) => targetPrefix.length === 0 || startsWithCaseInsensitive(contextId, targetPrefix))
       .filter((contextId) => contextId !== baseId)
-      .map((contextId) => ({ name: contextId }));
+      .map(contextCompletionForId);
   }
 
   const matches = await matchingContextCompletions(partialContext, state);

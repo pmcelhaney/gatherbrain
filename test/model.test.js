@@ -165,6 +165,22 @@ test('ignores hidden directories when loading model', async () => {
   }
 });
 
+test('rejects duplicate context directory names case-insensitively', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-model-'));
+
+  try {
+    await mkdir(path.join(directory, 'people', 'Redis'), { recursive: true });
+    await mkdir(path.join(directory, 'vendors', 'redis'), { recursive: true });
+
+    await assert.rejects(
+      loadWorkspaceModel({ rootDirectory: directory }),
+      /duplicate context directory name "redis": \/people\/Redis, \/vendors\/redis/u
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('refreshes and removes facts in an existing model', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-model-'));
   const factPath = path.join(directory, 'fact.md');

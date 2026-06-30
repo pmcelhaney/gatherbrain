@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -96,6 +96,24 @@ test('creates contexts and resolves unix-like switch references', async () => {
   }
 });
 
+test('does not create contexts with duplicate directory names', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-api-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await createContext(state, path.join(rootDirectory, 'people', 'Redis'));
+
+    await assert.rejects(
+      createContext(state, path.join(rootDirectory, 'vendors', 'redis')),
+      /context directory name redis already exists at \/people\/Redis/u
+    );
+    await assert.rejects(access(path.join(rootDirectory, 'vendors')), { code: 'ENOENT' });
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('mutates facts through the workspace API', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-api-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -115,7 +133,7 @@ test('mutates facts through the workspace API', async () => {
     assert.equal(state.model.facts.get('ask-steve.md').type, 'waiting');
     assert.equal(state.model.facts.get('ask-steve.md').properties.due, '2026-07-04');
 
-    assert.equal(await relateWorkspaceFact(state, fact, 'Steve Ma'), 'people/Steve Ma');
+    assert.equal(await relateWorkspaceFact(state, fact, 'steve ma'), 'people/Steve Ma');
     assert.deepEqual(state.model.facts.get('ask-steve.md').relations, ['people/Steve Ma']);
 
     await deleteWorkspaceFact(state, fact);

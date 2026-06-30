@@ -59,6 +59,35 @@ function makeContext(rootPath, contextId) {
   };
 }
 
+function contextNameKey(contextName) {
+  return contextName.toLocaleLowerCase('en-US');
+}
+
+function duplicateContextNameError(nameKey, contextIds) {
+  const locations = contextIds.map((contextId) => (contextId === '' ? '/' : `/${contextId}`)).join(', ');
+
+  return new Error(`duplicate context directory name "${nameKey}": ${locations}`);
+}
+
+function assertUniqueContextDirectoryName(model, contextId) {
+  if (contextId === '') {
+    return;
+  }
+
+  const contextName = contextNameForId(contextId, model.rootPath);
+  const nameKey = contextNameKey(contextName);
+  const matches = [...model.contexts.keys()]
+    .filter((candidateId) => (
+      candidateId !== ''
+      && contextNameKey(contextNameForId(candidateId, model.rootPath)) === nameKey
+    ))
+    .sort();
+
+  if (matches.length > 1) {
+    throw duplicateContextNameError(nameKey, matches);
+  }
+}
+
 function ensureContext(model, contextId) {
   if (model.contexts.has(contextId)) {
     return model.contexts.get(contextId);
@@ -66,6 +95,7 @@ function ensureContext(model, contextId) {
 
   const context = makeContext(model.rootPath, contextId);
   model.contexts.set(contextId, context);
+  assertUniqueContextDirectoryName(model, contextId);
 
   if (context.parentId !== null) {
     const parent = ensureContext(model, context.parentId);
