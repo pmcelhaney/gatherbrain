@@ -48,7 +48,7 @@ A fact is a single unit of knowledge.
 
 A fact has:
 
-- id
+- id, stored as a UUID
 - content
 - type
 - created timestamp
@@ -94,18 +94,18 @@ Directory layout:
 <workspace>/
     2026-06-30/
         Architecture Review Board/
-            202606301015-review.md
-            202606301030-risk.md
+            6f2308de-02e9-45db-8ff0-65ac793f4a24-review.md
+            9b099737-48ad-4b28-88d3-ae75c66c9e24-risk.md
 
         Steve/
-            202606301145-follow-up.md
+            5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a-follow-up.md
 ```
 
 Each fact contains front matter similar to:
 
 ```yaml
 ---
-id: 202606301015
+id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
 type: observation
 created: 2026-06-30T10:15:23-04:00
 home_session: Architecture Review Board

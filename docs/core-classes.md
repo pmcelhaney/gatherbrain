@@ -31,7 +31,7 @@ Represents one Markdown-backed unit of knowledge.
 
 Core fields:
 
-- `id`
+- `id`, stored as a UUID
 - `content`
 - `type`
 - `createdAt`
@@ -42,6 +42,7 @@ Core fields:
 Responsibilities:
 
 - Enforce the invariant that every fact has exactly one home session.
+- Enforce that every fact ID is a UUID.
 - Add or remove associated sessions without duplicating the home session.
 - Apply domain changes such as `setType`, `setDueDate`, and `associateSession`.
 - Produce a serializable representation for storage.
