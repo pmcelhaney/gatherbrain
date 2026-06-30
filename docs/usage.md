@@ -18,6 +18,9 @@ Gatherbrain opens a terminal screen with:
 The default workspace is `./workspace`. It is ignored by git because it contains
 local user data.
 
+On startup, Gatherbrain loads persisted facts and today's time boxes from the
+workspace. Search results are ordered newest first.
+
 Use `GATHERBRAIN_WORKSPACE` to choose another storage location:
 
 ```bash
@@ -38,6 +41,14 @@ capturing facts.
 There is no separate session creation command yet. Switching to a new name is
 enough; the session becomes real when facts or time boxes are stored for it.
 
+List discovered sessions:
+
+```text
+:sessions
+```
+
+The current session is marked with `*`.
+
 ## Capturing Facts
 
 In capture mode, plain text becomes a fact in the current session.
@@ -46,7 +57,8 @@ In capture mode, plain text becomes a fact in the current session.
 Mike prefers async architecture reviews.
 ```
 
-Captured facts currently use the default type `fact`.
+Captured facts use the configured default type. Without config, the default type
+is `fact`.
 
 Facts are stored as Markdown files with front matter beneath the workspace date
 and session folder.
@@ -56,12 +68,16 @@ and session folder.
 Search mode begins with `/`.
 
 ```text
+/
 /Steve
 /"async architecture"
 /type:todo
 /due:today
 /session:"Architecture Review Board"
 ```
+
+`/` by itself refreshes the current query. If there is no current query, it uses
+the current session query. If there is no current session, it lists all facts.
 
 Multi-word field values must be quoted:
 
@@ -93,6 +109,15 @@ Search shortcuts:
 ```
 
 `//session` requires a current session.
+
+Due dates in fact rows render as friendly labels when possible:
+
+```text
+due:today
+due:tomorrow
+due:Fri
+due:Jul 10
+```
 
 ## Selecting And Updating Facts
 
@@ -158,10 +183,38 @@ Each line looks like:
 | Command | Status |
 | --- | --- |
 | `:switch <session>` | Switches to a session |
+| `:sessions` | Lists sessions discovered from facts and time boxes |
+| `:help` | Shows in-app help |
 | `:restart` | Clears current app state |
 | `:paste` | Recognized, but paste mode is not implemented yet |
 | `:exit` | Exits the app |
 | `:quit` | Exits the app |
+
+In the interactive TUI, Tab completes commands, `:switch` session names, search
+shortcuts, selection actions, and visible result numbers.
+
+While typing, the header and body preview the inferred mode. Plan input previews
+the parsed time box before Enter commits it.
+
+## Configuration
+
+Gatherbrain loads `gatherbrain.config.json` from the current working directory
+when it starts. The file is optional. Settings merge over the built-in defaults.
+
+Example:
+
+```json
+{
+  "defaultFactType": "note",
+  "selectionActions": {
+    "actions": {
+      "idea": { "action": "set_type", "value": "idea" }
+    }
+  }
+}
+```
+
+Configured selection actions are available to both execution and completion.
 
 ## Storage
 
@@ -196,6 +249,4 @@ workspace/
 - `:paste` does not enter a real paste/import mode yet.
 - The TUI redraws as a persistent screen in an interactive terminal, but piped
   input prints each frame for testability.
-- Search re-reads Markdown files from disk rather than using a long-lived index.
-- Completion is not implemented yet.
-- Plan mode commits after Enter; live preview while typing is still future work.
+- The search index is an in-memory runtime cache and is rebuilt after restart.

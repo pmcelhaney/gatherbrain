@@ -68,6 +68,12 @@ Search retrieves facts.
 
 The current search determines what appears in the body of the interface.
 
+An empty search prompt (`/`) refreshes the current query. If no current query
+exists, it searches the current session. If there is no current session, it
+lists all facts.
+
+Search results are ordered newest first by fact creation time.
+
 ---
 
 ## Time Box
@@ -234,6 +240,16 @@ In plan mode it displays the calendar.
 Fact rows are numbered at the left with a muted number prefix. The fact type is
 shown before the content.
 
+Due dates are displayed as friendly labels when possible:
+
+- today
+- tomorrow
+- short weekday for nearby dates
+- month and day for later dates
+
+Transient status messages are rendered inside the managed terminal screen above
+the prompt.
+
 ---
 
 ## Prompt
@@ -244,6 +260,12 @@ The prompt determines the current interaction mode.
 
 The terminal UI redraws as a stable screen rather than printing a transcript of
 each interaction. The prompt remains at the bottom of the screen.
+
+While the user is typing, the UI previews the inferred mode. Plan input previews
+the parsed time box before it is committed.
+
+Tab completion is available for commands, `:switch` session names, search
+shortcuts, selection actions, and visible result numbers.
 
 ---
 
@@ -258,6 +280,39 @@ The mode is inferred from the first character entered.
 | : | Command |
 | ; | Plan |
 | number or dots | Selection |
+
+---
+
+# Commands
+
+| Command | Behavior |
+| --- | --- |
+| `:switch <session>` | Switches to the named session |
+| `:sessions` | Lists sessions discovered from fact folders and timebox files |
+| `:help` | Shows in-app help |
+| `:restart` | Clears current session, query, selection, plan preview, and visible panels |
+| `:paste` | Reserved for a future paste/import mode |
+| `:exit` / `:quit` | Exits the app |
+
+---
+
+# Configuration
+
+Gatherbrain may load `gatherbrain.config.json` from the current working
+directory. User config is merged over defaults.
+
+Initial supported config:
+
+```json
+{
+  "defaultFactType": "note",
+  "selectionActions": {
+    "actions": {
+      "idea": { "action": "set_type", "value": "idea" }
+    }
+  }
+}
+```
 
 ---
 

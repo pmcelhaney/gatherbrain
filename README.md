@@ -13,17 +13,18 @@ The app currently supports:
 
 - A persistent terminal screen with a header, fact body, and prompt.
 - Session switching with `:switch <session>`.
+- Session discovery with `:sessions`.
 - Capturing facts into the current session.
-- Searching persisted facts with `/...` queries.
+- Searching persisted facts with `/...` queries and shortcuts.
 - Selection actions such as `. tomorrow`, `. todo`, `. gather`, and `. delete`.
 - Planning time boxes with `; 9-10 Steve`.
+- Live mode, plan, and completion feedback while typing in the TUI.
+- Config loading from `gatherbrain.config.json`.
 - Markdown fact storage and daily text-file timebox storage.
 
 Not implemented yet:
 
 - Paste/import mode after `:paste`.
-- Command or session completion.
-- Live plan preview while typing.
 - A full-screen browser-style navigation model.
 
 ## Requirements
@@ -79,11 +80,16 @@ Search shortcuts should work like //current.
 Search facts:
 
 ```text
+/ 
 /Search shortcuts
 /session:"Thinking about Gatherbrain design"
 /type:todo
 /due:today
+//current
 ```
+
+`/` by itself refreshes the current query, uses the current session query, or
+lists all facts if no query exists.
 
 Operate on visible facts:
 
@@ -118,6 +124,22 @@ or:
 - [Usage guide](docs/usage.md)
 - [Core interaction specification](docs/spec.md)
 - [Core class sketch](docs/core-classes.md)
+
+## Configuration
+
+Gatherbrain loads `gatherbrain.config.json` from the current working directory
+when the app starts. User settings merge over the built-in defaults.
+
+```json
+{
+  "defaultFactType": "note",
+  "selectionActions": {
+    "actions": {
+      "idea": { "action": "set_type", "value": "idea" }
+    }
+  }
+}
+```
 
 ## Development
 

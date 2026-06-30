@@ -10,5 +10,6 @@
 ## Engineering Notes
 
 - Prefer small, focused slices with their own commits.
+- Run `npm test` before committing each implementation slice.
 - Keep architecture decisions documented before or alongside implementation.
 - Treat facts and time boxes as separate domains: facts are knowledge capture; time boxes are planning.
