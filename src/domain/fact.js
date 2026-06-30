@@ -71,6 +71,14 @@ export class Fact {
       associatedSessions: this.associatedSessions.map((session) => session.name)
     };
   }
+
+  static from(value) {
+    if (value instanceof Fact) {
+      return value;
+    }
+
+    return new Fact(value);
+  }
 }
 
 function normalizeUuid(id) {
