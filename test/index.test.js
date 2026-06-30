@@ -2228,6 +2228,15 @@ test('item update shorthand targets the active lens list', async () => {
         { keptInView: false, text: 'First fact.', type: 'fact' }
       ]
     );
+    assert.match(
+      renderTui({
+        state,
+        body: await visibleBodyForState(state),
+        rows: 6,
+        columns: 80
+      }),
+      /\x1b\[2m\x1b\[2m 2\.\x1b\[22m \x1b\[36mdone\x1b\[39m Waiting item\.\x1b\[22m/u
+    );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

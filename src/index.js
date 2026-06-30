@@ -1420,6 +1420,7 @@ function factViewModelsForDisplay(facts, options = {}) {
     const bodyLines = formattedDisplayLines(bodyText.length > 0 ? bodyText : titleText, bodyOptions);
     const displayLines = formattedDisplayLines(displayText, displayOptions);
 
+    const dimmedInView = fact.keptInView ?? false;
     const viewModel = {
       number: String(itemNumber).padStart(numberWidth),
       numberSuffix: secondarySuffix,
@@ -1427,6 +1428,7 @@ function factViewModelsForDisplay(facts, options = {}) {
       deletedMarker,
       deletedInView: fact.deletedInView ?? false,
       keptInView: fact.keptInView ?? false,
+      dimmedInView,
       highlightedInView,
       type: displayType,
       due: displayDue,
@@ -1449,7 +1451,7 @@ function factViewModelsForDisplay(facts, options = {}) {
 
     let blockLinesForDisplay = blockLines;
 
-    if (fact.keptInView) {
+    if (dimmedInView) {
       blockLinesForDisplay = blockLinesForDisplay.map((line) => displayKeptInViewLine(line, includeColor));
     }
 
@@ -1553,7 +1555,7 @@ export function buildPagedFactLines(options = {}) {
   }
 
   const previousPageStartIndex = startIndex > 0 ? Math.max(startIndex - 1, 0) : null;
-  const pageHasStyledFact = pageFacts.some((fact) => fact.keptInView || fact.highlightedInView);
+  const pageHasStyledFact = pageFacts.some((fact) => fact.dimmedInView || fact.highlightedInView);
   const pageLines = renderPageTemplate && !(includeColor && pageHasStyledFact)
     ? renderTemplateLines(template, {
       emptyText: 'No facts yet.',
