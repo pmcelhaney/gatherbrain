@@ -209,6 +209,26 @@ function parseNamedCommand(command, registry) {
   };
 }
 
+function parseSlashSearchAlias(command, registry) {
+  if (!command.startsWith('/')) {
+    return null;
+  }
+
+  const commandDefinition = commandDefinitionsFor(registry)
+    .find((candidate) => valuesAreEqualCaseInsensitive(candidate.name, 'search'));
+
+  if (!commandDefinition) {
+    return null;
+  }
+
+  return parseCommandArguments(commandDefinition, command.slice(1), {
+    registry,
+    enumRegistry: registry?.enumRegistry,
+    dateToday: registry?.dateToday,
+    promptForMissing: true
+  });
+}
+
 function parseItemPrefixedNamedCommand(command, registry) {
   const match = command.match(/^(?<items>[1-9]\d*(?:\s+[1-9]\d*)*)\s+:(?<name>[A-Za-z][A-Za-z0-9_-]*)(?:\s+(?<args>.*))?$/u);
 
@@ -1045,11 +1065,10 @@ export function parseEntry(entry, registry = defaultCommandRegistry) {
     return itemUpdateShorthand;
   }
 
-  if (command.startsWith('/')) {
-    return {
-      message: 'slash shortcuts are no longer supported; use colon commands',
-      type: 'usage_error'
-    };
+  const slashSearchAlias = parseSlashSearchAlias(command, registry);
+
+  if (slashSearchAlias) {
+    return slashSearchAlias;
   }
 
   return createFactActionFromTitle(entry, registry);

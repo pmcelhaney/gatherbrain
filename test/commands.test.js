@@ -86,8 +86,11 @@ test('parses control entries', () => {
   assert.deepEqual(parseEntry('   '), { type: 'empty' });
   assert.deepEqual(parseEntry(':q'), { type: 'quit' });
   assert.deepEqual(parseEntry('/'), {
-    message: 'slash shortcuts are no longer supported; use colon commands',
-    type: 'usage_error'
+    type: 'prompt_command_argument',
+    commandName: 'search',
+    values: {},
+    argument: { name: 'query', type: 'text', consume: 'rest', prompt: 'Search for what?' },
+    prompt: 'Search for what?'
   });
   assert.deepEqual(parseEntry(':help'), { type: 'help' });
   assert.deepEqual(parseEntry(':restart'), { type: 'restart_app' });
@@ -630,8 +633,8 @@ test('workspace command config overrides default commands by name', async () => 
 
 test('parses unknown commands and fact creation', () => {
   assert.deepEqual(parseEntry('/wat now'), {
-    message: 'slash shortcuts are no longer supported; use colon commands',
-    type: 'usage_error'
+    type: 'search_facts',
+    query: 'wat now'
   });
   assert.deepEqual(parseEntry(':wat now'), {
     commandName: ':wat',

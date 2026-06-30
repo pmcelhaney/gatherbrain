@@ -1271,31 +1271,35 @@ test(':search excludes facts that are already in the current context', async () 
   }
 });
 
-test('slash commands show a colon command usage error', async () => {
+test('slash entries search facts outside the current context', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
   try {
+    await mkdir(path.join(rootDirectory, 'people'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'people', 'steve.md'),
+      '---\ntype: fact\n---\n\nNeed search directly.\n'
+    );
     const state = createPromptState({ appDirectory, rootDirectory });
 
-    assert.deepEqual(await handleEntry('/wat now', state), {
+    assert.deepEqual(await handleEntry('/search', state), {
       action: 'continue',
-      message: 'slash shortcuts are no longer supported; use colon commands'
+      message: 'search "search" (1 match)'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
-        facts: [{ type: 'fact', text: 'Existing fact.' }],
+        body: await visibleBodyForState(state),
         rows: 15,
         columns: 80
       }),
       [
-        'facts | slash shortcuts are no longer supported; use colon commands',
+        'facts | search "search" (1 match)',
         '--------------------------------------------------------------------------------',
-        ' 1. Existing fact.'
+        ' 1. people Need search directly.'
       ]
     );
-    await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -3922,6 +3926,7 @@ test('completes proper nouns in free text', async () => {
     assert.deepEqual(await completeEntry('Read Agentic C', state), [['Agentic Commerce'], 'Agentic C']);
     assert.deepEqual(await completeEntry('Read Anne of G', state), [['Anne of Green Gables'], 'Anne of G']);
     assert.deepEqual(await completeEntry(':search Ag', state), [['Agentic Commerce'], 'Ag']);
+    assert.deepEqual(await completeEntry('/Ag', state), [['Agentic Commerce'], 'Ag']);
 
     await handleEntry(':paste', state);
 
@@ -3931,7 +3936,7 @@ test('completes proper nouns in free text', async () => {
   }
 });
 
-test('does not complete slash commands', async () => {
+test('does not complete slash command names', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
 
