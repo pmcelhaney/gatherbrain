@@ -902,6 +902,10 @@ function buildCommandAction(commandDefinition, values, options = {}) {
     return { type: 'switch_lens', lens: values.lens };
   }
 
+  if (commandDefinition.action === 'search_facts') {
+    return { type: 'search_facts', query: values.query };
+  }
+
   if (commandDefinition.action === 'create_fact') {
     return createFactActionFromTitle(values.title, options.registry);
   }

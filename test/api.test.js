@@ -24,6 +24,7 @@ import {
   relatedFacts,
   relateWorkspaceFact,
   resolveExistingSwitchContextDirectory,
+  searchFacts,
   setWorkspaceFactProperty,
   setWorkspaceFactType,
   todayFacts,
@@ -347,6 +348,90 @@ test('reads context metadata through the workspace API', async () => {
       text: 'Project scope.'
     });
     assert.equal(await contextMetadata(state, 'missing'), null);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('searches facts with fact context and linked contexts', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-api-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'topics', 'Search'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'index.md'),
+      '---\ntitle: Gatherbrain\ntype: context\naliases: [memory-tui]\n---\n\nPrompt-first workspace.\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'people', 'Steve Ma', 'index.md'),
+      '---\ntitle: "Steve Ma"\ntype: context\naliases: [sma]\n---\n\nSearch sponsor.\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'topics', 'Search', 'index.md'),
+      '---\ntitle: Search Notes\ntype: context\n---\n\nRetrieval design.\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'own-context.md'),
+      '---\ntitle: Own Context\ntype: fact\n---\n\nDoes not say the special word.\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'related-context.md'),
+      '---\ntitle: Related Context\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nNo direct sponsor word.\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'markdown-link.md'),
+      '---\ntitle: Markdown Link\ntype: fact\n---\n\nSee [Search](/topics/Search).\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'direct.md'),
+      '---\ntitle: Direct\ntype: fact\n---\n\nNeed retrieval directly.\n'
+    );
+    await utimes(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'direct.md'),
+      new Date('2026-06-26T10:00:00Z'),
+      new Date('2026-06-26T10:00:00Z')
+    );
+    await utimes(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'markdown-link.md'),
+      new Date('2026-06-26T11:00:00Z'),
+      new Date('2026-06-26T11:00:00Z')
+    );
+    await utimes(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'related-context.md'),
+      new Date('2026-06-26T12:00:00Z'),
+      new Date('2026-06-26T12:00:00Z')
+    );
+    await utimes(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'own-context.md'),
+      new Date('2026-06-26T13:00:00Z'),
+      new Date('2026-06-26T13:00:00Z')
+    );
+    await ensureWorkspaceModel(state);
+
+    assert.deepEqual(
+      factIds(await searchFacts(state, 'memory-tui')),
+      [
+        'projects/gatherbrain/own-context.md',
+        'projects/gatherbrain/related-context.md',
+        'projects/gatherbrain/markdown-link.md',
+        'projects/gatherbrain/direct.md'
+      ]
+    );
+    assert.deepEqual(
+      factIds(await searchFacts(state, 'search sponsor')),
+      ['projects/gatherbrain/related-context.md']
+    );
+    assert.deepEqual(
+      factIds(await searchFacts(state, 'retrieval')),
+      [
+        'projects/gatherbrain/markdown-link.md',
+        'projects/gatherbrain/direct.md'
+      ]
+    );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }

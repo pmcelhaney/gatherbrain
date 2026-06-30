@@ -77,6 +77,7 @@ import {
   resolveExistingContextDirectory,
   resolveExistingSwitchContextId,
   resolveExistingSwitchContextDirectory,
+  searchFacts,
   setWorkspaceFactProperty,
   setWorkspaceFactType,
   refreshWorkspaceFact
@@ -142,6 +143,7 @@ export function createPromptState(options = {}) {
     pendingCommand: null,
     pendingContextCreation: null,
     pendingTimeboxCancellation: null,
+    temporaryBody: null,
     temporaryBodyLines: null,
     temporaryBodyPlanner: null,
     temporaryBodyType: null,
@@ -782,6 +784,10 @@ function bodyWithKeptInViewFacts(body, state) {
 }
 
 export async function visibleBodyForState(state, options = {}) {
+  if (state.temporaryBody) {
+    return state.temporaryBody;
+  }
+
   const model = await ensureWorkspaceModel(state);
   const lensModel = presentLens({
     model,
@@ -2741,6 +2747,7 @@ export function createReadlineCompleter(state) {
 }
 
 function clearTemporaryBody(state) {
+  state.temporaryBody = null;
   state.temporaryBodyLines = null;
   state.temporaryBodyPlanner = null;
   state.temporaryBodyType = null;
@@ -2749,12 +2756,47 @@ function clearTemporaryBody(state) {
 
 function showCommandHelp(state, message = null) {
   state.statusMessage = '';
+  state.temporaryBody = null;
   state.temporaryBodyLines = [
     ...(message ? [message, ''] : []),
     'Commands:',
     ...commandHelp(state.commandRegistry)
   ];
   state.temporaryBodyPlanner = null;
+}
+
+async function showSearchResults(parsedEntry, state) {
+  const previousView = state.temporaryBodyType ?? 'facts';
+  const facts = await searchFacts(state, parsedEntry.query);
+  const matchText = `${facts.length} ${facts.length === 1 ? 'match' : 'matches'}`;
+
+  state.temporaryBody = {
+    type: 'facts',
+    template: 'facts',
+    facts
+  };
+  state.temporaryBodyLines = null;
+  state.temporaryBodyPlanner = null;
+  state.temporaryBodyType = 'search';
+  state.temporaryBodyDate = null;
+  state.pageStartIndex = 0;
+  state.statusMessage = `search "${parsedEntry.query}" (${matchText})`;
+  resetItemNumbers(state);
+  resetKeptInViewFacts(state);
+  await logEvent(state, 'search.viewed', {
+    query: parsedEntry.query,
+    matches: facts.length
+  });
+  await logEvent(state, 'view.changed', {
+    view: 'search',
+    query: parsedEntry.query,
+    from: previousView
+  });
+
+  return {
+    action: 'continue',
+    message: state.statusMessage
+  };
 }
 
 export function openEditor(filePath, options = {}) {
@@ -3629,6 +3671,10 @@ export async function handleEntry(entry, state) {
       action: 'continue',
       message: `lens ${parsedEntry.lens}`
     };
+  }
+
+  if (parsedEntry.type === 'search_facts') {
+    return showSearchResults(parsedEntry, state);
   }
 
   if (parsedEntry.type === 'edit_fact') {

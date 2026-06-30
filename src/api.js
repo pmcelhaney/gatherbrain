@@ -213,6 +213,96 @@ export async function currentFacts(state, options = {}) {
   ));
 }
 
+function searchableScalar(value) {
+  if (value === null || value === undefined) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => searchableScalar(item));
+  }
+
+  if (typeof value === 'object') {
+    return Object.entries(value).flatMap(([key, item]) => [key, ...searchableScalar(item)]);
+  }
+
+  return [String(value)];
+}
+
+function contextSearchText(context) {
+  if (!context) {
+    return [];
+  }
+
+  return [
+    context.id || '/',
+    context.name,
+    context.metadata?.title,
+    context.metadata?.text,
+    ...(context.metadata?.aliases ?? []),
+    ...searchableScalar(context.metadata?.properties ?? {})
+  ];
+}
+
+function linkedContextIdsForFact(fact, model) {
+  const contextIds = new Set(fact.relations ?? []);
+  const markdownLinkPattern = /\[[^\]]+\]\(\/(?<contextId>[^)#?]+)(?:[#?][^)]*)?\)/gu;
+
+  for (const match of fact.text.matchAll(markdownLinkPattern)) {
+    let contextId;
+
+    try {
+      contextId = decodeURI(match.groups.contextId).replace(/^\/+/u, '');
+    } catch {
+      continue;
+    }
+
+    if (model.contexts.has(contextId)) {
+      contextIds.add(contextId);
+    }
+  }
+
+  return [...contextIds].sort();
+}
+
+function searchableTextForFact(fact, model) {
+  const ownContext = model.contexts.get(fact.contextId);
+  const linkedContexts = linkedContextIdsForFact(fact, model)
+    .map((contextId) => model.contexts.get(contextId))
+    .filter(Boolean);
+
+  return [
+    fact.id,
+    fact.filename,
+    fact.title,
+    fact.type,
+    fact.text,
+    ...searchableScalar(fact.properties ?? {}),
+    ...contextSearchText(ownContext),
+    ...linkedContexts.flatMap((context) => contextSearchText(context))
+  ].join('\n').toLocaleLowerCase('en-US');
+}
+
+export async function searchFacts(state, query) {
+  const normalizedQuery = query.trim().toLocaleLowerCase('en-US');
+
+  if (normalizedQuery.length === 0) {
+    return [];
+  }
+
+  const model = await ensureWorkspaceModel(state);
+
+  return [...model.facts.values()]
+    .filter((fact) => searchableTextForFact(fact, model).includes(normalizedQuery))
+    .toSorted((left, right) => {
+      const modifiedComparison = (right.modifiedAt ?? '').localeCompare(left.modifiedAt ?? '');
+
+      return modifiedComparison === 0
+        ? left.filename.localeCompare(right.filename)
+        : modifiedComparison;
+    });
+}
+
 export async function visibleFacts(state, options = {}) {
   const model = await ensureWorkspaceModel(state);
   const lensContextDirectory = options.contextId === undefined

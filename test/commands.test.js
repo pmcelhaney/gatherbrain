@@ -23,6 +23,7 @@ test('lists built-in command help', () => {
     ':clear-peek',
     ':new-session <name>',
     ':lens <lens>',
+    ':search <query>',
     '<item> :edit',
     ':open | <item> :open',
     '<item> :delete',
@@ -35,7 +36,7 @@ test('lists built-in command help', () => {
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | :search <query> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -43,6 +44,7 @@ test('lists built-in command help', () => {
     'clear-peek',
     'new-session',
     'lens',
+    'search',
     'edit',
     'open',
     'delete',
@@ -426,6 +428,7 @@ test('loads workspace command definitions from config', async () => {
       'clear-peek',
       'new-session',
       'lens',
+      'search',
       'edit',
       'open',
       'delete',
@@ -550,6 +553,7 @@ test('workspace command config overrides default commands by name', async () => 
       'clear-peek',
       'new-session',
       'lens',
+      'search',
       'edit',
       'open',
       'delete',

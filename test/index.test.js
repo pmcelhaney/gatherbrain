@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { EventEmitter } from 'node:events';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -904,7 +904,7 @@ test(':new is not a built-in command', async () => {
 
     assert.deepEqual(await handleEntry(':new', state), {
       action: 'continue',
-      message: 'unknown command :new; :switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+      message: 'unknown command :new; :switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | :search <query> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
     });
     assert.equal(state.pendingCommand, null);
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
@@ -1113,7 +1113,7 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+      message: ':switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | :search <query> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
@@ -1131,6 +1131,7 @@ test(':help lists commands without saving a fact', async () => {
         ':clear-peek',
         ':new-session <name>',
         ':lens <lens>',
+        ':search <query>',
         '<item> :edit',
         ':open | <item> :open',
         '<item> :delete',
@@ -1143,6 +1144,71 @@ test(':help lists commands without saving a fact', async () => {
       ]
     );
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test(':search lists matching facts by last updated descending', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'projects', 'gatherbrain'), { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'people', 'Steve Ma', 'index.md'),
+      '---\ntitle: "Steve Ma"\ntype: context\n---\n\nSearch sponsor.\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'older.md'),
+      '---\ntitle: Older\ntype: fact\n---\n\nNeed search directly.\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'newer.md'),
+      '---\ntitle: Newer\ntype: fact\nrelatedContexts: ["people/Steve Ma"]\n---\n\nNo direct match.\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'miss.md'),
+      '---\ntitle: Miss\ntype: fact\n---\n\nUnrelated.\n'
+    );
+    await utimes(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'older.md'),
+      new Date('2026-06-26T10:00:00Z'),
+      new Date('2026-06-26T10:00:00Z')
+    );
+    await utimes(
+      path.join(rootDirectory, 'projects', 'gatherbrain', 'newer.md'),
+      new Date('2026-06-26T11:00:00Z'),
+      new Date('2026-06-26T11:00:00Z')
+    );
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(await handleEntry(':search search', state), {
+      action: 'continue',
+      message: 'search "search" (2 matches)'
+    });
+    assert.deepEqual(
+      (await visibleFactsForState(state)).map((fact) => fact.id),
+      [
+        'projects/gatherbrain/newer.md',
+        'projects/gatherbrain/older.md'
+      ]
+    );
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        body: await visibleBodyForState(state),
+        rows: 8,
+        columns: 80
+      }),
+      [
+        'facts | search "search" (2 matches)',
+        '--------------------------------------------------------------------------------',
+        ' 2. No direct match.',
+        ' 1. Need search directly.'
+      ]
+    );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
   }
@@ -3470,6 +3536,7 @@ test('completes colon command names', async () => {
       ':clear-peek ',
       ':new-session ',
       ':lens ',
+      ':search ',
       ':edit ',
       ':open ',
       ':delete ',
