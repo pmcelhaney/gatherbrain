@@ -31,6 +31,16 @@ describe("SearchEngine", () => {
       "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
     ]);
   });
+
+  it("orders search results newest first", () => {
+    const result = engine.search(facts(), { type: "all" });
+
+    assert.deepEqual(result.facts.map((fact) => fact.id), [
+      "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
+      "6f2308de-02e9-45db-8ff0-65ac793f4a24"
+    ]);
+    assert.equal(result.factIdForNumber(1), "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a");
+  });
 });
 
 function facts() {

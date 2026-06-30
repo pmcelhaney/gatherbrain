@@ -3,9 +3,15 @@ import { SearchResultSet } from "./search-result-set.js";
 export class SearchEngine {
   search(facts, queryAst, context = {}) {
     return new SearchResultSet(
-      facts.filter((fact) => evaluate(queryAst, fact, context))
+      facts
+        .filter((fact) => evaluate(queryAst, fact, context))
+        .sort(compareNewestFirst)
     );
   }
+}
+
+function compareNewestFirst(left, right) {
+  return right.createdAt.getTime() - left.createdAt.getTime();
 }
 
 function evaluate(node, fact, context) {

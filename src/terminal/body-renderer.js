@@ -32,7 +32,7 @@ export class BodyRenderer {
       return ["..."];
     }
 
-    const rows = resultSet.toRows().slice().reverse();
+    const rows = resultSet.toRows();
     const numberWidth = Math.max(2, String(resultSet.count).length);
     const rendered = [];
 
@@ -55,7 +55,7 @@ export class BodyRenderer {
     }
 
     if (rendered.length > height) {
-      return ["...", ...rendered.slice(-(height - 1))];
+      return [...rendered.slice(0, height - 1), "..."];
     }
 
     return rendered;
