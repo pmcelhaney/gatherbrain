@@ -1,4 +1,4 @@
-import readline from "node:readline/promises";
+import readline from "node:readline";
 import { stdin as input, stdout as output } from "node:process";
 import path from "node:path";
 
@@ -15,6 +15,7 @@ export function createAppRuntime({
   const workspace = new Workspace(workspacePath);
   const factRepository = new FactRepository({ workspace });
   const terminalApp = new TerminalApp({ state });
+  let resultSet = null;
   const promptController = new PromptController({
     state,
     factRepository,
@@ -25,10 +26,16 @@ export function createAppRuntime({
     state,
     terminalApp,
     async submit(line) {
-      return promptController.submit(line);
+      const result = await promptController.submit(line);
+
+      if (result.resultSet) {
+        resultSet = result.resultSet;
+      }
+
+      return result;
     },
     render() {
-      return terminalApp.render();
+      return terminalApp.render({ resultSet });
     }
   };
 }
@@ -43,12 +50,12 @@ export async function main(argv = process.argv.slice(2)) {
     return;
   }
 
-  const rl = readline.createInterface({ input, output });
+  const rl = readline.createInterface({ input, output, terminal: input.isTTY });
 
   output.write(`${runtime.render()}\n`);
 
-  while (true) {
-    const line = await rl.question("\n> ");
+  for await (const line of rl) {
+    output.write("\n> ");
 
     if (line === ":quit" || line === ":exit") {
       rl.close();

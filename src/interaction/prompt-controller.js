@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 
 import { Fact } from "../domain/index.js";
+import {
+  SearchEngine,
+  SearchQueryParser,
+  SearchShortcutRegistry
+} from "../search/index.js";
 import { AppMode } from "../state/index.js";
 import { CommandRegistry } from "./command-registry.js";
 import { InteractionResult } from "./interaction-result.js";
@@ -12,6 +17,9 @@ export class PromptController {
     factRepository,
     classifier = new PromptClassifier(),
     commandRegistry = new CommandRegistry(),
+    searchShortcutRegistry = new SearchShortcutRegistry(),
+    searchQueryParser = new SearchQueryParser(),
+    searchEngine = new SearchEngine(),
     clock = () => new Date(),
     idGenerator = randomUUID,
     defaultFactType = "fact"
@@ -20,6 +28,9 @@ export class PromptController {
     this.factRepository = factRepository;
     this.classifier = classifier;
     this.commandRegistry = commandRegistry;
+    this.searchShortcutRegistry = searchShortcutRegistry;
+    this.searchQueryParser = searchQueryParser;
+    this.searchEngine = searchEngine;
     this.clock = clock;
     this.idGenerator = idGenerator;
     this.defaultFactType = defaultFactType;
@@ -35,6 +46,10 @@ export class PromptController {
 
     if (mode === AppMode.COMMAND) {
       return this.commandRegistry.execute(input, { state: this.state });
+    }
+
+    if (mode === AppMode.SEARCH) {
+      return this.search(input);
     }
 
     return InteractionResult.classified({ mode });
@@ -67,6 +82,24 @@ export class PromptController {
       mode: AppMode.CAPTURE,
       fact,
       filePath
+    });
+  }
+
+  async search(input) {
+    const expandedQuery = this.searchShortcutRegistry.expand(input, {
+      currentSession: this.state.currentSession
+    });
+    const ast = this.searchQueryParser.parse(expandedQuery);
+    const facts = await this.factRepository.list();
+    const today = this.clock().toISOString().slice(0, 10);
+    const resultSet = this.searchEngine.search(facts, ast, { today });
+
+    this.state.setQuery(expandedQuery.replace(/^\//, ""));
+
+    return InteractionResult.searched({
+      mode: AppMode.SEARCH,
+      query: this.state.currentQuery,
+      resultSet
     });
   }
 }

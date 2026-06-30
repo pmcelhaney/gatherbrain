@@ -50,10 +50,12 @@ describe("PromptController", () => {
   });
 
   it("classifies non-capture prompts without executing them", async () => {
+    await controller.submit("Follow up with Steve.");
     const result = await controller.submit("/Steve");
 
-    assert.equal(result.action, "classified");
+    assert.equal(result.action, "search");
     assert.equal(result.mode, AppMode.SEARCH);
+    assert.equal(result.resultSet.count, 1);
     assert.equal(state.currentMode, AppMode.SEARCH);
   });
 
