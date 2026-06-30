@@ -56,6 +56,12 @@ It also provides targeted refresh helpers (`refreshFact`, `refreshContext`, `rem
 
 `index.md` is reserved as context metadata. It is parsed with the same front matter/body helpers as facts, attached to `context.metadata`, and excluded from `model.facts`.
 
+The model also maintains a proper-noun index derived from fact and context metadata text. Refreshing facts or contexts rebuilds that index from the current in-memory content.
+
+### `proper-nouns.js`
+
+Capitalized phrase extraction and index formatting for the proper-noun command. Lowercase connector words such as `of` and `von` can appear inside a chain when followed by another capitalized word.
+
 ### `commands.js`
 
 The command DSL loader, parser, argument validator, and action builder. It merges `default-config/commands.json` with workspace-local `.gatherbrain/commands.json`. Arguments support command-specific types such as `fact`, `context`, `lens`, `date`, `timeRange`, `text`, and enum-backed values.

@@ -904,7 +904,7 @@ test(':new is not a built-in command', async () => {
 
     assert.deepEqual(await handleEntry(':new', state), {
       action: 'continue',
-      message: 'unknown command :new; :switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | :search <query> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | <item> :gather | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+      message: 'unknown command :new; :switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | :search <query> | :proper-nouns | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | <item> :gather | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
     });
     assert.equal(state.pendingCommand, null);
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
@@ -1113,13 +1113,13 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | :search <query> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | <item> :gather | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+      message: ':switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | :search <query> | :proper-nouns | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | <item> :gather | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
         state,
         facts: [{ type: 'fact', text: 'Existing fact.' }],
-        rows: 20,
+        rows: 21,
         columns: 80
       }),
       [
@@ -1132,6 +1132,7 @@ test(':help lists commands without saving a fact', async () => {
         ':new-session <name>',
         ':lens <lens>',
         ':search <query>',
+        ':proper-nouns',
         '<item> :edit',
         ':open | <item> :open',
         '<item> :delete',
@@ -3353,6 +3354,44 @@ test(':gather command keeps the current visible list active', async () => {
   }
 });
 
+test(':proper-nouns lists names loaded from disk and newly typed content', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(rootDirectory, { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'loaded.md'),
+      '---\ntype: fact\n---\n\ndiscuss Ludwig von Mises with Steve Ma.\n'
+    );
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    await handleEntry('ask Steve Ma about Acme Corp', state);
+
+    assert.deepEqual(await handleEntry(':proper-nouns', state), {
+      action: 'continue',
+      message: '3 proper nouns'
+    });
+    assert.equal(state.temporaryBodyType, 'proper-nouns');
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        rows: 8,
+        columns: 80
+      }),
+      [
+        'facts | 3 proper nouns',
+        '--------------------------------------------------------------------------------',
+        'Acme Corp',
+        'Ludwig von Mises',
+        'Steve Ma (2)'
+      ]
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('opens a fact in the configured editor', async () => {
   const calls = [];
   const child = new EventEmitter();
@@ -3899,6 +3938,7 @@ test('completes colon command names', async () => {
       ':new-session ',
       ':lens ',
       ':search ',
+      ':proper-nouns ',
       ':edit ',
       ':open ',
       ':delete ',

@@ -14,6 +14,7 @@ import {
   refreshFact,
   removeFact
 } from './model.js';
+import { properNounEntries } from './proper-nouns.js';
 import { addEnumValue } from './enums.js';
 import { formatDateArgument } from './dates.js';
 import { logEvent } from './events.js';
@@ -134,6 +135,12 @@ function factWasModifiedOn(fact, dateString) {
 
 export async function allFacts(state) {
   return factsForModel(await ensureWorkspaceModel(state));
+}
+
+export async function properNouns(state) {
+  const model = await ensureWorkspaceModel(state);
+
+  return properNounEntries(model.properNouns);
 }
 
 export async function factsInContext(state, options = {}) {

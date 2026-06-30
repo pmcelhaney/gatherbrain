@@ -24,6 +24,7 @@ test('lists built-in command help', () => {
     ':new-session <name>',
     ':lens <lens>',
     ':search <query>',
+    ':proper-nouns',
     '<item> :edit',
     ':open | <item> :open',
     '<item> :delete',
@@ -37,7 +38,7 @@ test('lists built-in command help', () => {
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | :search <query> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | <item> :gather | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | :search <query> | :proper-nouns | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | <item> :gather | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
@@ -46,6 +47,7 @@ test('lists built-in command help', () => {
     'new-session',
     'lens',
     'search',
+    'proper-nouns',
     'edit',
     'open',
     'delete',
@@ -103,6 +105,7 @@ test('parses control entries', () => {
   });
   assert.deepEqual(parseEntry(':open'), { type: 'open_reference' });
   assert.deepEqual(parseEntry(':plan'), { type: 'show_plan' });
+  assert.deepEqual(parseEntry(':proper-nouns'), { type: 'list_proper_nouns' });
 });
 
 test('parses planner commands', () => {
@@ -469,6 +472,7 @@ test('loads workspace command definitions from config', async () => {
       'new-session',
       'lens',
       'search',
+      'proper-nouns',
       'edit',
       'open',
       'delete',
@@ -595,6 +599,7 @@ test('workspace command config overrides default commands by name', async () => 
       'new-session',
       'lens',
       'search',
+      'proper-nouns',
       'edit',
       'open',
       'delete',

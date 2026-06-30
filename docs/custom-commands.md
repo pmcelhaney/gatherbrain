@@ -47,6 +47,7 @@ Supported actions:
 - `clear_peek`: clear peek. Takes no arguments.
 - `new_session`: create and enter `/sessions/<today>/<name>`. Requires `name`.
 - `switch_lens`: change lens. Requires `lens`.
+- `list_proper_nouns`: list indexed proper nouns. Takes no arguments.
 - `create_fact`: create a fact in the current context. Requires `title`.
 - `edit_fact`: open a fact in `$EDITOR`. Requires `item`.
 - `open_reference`: open the current context directory or a fact's referenced `file`. Accepts optional `item`.

@@ -101,6 +101,7 @@ Use `:q`, `:quit`, `:exit`, or `Ctrl+C` to leave the prompt.
 - `3 :move /projects/gatherbrain` moves a fact and relates it to the context it came from.
 - `:open` opens the current context directory; `3 :open` opens a referenced file.
 - `:paste` saves the current clipboard contents and creates a companion fact.
+- `:proper-nouns` lists capitalized name chains indexed from loaded and newly typed facts.
 - `:plan 9-12 /projects/gatherbrain` assigns focus time to a context.
 - `:plan` shows the current day's planner timeline.
 - `:now` switches to the context that owns the current time.

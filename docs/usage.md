@@ -68,6 +68,8 @@ For example, these can both edit the same visible fact:
 :edit Feed the cat
 ```
 
+Use `:proper-nouns` to list capitalized name chains indexed from loaded and newly typed facts. Lowercase connector words such as `of` and `von` stay inside the chain, so titles such as `Anne of Green Gables` remain intact.
+
 ## Contexts
 
 Use `:switch` to change context:

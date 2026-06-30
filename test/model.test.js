@@ -6,6 +6,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildFactMarkdown } from '../src/facts.js';
 import {
+  extractProperNouns,
+  properNounEntries
+} from '../src/proper-nouns.js';
+import {
   loadWorkspaceModel,
   refreshContext,
   refreshFact,
@@ -53,6 +57,49 @@ test('loads contexts and facts with workspace-relative ids', async () => {
       await readFile(path.join(directory, 'people', 'alex', 'follow-up.md'), 'utf8'),
       /^---\ntitle: Follow up\ntype: task\nrelatedContexts: \["projects\/app"\]\nid: [0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\n---\n\nSend the notes\.\n$/u
     );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('extracts proper noun chains with connector words', () => {
+  assert.deepEqual(
+    extractProperNouns('Anne of Green Gables and The Design of Everyday Things mention Ludwig von Mises and Steve Ma.'),
+    [
+      'Anne of Green Gables',
+      'The Design of Everyday Things',
+      'Ludwig von Mises',
+      'Steve Ma'
+    ]
+  );
+});
+
+test('indexes proper nouns when loading and refreshing content', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-model-'));
+  const factPath = path.join(directory, 'fact.md');
+
+  try {
+    await writeFile(
+      factPath,
+      '---\ntitle: Steve Ma\ntype: fact\n---\n\nmeet Ludwig von Mises at Acme Corp.\n'
+    );
+
+    const model = await loadWorkspaceModel({ rootDirectory: directory });
+
+    assert.deepEqual(properNounEntries(model.properNouns), [
+      { name: 'Acme Corp', count: 1 },
+      { name: 'Ludwig von Mises', count: 1 },
+      { name: 'Steve Ma', count: 1 }
+    ]);
+
+    await writeFile(factPath, buildFactMarkdown('Talk to Steve Ma about OpenAI'));
+    await refreshFact(model, factPath);
+
+    assert.deepEqual(properNounEntries(model.properNouns), [
+      { name: 'OpenAI', count: 1 },
+      { name: 'Steve Ma', count: 1 },
+      { name: 'Talk', count: 1 }
+    ]);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

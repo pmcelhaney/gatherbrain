@@ -10,6 +10,11 @@ import {
   factTitleFromMarkdown,
   factTypeFromMarkdown
 } from './facts.js';
+import {
+  createProperNounIndex,
+  extractProperNouns,
+  mergeProperNouns
+} from './proper-nouns.js';
 
 const contextMetadataFilename = 'index.md';
 
@@ -115,6 +120,30 @@ function removeFactFromContexts(model, factId) {
   }
 }
 
+function textForProperNouns(entry) {
+  const parts = [];
+
+  for (const part of [entry?.title ?? '', entry?.text ?? '']) {
+    if (part.length > 0 && !parts.includes(part)) {
+      parts.push(part);
+    }
+  }
+
+  return parts.join('\n');
+}
+
+function rebuildProperNounIndex(model) {
+  model.properNouns = createProperNounIndex();
+
+  for (const context of model.contexts.values()) {
+    mergeProperNouns(model.properNouns, extractProperNouns(textForProperNouns(context.metadata)));
+  }
+
+  for (const fact of model.facts.values()) {
+    mergeProperNouns(model.properNouns, extractProperNouns(textForProperNouns(fact)));
+  }
+}
+
 export function factPathToId(model, factPath) {
   return relativeId(model.rootPath, path.resolve(factPath));
 }
@@ -193,7 +222,8 @@ export async function loadWorkspaceModel(options = {}) {
   const model = {
     rootPath,
     contexts: new Map(),
-    facts: new Map()
+    facts: new Map(),
+    properNouns: createProperNounIndex()
   };
 
   ensureContext(model, '');
@@ -248,6 +278,7 @@ export async function loadWorkspaceModel(options = {}) {
   }
 
   await visit(rootPath);
+  rebuildProperNounIndex(model);
   return model;
 }
 
@@ -277,6 +308,7 @@ export async function refreshFact(model, factPath) {
   ensureContext(model, fact.contextId).factIds.push(fact.id);
   ensureContext(model, fact.contextId).factIds.sort();
   model.facts.set(fact.id, fact);
+  rebuildProperNounIndex(model);
 
   return fact;
 }
@@ -286,6 +318,7 @@ export async function refreshContext(model, contextPath) {
 
   model.contexts = nextModel.contexts;
   model.facts = nextModel.facts;
+  model.properNouns = nextModel.properNouns;
 
   return model.contexts.get(contextPathToId(model, contextPath)) ?? null;
 }
@@ -295,6 +328,7 @@ export function removeFact(model, factPath) {
 
   model.facts.delete(factId);
   removeFactFromContexts(model, factId);
+  rebuildProperNounIndex(model);
 }
 
 export function watchWorkspaceModel(model, options = {}) {

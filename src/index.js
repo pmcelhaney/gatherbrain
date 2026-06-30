@@ -71,6 +71,7 @@ import {
   deleteWorkspaceFact,
   ensureWorkspaceModel,
   moveWorkspaceFact,
+  properNouns,
   referencedFilePathForFact,
   relationForContextReference,
   relateWorkspaceFact,
@@ -2931,6 +2932,31 @@ async function showSearchResults(parsedEntry, state) {
   };
 }
 
+async function showProperNouns(state) {
+  const entries = await properNouns(state);
+  const matchText = `${entries.length} ${entries.length === 1 ? 'proper noun' : 'proper nouns'}`;
+
+  state.temporaryBody = null;
+  state.temporaryBodyLines = entries.map((entry) => (
+    entry.count > 1 ? `${entry.name} (${entry.count})` : entry.name
+  ));
+  state.temporaryBodyPlanner = null;
+  state.temporaryBodyType = 'proper-nouns';
+  state.temporaryBodyDate = null;
+  state.pageStartIndex = 0;
+  state.statusMessage = matchText;
+  resetItemNumbers(state);
+  resetKeptInViewFacts(state);
+  await logEvent(state, 'proper-nouns.viewed', {
+    count: entries.length
+  });
+
+  return {
+    action: 'continue',
+    message: matchText
+  };
+}
+
 export function openEditor(filePath, options = {}) {
   const {
     editor = processEnv.EDITOR,
@@ -3807,6 +3833,10 @@ export async function handleEntry(entry, state) {
 
   if (parsedEntry.type === 'search_facts') {
     return showSearchResults(parsedEntry, state);
+  }
+
+  if (parsedEntry.type === 'list_proper_nouns') {
+    return showProperNouns(state);
   }
 
   if (parsedEntry.type === 'edit_fact') {

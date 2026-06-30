@@ -65,6 +65,11 @@
       ]
     },
     {
+      "name": "proper-nouns",
+      "action": "list_proper_nouns",
+      "arguments": []
+    },
+    {
       "name": "edit",
       "action": "edit_fact",
       "arguments": [
