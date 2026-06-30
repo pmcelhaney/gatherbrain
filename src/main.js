@@ -2,7 +2,7 @@ import readline from "node:readline";
 import { stdin as input, stdout as output } from "node:process";
 import path from "node:path";
 
-import { PromptController } from "./interaction/index.js";
+import { PromptClassifier, PromptController } from "./interaction/index.js";
 import { FactRepository, Workspace } from "./persistence/index.js";
 import { TimeBoxRepository } from "./planning/index.js";
 import { SearchEngine, SearchQueryParser } from "./search/index.js";
@@ -19,6 +19,7 @@ export function createAppRuntime({
   const timeBoxRepository = new TimeBoxRepository({ workspace });
   const searchEngine = new SearchEngine();
   const searchQueryParser = new SearchQueryParser();
+  const promptClassifier = new PromptClassifier();
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;
   let timeBoxes = [];
@@ -65,6 +66,7 @@ export function createAppRuntime({
       colorEnabled = false
     } = {}) {
       return terminalApp.render({
+        state: stateForPreview({ state, input, promptClassifier }),
         resultSet,
         timeBoxes,
         input,
@@ -76,6 +78,17 @@ export function createAppRuntime({
         colorEnabled
       });
     }
+  };
+}
+
+function stateForPreview({ state, input, promptClassifier }) {
+  if (!input) {
+    return state;
+  }
+
+  return {
+    ...state,
+    currentMode: promptClassifier.classify(input)
   };
 }
 

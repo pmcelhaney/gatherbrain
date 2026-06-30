@@ -41,3 +41,26 @@ describe("main", () => {
     assert.match(result.stdout, /planned 09:00-10:00 Steve/);
   });
 });
+
+describe("createAppRuntime", () => {
+  it("previews prompt mode while typing without mutating state", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-preview-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit("Follow up with Steve.");
+
+    const rendered = runtime.render({ input: ";", showCursor: true });
+
+    assert.match(rendered, /\(no time boxes\)/);
+    assert.doesNotMatch(rendered, /Follow up with Steve/);
+    assert.match(rendered, /> ;█/);
+    assert.equal(runtime.state.currentMode, "Capture");
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+});

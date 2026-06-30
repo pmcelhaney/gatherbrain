@@ -26,19 +26,20 @@ export class TerminalApp {
     width = 80,
     height = 24,
     today = null,
-    colorEnabled = false
+    colorEnabled = false,
+    state = this.state
   } = {}) {
-    const header = this.headerRenderer.render({ state: this.state, resultSet, today });
+    const header = this.headerRenderer.render({ state, resultSet, today });
     const divider = "-".repeat(width);
     const prompt = this.promptRenderer.render({
-      state: this.state,
+      state,
       input,
       cursor,
       showCursor
     });
     const bodyHeight = Math.max(1, height - 4);
     const bodyLines = this.bodyRenderer.render({
-      state: this.state,
+      state,
       resultSet,
       timeBoxes,
       width,
