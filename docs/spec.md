@@ -137,8 +137,14 @@ Example:
         2026-07-01.txt
 ```
 
-The exact text format is still to be defined, but the storage invariant is one
-time box file per date.
+The storage invariant is one time box file per date.
+
+Initial time box text format:
+
+```text
+09:00-10:00 | Steve | 2026-06-30-0900-1000-steve
+11:00-12:00 | Counterfact | 2026-06-30-1100-1200-counterfact
+```
 
 ---
 
