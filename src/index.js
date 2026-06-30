@@ -1400,10 +1400,12 @@ function factViewModelsForDisplay(facts, options = {}) {
     const displayType = type === 'fact' ? '' : type;
     const displayDue = fact.properties?.due ? formatFriendlyDate(fact.properties.due, { today }) : '';
     const displaySeparator = displayType.length > 0 || displayDue.length > 0;
+    const currentContextMarker = fact.currentContextMarker ?? '';
     const sourceContext = fact.sourceContext ?? '';
     const sourceContextShort = fact.sourceContextShort ?? '';
     const firstPrefix = [
       deletedMarker,
+      currentContextMarker,
       sourceContextShort,
       displayType,
       displayDue
@@ -1444,6 +1446,7 @@ function factViewModelsForDisplay(facts, options = {}) {
       type: displayType,
       due: displayDue,
       displaySeparator,
+      currentContextMarker,
       sourceContext,
       sourceContextShort,
       title: titleText,
@@ -2766,6 +2769,15 @@ function showCommandHelp(state, message = null) {
   state.temporaryBodyPlanner = null;
 }
 
+function markSearchFactsInCurrentContext(facts, state) {
+  const currentContextId = contextIdForDirectory(state, state.currentContextDirectory);
+
+  return facts.map((fact) => ({
+    ...fact,
+    ...(fact.contextId === currentContextId ? { currentContextMarker: '[current]' } : {})
+  }));
+}
+
 async function showSearchResults(parsedEntry, state) {
   const previousView = state.temporaryBodyType ?? 'facts';
   const facts = await searchFacts(state, parsedEntry.query);
@@ -2774,7 +2786,7 @@ async function showSearchResults(parsedEntry, state) {
   state.temporaryBody = {
     type: 'facts',
     template: 'facts',
-    facts
+    facts: markSearchFactsInCurrentContext(facts, state)
   };
   state.temporaryBodyLines = null;
   state.temporaryBodyPlanner = null;

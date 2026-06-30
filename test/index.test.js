@@ -1215,6 +1215,58 @@ test(':search lists matching facts by last updated descending', async () => {
   }
 });
 
+test(':search marks facts that are already in the current context', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const currentContext = path.join(rootDirectory, 'projects', 'gatherbrain');
+
+  try {
+    await mkdir(currentContext, { recursive: true });
+    await mkdir(path.join(rootDirectory, 'people', 'Steve Ma'), { recursive: true });
+    await writeFile(
+      path.join(currentContext, 'current.md'),
+      '---\ntype: fact\n---\n\nNeed search directly.\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'people', 'Steve Ma', 'related.md'),
+      '---\ntype: fact\n---\n\nNeed search with Steve.\n'
+    );
+    await utimes(
+      path.join(rootDirectory, 'people', 'Steve Ma', 'related.md'),
+      new Date('2026-06-26T12:00:00Z'),
+      new Date('2026-06-26T12:00:00Z')
+    );
+    await utimes(
+      path.join(currentContext, 'current.md'),
+      new Date('2026-06-26T11:00:00Z'),
+      new Date('2026-06-26T11:00:00Z')
+    );
+    const state = createPromptState({ appDirectory, rootDirectory });
+    state.currentContextDirectory = currentContext;
+
+    assert.deepEqual(await handleEntry(':search search', state), {
+      action: 'continue',
+      message: 'search "search" (2 matches)'
+    });
+    assert.deepEqual(
+      buildTuiLines({
+        state,
+        body: await visibleBodyForState(state),
+        rows: 8,
+        columns: 80
+      }),
+      [
+        'projects/gatherbrain | search "search" (2 matches)',
+        '--------------------------------------------------------------------------------',
+        ' 2. Need search with Steve.',
+        ' 1. [current] Need search directly.'
+      ]
+    );
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('slash commands show a colon command usage error', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
