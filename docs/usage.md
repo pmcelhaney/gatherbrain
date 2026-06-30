@@ -87,6 +87,14 @@ If the context does not exist, the app asks whether to create it. Subsequent fac
 
 Switching context clears peek.
 
+Use `:new-session` to create and enter a dated session context:
+
+```text
+:new-session ARB standup
+```
+
+This creates `/sessions/<today>/ARB standup` using the local date in `YYYY-MM-DD` form, then switches into it.
+
 ## Peek
 
 Use `:peek` to look at another context while staying in the current context:

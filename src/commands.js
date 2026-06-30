@@ -855,6 +855,10 @@ function buildCommandAction(commandDefinition, values, options = {}) {
     return { type: 'clear_peek' };
   }
 
+  if (commandDefinition.action === 'new_session') {
+    return { type: 'new_session', name: values.name };
+  }
+
   if (commandDefinition.action === 'restart_app') {
     return { type: 'restart_app' };
   }

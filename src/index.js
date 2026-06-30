@@ -2818,6 +2818,10 @@ function contextCreationPrompt(contextDirectory) {
   return `Create ${contextDirectory}? [y/N]`;
 }
 
+function sessionContextDirectory(sessionName, state) {
+  return path.join(state.rootDirectory, 'sessions', timeboxDate(state.now()), sessionName.trim());
+}
+
 function parseConfirmation(value) {
   const normalizedValue = value.trim().toLowerCase();
 
@@ -3386,6 +3390,32 @@ export async function handleEntry(entry, state) {
 
   if (parsedEntry.type === 'switch_to_current_timebox') {
     return switchToCurrentTimebox(state);
+  }
+
+  if (parsedEntry.type === 'new_session') {
+    try {
+      const contextDirectory = sessionContextDirectory(parsedEntry.name, state);
+
+      if (contextHasHiddenPathPart(contextDirectory, state)) {
+        throw new Error('context cannot contain hidden folders');
+      }
+
+      await createContext(state, contextDirectory);
+      const message = await switchToContextDirectory(contextDirectory, state);
+
+      return {
+        action: 'continue',
+        message
+      };
+    } catch (error) {
+      state.statusMessage = error.message;
+      clearTemporaryBody(state);
+
+      return {
+        action: 'continue',
+        message: state.statusMessage
+      };
+    }
   }
 
   if (parsedEntry.type === 'paste_clipboard') {

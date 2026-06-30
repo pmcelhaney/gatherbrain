@@ -45,6 +45,7 @@ Supported actions:
 - `switch_context`: change the current context. Requires `context`.
 - `change_peek`: peek at a context. Requires `context`.
 - `clear_peek`: clear peek. Takes no arguments.
+- `new_session`: create and enter `/sessions/<today>/<name>`. Requires `name`.
 - `switch_lens`: change lens. Requires `lens`.
 - `create_fact`: create a fact in the current context. Requires `title`.
 - `edit_fact`: open a fact in `$EDITOR`. Requires `item`.

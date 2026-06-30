@@ -21,6 +21,7 @@ test('lists built-in command help', () => {
     ':switch <context>',
     ':peek <context>',
     ':clear-peek',
+    ':new-session <name>',
     ':lens <lens>',
     '<item> :edit',
     ':open | <item> :open',
@@ -34,12 +35,13 @@ test('lists built-in command help', () => {
   ]);
   assert.equal(
     commandHelpText(),
-    ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+    ':switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
   );
   assert.deepEqual(commandNames(), [
     'switch',
     'peek',
     'clear-peek',
+    'new-session',
     'lens',
     'edit',
     'open',
@@ -151,6 +153,22 @@ test('parses context and lens commands', () => {
   });
   assert.deepEqual(parseEntry(':clear-peek'), {
     type: 'clear_peek'
+  });
+  assert.deepEqual(parseEntry(':new-session ARB standup'), {
+    name: 'ARB standup',
+    type: 'new_session'
+  });
+  assert.deepEqual(parseEntry(':new-session'), {
+    type: 'prompt_command_argument',
+    commandName: 'new-session',
+    values: {},
+    argument: {
+      name: 'name',
+      type: 'text',
+      consume: 'rest',
+      prompt: 'Name session?'
+    },
+    prompt: 'Name session?'
   });
   assert.deepEqual(parseEntry(':lens todo'), {
     type: 'switch_lens',
@@ -406,6 +424,7 @@ test('loads workspace command definitions from config', async () => {
       'switch',
       'peek',
       'clear-peek',
+      'new-session',
       'lens',
       'edit',
       'open',
@@ -529,6 +548,7 @@ test('workspace command config overrides default commands by name', async () => 
       'switch',
       'peek',
       'clear-peek',
+      'new-session',
       'lens',
       'edit',
       'open',

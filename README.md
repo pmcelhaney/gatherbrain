@@ -94,6 +94,7 @@ Use `:q`, `:quit`, `:exit`, or `Ctrl+C` to leave the prompt.
 - `Follow up -- todo today /people/alex` saves a fact, then applies the same type, due date, and relation metadata used by item update shorthand.
 - `:switch projects/gatherbrain` changes context.
 - `:peek people/alex` looks at another context without leaving the current one.
+- `:new-session ARB standup` creates and enters `/sessions/<today>/ARB standup`.
 - `:lens today` changes the current lens.
 - `3 :edit` opens the third visible fact in `$EDITOR`.
 - `3 :delete` moves the third visible fact to `.trash`.

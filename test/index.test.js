@@ -295,6 +295,36 @@ test(':switch refuses to create hidden contexts', async () => {
   }
 });
 
+test(':new-session creates a dated session context and enters it', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(path.join(rootDirectory, 'people', 'Alex'), { recursive: true });
+    const state = createPromptState({
+      appDirectory,
+      rootDirectory,
+      now: () => new Date(2026, 5, 30, 9, 15)
+    });
+    await handleEntry(':peek people/Alex', state);
+
+    assert.deepEqual(await handleEntry(':new-session ARB standup', state), {
+      action: 'continue',
+      message: 'context sessions/2026-06-30/ARB standup'
+    });
+    assert.equal(
+      state.currentContextDirectory,
+      path.join(rootDirectory, 'sessions', '2026-06-30', 'ARB standup')
+    );
+    assert.equal(state.peekContextDirectory, null);
+    assert.equal(state.pendingContextCreation, null);
+    assert.deepEqual(await readdir(path.join(rootDirectory, 'sessions', '2026-06-30')), ['ARB standup']);
+    assert.equal(state.model.contexts.has('sessions/2026-06-30/ARB standup'), true);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('saves typed text as a titled fact with linked mentions in the body', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
@@ -874,7 +904,7 @@ test(':new is not a built-in command', async () => {
 
     assert.deepEqual(await handleEntry(':new', state), {
       action: 'continue',
-      message: 'unknown command :new; :switch <context> | :peek <context> | :clear-peek | :lens <lens> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+      message: 'unknown command :new; :switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
     });
     assert.equal(state.pendingCommand, null);
     await assert.rejects(readdir(rootDirectory), { code: 'ENOENT' });
@@ -1083,7 +1113,7 @@ test(':help lists commands without saving a fact', async () => {
 
     assert.deepEqual(await handleEntry(':help', state), {
       action: 'continue',
-      message: ':switch <context> | :peek <context> | :clear-peek | :lens <lens> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
+      message: ':switch <context> | :peek <context> | :clear-peek | :new-session <name> | :lens <lens> | <item> :edit | :open | <item> :open | <item> :delete | <item> :move <context> | :paste <title> | :plan <range> <context> | :cancel <range> <context> | :now | :restart'
     });
     assert.deepEqual(
       buildTuiLines({
@@ -1099,6 +1129,7 @@ test(':help lists commands without saving a fact', async () => {
         ':switch <context>',
         ':peek <context>',
         ':clear-peek',
+        ':new-session <name>',
         ':lens <lens>',
         '<item> :edit',
         ':open | <item> :open',
@@ -3437,6 +3468,7 @@ test('completes colon command names', async () => {
       ':switch ',
       ':peek ',
       ':clear-peek ',
+      ':new-session ',
       ':lens ',
       ':edit ',
       ':open ',

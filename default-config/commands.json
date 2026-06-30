@@ -30,6 +30,18 @@
       "arguments": []
     },
     {
+      "name": "new-session",
+      "action": "new_session",
+      "arguments": [
+        {
+          "name": "name",
+          "type": "text",
+          "consume": "rest",
+          "prompt": "Name session?"
+        }
+      ]
+    },
+    {
       "name": "lens",
       "action": "switch_lens",
       "arguments": [
