@@ -2116,6 +2116,10 @@ export async function completeEntry(line, state) {
     return [matches, line];
   }
 
+  if (state.pendingCommand?.argument?.type === 'text') {
+    return matchingProperNounTextCompletion(line, state) ?? [[], line];
+  }
+
   const commandCompletion = completionLine.match(/^:(?<partial>[A-Za-z0-9_-]*)$/u);
 
   if (commandCompletion) {
@@ -2243,6 +2247,12 @@ export async function completeEntry(line, state) {
     return [matches, partialLens];
   }
 
+  const namedTextCompletion = await matchingNamedTextArgument(completionLine, state);
+
+  if (namedTextCompletion) {
+    return namedTextCompletion;
+  }
+
   const mentionCompletion = completionLine.match(/(^|\s)(@[^\s]*)$/u);
 
   if (mentionCompletion) {
@@ -2253,7 +2263,62 @@ export async function completeEntry(line, state) {
     return [matches.map(contextMentionCompletionValue), partialMention];
   }
 
+  if (!completionLine.startsWith(':')) {
+    const properNounCompletion = await matchingProperNounTextCompletion(completionLine, state);
+
+    if (properNounCompletion) {
+      return properNounCompletion;
+    }
+  }
+
   return [[], completionLine];
+}
+
+async function matchingNamedTextArgument(line, state) {
+  const match = line.match(/^:(?<commandName>[A-Za-z][A-Za-z0-9_-]*)(?:\s+(?<args>.*))?$/u);
+
+  if (!match) {
+    return null;
+  }
+
+  const argumentsDefinition = commandArgumentsForCompletion(match.groups.commandName, state);
+
+  if (argumentsDefinition?.length !== 1 || argumentsDefinition[0].type !== 'text') {
+    return null;
+  }
+
+  return matchingProperNounTextCompletion(match.groups.args ?? '', state);
+}
+
+function trailingFreeTextFragments(value) {
+  const matches = [...String(value ?? '').matchAll(/[A-Za-z][A-Za-z'.-]*/gu)];
+  const trailingMatch = matches.at(-1);
+
+  if (!trailingMatch || trailingMatch.index + trailingMatch[0].length !== value.length) {
+    return [];
+  }
+
+  return matches
+    .map((match) => value.slice(match.index))
+    .filter((fragment) => fragment.trim().length > 0);
+}
+
+async function matchingProperNounTextCompletion(value, state) {
+  const fragments = trailingFreeTextFragments(value);
+
+  if (fragments.length === 0) {
+    return null;
+  }
+
+  const entries = await properNouns(state);
+  const names = entries.map((entry) => entry.name);
+  const prefixFragment = fragments
+    .toReversed()
+    .find((fragment) => names.some((name) => startsWithCaseInsensitive(name, fragment)));
+  const partial = prefixFragment ?? fragments.at(-1);
+  const matches = rankedCompletionMatches(names, (name) => completionMatchRank(name, partial));
+
+  return matches.length > 0 ? [matches, partial] : null;
 }
 
 async function matchingTrailingNamedArgument(line, state) {

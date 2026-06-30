@@ -3906,6 +3906,31 @@ test('saves context aliases as context links in fact text', async () => {
   }
 });
 
+test('completes proper nouns in free text', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+
+  try {
+    await mkdir(rootDirectory, { recursive: true });
+    await writeFile(
+      path.join(rootDirectory, 'agentic-commerce.md'),
+      '---\ntype: fact\n---\n\nAgentic Commerce depends on Anne of Green Gables.\n'
+    );
+    const state = createPromptState({ appDirectory, rootDirectory });
+
+    assert.deepEqual(await completeEntry('Ag', state), [['Agentic Commerce'], 'Ag']);
+    assert.deepEqual(await completeEntry('Read Agentic C', state), [['Agentic Commerce'], 'Agentic C']);
+    assert.deepEqual(await completeEntry('Read Anne of G', state), [['Anne of Green Gables'], 'Anne of G']);
+    assert.deepEqual(await completeEntry(':search Ag', state), [['Agentic Commerce'], 'Ag']);
+
+    await handleEntry(':paste', state);
+
+    assert.deepEqual(await completeEntry('Ag', state), [['Agentic Commerce'], 'Ag']);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('does not complete slash commands', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');
