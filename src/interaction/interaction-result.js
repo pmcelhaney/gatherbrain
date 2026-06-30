@@ -6,7 +6,8 @@ export class InteractionResult {
     fact = null,
     filePath = null,
     resultSet = null,
-    query = null
+    query = null,
+    timeBox = null
   } = {}) {
     this.mode = mode;
     this.action = action;
@@ -15,6 +16,7 @@ export class InteractionResult {
     this.filePath = filePath;
     this.resultSet = resultSet;
     this.query = query;
+    this.timeBox = timeBox;
   }
 
   static captured({ mode, fact, filePath }) {
@@ -38,6 +40,15 @@ export class InteractionResult {
       message: `${resultSet.count} result${resultSet.count === 1 ? "" : "s"}`,
       resultSet,
       query
+    });
+  }
+
+  static planned({ mode, timeBox }) {
+    return new InteractionResult({
+      mode,
+      action: "plan",
+      message: `planned ${timeBox.startsAt}-${timeBox.endsAt} ${timeBox.session.name}`,
+      timeBox
     });
   }
 }

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, it } from "node:test";
 
 import { PromptController } from "../../src/interaction/index.js";
 import { FactRepository, Workspace } from "../../src/persistence/index.js";
+import { TimeBoxRepository } from "../../src/planning/index.js";
 import { AppMode, AppState } from "../../src/state/index.js";
 
 describe("PromptController", () => {
@@ -20,6 +21,7 @@ describe("PromptController", () => {
     controller = new PromptController({
       state,
       factRepository: new FactRepository({ workspace: new Workspace(rootPath) }),
+      timeBoxRepository: new TimeBoxRepository({ workspace: new Workspace(rootPath) }),
       clock: () => new Date("2026-06-30T15:45:00.000Z"),
       idGenerator: () => "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
       currentResultSetProvider: () => currentResultSet
@@ -80,5 +82,13 @@ describe("PromptController", () => {
       "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
     );
     assert.equal(saved.dueDate, "2026-07-01");
+  });
+
+  it("executes plan input by saving a time box", async () => {
+    const result = await controller.submit("; 9-10 Steve");
+
+    assert.equal(result.action, "plan");
+    assert.equal(result.timeBox.date, "2026-06-30");
+    assert.equal(result.message, "planned 09:00-10:00 Steve");
   });
 });

@@ -7,6 +7,7 @@ import {
   SearchQueryParser,
   SearchShortcutRegistry
 } from "../search/index.js";
+import { PlanParser } from "../planning/index.js";
 import { AppMode, Selection } from "../state/index.js";
 import { CommandRegistry } from "./command-registry.js";
 import { InteractionResult } from "./interaction-result.js";
@@ -23,6 +24,8 @@ export class PromptController {
     searchEngine = new SearchEngine(),
     selectionActionRegistry = SelectionActionRegistry.fromConfig(),
     currentResultSetProvider = () => null,
+    planParser = null,
+    timeBoxRepository = null,
     clock = () => new Date(),
     idGenerator = randomUUID,
     defaultFactType = "fact"
@@ -36,6 +39,8 @@ export class PromptController {
     this.searchEngine = searchEngine;
     this.selectionActionRegistry = selectionActionRegistry;
     this.currentResultSetProvider = currentResultSetProvider;
+    this.planParser = planParser;
+    this.timeBoxRepository = timeBoxRepository;
     this.clock = clock;
     this.idGenerator = idGenerator;
     this.defaultFactType = defaultFactType;
@@ -59,6 +64,10 @@ export class PromptController {
 
     if (mode === AppMode.SELECTION) {
       return this.selection(input);
+    }
+
+    if (mode === AppMode.PLAN) {
+      return this.plan(input);
     }
 
     return InteractionResult.classified({ mode });
@@ -134,6 +143,25 @@ export class PromptController {
       mode: AppMode.SELECTION,
       action: "selection_action",
       message: `${actionKeyword} applied to ${results.length} fact${results.length === 1 ? "" : "s"}`
+    });
+  }
+
+  async plan(input) {
+    if (!this.timeBoxRepository) {
+      throw new Error("Time box repository is required for plan input");
+    }
+
+    const today = this.clock().toISOString().slice(0, 10);
+    const parser = this.planParser ?? new PlanParser({ today });
+    const preview = parser.parse(input, { today });
+    this.state.setPlanPreview(preview);
+
+    const timeBox = preview.commit();
+    await this.timeBoxRepository.save(timeBox);
+
+    return InteractionResult.planned({
+      mode: AppMode.PLAN,
+      timeBox
     });
   }
 }

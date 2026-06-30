@@ -22,7 +22,7 @@ describe("main", () => {
 
     const result = spawnSync("node", ["src/main.js"], {
       cwd: process.cwd(),
-      input: ":switch Steve\nFollow up with Steve.\n/Steve\n. tomorrow\n:exit\n",
+      input: ":switch Steve\nFollow up with Steve.\n/Steve\n. tomorrow\n; 9-10 Steve\n:exit\n",
       encoding: "utf8",
       env: {
         ...process.env,
@@ -37,5 +37,6 @@ describe("main", () => {
     assert.match(result.stdout, /captured fact/);
     assert.match(result.stdout, /1 result/);
     assert.match(result.stdout, /tomorrow applied to 1 fact/);
+    assert.match(result.stdout, /planned 09:00-10:00 Steve/);
   });
 });

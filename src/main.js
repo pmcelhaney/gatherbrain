@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { PromptController } from "./interaction/index.js";
 import { FactRepository, Workspace } from "./persistence/index.js";
+import { TimeBoxRepository } from "./planning/index.js";
 import { AppState } from "./state/index.js";
 import { TerminalApp } from "./terminal/index.js";
 
@@ -14,11 +15,14 @@ export function createAppRuntime({
   const state = new AppState();
   const workspace = new Workspace(workspacePath);
   const factRepository = new FactRepository({ workspace });
+  const timeBoxRepository = new TimeBoxRepository({ workspace });
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;
+  let timeBoxes = [];
   const promptController = new PromptController({
     state,
     factRepository,
+    timeBoxRepository,
     clock,
     currentResultSetProvider: () => resultSet
   });
@@ -33,10 +37,14 @@ export function createAppRuntime({
         resultSet = result.resultSet;
       }
 
+      if (result.timeBox) {
+        timeBoxes = await timeBoxRepository.listByDate(result.timeBox.date);
+      }
+
       return result;
     },
     render() {
-      return terminalApp.render({ resultSet });
+      return terminalApp.render({ resultSet, timeBoxes });
     }
   };
 }
