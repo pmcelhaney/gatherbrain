@@ -23,6 +23,7 @@ export class PromptController {
     searchQueryParser = new SearchQueryParser(),
     searchEngine = new SearchEngine(),
     factSource = factRepository,
+    sessionRepository = null,
     selectionActionRegistry = SelectionActionRegistry.fromConfig(),
     currentResultSetProvider = () => null,
     planParser = null,
@@ -39,6 +40,7 @@ export class PromptController {
     this.searchQueryParser = searchQueryParser;
     this.searchEngine = searchEngine;
     this.factSource = factSource;
+    this.sessionRepository = sessionRepository;
     this.selectionActionRegistry = selectionActionRegistry;
     this.currentResultSetProvider = currentResultSetProvider;
     this.planParser = planParser;
@@ -57,7 +59,10 @@ export class PromptController {
     }
 
     if (mode === AppMode.COMMAND) {
-      return this.commandRegistry.execute(input, { state: this.state });
+      return this.commandRegistry.execute(input, {
+        state: this.state,
+        sessionRepository: this.sessionRepository
+      });
     }
 
     if (mode === AppMode.SEARCH) {

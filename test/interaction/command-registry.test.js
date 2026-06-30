@@ -38,5 +38,27 @@ describe("CommandRegistry", () => {
 
     assert.equal(result.action, "help");
     assert.match(result.helpLines.join("\n"), /:switch <session>/);
+    assert.match(result.helpLines.join("\n"), /:sessions/);
+  });
+
+  it("lists known sessions", async () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const sessionRepository = {
+      async list() {
+        return ["Architecture Review Board", "Steve"];
+      }
+    };
+
+    const result = await new CommandRegistry().execute(":sessions", {
+      state,
+      sessionRepository
+    });
+
+    assert.equal(result.action, "help");
+    assert.deepEqual(result.helpLines, [
+      "Sessions",
+      "  Architecture Review Board",
+      "* Steve"
+    ]);
   });
 });

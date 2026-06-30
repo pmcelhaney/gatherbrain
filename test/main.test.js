@@ -139,4 +139,26 @@ describe("createAppRuntime", () => {
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
+
+  it("lists discovered sessions in the terminal body", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-sessions-command-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit("Follow up with Steve.");
+    await runtime.submit("; 9-10 Architecture Review Board");
+    await runtime.submit(":sessions");
+
+    const rendered = runtime.render();
+
+    assert.match(rendered, /Sessions/);
+    assert.match(rendered, /\* Steve/);
+    assert.match(rendered, /  Architecture Review Board/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
 });

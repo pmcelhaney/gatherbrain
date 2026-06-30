@@ -32,6 +32,7 @@ export function createAppRuntime({
     state,
     factRepository,
     factSource: factIndex,
+    sessionRepository,
     timeBoxRepository,
     clock,
     currentResultSetProvider: () => resultSet

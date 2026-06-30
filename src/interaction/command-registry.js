@@ -77,6 +77,7 @@ class HelpCommand {
       helpLines: [
         "Commands",
         ":switch <session>   switch or create a session",
+        ":sessions           list known sessions",
         ":restart            clear current app state",
         ":paste              recognized; not implemented yet",
         ":help               show this help",
@@ -92,9 +93,36 @@ class HelpCommand {
   }
 }
 
+class SessionsCommand {
+  async execute(args, { state, sessionRepository }) {
+    if (args.trim()) {
+      throw new Error(":sessions does not accept arguments");
+    }
+
+    if (!sessionRepository) {
+      throw new Error(":sessions requires a session repository");
+    }
+
+    const sessions = await sessionRepository.list();
+    const currentName = state.currentSession?.name ?? null;
+    const helpLines = sessions.length > 0
+      ? [
+          "Sessions",
+          ...sessions.map((session) => `${session === currentName ? "*" : " "} ${session}`)
+        ]
+      : ["Sessions", "(none)"];
+
+    return InteractionResult.help({
+      mode: AppMode.COMMAND,
+      helpLines
+    });
+  }
+}
+
 function defaultCommands() {
   return {
     help: new HelpCommand(),
+    sessions: new SessionsCommand(),
     switch: new SwitchSessionCommand(),
     restart: new RestartCommand(),
     paste: new PasteCommand()
