@@ -32,7 +32,7 @@ export function createAppRuntime({
   const completionService = new CompletionService({
     sessionRepository,
     actionRegistry: selectionActionRegistry,
-    commandNames: ["help", "paste", "restart", "session", "sessions", "switch"]
+    commandNames: ["help", "inspect", "paste", "restart", "session", "sessions", "switch"]
   });
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;

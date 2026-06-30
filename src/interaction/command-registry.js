@@ -78,6 +78,8 @@ class HelpCommand {
         "Commands",
         ":switch <session>   switch or create a session",
         ":sessions           list known sessions",
+        ":session <number>   switch to a numbered session",
+        ":inspect <number>   show visible fact details",
         ":restart            clear current app state",
         ":paste              recognized; not implemented yet",
         ":help               show this help",
@@ -89,6 +91,35 @@ class HelpCommand {
         ". todo              update first visible fact",
         "; 9-10 Session      plan a timebox"
       ]
+    });
+  }
+}
+
+class InspectCommand {
+  async execute(args, { factRepository, resultSet }) {
+    const selector = args.trim();
+
+    if (!selector) {
+      throw new Error(":inspect requires a visible fact number");
+    }
+
+    if (!resultSet) {
+      throw new Error(":inspect requires visible search results");
+    }
+
+    if (!/^\d+$/.test(selector)) {
+      throw new Error(":inspect currently accepts a visible fact number");
+    }
+
+    const factId = resultSet.factIdForNumber(Number(selector));
+    const fact = await factRepository.getFactById(factId);
+    const filePath = await factRepository.findPathByFactId(factId);
+
+    return InteractionResult.panel({
+      mode: AppMode.COMMAND,
+      action: "inspect",
+      message: `inspected fact ${selector}`,
+      helpLines: factDetailLines(fact, filePath)
     });
   }
 }
@@ -144,12 +175,27 @@ class SessionCommand {
 function defaultCommands() {
   return {
     help: new HelpCommand(),
+    inspect: new InspectCommand(),
     session: new SessionCommand(),
     sessions: new SessionsCommand(),
     switch: new SwitchSessionCommand(),
     restart: new RestartCommand(),
     paste: new PasteCommand()
   };
+}
+
+function factDetailLines(fact, filePath) {
+  return [
+    `Fact ${fact.id}`,
+    `type: ${fact.type}`,
+    `created: ${fact.createdAt.toISOString()}`,
+    `home session: ${fact.homeSession.name}`,
+    `associated sessions: ${fact.associatedSessions.map((session) => session.name).join(", ") || "(none)"}`,
+    `due: ${fact.dueDate ?? "(none)"}`,
+    `file: ${filePath ?? "(not found)"}`,
+    "",
+    fact.content
+  ];
 }
 
 async function resolveSessionName(target, sessionRepository) {

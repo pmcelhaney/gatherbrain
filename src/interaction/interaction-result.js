@@ -62,4 +62,13 @@ export class InteractionResult {
       helpLines
     });
   }
+
+  static panel({ mode, action, message, helpLines }) {
+    return new InteractionResult({
+      mode,
+      action,
+      message,
+      helpLines
+    });
+  }
 }

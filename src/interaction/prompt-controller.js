@@ -61,7 +61,9 @@ export class PromptController {
     if (mode === AppMode.COMMAND) {
       return this.commandRegistry.execute(input, {
         state: this.state,
-        sessionRepository: this.sessionRepository
+        sessionRepository: this.sessionRepository,
+        factRepository: this.factRepository,
+        resultSet: this.currentResultSetProvider()
       });
     }
 

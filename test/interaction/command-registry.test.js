@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { Fact } from "../../src/domain/index.js";
 import { CommandRegistry } from "../../src/interaction/index.js";
 import { AppState } from "../../src/state/index.js";
 
@@ -77,5 +78,43 @@ describe("CommandRegistry", () => {
 
     assert.equal(result.action, "switch_session");
     assert.equal(state.currentSession.name, "Architecture Review Board");
+  });
+
+  it("inspects a visible fact", async () => {
+    const fact = new Fact({
+      id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
+      content: "Follow up with Steve.",
+      type: "todo",
+      createdAt: "2026-06-30T15:45:00.000Z",
+      dueDate: "2026-07-01",
+      homeSession: "Steve",
+      associatedSessions: ["Architecture Review Board"]
+    });
+    const resultSet = {
+      factIdForNumber(number) {
+        assert.equal(number, 1);
+        return fact.id;
+      }
+    };
+    const factRepository = {
+      async getFactById(factId) {
+        assert.equal(factId, fact.id);
+        return fact;
+      },
+      async findPathByFactId(factId) {
+        assert.equal(factId, fact.id);
+        return "/tmp/fact.md";
+      }
+    };
+
+    const result = await new CommandRegistry().execute(":inspect 1", {
+      factRepository,
+      resultSet
+    });
+
+    assert.equal(result.action, "inspect");
+    assert.match(result.helpLines.join("\n"), /Fact 5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a/);
+    assert.match(result.helpLines.join("\n"), /associated sessions: Architecture Review Board/);
+    assert.match(result.helpLines.join("\n"), /file: \/tmp\/fact\.md/);
   });
 });
