@@ -3160,6 +3160,80 @@ test(':gather command relates a listed item to the current context', async () =>
   }
 });
 
+test(':gather command relates multiple listed items to the current context', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const currentContext = path.join(rootDirectory, 'projects');
+  const sourceContext = path.join(rootDirectory, 'people', 'Steve Ma');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(currentContext, { recursive: true });
+    await mkdir(sourceContext, { recursive: true });
+    state.currentContextDirectory = currentContext;
+    state.peekContextDirectory = sourceContext;
+    await writeFile(
+      path.join(sourceContext, 'first.md'),
+      '---\ntitle: "First"\ntype: todo\n---\n\nFirst\n'
+    );
+    await writeFile(
+      path.join(sourceContext, 'second.md'),
+      '---\ntitle: "Second"\ntype: todo\n---\n\nSecond\n'
+    );
+    await writeFile(
+      path.join(sourceContext, 'third.md'),
+      '---\ntitle: "Third"\ntype: todo\n---\n\nThird\n'
+    );
+
+    assert.deepEqual(await handleEntry('3 2 1 :gather', state), {
+      action: 'continue',
+      message: 'related items 3, 2, 1 to projects'
+    });
+    assert.deepEqual(state.model.facts.get('people/Steve Ma/first.md').relations, ['projects']);
+    assert.deepEqual(state.model.facts.get('people/Steve Ma/second.md').relations, ['projects']);
+    assert.deepEqual(state.model.facts.get('people/Steve Ma/third.md').relations, ['projects']);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
+test('dot item shorthand expands multiple listed items before a command', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const currentContext = path.join(rootDirectory, 'projects');
+  const sourceContext = path.join(rootDirectory, 'people', 'Steve Ma');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(currentContext, { recursive: true });
+    await mkdir(sourceContext, { recursive: true });
+    state.currentContextDirectory = currentContext;
+    state.peekContextDirectory = sourceContext;
+    await writeFile(
+      path.join(sourceContext, 'first.md'),
+      '---\ntitle: "First"\ntype: todo\n---\n\nFirst\n'
+    );
+    await writeFile(
+      path.join(sourceContext, 'second.md'),
+      '---\ntitle: "Second"\ntype: todo\n---\n\nSecond\n'
+    );
+    await writeFile(
+      path.join(sourceContext, 'third.md'),
+      '---\ntitle: "Third"\ntype: todo\n---\n\nThird\n'
+    );
+
+    assert.deepEqual(await handleEntry('. ... :gather', state), {
+      action: 'continue',
+      message: 'related items 3, 1 to projects'
+    });
+    assert.deepEqual(state.model.facts.get('people/Steve Ma/first.md').relations, ['projects']);
+    assert.equal(state.model.facts.get('people/Steve Ma/second.md').relations, undefined);
+    assert.deepEqual(state.model.facts.get('people/Steve Ma/third.md').relations, ['projects']);
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test(':gather command keeps the current visible list active', async () => {
   const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
   const rootDirectory = path.join(appDirectory, 'facts');

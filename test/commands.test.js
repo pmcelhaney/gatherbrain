@@ -276,6 +276,19 @@ test('parses fact commands', () => {
     itemNumber: 5,
     type: 'gather_fact'
   });
+  assert.deepEqual(parseEntry('11 13 14 :gather'), {
+    itemNumbers: [11, 13, 14],
+    type: 'gather_fact'
+  });
+  assert.deepEqual(parseEntry('1 2 :move people/alex'), {
+    contextReference: 'people/alex',
+    itemNumbers: [1, 2],
+    type: 'move_fact'
+  });
+  assert.deepEqual(parseEntry('1 2 :delete'), {
+    itemNumbers: [1, 2],
+    type: 'delete_fact'
+  });
   assert.deepEqual(parseEntry('14 done'), {
     itemNumber: 14,
     operations: [

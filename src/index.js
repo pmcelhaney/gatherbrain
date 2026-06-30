@@ -911,6 +911,28 @@ async function visibleFactForSelector(state, selector) {
   throw new Error('item selector is required');
 }
 
+async function visibleFactsForSelectors(state, selector) {
+  if (Array.isArray(selector.itemNumbers)) {
+    const facts = visibleFactsWithItemNumbers(await visibleFactsForState(state), state);
+
+    return selector.itemNumbers.map((itemNumber) => {
+      const fact = facts.find((candidate) => candidate.itemNumber === itemNumber);
+
+      if (!fact) {
+        throw new Error(`item ${itemNumber} does not exist`);
+      }
+
+      return {
+        fact,
+        itemLabel: String(itemNumber),
+        itemNumber
+      };
+    });
+  }
+
+  return [await visibleFactForSelector(state, selector)];
+}
+
 async function openPathForReference(state, selector) {
   if (!Number.isInteger(selector.itemNumber) && !selector.itemTitle) {
     return {
@@ -1177,6 +1199,34 @@ function expandedDotItemShorthandEntry(entry, facts, options = {}) {
     return dotToken
       ? replaceDotToken(dotToken, (itemNumber) => itemNumber)
       : { entry };
+  }
+
+  const itemPrefixedCommandMatch = entry.match(
+    /^(?<prefix>\s*)(?<items>(?:[1-9]\d*|\.+)(?:\s+(?:[1-9]\d*|\.+))*?)\s+:(?<suffix>[A-Za-z][A-Za-z0-9_-]*(?:\s+.*)?)$/u
+  );
+
+  if (itemPrefixedCommandMatch) {
+    const itemTokens = itemPrefixedCommandMatch.groups.items.trim().split(/\s+/u);
+    const expandedItems = [];
+
+    for (const itemToken of itemTokens) {
+      if (!/^\.+$/u.test(itemToken)) {
+        expandedItems.push(itemToken);
+        continue;
+      }
+
+      const expanded = replaceDotToken(itemToken, (itemNumber) => itemNumber);
+
+      if (expanded.error) {
+        return expanded;
+      }
+
+      expandedItems.push(expanded.entry);
+    }
+
+    return {
+      entry: `${itemPrefixedCommandMatch.groups.prefix}${expandedItems.join(' ')} :${itemPrefixedCommandMatch.groups.suffix}`
+    };
   }
 
   const itemUpdateMatch = entry.match(/^(?<prefix>\s*)(?<item>\.+)(?<suffix>\s*.*)$/u);
@@ -3732,9 +3782,22 @@ export async function handleEntry(entry, state) {
 
   if (parsedEntry.type === 'edit_fact') {
     try {
-      const { fact, itemLabel, itemNumber } = await visibleFactForSelector(state, parsedEntry);
+      const resolvedFacts = await visibleFactsForSelectors(state, parsedEntry);
       state.statusMessage = '';
       clearTemporaryBody(state);
+
+      if (resolvedFacts.length > 1) {
+        return {
+          action: 'edit',
+          files: resolvedFacts.map(({ fact, itemLabel, itemNumber }) => ({
+            filePath: fact.path,
+            itemLabel,
+            itemNumber
+          }))
+        };
+      }
+
+      const { fact, itemLabel, itemNumber } = resolvedFacts[0];
 
       return {
         action: 'edit',
@@ -3755,6 +3818,28 @@ export async function handleEntry(entry, state) {
 
   if (parsedEntry.type === 'open_reference') {
     try {
+      if (Array.isArray(parsedEntry.itemNumbers)) {
+        const resolvedFacts = await visibleFactsForSelectors(state, parsedEntry);
+
+        for (const { fact, itemLabel } of resolvedFacts) {
+          const filePath = referencedFilePathForFact(fact, itemLabel);
+          await state.openPath(filePath);
+          await logEvent(state, 'file.opened', {
+            path: filePath,
+            item: itemLabel
+          });
+        }
+
+        const itemLabels = resolvedFacts.map(({ itemLabel }) => itemLabel).join(', ');
+        state.statusMessage = '';
+        clearTemporaryBody(state);
+
+        return {
+          action: 'continue',
+          message: `opened items ${itemLabels} files`
+        };
+      }
+
       const { filePath, itemLabel } = await openPathForReference(state, parsedEntry);
       await state.openPath(filePath);
       state.statusMessage = '';
@@ -3782,15 +3867,16 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'delete_fact') {
-    let itemLabel;
+    let itemLabels;
 
     try {
-      const resolvedFact = await visibleFactForSelector(state, parsedEntry);
-      itemLabel = resolvedFact.itemLabel;
-      const { fact } = resolvedFact;
+      const resolvedFacts = await visibleFactsForSelectors(state, parsedEntry);
+      itemLabels = resolvedFacts.map(({ itemLabel }) => itemLabel).join(', ');
 
-      await deleteWorkspaceFact(state, fact);
-      await keepFactInViewIfDropped(state, fact, { deleted: true });
+      for (const { fact } of resolvedFacts) {
+        await deleteWorkspaceFact(state, fact);
+        await keepFactInViewIfDropped(state, fact, { deleted: true });
+      }
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);
@@ -3801,7 +3887,9 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    const message = `trashed item ${itemLabel}`;
+    const message = Array.isArray(parsedEntry.itemNumbers)
+      ? `trashed items ${itemLabels}`
+      : `trashed item ${itemLabels}`;
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);
@@ -3814,11 +3902,18 @@ export async function handleEntry(entry, state) {
 
   if (parsedEntry.type === 'relate_fact') {
     try {
-      const { fact, itemLabel } = await visibleFactForSelector(state, parsedEntry);
-      const relation = await relateWorkspaceFact(state, fact, parsedEntry.contextReference);
-      await keepFactInViewIfDropped(state, factFromModelMatching(state, fact) ?? fact);
+      const resolvedFacts = await visibleFactsForSelectors(state, parsedEntry);
+      let relation;
 
-      const message = `related item ${itemLabel} to ${relation}`;
+      for (const { fact } of resolvedFacts) {
+        relation = await relateWorkspaceFact(state, fact, parsedEntry.contextReference);
+        await keepFactInViewIfDropped(state, factFromModelMatching(state, fact) ?? fact);
+      }
+
+      const itemLabels = resolvedFacts.map(({ itemLabel }) => itemLabel).join(', ');
+      const message = Array.isArray(parsedEntry.itemNumbers)
+        ? `related items ${itemLabels} to ${relation}`
+        : `related item ${itemLabels} to ${relation}`;
       state.statusMessage = '';
       clearTemporaryBody(state);
 
@@ -3839,12 +3934,19 @@ export async function handleEntry(entry, state) {
 
   if (parsedEntry.type === 'gather_fact') {
     try {
-      const { fact, itemLabel } = await visibleFactForSelector(state, parsedEntry);
+      const resolvedFacts = await visibleFactsForSelectors(state, parsedEntry);
       const contextId = contextIdForDirectory(state, state.currentContextDirectory);
-      const relation = await relateWorkspaceFactToContextId(state, fact, contextId);
-      markTemporarySearchFactGathered(state, fact);
+      let relation;
 
-      const message = `related item ${itemLabel} to ${relation}`;
+      for (const { fact } of resolvedFacts) {
+        relation = await relateWorkspaceFactToContextId(state, fact, contextId);
+        markTemporarySearchFactGathered(state, fact);
+      }
+
+      const itemLabels = resolvedFacts.map(({ itemLabel }) => itemLabel).join(', ');
+      const message = Array.isArray(parsedEntry.itemNumbers)
+        ? `related items ${itemLabels} to ${relation}`
+        : `related item ${itemLabels} to ${relation}`;
       state.statusMessage = '';
 
       return {
@@ -3864,12 +3966,19 @@ export async function handleEntry(entry, state) {
 
   if (parsedEntry.type === 'move_fact') {
     try {
-      const { fact, itemLabel } = await visibleFactForSelector(state, parsedEntry);
-      const moved = await moveWorkspaceFact(state, fact, parsedEntry.contextReference);
-      const targetContext = moved.toContextId || '/';
-      await keepFactInViewIfDropped(state, moved.fact ?? fact);
+      const resolvedFacts = await visibleFactsForSelectors(state, parsedEntry);
+      let targetContext;
 
-      const message = `moved item ${itemLabel} to ${targetContext}`;
+      for (const { fact } of resolvedFacts) {
+        const moved = await moveWorkspaceFact(state, fact, parsedEntry.contextReference);
+        targetContext = moved.toContextId || '/';
+        await keepFactInViewIfDropped(state, moved.fact ?? fact);
+      }
+
+      const itemLabels = resolvedFacts.map(({ itemLabel }) => itemLabel).join(', ');
+      const message = Array.isArray(parsedEntry.itemNumbers)
+        ? `moved items ${itemLabels} to ${targetContext}`
+        : `moved item ${itemLabels} to ${targetContext}`;
       state.pageStartIndex = 0;
       state.statusMessage = '';
       clearTemporaryBody(state);
@@ -3932,15 +4041,16 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'set_fact_type') {
-    let itemLabel;
+    let itemLabels;
 
     try {
-      const resolvedFact = await visibleFactForSelector(state, parsedEntry);
-      itemLabel = resolvedFact.itemLabel;
-      const { fact } = resolvedFact;
+      const resolvedFacts = await visibleFactsForSelectors(state, parsedEntry);
+      itemLabels = resolvedFacts.map(({ itemLabel }) => itemLabel).join(', ');
 
-      await setWorkspaceFactType(state, fact, parsedEntry.factType);
-      await keepFactInViewIfDropped(state, factFromModelMatching(state, fact) ?? fact);
+      for (const { fact } of resolvedFacts) {
+        await setWorkspaceFactType(state, fact, parsedEntry.factType);
+        await keepFactInViewIfDropped(state, factFromModelMatching(state, fact) ?? fact);
+      }
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);
@@ -3951,7 +4061,9 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    const message = `set item ${itemLabel} type to ${parsedEntry.factType}`;
+    const message = Array.isArray(parsedEntry.itemNumbers)
+      ? `set items ${itemLabels} type to ${parsedEntry.factType}`
+      : `set item ${itemLabels} type to ${parsedEntry.factType}`;
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);
@@ -3963,15 +4075,16 @@ export async function handleEntry(entry, state) {
   }
 
   if (parsedEntry.type === 'set_fact_property') {
-    let itemLabel;
+    let itemLabels;
 
     try {
-      const resolvedFact = await visibleFactForSelector(state, parsedEntry);
-      itemLabel = resolvedFact.itemLabel;
-      const { fact } = resolvedFact;
+      const resolvedFacts = await visibleFactsForSelectors(state, parsedEntry);
+      itemLabels = resolvedFacts.map(({ itemLabel }) => itemLabel).join(', ');
 
-      await setWorkspaceFactProperty(state, fact, parsedEntry.property, parsedEntry.value);
-      await keepFactInViewIfDropped(state, factFromModelMatching(state, fact) ?? fact);
+      for (const { fact } of resolvedFacts) {
+        await setWorkspaceFactProperty(state, fact, parsedEntry.property, parsedEntry.value);
+        await keepFactInViewIfDropped(state, factFromModelMatching(state, fact) ?? fact);
+      }
     } catch (error) {
       state.statusMessage = error.message;
       clearTemporaryBody(state);
@@ -3982,7 +4095,9 @@ export async function handleEntry(entry, state) {
       };
     }
 
-    const message = `set item ${itemLabel} ${parsedEntry.property} to ${parsedEntry.value}`;
+    const message = Array.isArray(parsedEntry.itemNumbers)
+      ? `set items ${itemLabels} ${parsedEntry.property} to ${parsedEntry.value}`
+      : `set item ${itemLabels} ${parsedEntry.property} to ${parsedEntry.value}`;
     state.pageStartIndex = 0;
     state.statusMessage = '';
     clearTemporaryBody(state);
@@ -4216,30 +4331,48 @@ async function main() {
       if (result.action === 'edit') {
         editorOpen = true;
         terminal.pause();
-        await logEvent(state, 'editor.opened', {
-          path: result.filePath,
-          item: result.itemLabel
-        });
+        const editFiles = result.files ?? [{
+          filePath: result.filePath,
+          itemLabel: result.itemLabel,
+          itemNumber: result.itemNumber
+        }];
         let editorError = null;
+        let activeEditFile = editFiles[0];
 
         if (useAlternateScreen) {
           output.write('\x1b[?1049l');
         }
 
         try {
-          await openEditor(result.filePath);
-          await refreshEditedFact(state, result.filePath);
-          state.statusMessage = `edited item ${result.itemLabel}`;
+          for (const editFile of editFiles) {
+            activeEditFile = editFile;
+            await logEvent(state, 'editor.opened', {
+              path: editFile.filePath,
+              item: editFile.itemLabel
+            });
+            await openEditor(editFile.filePath);
+            await refreshEditedFact(state, editFile.filePath);
+            await logEvent(state, 'editor.closed', {
+              path: editFile.filePath,
+              item: editFile.itemLabel,
+              status: 'ok'
+            });
+          }
+          state.statusMessage = editFiles.length > 1
+            ? `edited items ${editFiles.map((editFile) => editFile.itemLabel).join(', ')}`
+            : `edited item ${editFiles[0].itemLabel}`;
         } catch (error) {
           editorError = error;
           state.statusMessage = error.message;
         } finally {
-          await logEvent(state, 'editor.closed', {
-            path: result.filePath,
-            item: result.itemLabel,
-            status: editorError ? 'error' : 'ok',
-            ...(editorError ? { error: editorError.message } : {})
-          });
+          if (editorError) {
+            await logEvent(state, 'editor.closed', {
+              path: activeEditFile.filePath,
+              item: activeEditFile.itemLabel,
+              status: 'error',
+              error: editorError.message
+            });
+          }
 
           if (useAlternateScreen) {
             output.write('\x1b[?1049h');

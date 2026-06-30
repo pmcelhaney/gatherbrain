@@ -210,7 +210,7 @@ function parseNamedCommand(command, registry) {
 }
 
 function parseItemPrefixedNamedCommand(command, registry) {
-  const match = command.match(/^(?<item>[1-9]\d*)\s+:(?<name>[A-Za-z][A-Za-z0-9_-]*)(?:\s+(?<args>.*))?$/u);
+  const match = command.match(/^(?<items>[1-9]\d*(?:\s+[1-9]\d*)*)\s+:(?<name>[A-Za-z][A-Za-z0-9_-]*)(?:\s+(?<args>.*))?$/u);
 
   if (!match) {
     return null;
@@ -234,9 +234,35 @@ function parseItemPrefixedNamedCommand(command, registry) {
     return usageErrorForCommand(commandDefinition);
   }
 
+  const items = splitCommandTokens(match.groups.items);
+
+  if (items.length > 1) {
+    const parsedAction = parseCommandArguments(
+      commandDefinition,
+      argsWithItemAtFactArgumentPosition(commandDefinition, items[0], args),
+      {
+        registry,
+        enumRegistry: registry?.enumRegistry,
+        dateToday: registry?.dateToday,
+        promptForMissing: false
+      }
+    );
+
+    if (parsedAction.type === 'usage_error') {
+      return parsedAction;
+    }
+
+    const { itemNumber: _itemNumber, itemTitle: _itemTitle, ...action } = parsedAction;
+
+    return {
+      ...action,
+      itemNumbers: items.map(positiveItemNumber)
+    };
+  }
+
   return parseCommandArguments(
     commandDefinition,
-    argsWithItemAtFactArgumentPosition(commandDefinition, match.groups.item, args),
+    argsWithItemAtFactArgumentPosition(commandDefinition, items[0], args),
     {
       registry,
       enumRegistry: registry?.enumRegistry,
