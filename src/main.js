@@ -19,7 +19,8 @@ export function createAppRuntime({
   const promptController = new PromptController({
     state,
     factRepository,
-    clock
+    clock,
+    currentResultSetProvider: () => resultSet
   });
 
   return {

@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 
 import { Fact } from "../domain/index.js";
+import { SelectionActionRegistry } from "../actions/index.js";
 import {
   SearchEngine,
   SearchQueryParser,
   SearchShortcutRegistry
 } from "../search/index.js";
-import { AppMode } from "../state/index.js";
+import { AppMode, Selection } from "../state/index.js";
 import { CommandRegistry } from "./command-registry.js";
 import { InteractionResult } from "./interaction-result.js";
 import { PromptClassifier } from "./prompt-classifier.js";
@@ -20,6 +21,8 @@ export class PromptController {
     searchShortcutRegistry = new SearchShortcutRegistry(),
     searchQueryParser = new SearchQueryParser(),
     searchEngine = new SearchEngine(),
+    selectionActionRegistry = SelectionActionRegistry.fromConfig(),
+    currentResultSetProvider = () => null,
     clock = () => new Date(),
     idGenerator = randomUUID,
     defaultFactType = "fact"
@@ -31,6 +34,8 @@ export class PromptController {
     this.searchShortcutRegistry = searchShortcutRegistry;
     this.searchQueryParser = searchQueryParser;
     this.searchEngine = searchEngine;
+    this.selectionActionRegistry = selectionActionRegistry;
+    this.currentResultSetProvider = currentResultSetProvider;
     this.clock = clock;
     this.idGenerator = idGenerator;
     this.defaultFactType = defaultFactType;
@@ -50,6 +55,10 @@ export class PromptController {
 
     if (mode === AppMode.SEARCH) {
       return this.search(input);
+    }
+
+    if (mode === AppMode.SELECTION) {
+      return this.selection(input);
     }
 
     return InteractionResult.classified({ mode });
@@ -102,4 +111,50 @@ export class PromptController {
       resultSet
     });
   }
+
+  async selection(input) {
+    const { selectors, actionKeyword } = parseSelectionInput(input);
+    const resultSet = this.currentResultSetProvider();
+
+    if (!resultSet) {
+      throw new Error("Selection requires visible search results");
+    }
+
+    const selection = Selection.resolve(selectors, resultSet);
+    this.state.setSelection(selection);
+
+    const results = await this.selectionActionRegistry.execute(actionKeyword, {
+      selection,
+      factStore: this.factRepository,
+      state: this.state,
+      today: this.clock().toISOString().slice(0, 10)
+    });
+
+    return InteractionResult.classified({
+      mode: AppMode.SELECTION,
+      action: "selection_action",
+      message: `${actionKeyword} applied to ${results.length} fact${results.length === 1 ? "" : "s"}`
+    });
+  }
+}
+
+function parseSelectionInput(input) {
+  const tokens = input.trim().split(/\s+/);
+  const selectors = [];
+
+  while (tokens.length > 0 && (/^\d+$/.test(tokens[0]) || /^\.+$/.test(tokens[0]))) {
+    selectors.push(tokens.shift());
+  }
+
+  if (selectors.length === 0) {
+    throw new Error("Selection input requires at least one selector");
+  }
+
+  const actionKeyword = tokens.shift();
+
+  if (!actionKeyword) {
+    throw new Error("Selection input requires an action");
+  }
+
+  return { selectors, actionKeyword, args: tokens };
 }

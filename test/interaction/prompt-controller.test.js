@@ -12,6 +12,7 @@ describe("PromptController", () => {
   let rootPath;
   let state;
   let controller;
+  let currentResultSet;
 
   beforeEach(async () => {
     rootPath = await fs.mkdtemp(path.join(os.tmpdir(), "gatherbrain-capture-"));
@@ -20,7 +21,8 @@ describe("PromptController", () => {
       state,
       factRepository: new FactRepository({ workspace: new Workspace(rootPath) }),
       clock: () => new Date("2026-06-30T15:45:00.000Z"),
-      idGenerator: () => "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
+      idGenerator: () => "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
+      currentResultSetProvider: () => currentResultSet
     });
   });
 
@@ -64,5 +66,19 @@ describe("PromptController", () => {
 
     assert.equal(result.action, "switch_session");
     assert.equal(state.currentSession.name, "Architecture Review Board");
+  });
+
+  it("executes selection actions against visible results", async () => {
+    await controller.submit("Follow up with Steve.");
+    const search = await controller.submit("/Steve");
+    currentResultSet = search.resultSet;
+
+    const result = await controller.submit(". tomorrow");
+
+    assert.equal(result.action, "selection_action");
+    const saved = await controller.factRepository.getFactById(
+      "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
+    );
+    assert.equal(saved.dueDate, "2026-07-01");
   });
 });
