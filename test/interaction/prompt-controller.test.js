@@ -21,6 +21,7 @@ describe("PromptController", () => {
     controller = new PromptController({
       state,
       factRepository: new FactRepository({ workspace: new Workspace(rootPath) }),
+      factSource: new FactRepository({ workspace: new Workspace(rootPath) }),
       timeBoxRepository: new TimeBoxRepository({ workspace: new Workspace(rootPath) }),
       clock: () => new Date("2026-06-30T15:45:00.000Z"),
       idGenerator: () => "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",

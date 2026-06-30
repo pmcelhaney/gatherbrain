@@ -5,7 +5,7 @@ import path from "node:path";
 import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
 import { FactRepository, SessionRepository, Workspace } from "./persistence/index.js";
 import { PlanParser, TimeBoxRepository } from "./planning/index.js";
-import { SearchEngine, SearchQueryParser } from "./search/index.js";
+import { FactIndex, SearchEngine, SearchQueryParser } from "./search/index.js";
 import { AppState } from "./state/index.js";
 import { ansi, InputBuffer, TerminalApp } from "./terminal/index.js";
 
@@ -18,6 +18,7 @@ export function createAppRuntime({
   const factRepository = new FactRepository({ workspace });
   const sessionRepository = new SessionRepository({ workspace });
   const timeBoxRepository = new TimeBoxRepository({ workspace });
+  const factIndex = new FactIndex(factRepository);
   const searchEngine = new SearchEngine();
   const searchQueryParser = new SearchQueryParser();
   const promptClassifier = new PromptClassifier();
@@ -30,6 +31,7 @@ export function createAppRuntime({
   const promptController = new PromptController({
     state,
     factRepository,
+    factSource: factIndex,
     timeBoxRepository,
     clock,
     currentResultSetProvider: () => resultSet
@@ -52,9 +54,10 @@ export function createAppRuntime({
       }
 
       if (result.fact || result.action === "selection_action") {
+        factIndex.invalidate();
         resultSet = await searchCurrentFacts({
           state,
-          factRepository,
+          factIndex,
           searchEngine,
           searchQueryParser,
           clock
@@ -278,7 +281,7 @@ async function runTui(runtime) {
 
 async function searchCurrentFacts({
   state,
-  factRepository,
+  factIndex,
   searchEngine,
   searchQueryParser,
   clock
@@ -287,7 +290,7 @@ async function searchCurrentFacts({
     return null;
   }
 
-  const facts = await factRepository.list();
+  const facts = await factIndex.list();
   const ast = searchQueryParser.parse(state.currentQuery);
   return searchEngine.search(facts, ast, {
     today: clock().toISOString().slice(0, 10)

@@ -22,6 +22,7 @@ export class PromptController {
     searchShortcutRegistry = new SearchShortcutRegistry(),
     searchQueryParser = new SearchQueryParser(),
     searchEngine = new SearchEngine(),
+    factSource = factRepository,
     selectionActionRegistry = SelectionActionRegistry.fromConfig(),
     currentResultSetProvider = () => null,
     planParser = null,
@@ -37,6 +38,7 @@ export class PromptController {
     this.searchShortcutRegistry = searchShortcutRegistry;
     this.searchQueryParser = searchQueryParser;
     this.searchEngine = searchEngine;
+    this.factSource = factSource;
     this.selectionActionRegistry = selectionActionRegistry;
     this.currentResultSetProvider = currentResultSetProvider;
     this.planParser = planParser;
@@ -108,7 +110,7 @@ export class PromptController {
       currentSession: this.state.currentSession
     });
     const ast = this.searchQueryParser.parse(expandedQuery);
-    const facts = await this.factRepository.list();
+    const facts = await this.factSource.list();
     const today = this.clock().toISOString().slice(0, 10);
     const resultSet = this.searchEngine.search(facts, ast, { today });
 
