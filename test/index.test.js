@@ -3105,6 +3105,50 @@ test(':gather command relates a listed item to the current context', async () =>
   }
 });
 
+test(':gather command keeps the current visible list active', async () => {
+  const appDirectory = await mkdtemp(path.join(tmpdir(), 'gatherbrain-app-'));
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const projectContext = path.join(rootDirectory, 'projects');
+  const peopleContext = path.join(rootDirectory, 'people', 'Steve Ma');
+  const steveFactPath = path.join(peopleContext, 'follow-up.md');
+
+  try {
+    const state = createPromptState({ appDirectory, rootDirectory });
+    await mkdir(projectContext, { recursive: true });
+    await mkdir(peopleContext, { recursive: true });
+    state.currentContextDirectory = projectContext;
+    await writeFile(
+      steveFactPath,
+      '---\ntype: fact\n---\n\nFollow up with Steve.\n'
+    );
+    await writeFile(
+      path.join(rootDirectory, 'ideas.md'),
+      '---\ntype: fact\n---\n\nFollow up with the roadmap.\n'
+    );
+
+    assert.deepEqual(await handleEntry(':search Follow up', state), {
+      action: 'continue',
+      message: 'search "Follow up" (2 matches)'
+    });
+    assert.deepEqual(
+      (await visibleFactsForState(state)).map((fact) => fact.text),
+      ['Follow up with the roadmap.', 'Follow up with Steve.']
+    );
+
+    assert.deepEqual(await handleEntry('1 :gather', state), {
+      action: 'continue',
+      message: 'related item 1 to projects'
+    });
+    assert.deepEqual(
+      (await visibleFactsForState(state)).map((fact) => fact.text),
+      ['Follow up with the roadmap.', 'Follow up with Steve.']
+    );
+    assert.equal(state.temporaryBodyType, 'search');
+  } finally {
+    await rm(appDirectory, { recursive: true, force: true });
+  }
+});
+
 test('opens a fact in the configured editor', async () => {
   const calls = [];
   const child = new EventEmitter();
