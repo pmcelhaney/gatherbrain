@@ -51,11 +51,12 @@ Does not:
 
 ### `TimeBox`
 
-Represents planned work for a time range and a session.
+Represents planned work for a time range, date, and session.
 
 Core fields:
 
 - `id`
+- `date`
 - `session`
 - `startsAt`
 - `endsAt`
@@ -63,6 +64,8 @@ Core fields:
 Responsibilities:
 
 - Validate that the end is after the start.
+- Keep the calendar date explicit even when start and end times are local-time
+  values.
 - Answer overlap and containment questions.
 - Carry only planning data, never fact data.
 
@@ -239,7 +242,7 @@ Parses `;` input into a `PlanPreview`.
 Responsibilities:
 
 - Parse examples such as `; 9-10 Steve` and `; tomorrow 2-3 Reading`.
-- Resolve dates and local times.
+- Resolve the planning date and local start and end times.
 - Return a staged time box draft for immediate calendar rendering.
 
 Does not:
@@ -255,11 +258,13 @@ Represents the root storage location.
 Responsibilities:
 
 - Locate date folders, session folders, fact files, and `.trash`.
+- Locate the daily time box text file for a given date.
 - Provide path-building helpers for repositories.
 
 Does not:
 
 - Parse Markdown front matter.
+- Parse time box text files.
 - Execute searches.
 
 ### `FactRepository`
@@ -280,11 +285,15 @@ Does not:
 
 ### `TimeBoxRepository`
 
-Persists and retrieves time boxes.
+Persists and retrieves time boxes in date-scoped text files.
 
 Responsibilities:
 
 - Save committed time boxes.
+- Store time boxes one file per date so historical plans remain available.
+- Load the current date cheaply for the normal interactive workflow.
+- Read and write through `TimeBoxTextCodec`.
+- Query historical dates without coupling planning data to fact storage.
 - Query time boxes by time range.
 - Keep planning storage independent from fact storage.
 
@@ -292,6 +301,21 @@ Does not:
 
 - Create facts.
 - Drive plan preview rendering.
+
+### `TimeBoxTextCodec`
+
+Handles conversion between `TimeBox` instances and daily text files.
+
+Responsibilities:
+
+- Parse one date's time boxes from a text file.
+- Serialize one date's time boxes back to text.
+- Preserve enough stable identity to update or delete committed time boxes.
+
+Does not:
+
+- Choose file paths.
+- Query historical ranges.
 
 ### `MarkdownFactCodec`
 
@@ -390,9 +414,10 @@ Domain classes should not import UI, parser, or persistence code.
 
 1. Domain classes: `Session`, `Fact`, `TimeBox`.
 2. State classes: `AppState`, `Selection`, `PlanPreview`.
-3. Persistence: `Workspace`, `MarkdownFactCodec`, `FactRepository`.
+3. Fact persistence: `Workspace`, `MarkdownFactCodec`, `FactRepository`.
 4. Prompt classification and capture flow.
 5. Search parser and shortcut expansion.
 6. Selection actions.
-7. Planning parser and time box persistence.
+7. Planning parser and daily time box persistence: `PlanParser`,
+   `TimeBoxTextCodec`, `TimeBoxRepository`.
 8. Terminal rendering.
