@@ -141,6 +141,7 @@ export class PromptController {
 
     const selection = Selection.resolve(selectors, resultSet);
     this.state.setSelection(selection);
+    const undoSnapshot = await this.snapshotSelection(selection);
 
     const results = await this.selectionActionRegistry.execute(actionKeyword, {
       selection,
@@ -149,11 +150,26 @@ export class PromptController {
       today: this.clock().toISOString().slice(0, 10)
     });
 
-    return InteractionResult.classified({
+    return InteractionResult.selectionAction({
       mode: AppMode.SELECTION,
-      action: "selection_action",
-      message: `${actionKeyword} applied to ${results.length} fact${results.length === 1 ? "" : "s"}`
+      message: `${actionKeyword} applied to ${results.length} fact${results.length === 1 ? "" : "s"}`,
+      undoSnapshot
     });
+  }
+
+  async snapshotSelection(selection) {
+    const facts = [];
+
+    for (const factId of selection.factIds) {
+      const filePath = await this.factRepository.findPathByFactId(factId);
+      const fact = await this.factRepository.getFactById(factId);
+      facts.push({
+        fact: fact.toSerializable(),
+        filePath
+      });
+    }
+
+    return { facts };
   }
 
   async plan(input) {

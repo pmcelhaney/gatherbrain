@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { SelectionActionRegistry } from "./actions/index.js";
 import { defaultAppConfig, loadAppConfig, mergeAppConfig } from "./config/index.js";
+import { Fact } from "./domain/index.js";
 import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
 import { AppStateRepository, FactRepository, SessionRepository, Workspace } from "./persistence/index.js";
 import { PlanParser, TimeBoxRepository } from "./planning/index.js";
@@ -32,12 +33,13 @@ export function createAppRuntime({
   const completionService = new CompletionService({
     sessionRepository,
     actionRegistry: selectionActionRegistry,
-    commandNames: ["help", "inspect", "paste", "restart", "session", "sessions", "switch"]
+    commandNames: ["help", "inspect", "paste", "restart", "session", "sessions", "switch", "undo"]
   });
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;
   let timeBoxes = [];
   let helpLines = null;
+  let undoSnapshot = null;
   const promptController = new PromptController({
     state,
     factRepository,
@@ -80,6 +82,25 @@ export function createAppRuntime({
     async submit(line) {
       const result = await promptController.submit(line);
 
+      if (result.action === "undo") {
+        if (!undoSnapshot) {
+          throw new Error("Nothing to undo");
+        }
+
+        await restoreUndoSnapshot({ undoSnapshot, factRepository });
+        factIndex.invalidate();
+        resultSet = await searchCurrentFacts({
+          state,
+          factIndex,
+          searchEngine,
+          searchQueryParser,
+          clock
+        });
+        helpLines = null;
+        undoSnapshot = null;
+        result.message = "undid last selection action";
+      }
+
       if (result.resultSet) {
         resultSet = result.resultSet;
         helpLines = null;
@@ -112,6 +133,10 @@ export function createAppRuntime({
         helpLines = null;
       }
 
+      if (result.undoSnapshot) {
+        undoSnapshot = result.undoSnapshot;
+      }
+
       if (result.helpLines) {
         helpLines = result.helpLines;
       }
@@ -120,6 +145,7 @@ export function createAppRuntime({
         resultSet = null;
         timeBoxes = [];
         helpLines = null;
+        undoSnapshot = null;
       }
 
       await appStateRepository.save(state);
@@ -375,6 +401,12 @@ async function initialResultSet({
   }
 
   return new SearchResultSet(await factIndex.list());
+}
+
+async function restoreUndoSnapshot({ undoSnapshot, factRepository }) {
+  for (const item of undoSnapshot.facts ?? []) {
+    await factRepository.saveFact(new Fact(item.fact));
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

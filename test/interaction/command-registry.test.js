@@ -33,6 +33,12 @@ describe("CommandRegistry", () => {
     assert.equal(result.message, "paste mode is not implemented yet");
   });
 
+  it("recognizes undo", async () => {
+    const result = await new CommandRegistry().execute(":undo", {});
+
+    assert.equal(result.action, "undo");
+  });
+
   it("returns help lines", async () => {
     const state = new AppState();
     const result = await new CommandRegistry().execute(":help", { state });

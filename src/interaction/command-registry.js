@@ -80,6 +80,7 @@ class HelpCommand {
         ":sessions           list known sessions",
         ":session <number>   switch to a numbered session",
         ":inspect <number>   show visible fact details",
+        ":undo               undo the last selection action",
         ":restart            clear current app state",
         ":paste              recognized; not implemented yet",
         ":help               show this help",
@@ -120,6 +121,20 @@ class InspectCommand {
       action: "inspect",
       message: `inspected fact ${selector}`,
       helpLines: factDetailLines(fact, filePath)
+    });
+  }
+}
+
+class UndoCommand {
+  execute(args) {
+    if (args.trim()) {
+      throw new Error(":undo does not accept arguments");
+    }
+
+    return InteractionResult.classified({
+      mode: AppMode.COMMAND,
+      action: "undo",
+      message: "undo"
     });
   }
 }
@@ -179,6 +194,7 @@ function defaultCommands() {
     session: new SessionCommand(),
     sessions: new SessionsCommand(),
     switch: new SwitchSessionCommand(),
+    undo: new UndoCommand(),
     restart: new RestartCommand(),
     paste: new PasteCommand()
   };

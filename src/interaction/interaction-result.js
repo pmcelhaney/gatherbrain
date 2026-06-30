@@ -8,7 +8,8 @@ export class InteractionResult {
     resultSet = null,
     query = null,
     timeBox = null,
-    helpLines = null
+    helpLines = null,
+    undoSnapshot = null
   } = {}) {
     this.mode = mode;
     this.action = action;
@@ -19,6 +20,7 @@ export class InteractionResult {
     this.query = query;
     this.timeBox = timeBox;
     this.helpLines = helpLines;
+    this.undoSnapshot = undoSnapshot;
   }
 
   static captured({ mode, fact, filePath }) {
@@ -33,6 +35,15 @@ export class InteractionResult {
 
   static classified({ mode, action = "classified", message = null }) {
     return new InteractionResult({ mode, action, message });
+  }
+
+  static selectionAction({ mode, message, undoSnapshot }) {
+    return new InteractionResult({
+      mode,
+      action: "selection_action",
+      message,
+      undoSnapshot
+    });
   }
 
   static searched({ mode, query, resultSet }) {
