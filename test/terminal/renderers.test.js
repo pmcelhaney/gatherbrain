@@ -55,6 +55,10 @@ describe("terminal renderers", () => {
     const state = new AppState({ currentMode: AppMode.SEARCH });
 
     assert.equal(new PromptRenderer().render({ state, input: "Steve" }), "> Steve");
+    assert.equal(
+      new PromptRenderer().render({ state, input: "Steve", cursor: 2, showCursor: true }),
+      "> St█eve"
+    );
   });
 
   it("composes the terminal app render", () => {

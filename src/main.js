@@ -7,7 +7,7 @@ import { FactRepository, Workspace } from "./persistence/index.js";
 import { TimeBoxRepository } from "./planning/index.js";
 import { SearchEngine, SearchQueryParser } from "./search/index.js";
 import { AppState } from "./state/index.js";
-import { ansi, TerminalApp } from "./terminal/index.js";
+import { ansi, InputBuffer, TerminalApp } from "./terminal/index.js";
 
 export function createAppRuntime({
   workspacePath = path.join(process.cwd(), "workspace"),
@@ -56,11 +56,20 @@ export function createAppRuntime({
 
       return result;
     },
-    render({ input = "", width = output.columns ?? 80, height = output.rows ?? 24, colorEnabled = false } = {}) {
+    render({
+      input = "",
+      cursor = input.length,
+      showCursor = false,
+      width = output.columns ?? 80,
+      height = output.rows ?? 24,
+      colorEnabled = false
+    } = {}) {
       return terminalApp.render({
         resultSet,
         timeBoxes,
         input,
+        cursor,
+        showCursor,
         width,
         height,
         today: clock().toISOString().slice(0, 10),
@@ -115,13 +124,15 @@ async function runTui(runtime) {
   input.setRawMode(true);
   output.write(ansi.hideCursor);
 
-  let buffer = "";
+  const buffer = new InputBuffer();
   let status = "";
 
   const redraw = () => {
     output.write(`${ansi.clear}${ansi.home}`);
     output.write(runtime.render({
-      input: buffer,
+      input: buffer.text,
+      cursor: buffer.cursor,
+      showCursor: true,
       width: output.columns ?? 80,
       height: output.rows ?? 24,
       colorEnabled: true
@@ -143,21 +154,50 @@ async function runTui(runtime) {
       }
 
       if (key.name === "escape") {
-        buffer = "";
+        buffer.clear();
         status = "";
         redraw();
         return;
       }
 
       if (key.name === "backspace") {
-        buffer = buffer.slice(0, -1);
+        buffer.backspace();
+        redraw();
+        return;
+      }
+
+      if (key.name === "delete") {
+        buffer.delete();
+        redraw();
+        return;
+      }
+
+      if (key.name === "left") {
+        buffer.moveLeft();
+        redraw();
+        return;
+      }
+
+      if (key.name === "right") {
+        buffer.moveRight();
+        redraw();
+        return;
+      }
+
+      if (key.name === "home") {
+        buffer.moveHome();
+        redraw();
+        return;
+      }
+
+      if (key.name === "end") {
+        buffer.moveEnd();
         redraw();
         return;
       }
 
       if (key.name === "return") {
-        const line = buffer;
-        buffer = "";
+        const line = buffer.consume();
 
         if (line === ":quit" || line === ":exit") {
           resolve();
@@ -176,7 +216,7 @@ async function runTui(runtime) {
       }
 
       if (key.sequence && key.sequence.length === 1 && !key.ctrl && !key.meta) {
-        buffer += sequence;
+        buffer.insert(sequence);
         redraw();
       }
     };

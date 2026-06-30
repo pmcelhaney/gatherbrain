@@ -1,9 +1,14 @@
 import { AppMode } from "../state/index.js";
 
 export class PromptRenderer {
-  render({ state, input = "" }) {
-    return `${prefixForMode(state.currentMode)} ${input}`.trimEnd();
+  render({ state, input = "", cursor = input.length, showCursor = false }) {
+    const renderedInput = showCursor ? renderCursor(input, cursor) : input;
+    return `${prefixForMode(state.currentMode)} ${renderedInput}`.trimEnd();
   }
+}
+
+function renderCursor(input, cursor) {
+  return `${input.slice(0, cursor)}█${input.slice(cursor)}`;
 }
 
 function prefixForMode(mode) {

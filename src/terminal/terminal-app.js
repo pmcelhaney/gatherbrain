@@ -21,6 +21,8 @@ export class TerminalApp {
     resultSet = null,
     timeBoxes = [],
     input = "",
+    cursor = input.length,
+    showCursor = false,
     width = 80,
     height = 24,
     today = null,
@@ -28,7 +30,12 @@ export class TerminalApp {
   } = {}) {
     const header = this.headerRenderer.render({ state: this.state, resultSet, today });
     const divider = "-".repeat(width);
-    const prompt = this.promptRenderer.render({ state: this.state, input });
+    const prompt = this.promptRenderer.render({
+      state: this.state,
+      input,
+      cursor,
+      showCursor
+    });
     const bodyHeight = Math.max(1, height - 4);
     const bodyLines = this.bodyRenderer.render({
       state: this.state,
