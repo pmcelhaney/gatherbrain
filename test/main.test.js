@@ -200,8 +200,31 @@ describe("createAppRuntime", () => {
     const rendered = runtime.render();
 
     assert.match(rendered, /Sessions/);
-    assert.match(rendered, /\* Steve/);
-    assert.match(rendered, /  Architecture Review Board/);
+    assert.match(rendered, /2\. \* Steve/);
+    assert.match(rendered, /1\.   Architecture Review Board/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
+  it("switches sessions by number from the session list", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-numbered-session-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit("Steve-only fact.");
+    await runtime.submit(":switch Architecture Review Board");
+    await runtime.submit("Architecture fact.");
+    await runtime.submit(":session 2");
+
+    const rendered = runtime.render();
+
+    assert.match(rendered, /sessions\/2026-06-30\/Steve/);
+    assert.match(rendered, /Steve-only fact/);
+    assert.doesNotMatch(rendered, /Architecture fact/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

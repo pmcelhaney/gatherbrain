@@ -11,7 +11,7 @@ describe("CompletionService", () => {
     assert.equal(await service.complete(":sw"), ":switch");
   });
 
-  it("completes sessions for switch", async () => {
+  it("completes sessions for switch and session commands", async () => {
     const service = new CompletionService({
       sessionRepository: {
         async list() {
@@ -21,6 +21,7 @@ describe("CompletionService", () => {
     });
 
     assert.equal(await service.complete(":switch Arch"), ":switch Architecture Review Board");
+    assert.equal(await service.complete(":session Ste"), ":session Steve");
   });
 
   it("completes search shortcuts", async () => {

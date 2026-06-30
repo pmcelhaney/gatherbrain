@@ -108,7 +108,10 @@ class SessionsCommand {
     const helpLines = sessions.length > 0
       ? [
           "Sessions",
-          ...sessions.map((session) => `${session === currentName ? "*" : " "} ${session}`)
+          ...sessions.map((session, index) => {
+            const marker = session === currentName ? "*" : " ";
+            return `${String(index + 1).padStart(2, " ")}. ${marker} ${session}`;
+          })
         ]
       : ["Sessions", "(none)"];
 
@@ -119,14 +122,53 @@ class SessionsCommand {
   }
 }
 
+class SessionCommand {
+  async execute(args, { state, sessionRepository }) {
+    const target = args.trim();
+
+    if (!target) {
+      throw new Error(":session requires a number or session name");
+    }
+
+    const sessionName = await resolveSessionName(target, sessionRepository);
+    state.switchSession(sessionName);
+
+    return InteractionResult.classified({
+      mode: AppMode.COMMAND,
+      action: "switch_session",
+      message: `switched to ${state.currentSession.name}`
+    });
+  }
+}
+
 function defaultCommands() {
   return {
     help: new HelpCommand(),
+    session: new SessionCommand(),
     sessions: new SessionsCommand(),
     switch: new SwitchSessionCommand(),
     restart: new RestartCommand(),
     paste: new PasteCommand()
   };
+}
+
+async function resolveSessionName(target, sessionRepository) {
+  if (!/^\d+$/.test(target)) {
+    return target;
+  }
+
+  if (!sessionRepository) {
+    throw new Error(":session number requires a session repository");
+  }
+
+  const sessions = await sessionRepository.list();
+  const sessionName = sessions[Number(target) - 1];
+
+  if (!sessionName) {
+    throw new Error(`No session numbered ${target}`);
+  }
+
+  return sessionName;
 }
 
 function parseCommand(input) {

@@ -57,8 +57,25 @@ describe("CommandRegistry", () => {
     assert.equal(result.action, "help");
     assert.deepEqual(result.helpLines, [
       "Sessions",
-      "  Architecture Review Board",
-      "* Steve"
+      " 1.   Architecture Review Board",
+      " 2. * Steve"
     ]);
+  });
+
+  it("switches to a numbered session", async () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const sessionRepository = {
+      async list() {
+        return ["Architecture Review Board", "Steve"];
+      }
+    };
+
+    const result = await new CommandRegistry().execute(":session 1", {
+      state,
+      sessionRepository
+    });
+
+    assert.equal(result.action, "switch_session");
+    assert.equal(state.currentSession.name, "Architecture Review Board");
   });
 });

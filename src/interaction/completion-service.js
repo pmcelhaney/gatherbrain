@@ -15,8 +15,9 @@ export class CompletionService {
   }
 
   async complete(input, context = {}) {
-    if (input.startsWith(":switch ")) {
-      return completeSuffix(input, ":switch ", await this.sessionNames());
+    if (input.startsWith(":switch ") || input.startsWith(":session ")) {
+      const prefix = input.startsWith(":switch ") ? ":switch " : ":session ";
+      return completeSuffix(input, prefix, await this.sessionNames());
     }
 
     if (input.startsWith(":")) {
