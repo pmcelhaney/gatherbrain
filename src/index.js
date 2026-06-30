@@ -1176,8 +1176,14 @@ function itemNumbersForPromptLine(line, state = null) {
     return parsedEntry.itemNumbers;
   }
 
-  return Number.isInteger(parsedEntry.itemNumber)
-    ? [parsedEntry.itemNumber]
+  if (Number.isInteger(parsedEntry.itemNumber)) {
+    return [parsedEntry.itemNumber];
+  }
+
+  const leadingItemsMatch = String(line ?? '').trim().match(/^(?<items>[1-9]\d*(?:\s+[1-9]\d*)*)(?:\s|$)/u);
+
+  return leadingItemsMatch
+    ? leadingItemsMatch.groups.items.split(/\s+/u).map((item) => Number(item))
     : [];
 }
 

@@ -3503,6 +3503,28 @@ test('previews and highlights multiple item selectors before a command', () => {
   );
 });
 
+test('highlights multiple item selectors before a command is complete', () => {
+  const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
+  const rootDirectory = path.join(appDirectory, 'facts');
+  const state = createPromptState({ appDirectory, rootDirectory });
+
+  assert.equal(
+    renderTui({
+      state,
+      facts: [
+        { id: 'first.md', text: 'First.', type: 'fact' },
+        { id: 'second.md', text: 'Second.', type: 'fact' },
+        { id: 'third.md', text: 'Third.', type: 'fact' },
+        { id: 'fourth.md', text: 'Fourth.', type: 'fact' }
+      ],
+      rows: 7,
+      columns: 40,
+      promptLine: '1 3 4'
+    }),
+    '\x1b[2J\x1b[Hfacts\n----------------------------------------\n\x1b[7m\x1b[2m 4.\x1b[22m First.\x1b[27m\n\x1b[7m\x1b[2m 3.\x1b[22m Second.\x1b[27m\n\x1b[2m 2.\x1b[22m Third.\n\x1b[7m\x1b[2m 1.\x1b[22m Fourth.\x1b[27m\x1b[7;1H'
+  );
+});
+
 test('uses dot item shorthand for prompt preview redraw keys', () => {
   const appDirectory = path.join(tmpdir(), 'gatherbrain-app');
   const rootDirectory = path.join(appDirectory, 'facts');
