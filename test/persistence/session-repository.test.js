@@ -1,0 +1,45 @@
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, it } from "node:test";
+
+import { Fact, TimeBox } from "../../src/domain/index.js";
+import { FactRepository, SessionRepository, Workspace } from "../../src/persistence/index.js";
+import { TimeBoxRepository } from "../../src/planning/index.js";
+
+describe("SessionRepository", () => {
+  let rootPath;
+  let workspace;
+
+  beforeEach(async () => {
+    rootPath = await fs.mkdtemp(path.join(os.tmpdir(), "gatherbrain-sessions-"));
+    workspace = new Workspace(rootPath);
+  });
+
+  afterEach(async () => {
+    await fs.rm(rootPath, { recursive: true, force: true });
+  });
+
+  it("discovers sessions from fact folders and timebox files", async () => {
+    await new FactRepository({ workspace }).create(new Fact({
+      id: "6f2308de-02e9-45db-8ff0-65ac793f4a24",
+      content: "Discuss architecture.",
+      type: "fact",
+      createdAt: "2026-06-30T14:00:00.000Z",
+      homeSession: "Architecture Review Board"
+    }));
+    await new TimeBoxRepository({ workspace }).save(new TimeBox({
+      id: "reading",
+      date: "2026-06-30",
+      startsAt: "09:00",
+      endsAt: "10:00",
+      session: "Reading"
+    }));
+
+    assert.deepEqual(await new SessionRepository({ workspace }).list(), [
+      "Architecture Review Board",
+      "Reading"
+    ]);
+  });
+});
