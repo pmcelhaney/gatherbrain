@@ -1259,7 +1259,7 @@ test(':search marks facts that are already in the current context', async () => 
         'projects/gatherbrain | search "search" (2 matches)',
         '--------------------------------------------------------------------------------',
         ' 2. Need search with Steve.',
-        ' 1. [current] Need search directly.'
+        ' 1. * Need search directly.'
       ]
     );
   } finally {

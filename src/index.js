@@ -2774,7 +2774,7 @@ function markSearchFactsInCurrentContext(facts, state) {
 
   return facts.map((fact) => ({
     ...fact,
-    ...(fact.contextId === currentContextId ? { currentContextMarker: '[current]' } : {})
+    ...(fact.contextId === currentContextId ? { currentContextMarker: '*' } : {})
   }));
 }
 
