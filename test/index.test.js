@@ -2235,7 +2235,7 @@ test('item update shorthand targets the active lens list', async () => {
         rows: 6,
         columns: 80
       }),
-      /\x1b\[2m\x1b\[2m 2\.\x1b\[22m \x1b\[36mdone\x1b\[39m Waiting item\.\x1b\[22m/u
+      /\x1b\[90m\x1b\[2m 2\.\x1b\[22m \x1b\[36mdone\x1b\[39m\x1b\[90m Waiting item\.\x1b\[39m/u
     );
   } finally {
     await rm(appDirectory, { recursive: true, force: true });
@@ -2911,7 +2911,7 @@ test('item numbers stay stable after deleting a visible item', async () => {
       rows: 6,
       columns: 80
     }),
-    /\x1b\[2m\x1b\[2m 2\.\x1b\[22m \[deleted\] \x1b\[36mtodo\x1b\[39m Second fact\.\x1b\[22m/u
+    /\x1b\[90m\x1b\[2m 2\.\x1b\[22m \[deleted\] \x1b\[36mtodo\x1b\[39m\x1b\[90m Second fact\.\x1b\[39m/u
   );
     await handleEntry(':lens todo', state);
     assert.deepEqual(

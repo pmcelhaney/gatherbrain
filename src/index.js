@@ -88,6 +88,7 @@ const ansiTypeColor = '\x1b[36m';
 const ansiLinkColor = '\x1b[34m';
 const ansiRelationColor = '\x1b[35m';
 const ansiSecondaryColor = '\x1b[2m';
+const ansiContinuityColor = '\x1b[90m';
 const ansiPlannerFreeColor = '\x1b[32m';
 const ansiPlannerCurrentColor = '\x1b[33m';
 const ansiHighlightedItem = '\x1b[7m';
@@ -945,6 +946,7 @@ function truncateVisible(line, columns) {
     result.lastIndexOf(ansiTypeColor) > result.lastIndexOf(ansiResetColor)
     || result.lastIndexOf(ansiLinkColor) > result.lastIndexOf(ansiResetColor)
     || result.lastIndexOf(ansiRelationColor) > result.lastIndexOf(ansiResetColor)
+    || result.lastIndexOf(ansiContinuityColor) > result.lastIndexOf(ansiResetColor)
     || result.lastIndexOf(ansiPlannerFreeColor) > result.lastIndexOf(ansiResetColor)
     || result.lastIndexOf(ansiPlannerCurrentColor) > result.lastIndexOf(ansiResetColor)
   ) {
@@ -1119,9 +1121,11 @@ function displaySecondarySuffix(suffix, includeColor) {
 }
 
 function displayKeptInViewLine(line, includeColor) {
-  return includeColor
-    ? `${ansiSecondaryColor}${line}${ansiResetIntensity}`
-    : line;
+  if (!includeColor) {
+    return line;
+  }
+
+  return `${ansiContinuityColor}${line.replaceAll(ansiResetColor, `${ansiResetColor}${ansiContinuityColor}`)}${ansiResetColor}`;
 }
 
 function displayHighlightedItemLine(line, includeColor) {
