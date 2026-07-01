@@ -39,6 +39,13 @@ describe("CommandRegistry", () => {
     assert.equal(result.action, "undo");
   });
 
+  it("recognizes quit and exit as commands", async () => {
+    const registry = new CommandRegistry();
+
+    assert.equal((await registry.execute(":quit", {})).action, "exit");
+    assert.equal((await registry.execute(":exit", {})).action, "exit");
+  });
+
   it("returns help lines", async () => {
     const state = new AppState();
     const result = await new CommandRegistry().execute(":help", { state });

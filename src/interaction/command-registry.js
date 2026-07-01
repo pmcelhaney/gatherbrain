@@ -65,6 +65,20 @@ class PasteCommand {
   }
 }
 
+class ExitCommand {
+  execute(args) {
+    if (args.trim()) {
+      throw new Error(":quit does not accept arguments");
+    }
+
+    return InteractionResult.classified({
+      mode: AppMode.COMMAND,
+      action: "exit",
+      message: "exit"
+    });
+  }
+}
+
 class HelpCommand {
   execute(args) {
     if (args.trim()) {
@@ -236,9 +250,13 @@ class TimeBoxCommand {
 }
 
 function defaultCommands() {
+  const exitCommand = new ExitCommand();
+
   return {
+    exit: exitCommand,
     help: new HelpCommand(),
     inspect: new InspectCommand(),
+    quit: exitCommand,
     session: new SessionCommand(),
     sessions: new SessionsCommand(),
     switch: new SwitchSessionCommand(),

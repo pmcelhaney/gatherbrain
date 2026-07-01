@@ -143,6 +143,19 @@ describe("main", () => {
 });
 
 describe("createAppRuntime", () => {
+  it("returns an exit action when quit reaches runtime command dispatch", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-runtime-quit-"));
+    const runtime = createAppRuntime({ workspacePath });
+
+    await runtime.initialize();
+    const result = await runtime.submit(":quit");
+
+    assert.equal(result.action, "exit");
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("previews prompt mode while typing without mutating state", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-preview-"));

@@ -6,7 +6,7 @@ export class CompletionService {
     sessionRepository,
     actionRegistry = SelectionActionRegistry.fromConfig(),
     shortcutRegistry = new SearchShortcutRegistry(),
-    commandNames = ["help", "inspect", "paste", "restart", "session", "sessions", "switch", "timebox", "undo"]
+    commandNames = ["exit", "help", "inspect", "paste", "quit", "restart", "session", "sessions", "switch", "timebox", "undo"]
   } = {}) {
     this.sessionRepository = sessionRepository;
     this.actionRegistry = actionRegistry;

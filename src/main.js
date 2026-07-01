@@ -34,7 +34,7 @@ export function createAppRuntime({
   const completionService = new CompletionService({
     sessionRepository,
     actionRegistry: selectionActionRegistry,
-    commandNames: ["help", "inspect", "paste", "restart", "session", "sessions", "switch", "timebox", "undo"]
+    commandNames: ["exit", "help", "inspect", "paste", "quit", "restart", "session", "sessions", "switch", "timebox", "undo"]
   });
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;
@@ -102,6 +102,11 @@ export function createAppRuntime({
       }
 
       const result = await promptController.submit(line);
+
+      if (result.action === "exit") {
+        await appStateRepository.save(state);
+        return result;
+      }
 
       if (result.action === "undo") {
         if (!undoSnapshot) {
@@ -327,6 +332,10 @@ export async function main(argv = process.argv.slice(2)) {
 
     try {
       const result = await runtime.submit(line);
+      if (result?.action === "exit") {
+        rl.close();
+        return;
+      }
       if (result?.message) {
         output.write(`${result.message}\n`);
       }
@@ -435,6 +444,10 @@ async function runTui(runtime) {
           if (result?.action === "restart") {
             redraw();
             resolve("restart");
+            return;
+          }
+          if (result?.action === "exit") {
+            resolve();
             return;
           }
         } catch (error) {
