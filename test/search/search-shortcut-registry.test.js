@@ -9,7 +9,7 @@ describe("SearchShortcutRegistry", () => {
 
     assert.equal(
       registry.expand("//current"),
-      '(type:todo OR type:"in progress" OR type:waiting) AND due<=today'
+      "(type:todo OR type:inprogress OR type:waiting) AND due<=today"
     );
     assert.equal(registry.expand("//overdue"), "due<today");
     assert.equal(

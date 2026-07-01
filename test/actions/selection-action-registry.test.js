@@ -27,15 +27,15 @@ describe("SelectionActionRegistry", () => {
     assert.deepEqual(
       registry.keywords().filter((keyword) => [
         "abandoned",
-        "in-progress",
+        "inprogress",
         "todo",
         "waiting"
       ].includes(keyword)),
-      ["abandoned", "in-progress", "todo", "waiting"]
+      ["abandoned", "inprogress", "todo", "waiting"]
     );
 
     assert.equal(registry.preview("waiting", buildFact()).type, "waiting");
-    assert.equal(registry.preview("in-progress", buildFact()).type, "in progress");
+    assert.equal(registry.preview("inprogress", buildFact()).type, "inprogress");
     assert.equal(registry.preview("abandoned", buildFact()).type, "abandoned");
   });
 

@@ -98,9 +98,9 @@ export function defaultActionConfig() {
         action: "set_type",
         value: "waiting"
       },
-      "in-progress": {
+      inprogress: {
         action: "set_type",
-        value: "in progress"
+        value: "inprogress"
       },
       abandoned: {
         action: "set_type",
