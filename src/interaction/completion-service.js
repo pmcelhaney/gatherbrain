@@ -123,7 +123,10 @@ function isSelectionInput(input) {
 }
 
 function firstMatch(candidates, partial) {
-  return candidates.find((candidate) => candidate.startsWith(partial));
+  const normalizedPartial = partial.toLocaleLowerCase("en-US");
+  return candidates.find((candidate) =>
+    candidate.toLocaleLowerCase("en-US").startsWith(normalizedPartial)
+  );
 }
 
 function activeTagSegment(input) {

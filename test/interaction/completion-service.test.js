@@ -87,7 +87,23 @@ describe("CompletionService", () => {
     });
 
     assert.equal(await service.complete("@Aam"), "@Aamir\\ Muhammad");
+    assert.equal(await service.complete("@aam"), "@Aamir\\ Muhammad");
     assert.equal(await service.complete("@cog"), "@cognition");
+    assert.equal(await service.complete("@COG"), "@cognition");
+  });
+
+  it("matches completion prefixes case-insensitively", async () => {
+    const service = new CompletionService({
+      sessionRepository: {
+        async list() {
+          return ["Architecture Review Board"];
+        }
+      }
+    });
+
+    assert.equal(await service.complete(":SW"), ":switch");
+    assert.equal(await service.complete(":switch arch"), ":switch Architecture Review Board");
+    assert.equal(await service.complete("//CUR"), "//current");
   });
 
   it("does not complete inactive tag text", async () => {
