@@ -39,7 +39,8 @@ export class BodyRenderer {
 
     for (const { number, fact } of rows) {
       const isSelected = selectionPreview?.includes(fact.id) ?? false;
-      const basePrefix = `${padVisibleStart(String(number), numberWidth)}. `;
+      const contextMarker = isFactInCurrentContext(fact, state.currentSession) ? "+" : " ";
+      const basePrefix = `${contextMarker}${padVisibleStart(String(number), numberWidth)}. `;
       const prefix = isSelected && !colorEnabled ? `>${basePrefix}` : basePrefix;
       const type = fact.type ? `${fact.type} ` : "";
       const due = fact.dueDate ? ` due:${formatDueDate(fact.dueDate, today)}` : "";
@@ -63,6 +64,15 @@ export class BodyRenderer {
 
     return rendered;
   }
+}
+
+function isFactInCurrentContext(fact, currentSession) {
+  if (!currentSession) {
+    return false;
+  }
+
+  return fact.homeSession.equals(currentSession) ||
+    fact.associatedSessions.some((session) => session.equals(currentSession));
 }
 
 function highlight(text, enabled, colorEnabled) {

@@ -202,8 +202,8 @@ describe("createAppRuntime", () => {
     await runtime.submit(":switch Steve");
     await runtime.submit("Follow up with Steve.");
 
-    assert.match(runtime.render({ input: "1" }), /> 1\. fact Follow up with Steve/);
-    assert.match(runtime.render({ input: "." }), /> 1\. fact Follow up with Steve/);
+    assert.match(runtime.render({ input: "1" }), />\+ 1\. fact Follow up with Steve/);
+    assert.match(runtime.render({ input: "." }), />\+ 1\. fact Follow up with Steve/);
     assert.equal(runtime.state.currentMode, "Capture");
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
@@ -222,7 +222,7 @@ describe("createAppRuntime", () => {
 
     const rendered = runtime.render({ input: "1 done" });
 
-    assert.match(rendered, /> 1\. done Follow up with Steve/);
+    assert.match(rendered, />\+ 1\. done Follow up with Steve/);
     assert.match(runtime.render(), /1\. fact Follow up with Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
@@ -243,6 +243,28 @@ describe("createAppRuntime", () => {
 
     assert.match(rendered, /due:tomorrow/);
     assert.doesNotMatch(runtime.render(), /due:tomorrow/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
+  it("prefixes current-context facts with plus during search", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-context-prefix-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit("Shared search term in Steve.");
+    await runtime.submit(":switch Architecture Review Board");
+    await runtime.submit("Shared search term in Architecture.");
+    await runtime.submit("/Shared");
+
+    const rendered = runtime.render();
+
+    assert.match(rendered, /\+ 1\. fact Shared search term in Architecture/);
+    assert.match(rendered, /\n  2\. fact Shared search term in Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

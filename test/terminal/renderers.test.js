@@ -30,7 +30,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      " 1. todo Follow up with Steve. due:tomorrow"
+      "+ 1. todo Follow up with Steve. due:tomorrow"
     );
   });
 
@@ -73,7 +73,36 @@ describe("terminal renderers", () => {
         height: 10,
         today: "2026-06-30"
       }).join("\n"),
-      "> 1. todo Follow up with Steve. due:tomorrow"
+      ">+ 1. todo Follow up with Steve. due:tomorrow"
+    );
+  });
+
+  it("does not mark facts outside the current context", () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const resultSet = new SearchResultSet([
+      buildFact({ homeSession: "Architecture Review Board" })
+    ]);
+
+    assert.equal(
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      "  1. todo Follow up with Steve. due:tomorrow"
+    );
+  });
+
+  it("marks facts associated with the current context", () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const resultSet = new SearchResultSet([
+      buildFact({
+        homeSession: "Architecture Review Board",
+        associatedSessions: ["Steve"]
+      })
+    ]);
+
+    assert.equal(
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      "+ 1. todo Follow up with Steve. due:tomorrow"
     );
   });
 
@@ -145,7 +174,7 @@ describe("terminal renderers", () => {
     }), [
       "sessions/2026-06-30/Steve",
       "----------------------------------------",
-      " 1. todo Follow up with Steve.",
+      "+ 1. todo Follow up with Steve.",
       "    due:tomorrow",
       "",
       ">"
