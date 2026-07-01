@@ -238,12 +238,15 @@ Displays the result of the active query.
 
 Normally this is a list of facts.
 
-In plan mode it displays the calendar.
+In plan mode it displays the calendar as a proportional timeline.
 
 Fact rows are numbered at the left with a muted number prefix. The fact type is
 shown before the content.
 
-Calendar rows are numbered so the user can update or delete visible time boxes.
+Timeline rows are spaced according to elapsed time. Busy time boxes use a solid
+line and filled marker. Free time uses a dotted line and open marker with the
+available duration. When the current time falls within the rendered day, the
+timeline includes a current-time marker at the proportional position.
 
 Due dates are displayed as friendly labels when possible:
 

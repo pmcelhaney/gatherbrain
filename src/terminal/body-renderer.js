@@ -15,6 +15,7 @@ export class BodyRenderer {
     width = 80,
     height = 20,
     today = null,
+    now = null,
     colorEnabled = false
   }) {
     if (helpLines) {
@@ -25,7 +26,9 @@ export class BodyRenderer {
       return this.calendarRenderer.render({
         timeBoxes,
         planPreview: state.planPreview,
-        height
+        height,
+        now,
+        colorEnabled
       });
     }
 

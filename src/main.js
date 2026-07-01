@@ -203,6 +203,7 @@ export function createAppRuntime({
         width,
         height,
         today: clock().toISOString().slice(0, 10),
+        now: clock(),
         colorEnabled
       });
     },

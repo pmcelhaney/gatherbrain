@@ -29,6 +29,7 @@ export class TerminalApp {
     width = 80,
     height = 24,
     today = null,
+    now = null,
     colorEnabled = false,
     state = this.state
   } = {}) {
@@ -51,6 +52,7 @@ export class TerminalApp {
       width,
       height: bodyHeight,
       today,
+      now,
       colorEnabled
     });
     const paddedBody = padLines(bodyLines, bodyHeight);

@@ -132,7 +132,7 @@ describe("createAppRuntime", () => {
 
     const rendered = runtime.render({ input: "; 9-10 Steve", showCursor: true });
 
-    assert.match(rendered, /\? 09:00-10:00 Steve/);
+    assert.match(rendered, /9:00  \?  Steve · 1h/);
     assert.equal(runtime.state.planPreview, null);
     assert.equal(fs.existsSync(path.join(workspacePath, "timeboxes", "2026-06-30.txt")), false);
 
@@ -156,7 +156,7 @@ describe("createAppRuntime", () => {
     const planRendered = secondRuntime.render({ input: ";" });
 
     assert.match(rendered, /Follow up with Steve/);
-    assert.match(planRendered, /09:00-10:00 Steve/);
+    assert.match(planRendered, /9:00  ●  Steve · 1h/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -345,7 +345,7 @@ describe("createAppRuntime", () => {
 
     assert.match(rendered, /Follow up with Steve/);
     assert.doesNotMatch(rendered, /:switch <session>/);
-    assert.match(planRendered, /09:00-10:00 Steve/);
+    assert.match(planRendered, /9:00  ●  Steve · 1h/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -473,8 +473,8 @@ describe("createAppRuntime", () => {
 
     const rendered = runtime.render({ input: ";" });
 
-    assert.match(rendered, /1\. 10:00-11:00 Architecture Review Board/);
-    assert.doesNotMatch(rendered, /09:00-10:00 Steve/);
+    assert.match(rendered, /10:00  ●  Architecture Review Board · 1h/);
+    assert.doesNotMatch(rendered, /9:00  ●  Steve · 1h/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -493,8 +493,8 @@ describe("createAppRuntime", () => {
 
     const rendered = runtime.render({ input: ";" });
 
-    assert.doesNotMatch(rendered, /09:00-10:00 Steve/);
-    assert.match(rendered, /1\. 11:00-12:00 Counterfact/);
+    assert.doesNotMatch(rendered, /9:00  ●  Steve · 1h/);
+    assert.match(rendered, /11:00  ●  Counterfact · 1h/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

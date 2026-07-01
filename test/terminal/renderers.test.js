@@ -135,13 +135,19 @@ describe("terminal renderers", () => {
     });
     const renderer = new CalendarRenderer();
 
-    assert.equal(
-      renderer.render({
-        timeBoxes: [buildTimeBox("actual", "09:00", "10:00", "Steve")],
-        planPreview: state.planPreview
-      }).join("\n"),
-      " 1. 09:00-10:00 Steve\n? 11:00-12:00 Counterfact"
-    );
+    const rendered = renderer.render({
+      timeBoxes: [buildTimeBox("actual", "09:00", "10:00", "Steve")],
+      planPreview: state.planPreview,
+      now: new Date(2026, 5, 30, 10, 30),
+      height: 21
+    });
+
+    assert.equal(rendered[0], " 8:00  ○  free · 1h");
+    assert.equal(rendered[2], " 9:00  ●  Steve · 1h");
+    assert.equal(rendered[4], "10:00  ○  free · 1h");
+    assert.equal(rendered[5], "10:30  ◆  now");
+    assert.equal(rendered[6], "11:00  ?  Counterfact · 1h");
+    assert.equal(rendered[8], "12:00  ○  free · 6h");
   });
 
   it("renders help lines before other body modes", () => {
