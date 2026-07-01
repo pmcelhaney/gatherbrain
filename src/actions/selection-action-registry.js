@@ -6,18 +6,21 @@ import {
 } from "./selection-actions.js";
 
 export class SelectionActionRegistry {
-  constructor(actions = {}) {
+  constructor(actions = {}, definitions = {}) {
     this.actions = new Map(Object.entries(actions));
+    this.definitions = new Map(Object.entries(definitions));
   }
 
   static fromConfig(config = defaultActionConfig()) {
     const actions = {};
+    const definitions = {};
 
     for (const [keyword, definition] of Object.entries(config.actions ?? {})) {
       actions[keyword] = buildAction(definition);
+      definitions[keyword] = definition;
     }
 
-    return new SelectionActionRegistry(actions);
+    return new SelectionActionRegistry(actions, definitions);
   }
 
   resolve(keyword) {
@@ -36,6 +39,36 @@ export class SelectionActionRegistry {
 
   keywords() {
     return [...this.actions.keys()].sort();
+  }
+
+  preview(keyword, fact, context = {}) {
+    const definition = this.definitions.get(keyword);
+
+    if (!definition) {
+      return null;
+    }
+
+    const previewFact = fact.constructor.from(fact.toSerializable());
+
+    switch (definition.action) {
+      case "set_type":
+        previewFact.setType(definition.value);
+        return previewFact;
+      case "set_due":
+        previewFact.setDueDate(resolvePreviewDueDate(definition.value, context));
+        return previewFact;
+      case "associate_current_session":
+        if (!context.state?.currentSession) {
+          return previewFact;
+        }
+        previewFact.associateSession(context.state.currentSession);
+        return previewFact;
+      case "trash":
+        previewFact.setType("deleted");
+        return previewFact;
+      default:
+        return null;
+    }
   }
 }
 
@@ -81,4 +114,22 @@ export function defaultActionConfig() {
       }
     }
   };
+}
+
+function resolvePreviewDueDate(value, context) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  if (value === "today") {
+    return context.today;
+  }
+
+  if (value === "tomorrow" && context.today) {
+    const date = new Date(`${context.today}T00:00:00.000Z`);
+    date.setUTCDate(date.getUTCDate() + 1);
+    return date.toISOString().slice(0, 10);
+  }
+
+  return null;
 }

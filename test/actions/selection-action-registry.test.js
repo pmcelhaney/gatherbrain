@@ -66,6 +66,26 @@ describe("SelectionActionRegistry", () => {
 
     assert.deepEqual(factStore.trashedIds, ["6f2308de-02e9-45db-8ff0-65ac793f4a24"]);
   });
+
+  it("previews configured transformations without mutating the original fact", () => {
+    const fact = buildFact();
+    const registry = SelectionActionRegistry.fromConfig();
+
+    const preview = registry.preview("done", fact);
+
+    assert.equal(preview.type, "done");
+    assert.equal(fact.type, "observation");
+  });
+
+  it("previews relative due date transformations", () => {
+    const fact = buildFact();
+    const registry = SelectionActionRegistry.fromConfig();
+
+    const preview = registry.preview("tomorrow", fact, { today: "2026-06-30" });
+
+    assert.equal(preview.dueDate, "2026-07-01");
+    assert.equal(fact.dueDate, null);
+  });
 });
 
 function buildFact() {

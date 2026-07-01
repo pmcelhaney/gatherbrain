@@ -209,6 +209,44 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("previews selection transformations before submit", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-transform-preview-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit("Follow up with Steve.");
+
+    const rendered = runtime.render({ input: "1 done" });
+
+    assert.match(rendered, /> 1\. done Follow up with Steve/);
+    assert.match(runtime.render(), /1\. fact Follow up with Steve/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
+  it("previews due date transformations before submit", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-due-preview-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit("Follow up with Steve.");
+
+    const rendered = runtime.render({ input: "1 tomorrow" });
+
+    assert.match(rendered, /due:tomorrow/);
+    assert.doesNotMatch(runtime.render(), /due:tomorrow/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("clears retained screen state on restart", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-restart-"));

@@ -182,7 +182,13 @@ export function createAppRuntime({
     } = {}) {
       return terminalApp.render({
         state: stateForPreview({ state, input, promptClassifier, planParser, clock }),
-        resultSet,
+        resultSet: previewResultSetForInput({
+          input,
+          resultSet,
+          selectionActionRegistry,
+          state,
+          clock
+        }),
         timeBoxes,
         helpLines,
         selectionPreview: selectionPreviewForInput(input, resultSet),
@@ -202,19 +208,57 @@ export function createAppRuntime({
   };
 }
 
+function previewResultSetForInput({
+  input,
+  resultSet,
+  selectionActionRegistry,
+  state,
+  clock
+}) {
+  const parsed = selectionInputPreview(input, resultSet);
+
+  if (!parsed?.actionKeyword) {
+    return resultSet;
+  }
+
+  const selectedIds = new Set(parsed.selection.toArray());
+  const today = clock().toISOString().slice(0, 10);
+  const previewFacts = resultSet.facts.map((fact) => {
+    if (!selectedIds.has(fact.id)) {
+      return fact;
+    }
+
+    return selectionActionRegistry.preview(parsed.actionKeyword, fact, { state, today }) ?? fact;
+  });
+
+  return new SearchResultSet(previewFacts);
+}
+
 function selectionPreviewForInput(input, resultSet) {
+  return selectionInputPreview(input, resultSet)?.selection ?? null;
+}
+
+function selectionInputPreview(input, resultSet) {
   if (!resultSet || !/^\s*(\d+|\.)/.test(input)) {
     return null;
   }
 
-  const selectors = input.trim().split(/\s+/).filter((token) => /^\d+$|^\.+$/.test(token));
+  const tokens = input.trim().split(/\s+/);
+  const selectors = [];
+
+  while (tokens.length > 0 && (/^\d+$/.test(tokens[0]) || /^\.+$/.test(tokens[0]))) {
+    selectors.push(tokens.shift());
+  }
 
   if (selectors.length === 0) {
     return null;
   }
 
   try {
-    return Selection.resolve(selectors, resultSet);
+    return {
+      selection: Selection.resolve(selectors, resultSet),
+      actionKeyword: tokens[0] ?? null
+    };
   } catch {
     return null;
   }
