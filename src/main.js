@@ -1,4 +1,5 @@
 import readline from "node:readline";
+import { spawn as spawnChildProcess } from "node:child_process";
 import { stdin as input, stdout as output } from "node:process";
 import path from "node:path";
 
@@ -305,7 +306,10 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   if (input.isTTY) {
-    await runTui(runtime);
+    const result = await runTui(runtime);
+    if (result === "restart") {
+      restartCurrentProcess();
+    }
     return;
   }
 
@@ -428,6 +432,11 @@ async function runTui(runtime) {
         try {
           const result = await runtime.submit(line);
           status = result?.message ?? "";
+          if (result?.action === "restart") {
+            redraw();
+            resolve("restart");
+            return;
+          }
         } catch (error) {
           status = `error: ${error.message}`;
         }
@@ -448,6 +457,27 @@ async function runTui(runtime) {
     input.setRawMode(false);
     output.write(`${ansi.showCursor}\n`);
   });
+}
+
+export function restartCurrentProcess({
+  spawn = spawnChildProcess,
+  exit = process.exit,
+  execPath = process.execPath,
+  argv = process.argv,
+  env = process.env,
+  cwd = process.cwd(),
+  pid = process.pid
+} = {}) {
+  const child = spawn(execPath, argv.slice(1), {
+    cwd,
+    env: {
+      ...env,
+      GATHERBRAIN_RESTART_PARENT_PID: String(pid)
+    },
+    stdio: "inherit"
+  });
+  child.unref();
+  exit(0);
 }
 
 async function searchCurrentFacts({

@@ -6,6 +6,48 @@ import path from "node:path";
 import { describe, it } from "node:test";
 
 describe("main", () => {
+  it("restarts by launching a fresh process with the current command", async () => {
+    const { restartCurrentProcess } = await import("../src/main.js");
+    const calls = [];
+    let exitCode = null;
+
+    restartCurrentProcess({
+      execPath: "/usr/local/bin/node",
+      argv: ["/usr/local/bin/node", "src/main.js"],
+      env: { GATHERBRAIN_WORKSPACE: "/tmp/workspace" },
+      cwd: "/tmp/project",
+      pid: 12345,
+      spawn: (command, args, options) => {
+        calls.push({ command, args, options });
+        return {
+          unref() {
+            calls.push({ unref: true });
+          }
+        };
+      },
+      exit(code) {
+        exitCode = code;
+      }
+    });
+
+    assert.deepEqual(calls, [
+      {
+        command: "/usr/local/bin/node",
+        args: ["src/main.js"],
+        options: {
+          cwd: "/tmp/project",
+          env: {
+            GATHERBRAIN_WORKSPACE: "/tmp/workspace",
+            GATHERBRAIN_RESTART_PARENT_PID: "12345"
+          },
+          stdio: "inherit"
+        }
+      },
+      { unref: true }
+    ]);
+    assert.equal(exitCode, 0);
+  });
+
   it("renders the app once for smoke testing", () => {
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-render-once-"));
     const result = spawnSync("node", ["src/main.js", "--render-once"], {

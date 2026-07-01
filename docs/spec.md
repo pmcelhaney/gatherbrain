@@ -457,7 +457,9 @@ session:<new session>
 
 ### `:restart`
 
-Restarts the application runtime and reloads the saved current session and query.
+In the interactive TUI, restarts the application process so code and
+configuration changes are loaded. The restarted process reloads the saved
+current session and query.
 
 Transient state such as visible panels, selection previews, and undo history is
 cleared. Durable workspace state, including facts, time boxes, and the current

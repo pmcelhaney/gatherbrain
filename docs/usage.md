@@ -226,13 +226,16 @@ Calendar rows are numbered in plan mode. Update or delete a visible time box:
 | `:timebox delete <number>` | Deletes a visible time box |
 | `:undo` | Undoes the most recent selection action |
 | `:help` | Shows in-app help |
-| `:restart` | Restarts the app and reloads current state |
+| `:restart` | Restarts the TUI process and reloads current state |
 | `:paste` | Recognized, but paste mode is not implemented yet |
 | `:exit` | Exits the app |
 | `:quit` | Exits the app |
 
 In the interactive TUI, Tab completes commands, `:switch` session names, search
 shortcuts, selection actions, and visible result numbers.
+
+In the interactive TUI, `:restart` launches a fresh app process so recent code
+and configuration changes are loaded. Durable workspace state is preserved.
 
 While typing, the header and body preview the inferred mode. Plan input previews
 the parsed time box before Enter commits it.
