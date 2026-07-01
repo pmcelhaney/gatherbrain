@@ -322,7 +322,8 @@ function factDetailLines(fact, filePath) {
     `home session: ${fact.homeSession.name}`,
     `associated sessions: ${fact.associatedSessions.map((session) => session.name).join(", ") || "(none)"}`,
     `due: ${fact.dueDate ?? "(none)"}`,
-    `file: ${filePath ?? "(not found)"}`,
+    `attached file: ${fact.file ?? "(none)"}`,
+    `path: ${filePath ?? "(not found)"}`,
     "",
     fact.content
   ];

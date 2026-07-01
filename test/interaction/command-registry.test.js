@@ -128,6 +128,7 @@ describe("CommandRegistry", () => {
     assert.equal(result.action, "inspect");
     assert.match(result.helpLines.join("\n"), /Fact 5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a/);
     assert.match(result.helpLines.join("\n"), /associated sessions: Architecture Review Board/);
-    assert.match(result.helpLines.join("\n"), /file: \/tmp\/fact\.md/);
+    assert.match(result.helpLines.join("\n"), /attached file: \(none\)/);
+    assert.match(result.helpLines.join("\n"), /path: \/tmp\/fact\.md/);
   });
 });

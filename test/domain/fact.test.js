@@ -58,6 +58,7 @@ describe("Fact", () => {
       type: "todo",
       createdAt: "2026-06-30T15:45:00.000Z",
       dueDate: "2026-07-01",
+      file: "launch-notes.txt",
       homeSession: "Steve",
       associatedSessions: ["Architecture Review Board"]
     });
@@ -68,6 +69,7 @@ describe("Fact", () => {
       type: "todo",
       createdAt: "2026-06-30T15:45:00.000Z",
       dueDate: "2026-07-01",
+      file: "launch-notes.txt",
       homeSession: "Steve",
       associatedSessions: ["Architecture Review Board"]
     });

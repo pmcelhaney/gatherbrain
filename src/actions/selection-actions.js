@@ -55,6 +55,32 @@ export class AssociateCurrentSessionAction {
   }
 }
 
+export class OpenFileAction {
+  async execute(context) {
+    const opener = context.fileOpener ?? defaultFileOpener;
+    const results = [];
+
+    for (const factId of context.selection.toArray()) {
+      const fact = await context.factStore.getFactById(factId);
+
+      if (!fact.file) {
+        throw new Error("Selected fact has no associated file");
+      }
+
+      const factPath = await context.factStore.findPathByFactId(factId);
+
+      if (!factPath) {
+        throw new Error(`Fact not found: ${factId}`);
+      }
+
+      const filePath = await opener.openAssociatedFile({ fact, factPath });
+      results.push({ fact, action: "open_file", value: filePath });
+    }
+
+    return results;
+  }
+}
+
 async function mutateSelectedFacts({ selection, factStore }, mutate) {
   const results = [];
 
@@ -65,6 +91,12 @@ async function mutateSelectedFacts({ selection, factStore }, mutate) {
 
   return results;
 }
+
+const defaultFileOpener = {
+  async openAssociatedFile() {
+    throw new Error("File opener is required");
+  }
+};
 
 function resolveDueDate(expression, context) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(expression)) {

@@ -53,6 +53,7 @@ A fact has:
 - type
 - created timestamp
 - optional due date
+- optional associated file
 - home session
 - associated sessions
 
@@ -122,6 +123,7 @@ associated_sessions:
   - Steve
   - Enterprise Architecture
 due:
+file:
 ---
 ```
 
@@ -304,7 +306,7 @@ The mode is inferred from the first character entered.
 | `:undo` | Undoes the most recent selection action in memory |
 | `:help` | Shows in-app help |
 | `:restart` | Restarts the app, reloads current session/query, and clears transient panels |
-| `:paste` | Prompts for a paste name, writes the clipboard into the current session, and creates a referencing fact |
+| `:paste` | Prompts for a paste name, writes the clipboard into the current session, and creates a `type: file` fact |
 | `:exit` / `:quit` | Exits the app |
 
 ---
@@ -479,7 +481,8 @@ Clipboard screenshots are saved as `.png` files in the current date/session
 folder.
 
 After writing the pasted file, the app creates a normal fact in the same session
-with content that includes the entered name and a `file: <filename>` reference.
+with type `file`, the entered name as content, and `file: <filename>` in front
+matter.
 
 The pasted file and the fact are both stored under the current date/session
 folder.
@@ -612,6 +615,21 @@ Example:
 
 ---
 
+### Open File
+
+Opens the file associated with the selected fact.
+
+Example:
+
+```text
+. open
+```
+
+The selected fact must have a `file` front matter value. Relative file names are
+resolved against the selected fact's own session folder.
+
+---
+
 # Action DSL
 
 Selection actions are configurable.
@@ -652,6 +670,9 @@ actions:
 
   gather:
     action: associate_current_session
+
+  open:
+    action: open_file
 ```
 
 Example:

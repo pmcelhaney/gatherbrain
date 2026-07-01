@@ -18,7 +18,7 @@ The app currently supports:
 - Capturing facts into the current session.
 - Searching persisted facts with `/...` queries and shortcuts.
 - Fact inspection with `:inspect <number>`.
-- Selection actions such as `. tomorrow`, `. todo`, `. gather`, and `. delete`.
+- Selection actions such as `. tomorrow`, `. todo`, `. gather`, `. open`, and `. delete`.
 - Undo for the last selection action with `:undo`.
 - Planning time boxes with `; 9-10 Steve`.
 - Updating and deleting time boxes with `:timebox`.
@@ -103,6 +103,7 @@ Operate on visible facts:
 . todo
 . inprogress
 . tomorrow
+. open
 1 delete
 .. gather
 ```

@@ -8,7 +8,7 @@ import { SelectionActionRegistry } from "./actions/index.js";
 import { defaultAppConfig, loadAppConfig, mergeAppConfig } from "./config/index.js";
 import { Fact } from "./domain/index.js";
 import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
-import { AppStateRepository, ClipboardReader, FactRepository, PasteRepository, SessionRepository, Workspace } from "./persistence/index.js";
+import { AppStateRepository, ClipboardReader, FactRepository, FileOpener, PasteRepository, SessionRepository, Workspace } from "./persistence/index.js";
 import { PlanParser, TimeBoxRepository } from "./planning/index.js";
 import { FactIndex, SearchEngine, SearchQueryParser, SearchResultSet } from "./search/index.js";
 import { AppState, Selection } from "./state/index.js";
@@ -19,6 +19,7 @@ export function createAppRuntime({
   config = defaultAppConfig(),
   clock = () => new Date(),
   clipboardReader = new ClipboardReader(),
+  fileOpener = new FileOpener(),
   idGenerator = randomUUID
 } = {}) {
   const appConfig = mergeAppConfig(defaultAppConfig(), config);
@@ -51,9 +52,10 @@ export function createAppRuntime({
     factRepository,
     factSource: factIndex,
     sessionRepository,
-    selectionActionRegistry,
-    timeBoxRepository,
-    clock,
+      selectionActionRegistry,
+      timeBoxRepository,
+      fileOpener,
+      clock,
     defaultFactType: appConfig.defaultFactType,
     currentResultSetProvider: () => resultSet,
     currentTimeBoxesProvider: () => timeBoxes
@@ -633,9 +635,10 @@ async function completePendingPaste({
   });
   const fact = new Fact({
     id: idGenerator(),
-    content: `${name}\n\nfile: ${paste.fileName}`,
-    type: defaultFactType,
+    content: name,
+    type: "file",
     createdAt,
+    file: paste.fileName,
     homeSession: state.currentSession
   });
 

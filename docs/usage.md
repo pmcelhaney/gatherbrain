@@ -166,6 +166,7 @@ Current built-in actions:
 | `tomorrow` | Sets due date to tomorrow |
 | `delete` | Moves the fact to `.trash` |
 | `gather` | Associates the fact with the current session |
+| `open` | Opens the file associated with the fact |
 
 Undo the most recent selection action:
 
@@ -183,7 +184,7 @@ Inspect one visible fact:
 ```
 
 The inspect view shows the fact UUID, type, created timestamp, home session,
-associated sessions, due date, file path, and content.
+associated sessions, due date, associated file, Markdown path, and content.
 
 ## Planning Time
 
@@ -227,7 +228,7 @@ Calendar rows are numbered in plan mode. Update or delete a visible time box:
 | `:undo` | Undoes the most recent selection action |
 | `:help` | Shows in-app help |
 | `:restart` | Restarts the TUI process and reloads current state |
-| `:paste` | Prompts for a name, writes the clipboard into the current session, and creates a fact referencing it |
+| `:paste` | Prompts for a name, writes the clipboard into the current session, and creates a `type: file` fact |
 | `:exit` | Exits the app |
 | `:quit` | Exits the app |
 
@@ -240,7 +241,8 @@ and configuration changes are loaded. Durable workspace state is preserved.
 `:paste` requires a current session. After `:paste`, enter a name for the
 pasted item. Gatherbrain writes text clipboard data as `<name>.txt` and
 screenshot clipboard data as `<name>.png` in the current date/session folder,
-then creates a fact named the same way with a `file: <filename>` reference.
+then creates a `type: file` fact named the same way with `file: <filename>` in
+front matter. Select that fact and run `. open` to open the pasted file.
 
 While typing, the header and body preview the inferred mode. Plan input previews
 the parsed time box before Enter commits it.
@@ -286,7 +288,7 @@ workspace/
   2026-07-01/
     Steve/
       login-screenshot.png
-      <uuid>-login-screenshot-file-login-screenshot-png.md
+      <uuid>-login-screenshot.md
 ```
 
 Deleted facts:

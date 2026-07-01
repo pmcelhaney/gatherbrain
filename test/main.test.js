@@ -324,7 +324,7 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("pastes clipboard text into a named file and creates a referencing fact", async () => {
+  it("pastes clipboard text into a named file and creates a file fact", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-paste-text-"));
     const runtime = createAppRuntime({
@@ -352,13 +352,29 @@ describe("createAppRuntime", () => {
       fs.readFileSync(path.join(workspacePath, "2026-07-01", "Steve", "launch-notes.txt"), "utf8"),
       "clipboard contents\n"
     );
-    assert.match(runtime.render(), /Launch notes/);
-    assert.match(runtime.render(), /file: launch-notes\.txt/);
+    assert.match(runtime.render(), /file Launch notes/);
+    assert.equal(
+      fs.readFileSync(
+        path.join(workspacePath, "2026-07-01", "Steve", "11111111-1111-4111-8111-111111111111-launch-notes.md"),
+        "utf8"
+      ),
+      `---
+id: 11111111-1111-4111-8111-111111111111
+type: file
+created: 2026-07-01T12:00:00.000Z
+home_session: Steve
+associated_sessions:
+due: 
+file: launch-notes.txt
+---
+Launch notes
+`
+    );
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("pastes clipboard screenshots as PNG files and references them from a fact", async () => {
+  it("pastes clipboard screenshots as PNG files and creates file facts", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-paste-png-"));
     const runtime = createAppRuntime({
@@ -385,7 +401,62 @@ describe("createAppRuntime", () => {
       fs.readFileSync(path.join(workspacePath, "2026-07-01", "Steve", "login-screenshot.png")),
       Buffer.from([0x89, 0x50, 0x4e, 0x47])
     );
-    assert.match(runtime.render(), /file: login-screenshot\.png/);
+    assert.equal(
+      fs.readFileSync(
+        path.join(workspacePath, "2026-07-01", "Steve", "22222222-2222-4222-8222-222222222222-login-screenshot.md"),
+        "utf8"
+      ),
+      `---
+id: 22222222-2222-4222-8222-222222222222
+type: file
+created: 2026-07-01T12:00:00.000Z
+home_session: Steve
+associated_sessions:
+due: 
+file: login-screenshot.png
+---
+Login Screenshot
+`
+    );
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
+  it("opens files associated with selected facts", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-open-file-"));
+    const opened = [];
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-07-01T12:00:00.000Z"),
+      idGenerator: () => "33333333-3333-4333-8333-333333333333",
+      clipboardReader: {
+        async read() {
+          return {
+            mediaType: "text/plain",
+            extension: "txt",
+            data: Buffer.from("clipboard contents\n")
+          };
+        }
+      },
+      fileOpener: {
+        async openAssociatedFile({ fact, factPath }) {
+          opened.push({ file: fact.file, factPath });
+          return path.join(path.dirname(factPath), fact.file);
+        }
+      }
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit(":paste");
+    await runtime.submit("Launch notes");
+    const result = await runtime.submit(". open");
+
+    assert.equal(result.message, "opened launch-notes.txt");
+    assert.deepEqual(opened, [{
+      file: "launch-notes.txt",
+      factPath: path.join(workspacePath, "2026-07-01", "Steve", "33333333-3333-4333-8333-333333333333-launch-notes.md")
+    }]);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -572,7 +643,8 @@ describe("createAppRuntime", () => {
     assert.match(rendered, /Fact [0-9a-f-]{36}/);
     assert.match(rendered, /type: fact/);
     assert.match(rendered, /home session: Steve/);
-    assert.match(rendered, /file: .*follow-up-with-steve\.md/);
+    assert.match(rendered, /attached file: \(none\)/);
+    assert.match(rendered, /path: .*follow-up-with-steve\.md/);
     assert.match(rendered, /Follow up with Steve\./);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });

@@ -36,6 +36,7 @@ Core fields:
 - `type`
 - `createdAt`
 - `dueDate`
+- `file`
 - `homeSession`
 - `associatedSessions`
 

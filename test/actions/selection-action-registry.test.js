@@ -101,6 +101,45 @@ describe("SelectionActionRegistry", () => {
     assert.deepEqual(factStore.trashedIds, ["6f2308de-02e9-45db-8ff0-65ac793f4a24"]);
   });
 
+  it("opens associated files from selected facts", async () => {
+    const fact = buildFact({ file: "launch-notes.txt" });
+    const factStore = new MemoryFactStore([fact]);
+    const opened = [];
+    const registry = SelectionActionRegistry.fromConfig();
+
+    const results = await registry.execute("open", {
+      selection: new Selection([fact.id]),
+      factStore,
+      fileOpener: {
+        async openAssociatedFile({ fact: openedFact, factPath }) {
+          opened.push({ fact: openedFact, factPath });
+          return "/tmp/session/launch-notes.txt";
+        }
+      }
+    });
+
+    assert.deepEqual(results.map((result) => result.action), ["open_file"]);
+    assert.equal(opened[0].fact.file, "launch-notes.txt");
+    assert.equal(opened[0].factPath, "/tmp/session/fact.md");
+  });
+
+  it("rejects open for facts without associated files", async () => {
+    const fact = buildFact();
+    const factStore = new MemoryFactStore([fact]);
+    const registry = SelectionActionRegistry.fromConfig();
+
+    await assert.rejects(
+      registry.execute("open", {
+        selection: new Selection([fact.id]),
+        factStore,
+        fileOpener: {
+          async openAssociatedFile() {}
+        }
+      }),
+      /no associated file/
+    );
+  });
+
   it("previews configured transformations without mutating the original fact", () => {
     const fact = buildFact();
     const registry = SelectionActionRegistry.fromConfig();
@@ -122,13 +161,14 @@ describe("SelectionActionRegistry", () => {
   });
 });
 
-function buildFact() {
+function buildFact(overrides = {}) {
   return new Fact({
     id: "6f2308de-02e9-45db-8ff0-65ac793f4a24",
     content: "Mike prefers async architecture reviews.",
     type: "observation",
     createdAt: "2026-06-30T14:15:23.000Z",
-    homeSession: "Architecture Review Board"
+    homeSession: "Architecture Review Board",
+    ...overrides
   });
 }
 
@@ -144,6 +184,14 @@ class MemoryFactStore {
 
   async getFactById(id) {
     return this.fact(id);
+  }
+
+  async findPathByFactId(id) {
+    if (!this.facts.has(id)) {
+      return null;
+    }
+
+    return "/tmp/session/fact.md";
   }
 
   async saveFact(fact) {

@@ -13,6 +13,7 @@ describe("MarkdownFactCodec", () => {
       type: "observation",
       createdAt: "2026-06-30T14:15:23.000Z",
       dueDate: null,
+      file: "review-notes.txt",
       homeSession: "Architecture Review Board",
       associatedSessions: ["Steve", "Enterprise Architecture"]
     });
@@ -26,6 +27,7 @@ associated_sessions:
   - Steve
   - Enterprise Architecture
 due: 
+file: review-notes.txt
 ---
 Mike prefers async architecture reviews.
 `);
@@ -41,6 +43,7 @@ home_session: Architecture Review Board
 associated_sessions:
   - Steve
 due: 2026-07-01
+file: review-notes.txt
 ---
 Mike prefers async architecture reviews.
 `);
@@ -49,6 +52,7 @@ Mike prefers async architecture reviews.
     assert.equal(fact.homeSession.name, "Architecture Review Board");
     assert.deepEqual(fact.associatedSessions.map((session) => session.name), ["Steve"]);
     assert.equal(fact.dueDate, "2026-07-01");
+    assert.equal(fact.file, "review-notes.txt");
     assert.equal(fact.content, "Mike prefers async architecture reviews.");
   });
 });

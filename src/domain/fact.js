@@ -7,6 +7,7 @@ export class Fact {
     type,
     createdAt,
     dueDate = null,
+    file = null,
     homeSession,
     associatedSessions = []
   }) {
@@ -21,6 +22,7 @@ export class Fact {
     this.homeSession = normalizeHomeSession(homeSession);
     this.associatedSessions = [];
     this.dueDate = normalizeDate(dueDate);
+    this.file = normalizeFile(file);
 
     for (const session of associatedSessions) {
       this.associateSession(session);
@@ -67,6 +69,7 @@ export class Fact {
       type: this.type,
       createdAt: this.createdAt.toISOString(),
       dueDate: this.dueDate,
+      file: this.file,
       homeSession: this.homeSession.name,
       associatedSessions: this.associatedSessions.map((session) => session.name)
     };
@@ -135,4 +138,16 @@ function normalizeDate(value) {
   }
 
   return value;
+}
+
+function normalizeFile(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error("Fact file must be a string");
+  }
+
+  return value.trim();
 }

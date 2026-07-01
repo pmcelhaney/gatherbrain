@@ -29,6 +29,7 @@ export class PromptController {
     currentTimeBoxesProvider = () => [],
     planParser = null,
     timeBoxRepository = null,
+    fileOpener = null,
     clock = () => new Date(),
     idGenerator = randomUUID,
     defaultFactType = "fact"
@@ -47,6 +48,7 @@ export class PromptController {
     this.currentTimeBoxesProvider = currentTimeBoxesProvider;
     this.planParser = planParser;
     this.timeBoxRepository = timeBoxRepository;
+    this.fileOpener = fileOpener;
     this.clock = clock;
     this.idGenerator = idGenerator;
     this.defaultFactType = defaultFactType;
@@ -152,12 +154,13 @@ export class PromptController {
       selection,
       factStore: this.factRepository,
       state: this.state,
+      fileOpener: this.fileOpener,
       today: this.clock().toISOString().slice(0, 10)
     });
 
     return InteractionResult.selectionAction({
       mode: AppMode.SELECTION,
-      message: `${actionKeyword} applied to ${results.length} fact${results.length === 1 ? "" : "s"}`,
+      message: selectionMessage(actionKeyword, results),
       undoSnapshot
     });
   }
@@ -195,6 +198,16 @@ export class PromptController {
       timeBox
     });
   }
+}
+
+function selectionMessage(actionKeyword, results) {
+  if (results.every((result) => result.action === "open_file")) {
+    return results.length === 1
+      ? `opened ${results[0].fact.file}`
+      : `opened ${results.length} files`;
+  }
+
+  return `${actionKeyword} applied to ${results.length} fact${results.length === 1 ? "" : "s"}`;
 }
 
 function queryForSearch(rawQuery, state) {
