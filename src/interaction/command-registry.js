@@ -59,8 +59,8 @@ class PasteCommand {
 
     return InteractionResult.classified({
       mode: AppMode.COMMAND,
-      action: "paste",
-      message: "paste mode is not implemented yet"
+      action: "paste_name_requested",
+      message: "name this paste"
     });
   }
 }
@@ -97,7 +97,7 @@ class HelpCommand {
         ":timebox delete <number>             delete a timebox",
         ":undo               undo the last selection action",
         ":restart            restart the app and reload current state",
-        ":paste              recognized; not implemented yet",
+        ":paste              paste clipboard into the current session",
         ":help               show this help",
         ":exit / :quit       exit",
         "",

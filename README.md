@@ -22,13 +22,13 @@ The app currently supports:
 - Undo for the last selection action with `:undo`.
 - Planning time boxes with `; 9-10 Steve`.
 - Updating and deleting time boxes with `:timebox`.
+- Pasting clipboard text or screenshots into the current session with `:paste`.
 - Live mode, plan, and completion feedback while typing in the TUI.
 - Config loading from `gatherbrain.config.json`.
 - Markdown fact storage and daily text-file timebox storage.
 
 Not implemented yet:
 
-- Paste/import mode after `:paste`.
 - A full-screen browser-style navigation model.
 
 ## Requirements

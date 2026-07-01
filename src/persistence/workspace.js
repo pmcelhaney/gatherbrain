@@ -31,6 +31,14 @@ export class Workspace {
     return path.join(this.sessionDirectory(date, session), fileName);
   }
 
+  pastePath({ date, session, fileName }) {
+    if (typeof fileName !== "string" || fileName.trim().length === 0) {
+      throw new Error("Paste file name is required");
+    }
+
+    return path.join(this.sessionDirectory(date, session), fileName);
+  }
+
   timeBoxPath(date) {
     return path.join(this.rootPath, "timeboxes", `${normalizeDate(date)}.txt`);
   }

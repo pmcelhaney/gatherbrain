@@ -227,7 +227,7 @@ Calendar rows are numbered in plan mode. Update or delete a visible time box:
 | `:undo` | Undoes the most recent selection action |
 | `:help` | Shows in-app help |
 | `:restart` | Restarts the TUI process and reloads current state |
-| `:paste` | Recognized, but paste mode is not implemented yet |
+| `:paste` | Prompts for a name, writes the clipboard into the current session, and creates a fact referencing it |
 | `:exit` | Exits the app |
 | `:quit` | Exits the app |
 
@@ -236,6 +236,11 @@ shortcuts, selection actions, and visible result numbers.
 
 In the interactive TUI, `:restart` launches a fresh app process so recent code
 and configuration changes are loaded. Durable workspace state is preserved.
+
+`:paste` requires a current session. After `:paste`, enter a name for the
+pasted item. Gatherbrain writes text clipboard data as `<name>.txt` and
+screenshot clipboard data as `<name>.png` in the current date/session folder,
+then creates a fact named the same way with a `file: <filename>` reference.
 
 While typing, the header and body preview the inferred mode. Plan input previews
 the parsed time box before Enter commits it.
@@ -274,6 +279,16 @@ workspace/
       <uuid>-follow-up-with-steve.md
 ```
 
+Pasted files live alongside facts in the same date/session folder:
+
+```text
+workspace/
+  2026-07-01/
+    Steve/
+      login-screenshot.png
+      <uuid>-login-screenshot-file-login-screenshot-png.md
+```
+
 Deleted facts:
 
 ```text
@@ -293,7 +308,6 @@ workspace/
 
 ## Current Limitations
 
-- `:paste` does not enter a real paste/import mode yet.
 - The TUI redraws as a persistent screen in an interactive terminal, but piped
   input prints each frame for testability.
 - The search index is an in-memory runtime cache and is rebuilt after restart.

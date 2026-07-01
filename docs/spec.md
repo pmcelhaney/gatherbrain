@@ -304,7 +304,7 @@ The mode is inferred from the first character entered.
 | `:undo` | Undoes the most recent selection action in memory |
 | `:help` | Shows in-app help |
 | `:restart` | Restarts the app, reloads current session/query, and clears transient panels |
-| `:paste` | Reserved for a future paste/import mode |
+| `:paste` | Prompts for a paste name, writes the clipboard into the current session, and creates a referencing fact |
 | `:exit` / `:quit` | Exits the app |
 
 ---
@@ -467,9 +467,22 @@ session/query, is preserved.
 
 ### `:paste`
 
-Enters paste mode.
+Prompts for a name for the pasted item.
 
-Pasted text is converted into facts according to configurable import rules.
+The next entered line becomes both the fact title and the file-name stem.
+
+The command requires a current session.
+
+Clipboard text is saved as a `.txt` file in the current date/session folder.
+
+Clipboard screenshots are saved as `.png` files in the current date/session
+folder.
+
+After writing the pasted file, the app creates a normal fact in the same session
+with content that includes the entered name and a `file: <filename>` reference.
+
+The pasted file and the fact are both stored under the current date/session
+folder.
 
 ---
 

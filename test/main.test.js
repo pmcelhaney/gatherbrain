@@ -324,6 +324,72 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("pastes clipboard text into a named file and creates a referencing fact", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-paste-text-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-07-01T12:00:00.000Z"),
+      idGenerator: () => "11111111-1111-4111-8111-111111111111",
+      clipboardReader: {
+        async read() {
+          return {
+            mediaType: "text/plain",
+            extension: "txt",
+            data: Buffer.from("clipboard contents\n")
+          };
+        }
+      }
+    });
+
+    await runtime.submit(":switch Steve");
+    const prompt = await runtime.submit(":paste");
+    const result = await runtime.submit("Launch notes");
+
+    assert.equal(prompt.message, "name this paste");
+    assert.equal(result.message, "pasted launch-notes.txt");
+    assert.equal(
+      fs.readFileSync(path.join(workspacePath, "2026-07-01", "Steve", "launch-notes.txt"), "utf8"),
+      "clipboard contents\n"
+    );
+    assert.match(runtime.render(), /Launch notes/);
+    assert.match(runtime.render(), /file: launch-notes\.txt/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
+  it("pastes clipboard screenshots as PNG files and references them from a fact", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-paste-png-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-07-01T12:00:00.000Z"),
+      idGenerator: () => "22222222-2222-4222-8222-222222222222",
+      clipboardReader: {
+        async read() {
+          return {
+            mediaType: "image/png",
+            extension: "png",
+            data: Buffer.from([0x89, 0x50, 0x4e, 0x47])
+          };
+        }
+      }
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit(":paste");
+    const result = await runtime.submit("Login Screenshot");
+
+    assert.equal(result.message, "pasted login-screenshot.png");
+    assert.deepEqual(
+      fs.readFileSync(path.join(workspacePath, "2026-07-01", "Steve", "login-screenshot.png")),
+      Buffer.from([0x89, 0x50, 0x4e, 0x47])
+    );
+    assert.match(runtime.render(), /file: login-screenshot\.png/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("previews selected rows while typing selectors", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-selection-preview-"));

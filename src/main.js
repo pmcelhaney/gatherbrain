@@ -1,4 +1,5 @@
 import readline from "node:readline";
+import { randomUUID } from "node:crypto";
 import { spawn as spawnChildProcess } from "node:child_process";
 import { stdin as input, stdout as output } from "node:process";
 import path from "node:path";
@@ -7,7 +8,7 @@ import { SelectionActionRegistry } from "./actions/index.js";
 import { defaultAppConfig, loadAppConfig, mergeAppConfig } from "./config/index.js";
 import { Fact } from "./domain/index.js";
 import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
-import { AppStateRepository, FactRepository, SessionRepository, Workspace } from "./persistence/index.js";
+import { AppStateRepository, ClipboardReader, FactRepository, PasteRepository, SessionRepository, Workspace } from "./persistence/index.js";
 import { PlanParser, TimeBoxRepository } from "./planning/index.js";
 import { FactIndex, SearchEngine, SearchQueryParser, SearchResultSet } from "./search/index.js";
 import { AppState, Selection } from "./state/index.js";
@@ -16,13 +17,16 @@ import { ansi, InputBuffer, TerminalApp } from "./terminal/index.js";
 export function createAppRuntime({
   workspacePath = path.join(process.cwd(), "workspace"),
   config = defaultAppConfig(),
-  clock = () => new Date()
+  clock = () => new Date(),
+  clipboardReader = new ClipboardReader(),
+  idGenerator = randomUUID
 } = {}) {
   const appConfig = mergeAppConfig(defaultAppConfig(), config);
   const state = new AppState();
   const workspace = new Workspace(workspacePath);
   const appStateRepository = new AppStateRepository({ workspace });
   const factRepository = new FactRepository({ workspace });
+  const pasteRepository = new PasteRepository({ workspace });
   const sessionRepository = new SessionRepository({ workspace });
   const timeBoxRepository = new TimeBoxRepository({ workspace });
   const factIndex = new FactIndex(factRepository);
@@ -41,6 +45,7 @@ export function createAppRuntime({
   let timeBoxes = [];
   let helpLines = null;
   let undoSnapshot = null;
+  let pendingPaste = false;
   const promptController = new PromptController({
     state,
     factRepository,
@@ -87,6 +92,32 @@ export function createAppRuntime({
       await initializeRuntimeState();
     },
     async submit(line) {
+      if (pendingPaste && !isExitCommand(line)) {
+        const result = await completePendingPaste({
+          line,
+          state,
+          factRepository,
+          pasteRepository,
+          clipboardReader,
+          clock,
+          idGenerator,
+          defaultFactType: appConfig.defaultFactType
+        });
+
+        pendingPaste = false;
+        factIndex.invalidate();
+        resultSet = await searchCurrentFacts({
+          state,
+          factIndex,
+          searchEngine,
+          searchQueryParser,
+          clock
+        });
+        helpLines = null;
+        await appStateRepository.save(state);
+        return result;
+      }
+
       if (line.trim() === "") {
         const result = await resetToCurrentSession({
           state,
@@ -151,6 +182,12 @@ export function createAppRuntime({
         helpLines = null;
       }
 
+      if (result.action === "paste_name_requested") {
+        state.requireCaptureSession();
+        pendingPaste = true;
+        helpLines = null;
+      }
+
       if (result.fact || result.action === "selection_action") {
         factIndex.invalidate();
         resultSet = await searchCurrentFacts({
@@ -173,6 +210,7 @@ export function createAppRuntime({
 
       if (result.action === "restart") {
         await appStateRepository.save(state);
+        pendingPaste = false;
         await initializeRuntimeState();
         return result;
       }
@@ -563,6 +601,51 @@ async function resetToCurrentSession({
       searchQueryParser,
       clock
     })
+  };
+}
+
+async function completePendingPaste({
+  line,
+  state,
+  factRepository,
+  pasteRepository,
+  clipboardReader,
+  clock,
+  idGenerator,
+  defaultFactType
+}) {
+  const name = line.trim();
+
+  if (!name) {
+    throw new Error("Paste name is required");
+  }
+
+  state.requireCaptureSession();
+
+  const createdAt = clock();
+  const date = createdAt.toISOString().slice(0, 10);
+  const clipboardItem = await clipboardReader.read();
+  const paste = await pasteRepository.create({
+    date,
+    session: state.currentSession,
+    name,
+    clipboardItem
+  });
+  const fact = new Fact({
+    id: idGenerator(),
+    content: `${name}\n\nfile: ${paste.fileName}`,
+    type: defaultFactType,
+    createdAt,
+    homeSession: state.currentSession
+  });
+
+  await factRepository.create(fact);
+
+  return {
+    action: "paste",
+    message: `pasted ${paste.fileName}`,
+    fact,
+    filePath: paste.filePath
   };
 }
 

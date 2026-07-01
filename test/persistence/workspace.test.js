@@ -16,6 +16,10 @@ describe("Workspace", () => {
       workspace.trashDirectory("2026-06-30", "Steve"),
       path.join("/tmp/gatherbrain", "2026-06-30", "Steve", ".trash")
     );
+    assert.equal(
+      workspace.pastePath({ date: "2026-06-30", session: "Steve", fileName: "diagram.png" }),
+      path.join("/tmp/gatherbrain", "2026-06-30", "Steve", "diagram.png")
+    );
   });
 
   it("builds daily timebox paths", () => {

@@ -25,12 +25,12 @@ describe("CommandRegistry", () => {
     assert.equal(state.currentSession.name, "Steve");
   });
 
-  it("recognizes paste before paste mode exists", async () => {
+  it("requests a paste name", async () => {
     const state = new AppState();
     const result = await new CommandRegistry().execute(":paste", { state });
 
-    assert.equal(result.action, "paste");
-    assert.equal(result.message, "paste mode is not implemented yet");
+    assert.equal(result.action, "paste_name_requested");
+    assert.equal(result.message, "name this paste");
   });
 
   it("recognizes undo", async () => {
