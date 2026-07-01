@@ -117,13 +117,13 @@ Search shortcuts:
 
 `//session` requires a current session.
 
-Due dates in fact rows render as friendly labels when possible:
+Due dates in fact rows render as friendly labels before the content:
 
 ```text
-due:today
-due:tomorrow
-due:Fri
-due:Jul 10
+todo today Call Steve
+todo tomorrow Call Steve
+todo Fri Call Steve
+todo Jul 10 Call Steve
 ```
 
 ## Selecting And Updating Facts

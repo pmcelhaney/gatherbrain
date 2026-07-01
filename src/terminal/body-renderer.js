@@ -43,12 +43,12 @@ export class BodyRenderer {
       const basePrefix = `${contextMarker}${padVisibleStart(String(number), numberWidth)}. `;
       const prefix = isSelected && !colorEnabled ? `>${basePrefix}` : basePrefix;
       const type = fact.type ? `${fact.type} ` : "";
-      const due = fact.dueDate ? ` due:${formatDueDate(fact.dueDate, today)}` : "";
-      const firstLinePrefix = `${color(prefix, ansi.gray, colorEnabled)}${color(type, ansi.cyan, colorEnabled)}`;
+      const due = fact.dueDate ? `${formatDueDate(fact.dueDate, today)} ` : "";
+      const firstLinePrefix = `${color(prefix, ansi.gray, colorEnabled)}${color(type, ansi.cyan, colorEnabled)}${color(due, ansi.magenta, colorEnabled)}`;
       const continuationPrefix = " ".repeat(numberWidth + 2);
-      const firstLineWidth = Math.max(1, width - prefix.length - type.length);
+      const firstLineWidth = Math.max(1, width - prefix.length - type.length - due.length);
       const continuationWidth = Math.max(1, width - continuationPrefix.length);
-      const [first, ...rest] = wrapPlain(`${fact.content}${due}`, firstLineWidth);
+      const [first, ...rest] = wrapPlain(fact.content, firstLineWidth);
 
       rendered.push(highlight(`${firstLinePrefix}${first}`, isSelected, colorEnabled));
       for (const line of rest) {
@@ -96,6 +96,10 @@ function formatDueDate(dueDate, today) {
 
   if (days === 1) {
     return "tomorrow";
+  }
+
+  if (days === -1) {
+    return "yesterday";
   }
 
   if (days > 1 && days < 7) {

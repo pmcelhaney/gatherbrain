@@ -30,7 +30,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. todo Follow up with Steve. due:tomorrow"
+      "+ 1. todo tomorrow Follow up with Steve."
     );
   });
 
@@ -41,7 +41,8 @@ describe("terminal renderers", () => {
       buildFact({ id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a", dueDate: "2026-06-30" }),
       buildFact({ id: "6f2308de-02e9-45db-8ff0-65ac793f4a24", dueDate: "2026-07-01" }),
       buildFact({ id: "0cb20b8b-4c03-4d09-9a10-0340137db913", dueDate: "2026-07-03" }),
-      buildFact({ id: "7dfc1e84-d650-404c-a227-b452615620b0", dueDate: "2026-07-10" })
+      buildFact({ id: "7dfc1e84-d650-404c-a227-b452615620b0", dueDate: "2026-07-10" }),
+      buildFact({ id: "1434dc6f-fad5-47c1-bc7d-54454f7d53cc", dueDate: "2026-06-29" })
     ]);
 
     const rendered = renderer.render({
@@ -52,10 +53,11 @@ describe("terminal renderers", () => {
       today: "2026-06-30"
     }).join("\n");
 
-    assert.match(rendered, /due:today/);
-    assert.match(rendered, /due:tomorrow/);
-    assert.match(rendered, /due:Fri/);
-    assert.match(rendered, /due:Jul 10/);
+    assert.match(rendered, /today Follow up/);
+    assert.match(rendered, /tomorrow Follow up/);
+    assert.match(rendered, /Fri Follow up/);
+    assert.match(rendered, /Jul 10 Follow up/);
+    assert.match(rendered, /yesterday Follow up/);
   });
 
   it("marks preview-selected fact rows", () => {
@@ -73,7 +75,7 @@ describe("terminal renderers", () => {
         height: 10,
         today: "2026-06-30"
       }).join("\n"),
-      ">+ 1. todo Follow up with Steve. due:tomorrow"
+      ">+ 1. todo tomorrow Follow up with Steve."
     );
   });
 
@@ -86,7 +88,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "  1. todo Follow up with Steve. due:tomorrow"
+      "  1. todo tomorrow Follow up with Steve."
     );
   });
 
@@ -102,7 +104,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. todo Follow up with Steve. due:tomorrow"
+      "+ 1. todo tomorrow Follow up with Steve."
     );
   });
 
@@ -174,8 +176,8 @@ describe("terminal renderers", () => {
     }), [
       "sessions/2026-06-30/Steve",
       "----------------------------------------",
-      "+ 1. todo Follow up with Steve.",
-      "    due:tomorrow",
+      "+ 1. todo tomorrow Follow up with Steve.",
+      "",
       "",
       ">"
     ].join("\n"));

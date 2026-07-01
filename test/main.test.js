@@ -280,8 +280,8 @@ describe("createAppRuntime", () => {
 
     const rendered = runtime.render({ input: "1 tomorrow" });
 
-    assert.match(rendered, /due:tomorrow/);
-    assert.doesNotMatch(runtime.render(), /due:tomorrow/);
+    assert.match(rendered, /tomorrow Follow up with Steve/);
+    assert.doesNotMatch(runtime.render(), /tomorrow Follow up with Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -299,7 +299,7 @@ describe("createAppRuntime", () => {
     const result = await runtime.submit(". today");
 
     assert.equal(result.message, "today applied to 1 fact");
-    assert.match(runtime.render(), /due:today/);
+    assert.match(runtime.render(), /today first item in empty/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

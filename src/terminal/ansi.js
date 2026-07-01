@@ -6,7 +6,8 @@ export const ansi = Object.freeze({
   reset: "\x1b[0m",
   reverse: "\x1b[7m",
   gray: "\x1b[90m",
-  cyan: "\x1b[36m"
+  cyan: "\x1b[36m",
+  magenta: "\x1b[35m"
 });
 
 export function color(text, code, enabled = true) {
