@@ -478,6 +478,9 @@ Initial commands:
 
 Changes the current session.
 
+Shell-style escaped spaces are normalized before the session is stored, so
+`:switch Steve\ Ma` switches to `Steve Ma`.
+
 The current query becomes:
 
 ```text

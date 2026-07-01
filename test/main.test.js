@@ -897,4 +897,32 @@ Login Screenshot
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
+
+  it("renders facts captured after switching with an escaped-space session name", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-escaped-session-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Steve\\ Ma");
+    await runtime.submit("Follow up with Steve.");
+
+    const rendered = runtime.render();
+    assert.match(rendered, /sessions\/Steve Ma/);
+    assert.match(rendered, /Follow up with Steve/);
+
+    const factMarkdown = fs.readFileSync(
+      path.join(
+        workspacePath,
+        "Steve Ma",
+        fs.readdirSync(path.join(workspacePath, "Steve Ma")).find((name) => name.endsWith(".md"))
+      ),
+      "utf8"
+    );
+    assert.match(factMarkdown, /^home_session: Steve Ma$/m);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
 });

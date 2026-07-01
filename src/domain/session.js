@@ -15,7 +15,10 @@ export class Session {
       throw new TypeError("Session name must be a string");
     }
 
-    return name.trim().replace(/\s+/g, " ");
+    return name
+      .replace(/\\(\s)/g, "$1")
+      .trim()
+      .replace(/\s+/g, " ");
   }
 
   static canonicalize(name) {

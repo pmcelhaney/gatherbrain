@@ -11,10 +11,18 @@ describe("Session", () => {
     assert.equal(session.toString(), "Architecture Review Board");
   });
 
+  it("normalizes shell-style escaped whitespace in names", () => {
+    const session = new Session("Steve\\ Ma");
+
+    assert.equal(session.name, "Steve Ma");
+    assert.equal(session.pathSegment(), "Steve Ma");
+  });
+
   it("compares sessions by canonical name", () => {
     const session = new Session("Steve Ma");
 
     assert.equal(session.equals(" steve   ma "), true);
+    assert.equal(session.equals("steve\\ ma"), true);
     assert.equal(session.equals("Counterfact"), false);
   });
 

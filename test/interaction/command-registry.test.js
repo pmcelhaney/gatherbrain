@@ -17,6 +17,17 @@ describe("CommandRegistry", () => {
     assert.equal(state.currentQuery, "session:Architecture Review Board");
   });
 
+  it("switches escaped-space session input to the canonical session name", async () => {
+    const state = new AppState();
+    const result = await new CommandRegistry().execute(":switch Steve\\ Ma", {
+      state
+    });
+
+    assert.equal(result.message, "switched to Steve Ma");
+    assert.equal(state.currentSession.name, "Steve Ma");
+    assert.equal(state.currentQuery, "session:Steve Ma");
+  });
+
   it("requests an app restart without clearing state", async () => {
     const state = new AppState({ currentSession: "Steve" });
     const result = await new CommandRegistry().execute(":restart", { state });

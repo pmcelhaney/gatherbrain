@@ -36,7 +36,11 @@ capturing facts.
 :switch Steve
 :switch Architecture Review Board
 :switch Thinking about Gatherbrain design
+:switch Steve\ Ma
 ```
+
+Escaped spaces are normalized when switching, so the last example stores and
+searches the session as `Steve Ma`.
 
 There is no separate session creation command yet. Switching to a new name is
 enough; the session becomes real when facts or time boxes are stored for it.
