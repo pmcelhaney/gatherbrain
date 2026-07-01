@@ -81,6 +81,20 @@ export function createAppRuntime({
       timeBoxes = await timeBoxRepository.listByDate(today);
     },
     async submit(line) {
+      if (line.trim() === "") {
+        const result = await resetToCurrentSession({
+          state,
+          factIndex,
+          searchEngine,
+          searchQueryParser,
+          clock
+        });
+        resultSet = result.resultSet;
+        helpLines = null;
+        await appStateRepository.save(state);
+        return result;
+      }
+
       const result = await promptController.submit(line);
 
       if (result.action === "undo") {
@@ -412,6 +426,32 @@ async function restoreUndoSnapshot({ undoSnapshot, factRepository }) {
   for (const item of undoSnapshot.facts ?? []) {
     await factRepository.saveFact(new Fact(item.fact));
   }
+}
+
+async function resetToCurrentSession({
+  state,
+  factIndex,
+  searchEngine,
+  searchQueryParser,
+  clock
+}) {
+  if (state.currentSession) {
+    state.setQuery(`session:"${state.currentSession.name}"`);
+  } else {
+    state.restart();
+  }
+
+  return {
+    action: "reset_to_current_session",
+    message: state.currentSession ? `showing ${state.currentSession.name}` : "cleared search",
+    resultSet: await initialResultSet({
+      state,
+      factIndex,
+      searchEngine,
+      searchQueryParser,
+      clock
+    })
+  };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

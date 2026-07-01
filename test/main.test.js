@@ -7,13 +7,20 @@ import { describe, it } from "node:test";
 
 describe("main", () => {
   it("renders the app once for smoke testing", () => {
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-render-once-"));
     const result = spawnSync("node", ["src/main.js", "--render-once"], {
       cwd: process.cwd(),
-      encoding: "utf8"
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        GATHERBRAIN_WORKSPACE: workspacePath
+      }
     });
 
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /sessions\/2026-06-30\/\(no session\)/);
+    assert.match(result.stdout, /sessions\/\d{4}-\d{2}-\d{2}\/\(no session\)/);
     assert.match(result.stdout, /^-{80}$/m);
     assert.match(result.stdout, />\n$/);
   });
@@ -155,6 +162,31 @@ describe("createAppRuntime", () => {
 
     assert.match(rendered, /Visible todo/);
     assert.doesNotMatch(rendered, /Hidden fact/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
+  it("returns to the current session view on empty submit", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-empty-submit-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit("Todo fact.");
+    await runtime.submit(". todo");
+    await runtime.submit("Plain fact.");
+    await runtime.submit("/type:todo");
+    assert.match(runtime.render(), /Todo fact/);
+    assert.doesNotMatch(runtime.render(), /Plain fact/);
+
+    const result = await runtime.submit("");
+
+    assert.equal(result.action, "reset_to_current_session");
+    assert.match(runtime.render(), /Todo fact/);
+    assert.match(runtime.render(), /Plain fact/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
