@@ -34,6 +34,19 @@ describe("terminal renderers", () => {
     );
   });
 
+  it("hides the default fact type in body rows", () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const resultSet = new SearchResultSet([
+      buildFact({ type: "fact", dueDate: null })
+    ]);
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+
+    assert.equal(
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      "+ 1. Follow up with Steve."
+    );
+  });
+
   it("renders friendly due labels", () => {
     const state = new AppState({ currentSession: "Steve" });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });

@@ -45,7 +45,7 @@ export class BodyRenderer {
       const contextMarker = isFactInCurrentContext(fact, state.currentSession) ? "+" : " ";
       const basePrefix = `${contextMarker}${padVisibleStart(String(number), numberWidth)}. `;
       const prefix = isSelected && !colorEnabled ? `>${basePrefix}` : basePrefix;
-      const type = fact.type ? `${fact.type} ` : "";
+      const type = displayType(fact);
       const due = fact.dueDate ? `${formatDueDate(fact.dueDate, today)} ` : "";
       const firstLinePrefix = `${color(prefix, ansi.gray, colorEnabled)}${color(type, ansi.cyan, colorEnabled)}${color(due, ansi.magenta, colorEnabled)}`;
       const continuationPrefix = " ".repeat(numberWidth + 2);
@@ -67,6 +67,14 @@ export class BodyRenderer {
 
     return rendered;
   }
+}
+
+function displayType(fact) {
+  if (!fact.type || fact.type === "fact") {
+    return "";
+  }
+
+  return `${fact.type} `;
 }
 
 function isFactInCurrentContext(fact, currentSession) {

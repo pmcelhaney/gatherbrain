@@ -240,8 +240,8 @@ Normally this is a list of facts.
 
 In plan mode it displays the calendar as a proportional timeline.
 
-Fact rows are numbered at the left with a muted number prefix. The fact type is
-shown before the content.
+Fact rows are numbered at the left with a muted number prefix. The implicit
+`fact` type is not shown. Other fact types are shown before the content.
 
 Timeline rows are spaced according to elapsed time. Busy time boxes use a solid
 line and filled marker. Free time uses a dotted line and open marker with the

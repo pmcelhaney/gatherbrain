@@ -241,8 +241,8 @@ describe("createAppRuntime", () => {
     await runtime.submit(":switch Steve");
     await runtime.submit("Follow up with Steve.");
 
-    assert.match(runtime.render({ input: "1" }), />\+ 1\. fact Follow up with Steve/);
-    assert.match(runtime.render({ input: "." }), />\+ 1\. fact Follow up with Steve/);
+    assert.match(runtime.render({ input: "1" }), />\+ 1\. Follow up with Steve/);
+    assert.match(runtime.render({ input: "." }), />\+ 1\. Follow up with Steve/);
     assert.equal(runtime.state.currentMode, "Capture");
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
@@ -262,7 +262,7 @@ describe("createAppRuntime", () => {
     const rendered = runtime.render({ input: "1 done" });
 
     assert.match(rendered, />\+ 1\. done Follow up with Steve/);
-    assert.match(runtime.render(), /1\. fact Follow up with Steve/);
+    assert.match(runtime.render(), /1\. Follow up with Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -320,8 +320,8 @@ describe("createAppRuntime", () => {
 
     const rendered = runtime.render();
 
-    assert.match(rendered, /\+ 1\. fact Shared search term in Architecture/);
-    assert.match(rendered, /\n  2\. fact Shared search term in Steve/);
+    assert.match(rendered, /\+ 1\. Shared search term in Architecture/);
+    assert.match(rendered, /\n  2\. Shared search term in Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -434,7 +434,7 @@ describe("createAppRuntime", () => {
     const result = await runtime.submit(":undo");
 
     assert.equal(result.message, "undid last selection action");
-    assert.match(runtime.render(), /fact Follow up with Steve/);
+    assert.match(runtime.render(), /1\. Follow up with Steve/);
     assert.doesNotMatch(runtime.render(), /todo Follow up with Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
