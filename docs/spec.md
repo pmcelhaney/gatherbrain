@@ -405,7 +405,7 @@ Example:
 expands to
 
 ```text
-(type:"to do" or type:"in progress" or type:"waiting")
+(type:todo or type:"in progress" or type:waiting)
 and due<=today
 ```
 
@@ -615,6 +615,14 @@ actions:
   waiting:
     action: set_type
     value: waiting
+
+  in-progress:
+    action: set_type
+    value: in progress
+
+  abandoned:
+    action: set_type
+    value: abandoned
 
   done:
     action: set_type

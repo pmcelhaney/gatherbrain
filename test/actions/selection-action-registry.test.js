@@ -21,6 +21,24 @@ describe("SelectionActionRegistry", () => {
     );
   });
 
+  it("includes built-in workflow type actions", async () => {
+    const registry = SelectionActionRegistry.fromConfig();
+
+    assert.deepEqual(
+      registry.keywords().filter((keyword) => [
+        "abandoned",
+        "in-progress",
+        "todo",
+        "waiting"
+      ].includes(keyword)),
+      ["abandoned", "in-progress", "todo", "waiting"]
+    );
+
+    assert.equal(registry.preview("waiting", buildFact()).type, "waiting");
+    assert.equal(registry.preview("in-progress", buildFact()).type, "in progress");
+    assert.equal(registry.preview("abandoned", buildFact()).type, "abandoned");
+  });
+
   it("sets relative due dates", async () => {
     const factStore = new MemoryFactStore([buildFact()]);
     const registry = SelectionActionRegistry.fromConfig();

@@ -31,7 +31,7 @@ export class SearchShortcutRegistry {
 
 function defaultShortcuts() {
   return {
-    current: () => '(type:"to do" OR type:"in progress" OR type:waiting) AND due<=today',
+    current: () => '(type:todo OR type:"in progress" OR type:waiting) AND due<=today',
     overdue: () => "due<today",
     today: () => "due:today",
     session: ({ currentSession }) => {

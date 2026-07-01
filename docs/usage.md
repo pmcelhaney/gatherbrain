@@ -103,7 +103,7 @@ Boolean operators are supported:
 ```text
 /type:todo OR type:waiting
 /Steve AND NOT done
-/(type:todo OR type:waiting) AND due<=today
+/(type:todo OR type:"in progress" OR type:waiting) AND due<=today
 ```
 
 Search shortcuts:
@@ -159,6 +159,8 @@ Current built-in actions:
 | --- | --- |
 | `todo` | Sets type to `todo` |
 | `waiting` | Sets type to `waiting` |
+| `in-progress` | Sets type to `in progress` |
+| `abandoned` | Sets type to `abandoned` |
 | `done` | Sets type to `done` |
 | `today` | Sets due date to today |
 | `tomorrow` | Sets due date to tomorrow |

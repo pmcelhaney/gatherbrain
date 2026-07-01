@@ -7,6 +7,10 @@ describe("SearchShortcutRegistry", () => {
   it("expands built-in shortcuts", () => {
     const registry = new SearchShortcutRegistry();
 
+    assert.equal(
+      registry.expand("//current"),
+      '(type:todo OR type:"in progress" OR type:waiting) AND due<=today'
+    );
     assert.equal(registry.expand("//overdue"), "due<today");
     assert.equal(
       registry.expand("//session", { currentSession: { name: "Architecture Review Board" } }),

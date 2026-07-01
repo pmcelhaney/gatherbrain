@@ -101,6 +101,7 @@ Operate on visible facts:
 
 ```text
 . todo
+. in-progress
 . tomorrow
 1 delete
 .. gather
