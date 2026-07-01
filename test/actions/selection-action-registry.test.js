@@ -71,6 +71,28 @@ describe("SelectionActionRegistry", () => {
     );
   });
 
+  it("adds tags from dynamic @ selection actions", async () => {
+    const factStore = new MemoryFactStore([buildFact()]);
+    const registry = SelectionActionRegistry.fromConfig();
+
+    await registry.execute("@Steve\\", {
+      selection: new Selection(["6f2308de-02e9-45db-8ff0-65ac793f4a24"]),
+      factStore,
+      actionArgs: ["Ma"]
+    });
+
+    await registry.execute("@steve\\", {
+      selection: new Selection(["6f2308de-02e9-45db-8ff0-65ac793f4a24"]),
+      factStore,
+      actionArgs: ["Ma"]
+    });
+
+    assert.deepEqual(
+      factStore.fact("6f2308de-02e9-45db-8ff0-65ac793f4a24").tags,
+      ["Steve Ma"]
+    );
+  });
+
   it("associates selected facts with the current session", async () => {
     const factStore = new MemoryFactStore([buildFact()]);
     const registry = SelectionActionRegistry.fromConfig();
@@ -158,6 +180,16 @@ describe("SelectionActionRegistry", () => {
 
     assert.equal(preview.dueDate, "2026-07-01");
     assert.equal(fact.dueDate, null);
+  });
+
+  it("previews dynamic @ selection actions", () => {
+    const fact = buildFact();
+    const registry = SelectionActionRegistry.fromConfig();
+
+    const preview = registry.preview("@Steve\\", fact, { actionArgs: ["Ma"] });
+
+    assert.deepEqual(preview.tags, ["Steve Ma"]);
+    assert.deepEqual(fact.tags, []);
   });
 });
 

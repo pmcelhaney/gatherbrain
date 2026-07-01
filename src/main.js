@@ -282,7 +282,11 @@ function previewResultSetForInput({
       return fact;
     }
 
-    return selectionActionRegistry.preview(parsed.actionKeyword, fact, { state, today }) ?? fact;
+    return selectionActionRegistry.preview(parsed.actionKeyword, fact, {
+      state,
+      today,
+      actionArgs: parsed.args
+    }) ?? fact;
   });
 
   return new SearchResultSet(previewFacts);
@@ -311,7 +315,8 @@ function selectionInputPreview(input, resultSet) {
   try {
     return {
       selection: Selection.resolve(selectors, resultSet),
-      actionKeyword: tokens[0] ?? null
+      actionKeyword: tokens[0] ?? null,
+      args: tokens.slice(1)
     };
   } catch {
     return null;

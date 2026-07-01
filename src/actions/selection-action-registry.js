@@ -1,4 +1,5 @@
 import {
+  AddTagAction,
   AssociateCurrentSessionAction,
   OpenFileAction,
   SetDueDateAction,
@@ -25,6 +26,10 @@ export class SelectionActionRegistry {
   }
 
   resolve(keyword) {
+    if (isTagAction(keyword)) {
+      return new AddTagAction(tagFromAction(keyword));
+    }
+
     const action = this.actions.get(keyword);
 
     if (!action) {
@@ -35,7 +40,7 @@ export class SelectionActionRegistry {
   }
 
   async execute(keyword, context) {
-    return this.resolve(keyword).execute(context);
+    return this.resolve(actionText(keyword, context.actionArgs)).execute(context);
   }
 
   keywords() {
@@ -43,6 +48,14 @@ export class SelectionActionRegistry {
   }
 
   preview(keyword, fact, context = {}) {
+    const resolvedKeyword = actionText(keyword, context.actionArgs);
+
+    if (isTagAction(resolvedKeyword)) {
+      const previewFact = fact.constructor.from(fact.toSerializable());
+      previewFact.addTag(tagFromAction(resolvedKeyword));
+      return previewFact;
+    }
+
     const definition = this.definitions.get(keyword);
 
     if (!definition) {
@@ -73,6 +86,18 @@ export class SelectionActionRegistry {
         return null;
     }
   }
+}
+
+function actionText(keyword, args = []) {
+  return [keyword, ...args].filter(Boolean).join(" ");
+}
+
+function isTagAction(keyword) {
+  return typeof keyword === "string" && keyword.startsWith("@") && keyword.length > 1;
+}
+
+function tagFromAction(keyword) {
+  return keyword.slice(1);
 }
 
 function buildAction(definition) {

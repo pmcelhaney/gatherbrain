@@ -28,6 +28,20 @@ export class SetDueDateAction {
   }
 }
 
+export class AddTagAction {
+  constructor(tag) {
+    this.tag = tag;
+  }
+
+  async execute(context) {
+    return mutateSelectedFacts(context, async (fact, factStore) => {
+      fact.addTag(this.tag);
+      await factStore.saveFact(fact);
+      return { fact, action: "add_tag", value: this.tag };
+    });
+  }
+}
+
 export class TrashFactAction {
   async execute(context) {
     return mutateSelectedFacts(context, async (fact, factStore) => {

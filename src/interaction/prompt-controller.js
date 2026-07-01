@@ -141,7 +141,7 @@ export class PromptController {
   }
 
   async selection(input) {
-    const { selectors, actionKeyword } = parseSelectionInput(input);
+    const { selectors, actionKeyword, args } = parseSelectionInput(input);
     const resultSet = this.currentResultSetProvider();
 
     if (!resultSet) {
@@ -157,12 +157,13 @@ export class PromptController {
       factStore: this.factRepository,
       state: this.state,
       fileOpener: this.fileOpener,
-      today: this.clock().toISOString().slice(0, 10)
+      today: this.clock().toISOString().slice(0, 10),
+      actionArgs: args
     });
 
     return InteractionResult.selectionAction({
       mode: AppMode.SELECTION,
-      message: selectionMessage(actionKeyword, results),
+      message: selectionMessage(selectionActionText(actionKeyword, args), results),
       undoSnapshot
     });
   }
@@ -210,6 +211,10 @@ function selectionMessage(actionKeyword, results) {
   }
 
   return `${actionKeyword} applied to ${results.length} fact${results.length === 1 ? "" : "s"}`;
+}
+
+function selectionActionText(actionKeyword, args = []) {
+  return [actionKeyword, ...args].filter(Boolean).join(" ");
 }
 
 function queryForSearch(rawQuery, state) {

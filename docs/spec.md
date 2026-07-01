@@ -66,6 +66,9 @@ text. Escaped spaces are normalized when saving, so `@Steve\ Ma` stores the tag
 `Steve Ma`. Possessives keep the suffix as text, so `@Devin's` stores the tag
 `Devin`.
 
+Tags may also be added to selected existing facts with selection input such as
+`. @Steve\ Ma` or `1 @Steve\ Ma`.
+
 Known tags may also be listed in workspace-local `tags.txt`, one tag per line.
 This file belongs to the workspace data, not the application source.
 
@@ -258,6 +261,9 @@ In plan mode it displays the calendar as a proportional timeline.
 
 Fact rows are numbered at the left with a muted number prefix. The implicit
 `fact` type is not shown. Other fact types are shown before the content.
+Tags that are not already mentioned in the fact content are shown after the
+content as `>Tag Name` in the tag color. Tags already mentioned inline are not
+repeated at the end of the row.
 
 Timeline rows are spaced according to elapsed time. Busy time boxes use a solid
 line and filled marker. Free time uses a dotted line and open marker with the
@@ -580,6 +586,8 @@ Examples:
 3 delete
 
 .. gather
+
+. @Steve\ Ma
 ```
 
 ---
@@ -630,6 +638,20 @@ Example:
 
 ```text
 . todo
+```
+
+---
+
+### Add Tag
+
+Adds a tag to the selected fact.
+
+Escaped spaces are normalized the same way as capture text.
+
+Example:
+
+```text
+. @Steve\ Ma
 ```
 
 ---

@@ -86,6 +86,61 @@ describe("terminal renderers", () => {
     );
   });
 
+  it("renders unmentioned tags after fact content", () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const resultSet = new SearchResultSet([
+      buildFact({
+        content: "Follow up tomorrow.",
+        tags: ["Steve Ma"]
+      })
+    ]);
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+
+    assert.equal(
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      "+ 1. todo tomorrow Follow up tomorrow. >Steve Ma"
+    );
+  });
+
+  it("colors unmentioned tags after fact content", () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const resultSet = new SearchResultSet([
+      buildFact({
+        content: "Follow up tomorrow.",
+        tags: ["Steve Ma"]
+      })
+    ]);
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+
+    assert.equal(
+      renderer.render({
+        state,
+        resultSet,
+        width: 80,
+        height: 10,
+        today: "2026-06-30",
+        colorEnabled: true
+      }).join("\n"),
+      `\x1b[90m+ 1. \x1b[0m\x1b[36mtodo \x1b[0m\x1b[35mtomorrow \x1b[0mFollow up tomorrow. \x1b[32m>Steve Ma\x1b[0m`
+    );
+  });
+
+  it("does not repeat tags already mentioned in fact content", () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const resultSet = new SearchResultSet([
+      buildFact({
+        content: "Follow up with @Steve Ma tomorrow.",
+        tags: ["Steve Ma"]
+      })
+    ]);
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+
+    assert.equal(
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      "+ 1. todo tomorrow Follow up with @Steve Ma tomorrow."
+    );
+  });
+
   it("renders friendly due labels", () => {
     const state = new AppState({ currentSession: "Steve" });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });

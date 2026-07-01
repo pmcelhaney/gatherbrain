@@ -537,6 +537,44 @@ Login Screenshot
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("adds tags to selected facts", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-add-tag-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch empty-space");
+    await runtime.submit("first item in empty");
+    const preview = runtime.render({ input: ". @Steve\\ Ma" });
+    const result = await runtime.submit(". @Steve\\ Ma");
+
+    assert.match(preview, />\+ 1\. first item in empty >Steve Ma/);
+    assert.equal(result.message, "@Steve\\ Ma applied to 1 fact");
+    assert.match(runtime.render(), /\+ 1\. first item in empty >Steve Ma/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
+  it("does not append selected tags already mentioned in fact text", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-add-inline-tag-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch empty-space");
+    await runtime.submit("Ask @Steve\\ Ma about the launch");
+    await runtime.submit(". @Steve\\ Ma");
+
+    assert.match(runtime.render(), /Ask @Steve Ma about the launch/);
+    assert.doesNotMatch(runtime.render(), />Steve Ma/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("prefixes current-context facts with plus during search", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-context-prefix-"));

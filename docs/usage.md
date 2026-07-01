@@ -162,6 +162,7 @@ Dots select visible row positions:
 . todo
 . today
 .. tomorrow
+. @Steve\ Ma
 ```
 
 Multiple selectors can be used together:
@@ -185,6 +186,11 @@ Current built-in actions:
 | `delete` | Moves the fact to `.trash` |
 | `gather` | Associates the fact with the current session |
 | `open` | Opens the file associated with the fact |
+
+Any `@tag` action adds that tag to the selected facts. Escaped spaces are
+normalized the same way as capture text, so `. @Steve\ Ma` stores `Steve Ma`.
+Tags that are not already mentioned in the fact text render after the content as
+`>Steve Ma`; tags already mentioned inline are not repeated.
 
 Undo the most recent selection action:
 

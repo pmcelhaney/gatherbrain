@@ -44,6 +44,10 @@ export class Fact {
     this.dueDate = null;
   }
 
+  addTag(tag) {
+    this.tags = normalizeTags([...this.tags, tag]);
+  }
+
   associateSession(session) {
     const nextSession = Session.from(session);
 

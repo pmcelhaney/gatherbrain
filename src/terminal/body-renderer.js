@@ -51,7 +51,7 @@ export class BodyRenderer {
       const continuationPrefix = " ".repeat(numberWidth + 2);
       const firstLineWidth = Math.max(1, width - prefix.length - type.length - due.length);
       const continuationWidth = Math.max(1, width - continuationPrefix.length);
-      const [first, ...rest] = wrapPlain(fact.content, firstLineWidth);
+      const [first, ...rest] = wrapPlain(displayContent(fact), firstLineWidth);
 
       rendered.push(highlight(`${firstLinePrefix}${highlightTags(first, fact.tags, colorEnabled)}`, isSelected, colorEnabled));
       for (const line of rest) {
@@ -75,6 +75,16 @@ function displayType(fact) {
   }
 
   return `${fact.type} `;
+}
+
+function displayContent(fact) {
+  const appendedTags = unmentionedTags(fact.content, fact.tags);
+
+  if (appendedTags.length === 0) {
+    return fact.content;
+  }
+
+  return `${fact.content} ${appendedTags.map((tag) => `>${tag}`).join(" ")}`;
 }
 
 function isFactInCurrentContext(fact, currentSession) {
@@ -121,9 +131,38 @@ function highlightTags(text, tags = [], colorEnabled) {
     const mention = `@${tag}`;
     rendered += color(mention, ansi.green, colorEnabled);
     index += mention.length;
+    continue;
+  }
+
+  return highlightTrailingTags(rendered, tags, colorEnabled);
+}
+
+function highlightTrailingTags(text, tags = [], colorEnabled) {
+  let rendered = text;
+
+  for (const tag of tags) {
+    rendered = rendered.replaceAll(`>${tag}`, color(`>${tag}`, ansi.green, colorEnabled));
   }
 
   return rendered;
+}
+
+function unmentionedTags(text, tags = []) {
+  return tags.filter((tag) => !containsTagMention(text, tag));
+}
+
+function containsTagMention(text, tag) {
+  let index = 0;
+
+  while (index < text.length) {
+    if (text[index] === "@" && isTagMention(text, index, tag)) {
+      return true;
+    }
+
+    index += 1;
+  }
+
+  return false;
 }
 
 function isTagMention(text, startIndex, tag) {
