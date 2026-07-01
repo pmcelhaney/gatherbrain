@@ -78,6 +78,9 @@ This saves tags `Steve Ma` and `Devin`. Escaped spaces are input syntax only;
 they are not stored in the tag value. Possessives keep the suffix as text, so
 `@Devin's` stores the tag `Devin`.
 
+Add workspace-level known tags in `<workspace>/tags.txt`, one tag per line.
+These tags are used for completion without creating facts.
+
 ## Searching
 
 Search mode begins with `/`.

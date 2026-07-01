@@ -5,12 +5,14 @@ export class CompletionService {
   constructor({
     sessionRepository,
     factSource = null,
+    tagRepository = null,
     actionRegistry = SelectionActionRegistry.fromConfig(),
     shortcutRegistry = new SearchShortcutRegistry(),
     commandNames = ["exit", "help", "inspect", "paste", "quit", "restart", "session", "sessions", "switch", "timebox", "undo"]
   } = {}) {
     this.sessionRepository = sessionRepository;
     this.factSource = factSource;
+    this.tagRepository = tagRepository;
     this.actionRegistry = actionRegistry;
     this.shortcutRegistry = shortcutRegistry;
     this.commandNames = commandNames;
@@ -63,12 +65,15 @@ export class CompletionService {
   }
 
   async tagNames() {
-    if (!this.factSource) {
-      return [];
-    }
-
-    const facts = await this.factSource.list();
+    const facts = this.factSource ? await this.factSource.list() : [];
+    const workspaceTags = this.tagRepository ? await this.tagRepository.list() : [];
     const tags = [];
+
+    for (const tag of workspaceTags) {
+      if (!tags.includes(tag)) {
+        tags.push(tag);
+      }
+    }
 
     for (const fact of facts) {
       for (const tag of fact.tags ?? []) {

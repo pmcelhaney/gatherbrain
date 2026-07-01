@@ -72,6 +72,24 @@ describe("CompletionService", () => {
     assert.equal(await service.complete("@Architecture"), "@Architecture");
   });
 
+  it("completes capture tags from workspace tags", async () => {
+    const service = new CompletionService({
+      tagRepository: {
+        async list() {
+          return ["Aamir Muhammad", "cognition"];
+        }
+      },
+      factSource: {
+        async list() {
+          return [];
+        }
+      }
+    });
+
+    assert.equal(await service.complete("@Aam"), "@Aamir\\ Muhammad");
+    assert.equal(await service.complete("@cog"), "@cognition");
+  });
+
   it("does not complete inactive tag text", async () => {
     const service = new CompletionService({
       factSource: {

@@ -66,6 +66,9 @@ text. Escaped spaces are normalized when saving, so `@Steve\ Ma` stores the tag
 `Steve Ma`. Possessives keep the suffix as text, so `@Devin's` stores the tag
 `Devin`.
 
+Known tags may also be listed in workspace-local `tags.txt`, one tag per line.
+This file belongs to the workspace data, not the application source.
+
 ---
 
 ## Search

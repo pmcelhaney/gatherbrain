@@ -8,7 +8,7 @@ import { SelectionActionRegistry } from "./actions/index.js";
 import { defaultAppConfig, loadAppConfig, mergeAppConfig } from "./config/index.js";
 import { Fact } from "./domain/index.js";
 import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
-import { AppStateRepository, ClipboardReader, FactRepository, FileOpener, PasteRepository, SessionRepository, Workspace } from "./persistence/index.js";
+import { AppStateRepository, ClipboardReader, FactRepository, FileOpener, PasteRepository, SessionRepository, TagRepository, Workspace } from "./persistence/index.js";
 import { PlanParser, TimeBoxRepository } from "./planning/index.js";
 import { FactIndex, SearchEngine, SearchQueryParser, SearchResultSet } from "./search/index.js";
 import { AppState, Selection } from "./state/index.js";
@@ -29,6 +29,7 @@ export function createAppRuntime({
   const factRepository = new FactRepository({ workspace });
   const pasteRepository = new PasteRepository({ workspace });
   const sessionRepository = new SessionRepository({ workspace });
+  const tagRepository = new TagRepository({ workspace });
   const timeBoxRepository = new TimeBoxRepository({ workspace });
   const factIndex = new FactIndex(factRepository);
   const searchEngine = new SearchEngine();
@@ -39,6 +40,7 @@ export function createAppRuntime({
   const completionService = new CompletionService({
     sessionRepository,
     factSource: factIndex,
+    tagRepository,
     actionRegistry: selectionActionRegistry,
     commandNames: ["exit", "help", "inspect", "paste", "quit", "restart", "session", "sessions", "switch", "timebox", "undo"]
   });
