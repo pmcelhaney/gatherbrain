@@ -19,24 +19,25 @@ export class CompletionService {
   }
 
   async complete(input, context = {}) {
+    const matchIndex = context.completionIndex ?? 0;
     const sessionCommandPrefix = sessionCompletionPrefix(input);
     if (sessionCommandPrefix) {
-      return completeSuffix(input, sessionCommandPrefix, await this.sessionNames());
+      return completeSuffix(input, sessionCommandPrefix, await this.sessionNames(), matchIndex);
     }
 
     if (input.startsWith(":")) {
-      return completeSuffix(input, ":", this.commandNames);
+      return completeSuffix(input, ":", this.commandNames, matchIndex);
     }
 
     if (input.startsWith("//")) {
-      return completeSuffix(input, "//", this.shortcutRegistry.names());
+      return completeSuffix(input, "//", this.shortcutRegistry.names(), matchIndex);
     }
 
     if (isSelectionInput(input)) {
-      return completeSelection(input, this.actionRegistry.keywords(), context.resultSet);
+      return completeSelection(input, this.actionRegistry.keywords(), context.resultSet, matchIndex);
     }
 
-    const tagCompletion = await this.completeTag(input);
+    const tagCompletion = await this.completeTag(input, matchIndex);
     if (tagCompletion) {
       return tagCompletion;
     }
@@ -48,14 +49,14 @@ export class CompletionService {
     return this.sessionRepository ? this.sessionRepository.list() : [];
   }
 
-  async completeTag(input) {
+  async completeTag(input, matchIndex = 0) {
     const activeTag = activeTagSegment(input);
 
     if (!activeTag) {
       return null;
     }
 
-    const match = firstMatch(await this.tagNames(), activeTag.value);
+    const match = indexedMatch(await this.tagNames(), activeTag.value, matchIndex);
 
     if (!match) {
       return null;
@@ -87,9 +88,9 @@ export class CompletionService {
   }
 }
 
-function completeSuffix(input, prefix, candidates) {
+function completeSuffix(input, prefix, candidates, matchIndex = 0) {
   const partial = input.slice(prefix.length);
-  const match = firstMatch(candidates, partial);
+  const match = indexedMatch(candidates, partial, matchIndex);
 
   return match ? `${prefix}${match}` : input;
 }
@@ -108,13 +109,13 @@ function sessionCompletionPrefix(input) {
   return null;
 }
 
-function completeSelection(input, actionKeywords, resultSet) {
+function completeSelection(input, actionKeywords, resultSet, matchIndex = 0) {
   const tokens = input.trim().split(/\s+/);
   const last = tokens[tokens.length - 1] ?? "";
 
   if (/^\d*$/.test(last) && resultSet && last.length > 0) {
     const numbers = resultSet.toRows().map(({ number }) => String(number));
-    const match = firstMatch(numbers, last);
+    const match = indexedMatch(numbers, last, matchIndex);
     if (match) {
       tokens[tokens.length - 1] = match;
       return tokens.join(" ");
@@ -122,7 +123,7 @@ function completeSelection(input, actionKeywords, resultSet) {
   }
 
   if (/^\d+$|^\.+$/.test(tokens[0]) && tokens.length > 1) {
-    const match = firstMatch(actionKeywords, last);
+    const match = indexedMatch(actionKeywords, last, matchIndex);
     if (match) {
       tokens[tokens.length - 1] = match;
       return tokens.join(" ");
@@ -136,9 +137,14 @@ function isSelectionInput(input) {
   return /^\s*(\d+|\.)/.test(input);
 }
 
-function firstMatch(candidates, partial) {
+function indexedMatch(candidates, partial, matchIndex = 0) {
+  const matches = matchingCandidates(candidates, partial);
+  return matches.length > 0 ? matches[matchIndex % matches.length] : null;
+}
+
+function matchingCandidates(candidates, partial) {
   const normalizedPartial = partial.toLocaleLowerCase("en-US");
-  return candidates.find((candidate) =>
+  return candidates.filter((candidate) =>
     candidate.toLocaleLowerCase("en-US").startsWith(normalizedPartial)
   );
 }

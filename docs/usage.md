@@ -258,7 +258,9 @@ Calendar rows are numbered in plan mode. Update or delete a visible time box:
 
 In the interactive TUI, Tab completes commands, `:switch` session names, search
 shortcuts, selection actions, visible result numbers, and known fact tags after
-`@` in capture text. Tag completion only uses tags already saved on facts.
+`@` in capture text. When multiple candidates match the same typed prefix,
+press Tab repeatedly to cycle through them. Tag completion only uses tags
+already saved on facts.
 
 In the interactive TUI, `:restart` launches a fresh app process so recent code
 and configuration changes are loaded. Durable workspace state is preserved.

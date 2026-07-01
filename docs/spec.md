@@ -296,7 +296,8 @@ the parsed time box before it is committed.
 
 Tab completion is available for commands, `:switch` session names, search
 shortcuts, selection actions, visible result numbers, and known fact tags after
-`@` in capture text.
+`@` in capture text. When multiple candidates match the same typed prefix,
+pressing Tab repeatedly cycles through the matching candidates.
 
 ---
 

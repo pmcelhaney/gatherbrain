@@ -72,6 +72,23 @@ describe("CompletionService", () => {
     assert.equal(await service.complete("@Architecture"), "@Architecture");
   });
 
+  it("cycles through matching capture tag completions", async () => {
+    const service = new CompletionService({
+      factSource: {
+        async list() {
+          return [
+            { tags: ["Steve Ma", "Stacy", "Stan"] }
+          ];
+        }
+      }
+    });
+
+    assert.equal(await service.complete("@St"), "@Stacy");
+    assert.equal(await service.complete("@St", { completionIndex: 1 }), "@Stan");
+    assert.equal(await service.complete("@St", { completionIndex: 2 }), "@Steve\\ Ma");
+    assert.equal(await service.complete("@St", { completionIndex: 3 }), "@Stacy");
+  });
+
   it("completes capture tags from workspace tags", async () => {
     const service = new CompletionService({
       tagRepository: {

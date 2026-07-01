@@ -256,8 +256,8 @@ export function createAppRuntime({
         colorEnabled
       });
     },
-    async complete(input) {
-      return completionService.complete(input, { resultSet });
+    async complete(input, { completionIndex = 0 } = {}) {
+      return completionService.complete(input, { resultSet, completionIndex });
     }
   };
 }
@@ -402,6 +402,11 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
 
   const buffer = new InputBuffer();
   let status = "";
+  let completionCycle = null;
+
+  const resetCompletionCycle = () => {
+    completionCycle = null;
+  };
 
   const redraw = () => {
     outputStream.write(`${ansi.clear}${ansi.home}`);
@@ -428,6 +433,7 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
       }
 
       if (key.name === "escape") {
+        resetCompletionCycle();
         buffer.clear();
         status = "";
         redraw();
@@ -435,50 +441,61 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
       }
 
       if (key.name === "backspace") {
+        resetCompletionCycle();
         buffer.backspace();
         redraw();
         return;
       }
 
       if (key.name === "delete") {
+        resetCompletionCycle();
         buffer.delete();
         redraw();
         return;
       }
 
       if (key.name === "left") {
+        resetCompletionCycle();
         buffer.moveLeft();
         redraw();
         return;
       }
 
       if (key.name === "right") {
+        resetCompletionCycle();
         buffer.moveRight();
         redraw();
         return;
       }
 
       if (key.name === "home") {
+        resetCompletionCycle();
         buffer.moveHome();
         redraw();
         return;
       }
 
       if (key.name === "end") {
+        resetCompletionCycle();
         buffer.moveEnd();
         redraw();
         return;
       }
 
       if (key.name === "tab") {
-        const completed = await runtime.complete(buffer.text);
+        const isContinuingCycle = completionCycle?.completed === buffer.text;
+        const cycleInput = isContinuingCycle ? completionCycle.input : buffer.text;
+        const completionIndex = isContinuingCycle ? completionCycle.index + 1 : 0;
+        const completed = await runtime.complete(cycleInput, { completionIndex });
         buffer.text = completed;
         buffer.moveEnd();
+        completionCycle = { input: cycleInput, index: completionIndex, completed };
         redraw();
         return;
       }
 
       if (key.name === "return") {
+        resetCompletionCycle();
         const line = buffer.consume();
 
         if (isExitCommand(line)) {
@@ -507,6 +524,7 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
       }
 
       if (key.sequence && key.sequence.length === 1 && !key.ctrl && !key.meta) {
+        resetCompletionCycle();
         buffer.insert(sequence);
         redraw();
       }

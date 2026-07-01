@@ -179,6 +179,60 @@ describe("main", () => {
     assert.equal(paused, true);
     assert.equal(input.listenerCount("keypress"), 0);
   });
+
+  it("cycles repeated tab completions from the original prefix", async () => {
+    const { runTui } = await import("../src/main.js");
+    const input = new EventEmitter();
+    const output = {
+      columns: 80,
+      rows: 24,
+      writes: [],
+      write(value) {
+        this.writes.push(value);
+      }
+    };
+    const rawModes = [];
+    const completions = ["@Stacy", "@Stan", "@Steve\\ Ma"];
+    const completeCalls = [];
+    const renderedInputs = [];
+    input.setRawMode = (value) => rawModes.push(value);
+    input.pause = () => {};
+
+    const run = runTui({
+      render({ input: renderedInput }) {
+        renderedInputs.push(renderedInput);
+        return "";
+      },
+      async complete(value, options) {
+        completeCalls.push({ value, options });
+        return completions[options.completionIndex % completions.length];
+      },
+      async submit() {
+        return { action: "exit" };
+      }
+    }, { inputStream: input, outputStream: output });
+
+    input.emit("keypress", "@", { sequence: "@", name: undefined });
+    input.emit("keypress", "S", { sequence: "S", name: undefined });
+    input.emit("keypress", "t", { sequence: "t", name: undefined });
+    input.emit("keypress", "\t", { sequence: "\t", name: "tab" });
+    await new Promise((resolve) => setImmediate(resolve));
+    input.emit("keypress", "\t", { sequence: "\t", name: "tab" });
+    await new Promise((resolve) => setImmediate(resolve));
+    input.emit("keypress", "\t", { sequence: "\t", name: "tab" });
+    await new Promise((resolve) => setImmediate(resolve));
+    input.emit("keypress", "\r", { sequence: "\r", name: "return" });
+
+    await run;
+
+    assert.deepEqual(completeCalls, [
+      { value: "@St", options: { completionIndex: 0 } },
+      { value: "@St", options: { completionIndex: 1 } },
+      { value: "@St", options: { completionIndex: 2 } }
+    ]);
+    assert.deepEqual(renderedInputs.slice(-4), ["@St", "@Stacy", "@Stan", "@Steve\\ Ma"]);
+    assert.deepEqual(rawModes, [true, false]);
+  });
 });
 
 describe("createAppRuntime", () => {
