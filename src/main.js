@@ -311,7 +311,7 @@ export async function main(argv = process.argv.slice(2)) {
   for await (const line of rl) {
     output.write("\n> ");
 
-    if (line === ":quit" || line === ":exit") {
+    if (isExitCommand(line)) {
       rl.close();
       return;
     }
@@ -415,7 +415,7 @@ async function runTui(runtime) {
       if (key.name === "return") {
         const line = buffer.consume();
 
-        if (line === ":quit" || line === ":exit") {
+        if (isExitCommand(line)) {
           resolve();
           return;
         }
@@ -515,6 +515,11 @@ async function resetToCurrentSession({
       clock
     })
   };
+}
+
+function isExitCommand(line) {
+  const command = String(line).trim();
+  return command === ":exit" || command === ":quit";
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -48,6 +48,45 @@ describe("main", () => {
     assert.match(result.stdout, /planned 09:00-10:00 Steve/);
   });
 
+  it("exits on quit commands with surrounding whitespace", () => {
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-exit-"));
+
+    const result = spawnSync("node", ["src/main.js"], {
+      cwd: process.cwd(),
+      input: " :exit  \nThis should not run.\n",
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        GATHERBRAIN_WORKSPACE: workspacePath
+      }
+    });
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+
+    assert.equal(result.status, 0);
+    assert.doesNotMatch(result.stdout, /This should not run/);
+    assert.doesNotMatch(result.stdout, /unknown command/i);
+  });
+
+  it("exits on :quit", () => {
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-quit-"));
+
+    const result = spawnSync("node", ["src/main.js"], {
+      cwd: process.cwd(),
+      input: ":quit\nThis should not run.\n",
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        GATHERBRAIN_WORKSPACE: workspacePath
+      }
+    });
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+
+    assert.equal(result.status, 0);
+    assert.doesNotMatch(result.stdout, /This should not run/);
+  });
+
   it("renders help in the body", () => {
     const result = spawnSync("node", ["src/main.js"], {
       cwd: process.cwd(),
