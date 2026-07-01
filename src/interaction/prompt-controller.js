@@ -91,7 +91,8 @@ export class PromptController {
 
   async capture(input) {
     const rawContent = input.trim();
-    const content = normalizeTaggedContent(rawContent);
+    const bookmark = extractBookmark(rawContent);
+    const content = normalizeTaggedContent(bookmark.content);
 
     if (!content) {
       return InteractionResult.classified({
@@ -106,9 +107,10 @@ export class PromptController {
     const fact = new Fact({
       id: this.idGenerator(),
       content,
-      type: this.defaultFactType,
+      type: bookmark.url ? "bookmark" : this.defaultFactType,
       createdAt: this.clock(),
       homeSession: this.state.currentSession,
+      url: bookmark.url,
       tags: extractTags(rawContent)
     });
 
@@ -200,6 +202,36 @@ export class PromptController {
       mode: AppMode.PLAN,
       timeBox
     });
+  }
+}
+
+function extractBookmark(input) {
+  const urlMatch = input.match(/https?:\/\/\S+/i);
+
+  if (!urlMatch) {
+    return { content: input, url: null };
+  }
+
+  const rawUrl = urlMatch[0];
+  const url = rawUrl.replace(/[),.;:!?]+$/u, "");
+  const urlEnd = urlMatch.index + url.length;
+  const withoutUrl = `${input.slice(0, urlMatch.index)}${input.slice(urlEnd)}`
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,.;:!?])/gu, "$1")
+    .trim();
+
+  return {
+    content: withoutUrl || labelForUrl(url),
+    url
+  };
+}
+
+function labelForUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.hostname}${parsed.pathname === "/" ? "" : parsed.pathname}`;
+  } catch {
+    return "bookmark";
   }
 }
 

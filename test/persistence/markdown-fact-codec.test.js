@@ -14,6 +14,7 @@ describe("MarkdownFactCodec", () => {
       createdAt: "2026-06-30T14:15:23.000Z",
       dueDate: null,
       file: "review-notes.txt",
+      url: "https://example.com/review",
       homeSession: "Architecture Review Board",
       associatedSessions: ["Steve", "Enterprise Architecture"],
       tags: ["Devin", "Steve Ma"]
@@ -31,6 +32,7 @@ tags:
   - Steve Ma
 due: 
 file: review-notes.txt
+url: https://example.com/review
 ---
 Mike prefers async architecture reviews.
 `);
@@ -49,6 +51,7 @@ tags:
   - Steve Ma
 due: 2026-07-01
 file: review-notes.txt
+url: https://example.com/review
 ---
 Mike prefers async architecture reviews.
 `, { homeSession: "Architecture Review Board" });
@@ -58,6 +61,7 @@ Mike prefers async architecture reviews.
     assert.deepEqual(fact.associatedSessions.map((session) => session.name), ["Steve"]);
     assert.equal(fact.dueDate, "2026-07-01");
     assert.equal(fact.file, "review-notes.txt");
+    assert.equal(fact.url, "https://example.com/review");
     assert.deepEqual(fact.tags, ["Devin", "Steve Ma"]);
     assert.equal(fact.content, "Mike prefers async architecture reviews.");
   });
@@ -76,6 +80,7 @@ Mike prefers async architecture reviews.
 `, { homeSession: "Architecture Review Board" });
 
     assert.deepEqual(fact.tags, []);
+    assert.equal(fact.url, null);
   });
 
   it("ignores legacy home_session front matter when storage context is provided", () => {

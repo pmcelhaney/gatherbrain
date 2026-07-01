@@ -143,6 +143,7 @@ tags:
   - Steve Ma
 due:
 file:
+url:
 ---
 ```
 
@@ -197,6 +198,12 @@ Definitions:
 The session the user is currently working in.
 
 A session must be entered before facts may be captured.
+
+If captured text contains an `http://` or `https://` URL, the fact is captured
+as `type: bookmark`. The first URL is stored in front matter as `url:` and is
+removed from the fact body. The remaining text becomes the body. If the capture
+contains only the URL, the body uses a readable host/path label while the full
+URL remains only in front matter.
 
 **current_query**
 
@@ -263,6 +270,8 @@ In plan mode it displays the calendar as a proportional timeline.
 
 Fact rows are numbered at the left with a muted number prefix. The implicit
 `fact` type is not shown. Other fact types are shown before the content.
+Bookmark rows with a `url` front matter value render their content as a terminal
+hyperlink to that URL.
 Tags that are not already mentioned in the fact content are shown after the
 content as `>Tag Name` in the tag color. Tags already mentioned inline are not
 repeated at the end of the row.

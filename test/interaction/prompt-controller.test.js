@@ -52,6 +52,19 @@ describe("PromptController", () => {
     assert.deepEqual(result.fact.tags, ["Steve Ma", "Devin"]);
   });
 
+  it("captures URL input as a bookmark without storing the URL in the body", async () => {
+    const result = await controller.submit("Read the Node docs https://nodejs.org/api/test.html.");
+    const markdown = await fs.readFile(result.filePath, "utf8");
+
+    assert.equal(result.fact.type, "bookmark");
+    assert.equal(result.fact.content, "Read the Node docs.");
+    assert.equal(result.fact.url, "https://nodejs.org/api/test.html");
+    assert.match(markdown, /^type: bookmark$/m);
+    assert.match(markdown, /^url: https:\/\/nodejs\.org\/api\/test\.html$/m);
+    assert.match(markdown, /\nRead the Node docs\.\n$/);
+    assert.doesNotMatch(markdown.split("---").at(-1), /https:\/\/nodejs\.org/);
+  });
+
   it("requires a current session before capture", async () => {
     state.restart();
 

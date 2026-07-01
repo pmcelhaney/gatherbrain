@@ -53,10 +53,10 @@ export class BodyRenderer {
       const continuationWidth = Math.max(1, width - continuationPrefix.length);
       const [first, ...rest] = wrapPlain(displayContent(fact), firstLineWidth);
 
-      rendered.push(highlight(`${firstLinePrefix}${highlightTags(first, fact.tags, colorEnabled)}`, isSelected, colorEnabled));
+      rendered.push(highlight(`${firstLinePrefix}${renderContentLine(first, fact, colorEnabled)}`, isSelected, colorEnabled));
       for (const line of rest) {
         for (const wrapped of wrapPlain(line, continuationWidth)) {
-          rendered.push(highlight(`${continuationPrefix}${highlightTags(wrapped, fact.tags, colorEnabled)}`, isSelected, colorEnabled));
+          rendered.push(highlight(`${continuationPrefix}${renderContentLine(wrapped, fact, colorEnabled)}`, isSelected, colorEnabled));
         }
       }
     }
@@ -85,6 +85,15 @@ function displayContent(fact) {
   }
 
   return `${fact.content} ${appendedTags.map((tag) => `>${tag}`).join(" ")}`;
+}
+
+function renderContentLine(text, fact, colorEnabled) {
+  const highlighted = highlightTags(text, fact.tags, colorEnabled);
+  return fact.url ? hyperlink(highlighted, fact.url) : highlighted;
+}
+
+function hyperlink(text, url) {
+  return `\x1b]8;;${url}\x1b\\${text}\x1b]8;;\x1b\\`;
 }
 
 function isFactInCurrentContext(fact, currentSession) {

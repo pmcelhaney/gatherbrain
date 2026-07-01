@@ -69,6 +69,17 @@ Mike prefers async architecture reviews.
 Captured facts use the configured default type. Without config, the default type
 is `fact`.
 
+If captured text contains an `http://` or `https://` URL, the fact is saved as
+`type: bookmark`. The first URL is stored in front matter as `url:` and removed
+from the body:
+
+```text
+Read the Node docs https://nodejs.org/api/test.html
+```
+
+The stored body is `Read the Node docs`, and the terminal row renders that text
+as a hyperlink to the saved URL.
+
 Facts are stored as Markdown files with front matter beneath the root-level
 workspace session folder.
 

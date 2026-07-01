@@ -22,6 +22,7 @@ export class MarkdownFactCodec {
 
     lines.push(`due: ${serializable.dueDate ?? ""}`);
     lines.push(`file: ${serializable.file ?? ""}`);
+    lines.push(`url: ${serializable.url ?? ""}`);
     lines.push("---");
     lines.push(serializable.content);
 
@@ -42,6 +43,7 @@ export class MarkdownFactCodec {
       createdAt: requiredValue(frontMatter, "created"),
       dueDate: frontMatter.due || null,
       file: frontMatter.file || null,
+      url: frontMatter.url || null,
       homeSession: requiredOption(homeSession, "homeSession"),
       associatedSessions: frontMatter.associated_sessions ?? [],
       tags: frontMatter.tags ?? []

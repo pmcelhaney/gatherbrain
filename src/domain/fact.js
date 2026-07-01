@@ -9,6 +9,7 @@ export class Fact {
     createdAt,
     dueDate = null,
     file = null,
+    url = null,
     homeSession,
     associatedSessions = [],
     tags = []
@@ -25,6 +26,7 @@ export class Fact {
     this.associatedSessions = [];
     this.dueDate = normalizeDate(dueDate);
     this.file = normalizeFile(file);
+    this.url = normalizeUrl(url);
     this.tags = normalizeTags(tags);
 
     for (const session of associatedSessions) {
@@ -77,6 +79,7 @@ export class Fact {
       createdAt: this.createdAt.toISOString(),
       dueDate: this.dueDate,
       file: this.file,
+      url: this.url,
       homeSession: this.homeSession.name,
       associatedSessions: this.associatedSessions.map((session) => session.name),
       tags: this.tags
@@ -158,4 +161,28 @@ function normalizeFile(value) {
   }
 
   return value.trim();
+}
+
+function normalizeUrl(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error("Fact URL must be a string");
+  }
+
+  const normalized = value.trim();
+
+  try {
+    const url = new URL(normalized);
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      throw new Error("unsupported protocol");
+    }
+  } catch {
+    throw new Error("Fact URL must be an HTTP or HTTPS URL");
+  }
+
+  return normalized;
 }

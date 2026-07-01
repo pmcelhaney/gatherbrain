@@ -59,6 +59,7 @@ describe("Fact", () => {
       createdAt: "2026-06-30T15:45:00.000Z",
       dueDate: "2026-07-01",
       file: "launch-notes.txt",
+      url: "https://example.com/launch",
       homeSession: "Steve",
       associatedSessions: ["Architecture Review Board"],
       tags: ["Devin", " devin ", "Steve Ma"]
@@ -71,6 +72,7 @@ describe("Fact", () => {
       createdAt: "2026-06-30T15:45:00.000Z",
       dueDate: "2026-07-01",
       file: "launch-notes.txt",
+      url: "https://example.com/launch",
       homeSession: "Steve",
       associatedSessions: ["Architecture Review Board"],
       tags: ["Devin", "Steve Ma"]

@@ -420,6 +420,7 @@ associated_sessions:
 tags:
 due: 
 file: launch-notes.txt
+url: ${""}
 ---
 Launch notes
 `
@@ -468,6 +469,7 @@ associated_sessions:
 tags:
 due: 
 file: login-screenshot.png
+url: ${""}
 ---
 Login Screenshot
 `

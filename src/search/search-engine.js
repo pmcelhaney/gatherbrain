@@ -37,6 +37,7 @@ function containsTerm(fact, term) {
   const haystack = [
     fact.content,
     fact.type,
+    fact.url,
     fact.homeSession.name,
     ...fact.associatedSessions.map((session) => session.name),
     ...fact.tags

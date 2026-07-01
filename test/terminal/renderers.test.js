@@ -47,6 +47,24 @@ describe("terminal renderers", () => {
     );
   });
 
+  it("renders bookmark content as a terminal hyperlink", () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const resultSet = new SearchResultSet([
+      buildFact({
+        content: "Read the Node docs.",
+        type: "bookmark",
+        dueDate: null,
+        url: "https://nodejs.org/api/test.html"
+      })
+    ]);
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+
+    assert.equal(
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      "+ 1. bookmark \x1b]8;;https://nodejs.org/api/test.html\x1b\\Read the Node docs.\x1b]8;;\x1b\\"
+    );
+  });
+
   it("colors tag mentions in fact rows", () => {
     const state = new AppState({ currentSession: "Steve" });
     const resultSet = new SearchResultSet([
