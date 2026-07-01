@@ -11,12 +11,8 @@ export class Workspace {
     this.rootPath = path.resolve(rootPath);
   }
 
-  dateDirectory(date) {
-    return path.join(this.rootPath, normalizeDate(date));
-  }
-
-  sessionDirectory(date, session) {
-    return path.join(this.dateDirectory(date), Session.from(session).pathSegment());
+  sessionDirectory(_date, session) {
+    return path.join(this.rootPath, Session.from(session).pathSegment());
   }
 
   trashDirectory(date, session) {

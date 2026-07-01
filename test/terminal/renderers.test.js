@@ -19,7 +19,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       new HeaderRenderer().render({ state, resultSet, today: "2026-06-30" }),
-      "sessions/2026-06-30/Steve"
+      "sessions/Steve"
     );
   });
 
@@ -287,7 +287,7 @@ describe("terminal renderers", () => {
       height: 6,
       today: "2026-06-30"
     }), [
-      "sessions/2026-06-30/Steve",
+      "sessions/Steve",
       "----------------------------------------",
       "+ 1. todo tomorrow Follow up with Steve.",
       "",

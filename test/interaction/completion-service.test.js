@@ -89,7 +89,7 @@ describe("CompletionService", () => {
     assert.equal(await service.complete("@St", { completionIndex: 3 }), "@Stacy");
   });
 
-  it("completes capture tags from workspace tags", async () => {
+  it("completes capture tags from root session directory tags", async () => {
     const service = new CompletionService({
       tagRepository: {
         async list() {

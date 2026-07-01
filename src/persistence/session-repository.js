@@ -27,16 +27,16 @@ export class SessionRepository {
 
   async listFactSessions() {
     const sessions = [];
-    const dateDirectories = await listDirectories(this.workspace.rootPath);
+    const sessionDirectories = await listDirectories(this.workspace.rootPath);
 
-    for (const dateDirectory of dateDirectories) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(path.basename(dateDirectory))) {
+    for (const sessionDirectory of sessionDirectories) {
+      const name = path.basename(sessionDirectory);
+
+      if (!isWorkspaceSessionDirectory(name)) {
         continue;
       }
 
-      for (const sessionDirectory of await listDirectories(dateDirectory)) {
-        sessions.push(path.basename(sessionDirectory));
-      }
+      sessions.push(name);
     }
 
     return sessions;
@@ -60,6 +60,15 @@ export class SessionRepository {
 
     return sessions;
   }
+}
+
+function isWorkspaceSessionDirectory(name) {
+  return (
+    name !== "timeboxes" &&
+    name !== ".trash" &&
+    !name.startsWith(".") &&
+    !/^\d{4}-\d{2}-\d{2}$/.test(name)
+  );
 }
 
 async function listDirectories(directory) {

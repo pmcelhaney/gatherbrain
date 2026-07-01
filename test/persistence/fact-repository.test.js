@@ -20,7 +20,7 @@ describe("FactRepository", () => {
     await fs.rm(rootPath, { recursive: true, force: true });
   });
 
-  it("creates facts under date and home session directories", async () => {
+  it("creates facts under root-level home session directories", async () => {
     const fact = buildFact();
 
     const result = await repository.create(fact);
@@ -29,7 +29,6 @@ describe("FactRepository", () => {
       result.filePath,
       path.join(
         rootPath,
-        "2026-06-30",
         "Architecture Review Board",
         "6f2308de-02e9-45db-8ff0-65ac793f4a24-mike-prefers-async-architecture-reviews.md"
       )

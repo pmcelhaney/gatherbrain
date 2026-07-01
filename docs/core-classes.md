@@ -262,7 +262,7 @@ Represents the root storage location.
 
 Responsibilities:
 
-- Locate date folders, session folders, fact files, and `.trash`.
+- Locate root-level session folders, fact files, and `.trash`.
 - Locate the daily time box text file for a given date.
 - Provide path-building helpers for repositories.
 
@@ -278,7 +278,7 @@ Persists facts as Markdown files with front matter.
 
 Responsibilities:
 
-- Create facts in `<workspace>/<date>/<home session>/`.
+- Create facts in `<workspace>/<home session>/`.
 - Read facts from Markdown files.
 - Update front matter and content.
 - Move deleted facts into `.trash` under their home session.

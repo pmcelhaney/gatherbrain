@@ -61,16 +61,17 @@ Every fact belongs to exactly one home session.
 
 A fact may be associated with zero or more additional sessions.
 
-A fact may have zero or more tags. Tags are captured from `@` mentions in fact
-text. Escaped spaces are normalized when saving, so `@Steve\ Ma` stores the tag
-`Steve Ma`. Possessives keep the suffix as text, so `@Devin's` stores the tag
-`Devin`.
+A fact may have zero or more tags. Tags and sessions share the same workspace
+namespace. Tags are captured from `@` mentions in fact text, and `@` refers to a
+session name. Escaped spaces are normalized when saving, so `@Steve\ Ma` stores
+the tag `Steve Ma`. Possessives keep the suffix as text, so `@Devin's` stores
+the tag `Devin`.
 
 Tags may also be added to selected existing facts with selection input such as
 `. @Steve\ Ma` or `1 @Steve\ Ma`.
 
-Known tags may also be listed in workspace-local `tags.txt`, one tag per line.
-This file belongs to the workspace data, not the application source.
+Known tags are discovered from root-level workspace directories, the same way
+sessions are discovered.
 
 ---
 
@@ -246,7 +247,7 @@ Examples:
 The primary header form is a workspace-style path:
 
 ```text
-sessions/2026-06-30/Thinking about Gatherbrain design
+sessions/Thinking about Gatherbrain design
 ```
 
 ---
@@ -295,9 +296,9 @@ While the user is typing, the UI previews the inferred mode. Plan input previews
 the parsed time box before it is committed.
 
 Tab completion is available for commands, `:switch` session names, search
-shortcuts, selection actions, visible result numbers, and known fact tags after
-`@` in capture text. When multiple candidates match the same typed prefix,
-pressing Tab repeatedly cycles through the matching candidates.
+shortcuts, selection actions, visible result numbers, and known session names
+after `@` in capture text. When multiple candidates match the same typed
+prefix, pressing Tab repeatedly cycles through the matching candidates.
 
 ---
 
@@ -501,17 +502,15 @@ The next entered line becomes both the fact title and the file-name stem.
 
 The command requires a current session.
 
-Clipboard text is saved as a `.txt` file in the current date/session folder.
+Clipboard text is saved as a `.txt` file in the current session folder.
 
-Clipboard screenshots are saved as `.png` files in the current date/session
-folder.
+Clipboard screenshots are saved as `.png` files in the current session folder.
 
 After writing the pasted file, the app creates a normal fact in the same session
 with type `file`, the entered name as content, and `file: <filename>` in front
 matter.
 
-The pasted file and the fact are both stored under the current date/session
-folder.
+The pasted file and the fact are both stored under the current session folder.
 
 ---
 

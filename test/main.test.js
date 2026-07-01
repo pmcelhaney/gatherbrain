@@ -63,7 +63,7 @@ describe("main", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
 
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /sessions\/\d{4}-\d{2}-\d{2}\/\(no session\)/);
+    assert.match(result.stdout, /sessions\/\(no session\)/);
     assert.match(result.stdout, /^-{80}$/m);
     assert.match(result.stdout, />\n$/);
   });
@@ -324,7 +324,7 @@ describe("createAppRuntime", () => {
     await secondRuntime.initialize();
     const rendered = secondRuntime.render();
 
-    assert.match(rendered, /sessions\/2026-06-30\/new session/);
+    assert.match(rendered, /sessions\/new session/);
     assert.match(rendered, /New-session fact/);
     assert.doesNotMatch(rendered, /Steve-only fact/);
 
@@ -403,13 +403,13 @@ describe("createAppRuntime", () => {
     assert.equal(prompt.message, "name this paste");
     assert.equal(result.message, "pasted launch-notes.txt");
     assert.equal(
-      fs.readFileSync(path.join(workspacePath, "2026-07-01", "Steve", "launch-notes.txt"), "utf8"),
+      fs.readFileSync(path.join(workspacePath, "Steve", "launch-notes.txt"), "utf8"),
       "clipboard contents\n"
     );
     assert.match(runtime.render(), /file Launch notes/);
     assert.equal(
       fs.readFileSync(
-        path.join(workspacePath, "2026-07-01", "Steve", "11111111-1111-4111-8111-111111111111-launch-notes.md"),
+        path.join(workspacePath, "Steve", "11111111-1111-4111-8111-111111111111-launch-notes.md"),
         "utf8"
       ),
       `---
@@ -453,12 +453,12 @@ Launch notes
 
     assert.equal(result.message, "pasted login-screenshot.png");
     assert.deepEqual(
-      fs.readFileSync(path.join(workspacePath, "2026-07-01", "Steve", "login-screenshot.png")),
+      fs.readFileSync(path.join(workspacePath, "Steve", "login-screenshot.png")),
       Buffer.from([0x89, 0x50, 0x4e, 0x47])
     );
     assert.equal(
       fs.readFileSync(
-        path.join(workspacePath, "2026-07-01", "Steve", "22222222-2222-4222-8222-222222222222-login-screenshot.md"),
+        path.join(workspacePath, "Steve", "22222222-2222-4222-8222-222222222222-login-screenshot.md"),
         "utf8"
       ),
       `---
@@ -511,7 +511,7 @@ Login Screenshot
     assert.equal(result.message, "opened launch-notes.txt");
     assert.deepEqual(opened, [{
       file: "launch-notes.txt",
-      factPath: path.join(workspacePath, "2026-07-01", "Steve", "33333333-3333-4333-8333-333333333333-launch-notes.md")
+      factPath: path.join(workspacePath, "Steve", "33333333-3333-4333-8333-333333333333-launch-notes.md")
     }]);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
@@ -713,7 +713,7 @@ Login Screenshot
 
     const rendered = runtime.render();
 
-    assert.match(rendered, /sessions\/2026-06-30\/Steve/);
+    assert.match(rendered, /sessions\/Steve/);
     assert.match(rendered, /Steve-only fact/);
     assert.doesNotMatch(rendered, /Architecture fact/);
 
@@ -868,7 +868,7 @@ Login Screenshot
     await runtime.submit("@Devin's trial ends.");
 
     assert.equal(await runtime.complete("Confirm @Dev"), "Confirm @Devin");
-    assert.equal(await runtime.complete("@St"), "@St");
+    assert.equal(await runtime.complete("@St"), "@Steve");
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

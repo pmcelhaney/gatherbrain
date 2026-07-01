@@ -1,5 +1,4 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 
 import { normalizeTags } from "../domain/index.js";
 import { Workspace } from "./workspace.js";
@@ -10,10 +9,11 @@ export class TagRepository {
   }
 
   async list() {
-    let text;
+    const tags = [];
+    let entries;
 
     try {
-      text = await fs.readFile(path.join(this.workspace.rootPath, "tags.txt"), "utf8");
+      entries = await fs.readdir(this.workspace.rootPath, { withFileTypes: true });
     } catch (error) {
       if (error.code === "ENOENT") {
         return [];
@@ -22,6 +22,21 @@ export class TagRepository {
       throw error;
     }
 
-    return normalizeTags(text.split(/\r?\n/));
+    for (const entry of entries) {
+      if (entry.isDirectory() && isWorkspaceTagDirectory(entry.name)) {
+        tags.push(entry.name);
+      }
+    }
+
+    return normalizeTags(tags).sort((left, right) => left.localeCompare(right, "en-US"));
   }
+}
+
+function isWorkspaceTagDirectory(name) {
+  return (
+    name !== "timeboxes" &&
+    name !== ".trash" &&
+    !name.startsWith(".") &&
+    !/^\d{4}-\d{2}-\d{2}$/.test(name)
+  );
 }

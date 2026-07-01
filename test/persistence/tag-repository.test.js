@@ -19,17 +19,16 @@ describe("TagRepository", () => {
     await fs.rm(rootPath, { recursive: true, force: true });
   });
 
-  it("returns no workspace tags when tags.txt is absent", async () => {
+  it("returns no tags when root session directories are absent", async () => {
     assert.deepEqual(await new TagRepository({ workspace }).list(), []);
   });
 
-  it("reads newline-delimited workspace tags", async () => {
-    await fs.writeFile(
-      path.join(rootPath, "tags.txt"),
-      "Steve Ma\n\nDevin\n devin \n",
-      "utf8"
-    );
+  it("reads tags from root session directories", async () => {
+    await fs.mkdir(path.join(rootPath, "Steve Ma"));
+    await fs.mkdir(path.join(rootPath, "Devin"));
+    await fs.mkdir(path.join(rootPath, "timeboxes"));
+    await fs.mkdir(path.join(rootPath, ".gatherbrain"));
 
-    assert.deepEqual(await new TagRepository({ workspace }).list(), ["Steve Ma", "Devin"]);
+    assert.deepEqual(await new TagRepository({ workspace }).list(), ["Devin", "Steve Ma"]);
   });
 });

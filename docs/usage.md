@@ -65,21 +65,21 @@ Mike prefers async architecture reviews.
 Captured facts use the configured default type. Without config, the default type
 is `fact`.
 
-Facts are stored as Markdown files with front matter beneath the workspace date
-and session folder.
+Facts are stored as Markdown files with front matter beneath the root-level
+workspace session folder.
 
-Use `@` to tag people, projects, or other named things in captured facts:
+Use `@` to refer to a session name in captured facts:
 
 ```text
 @Steve\ Ma said to confirm when the @Devin trial ends
 ```
 
-This saves tags `Steve Ma` and `Devin`. Escaped spaces are input syntax only;
-they are not stored in the tag value. Possessives keep the suffix as text, so
-`@Devin's` stores the tag `Devin`.
+This saves tags `Steve Ma` and `Devin`, which share the session namespace.
+Escaped spaces are input syntax only; they are not stored in the tag value.
+Possessives keep the suffix as text, so `@Devin's` stores the tag `Devin`.
 
-Add workspace-level known tags in `<workspace>/tags.txt`, one tag per line.
-These tags are used for completion without creating facts.
+Root-level workspace directories are known tag/session names and are used for
+completion.
 
 ## Searching
 
@@ -257,19 +257,18 @@ Calendar rows are numbered in plan mode. Update or delete a visible time box:
 | `:quit` | Exits the app |
 
 In the interactive TUI, Tab completes commands, `:switch` session names, search
-shortcuts, selection actions, visible result numbers, and known fact tags after
-`@` in capture text. When multiple candidates match the same typed prefix,
-press Tab repeatedly to cycle through them. Tag completion only uses tags
-already saved on facts.
+shortcuts, selection actions, visible result numbers, and known session names
+after `@` in capture text. When multiple candidates match the same typed prefix,
+press Tab repeatedly to cycle through them.
 
 In the interactive TUI, `:restart` launches a fresh app process so recent code
 and configuration changes are loaded. Durable workspace state is preserved.
 
 `:paste` requires a current session. After `:paste`, enter a name for the
 pasted item. Gatherbrain writes text clipboard data as `<name>.txt` and
-screenshot clipboard data as `<name>.png` in the current date/session folder,
-then creates a `type: file` fact named the same way with `file: <filename>` in
-front matter. Select that fact and run `. open` to open the pasted file.
+screenshot clipboard data as `<name>.png` in the current session folder, then
+creates a `type: file` fact named the same way with `file: <filename>` in front
+matter. Select that fact and run `. open` to open the pasted file.
 
 While typing, the header and body preview the inferred mode. Plan input previews
 the parsed time box before Enter commits it.
@@ -303,28 +302,25 @@ Facts:
 
 ```text
 workspace/
-  2026-06-30/
-    Steve/
-      <uuid>-follow-up-with-steve.md
+  Steve/
+    <uuid>-follow-up-with-steve.md
 ```
 
-Pasted files live alongside facts in the same date/session folder:
+Pasted files live alongside facts in the same session folder:
 
 ```text
 workspace/
-  2026-07-01/
-    Steve/
-      login-screenshot.png
-      <uuid>-login-screenshot.md
+  Steve/
+    login-screenshot.png
+    <uuid>-login-screenshot.md
 ```
 
 Deleted facts:
 
 ```text
 workspace/
-  2026-06-30/
-    Steve/
-      .trash/
+  Steve/
+    .trash/
 ```
 
 Time boxes:

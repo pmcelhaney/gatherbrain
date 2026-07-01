@@ -5,20 +5,20 @@ import { describe, it } from "node:test";
 import { Workspace } from "../../src/persistence/index.js";
 
 describe("Workspace", () => {
-  it("builds fact and trash paths from dates and sessions", () => {
+  it("builds fact and trash paths from root-level sessions", () => {
     const workspace = new Workspace("/tmp/gatherbrain");
 
     assert.equal(
       workspace.sessionDirectory("2026-06-30", "Reading: Team Topologies"),
-      path.join("/tmp/gatherbrain", "2026-06-30", "Reading- Team Topologies")
+      path.join("/tmp/gatherbrain", "Reading- Team Topologies")
     );
     assert.equal(
       workspace.trashDirectory("2026-06-30", "Steve"),
-      path.join("/tmp/gatherbrain", "2026-06-30", "Steve", ".trash")
+      path.join("/tmp/gatherbrain", "Steve", ".trash")
     );
     assert.equal(
       workspace.pastePath({ date: "2026-06-30", session: "Steve", fileName: "diagram.png" }),
-      path.join("/tmp/gatherbrain", "2026-06-30", "Steve", "diagram.png")
+      path.join("/tmp/gatherbrain", "Steve", "diagram.png")
     );
   });
 
