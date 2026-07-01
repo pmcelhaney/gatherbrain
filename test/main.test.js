@@ -11,8 +11,9 @@ describe("main", () => {
     const { restartCurrentProcess } = await import("../src/main.js");
     const calls = [];
     let exitCode = null;
+    const child = new EventEmitter();
 
-    restartCurrentProcess({
+    const restarted = restartCurrentProcess({
       execPath: "/usr/local/bin/node",
       argv: ["/usr/local/bin/node", "src/main.js"],
       env: { GATHERBRAIN_WORKSPACE: "/tmp/workspace" },
@@ -20,16 +21,16 @@ describe("main", () => {
       pid: 12345,
       spawn: (command, args, options) => {
         calls.push({ command, args, options });
-        return {
-          unref() {
-            calls.push({ unref: true });
-          }
-        };
+        return child;
       },
       exit(code) {
         exitCode = code;
       }
     });
+
+    assert.equal(exitCode, null);
+    child.emit("close", 0, null);
+    await restarted;
 
     assert.deepEqual(calls, [
       {
@@ -43,8 +44,7 @@ describe("main", () => {
           },
           stdio: "inherit"
         }
-      },
-      { unref: true }
+      }
     ]);
     assert.equal(exitCode, 0);
   });

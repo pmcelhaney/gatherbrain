@@ -361,7 +361,7 @@ export async function main(argv = process.argv.slice(2)) {
   if (input.isTTY) {
     const result = await runTui(runtime);
     if (result === "restart") {
-      restartCurrentProcess();
+      await restartCurrentProcess();
     }
     return;
   }
@@ -528,7 +528,8 @@ export function restartCurrentProcess({
   argv = process.argv,
   env = process.env,
   cwd = process.cwd(),
-  pid = process.pid
+  pid = process.pid,
+  signalProcess = process.kill
 } = {}) {
   const child = spawn(execPath, argv.slice(1), {
     cwd,
@@ -538,8 +539,31 @@ export function restartCurrentProcess({
     },
     stdio: "inherit"
   });
-  child.unref();
-  exit(0);
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (callback) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      callback();
+      resolve();
+    };
+
+    child.once("error", () => {
+      finish(() => exit(1));
+    });
+    child.once("close", (code, signal) => {
+      if (signal) {
+        finish(() => signalProcess(pid, signal));
+        return;
+      }
+
+      finish(() => exit(code ?? 0));
+    });
+  });
 }
 
 async function searchCurrentFacts({
