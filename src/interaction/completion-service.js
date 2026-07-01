@@ -19,9 +19,9 @@ export class CompletionService {
   }
 
   async complete(input, context = {}) {
-    if (input.startsWith(":switch ") || input.startsWith(":session ")) {
-      const prefix = input.startsWith(":switch ") ? ":switch " : ":session ";
-      return completeSuffix(input, prefix, await this.sessionNames());
+    const sessionCommandPrefix = sessionCompletionPrefix(input);
+    if (sessionCommandPrefix) {
+      return completeSuffix(input, sessionCommandPrefix, await this.sessionNames());
     }
 
     if (input.startsWith(":")) {
@@ -92,6 +92,20 @@ function completeSuffix(input, prefix, candidates) {
   const match = firstMatch(candidates, partial);
 
   return match ? `${prefix}${match}` : input;
+}
+
+function sessionCompletionPrefix(input) {
+  const normalizedInput = input.toLocaleLowerCase("en-US");
+
+  if (normalizedInput.startsWith(":switch ")) {
+    return ":switch ";
+  }
+
+  if (normalizedInput.startsWith(":session ")) {
+    return ":session ";
+  }
+
+  return null;
 }
 
 function completeSelection(input, actionKeywords, resultSet) {

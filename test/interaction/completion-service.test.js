@@ -103,7 +103,10 @@ describe("CompletionService", () => {
 
     assert.equal(await service.complete(":SW"), ":switch");
     assert.equal(await service.complete(":switch arch"), ":switch Architecture Review Board");
+    assert.equal(await service.complete(":SWITCH arch"), ":switch Architecture Review Board");
+    assert.equal(await service.complete(":SESSION arch"), ":session Architecture Review Board");
     assert.equal(await service.complete("//CUR"), "//current");
+    assert.equal(await service.complete(". INP"), ". inprogress");
   });
 
   it("does not complete inactive tag text", async () => {
