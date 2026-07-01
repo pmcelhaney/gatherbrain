@@ -33,7 +33,12 @@ describe("FactRepository", () => {
         "6f2308de-02e9-45db-8ff0-65ac793f4a24-mike-prefers-async-architecture-reviews.md"
       )
     );
-    assert.equal(await repository.read(result.filePath).then((saved) => saved.content), fact.content);
+    const saved = await repository.read(result.filePath);
+    const markdown = await fs.readFile(result.filePath, "utf8");
+
+    assert.equal(saved.content, fact.content);
+    assert.equal(saved.homeSession.name, "Architecture Review Board");
+    assert.doesNotMatch(markdown, /^home_session:/m);
   });
 
   it("updates an existing fact file", async () => {
@@ -45,6 +50,26 @@ describe("FactRepository", () => {
 
     const saved = await repository.read(filePath);
     assert.equal(saved.type, "decision");
+    assert.equal(saved.homeSession.name, "Architecture Review Board");
+  });
+
+  it("derives a fact home session from its containing directory", async () => {
+    const filePath = path.join(rootPath, "Steve Ma", "6f2308de-02e9-45db-8ff0-65ac793f4a24-review.md");
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, `---
+id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
+type: observation
+created: 2026-06-30T14:15:23.000Z
+associated_sessions:
+due: 
+file: 
+---
+Mike prefers async architecture reviews.
+`, "utf8");
+
+    const saved = await repository.read(filePath);
+
+    assert.equal(saved.homeSession.name, "Steve Ma");
   });
 
   it("lists and looks up active facts by id", async () => {

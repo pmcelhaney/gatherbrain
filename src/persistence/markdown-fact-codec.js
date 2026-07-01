@@ -8,7 +8,6 @@ export class MarkdownFactCodec {
       `id: ${serializable.id}`,
       `type: ${serializable.type}`,
       `created: ${serializable.createdAt}`,
-      `home_session: ${serializable.homeSession}`,
       "associated_sessions:"
     ];
 
@@ -29,7 +28,7 @@ export class MarkdownFactCodec {
     return `${lines.join("\n")}\n`;
   }
 
-  parse(markdown) {
+  parse(markdown, { homeSession } = {}) {
     if (typeof markdown !== "string") {
       throw new Error("Markdown fact content must be a string");
     }
@@ -43,7 +42,7 @@ export class MarkdownFactCodec {
       createdAt: requiredValue(frontMatter, "created"),
       dueDate: frontMatter.due || null,
       file: frontMatter.file || null,
-      homeSession: requiredValue(frontMatter, "home_session"),
+      homeSession: requiredOption(homeSession, "homeSession"),
       associatedSessions: frontMatter.associated_sessions ?? [],
       tags: frontMatter.tags ?? []
     });
@@ -112,4 +111,12 @@ function requiredValue(frontMatter, key) {
   }
 
   return frontMatter[key];
+}
+
+function requiredOption(value, key) {
+  if (!value) {
+    throw new Error(`Missing fact parse option: ${key}`);
+  }
+
+  return value;
 }

@@ -416,7 +416,6 @@ describe("createAppRuntime", () => {
 id: 11111111-1111-4111-8111-111111111111
 type: file
 created: 2026-07-01T12:00:00.000Z
-home_session: Steve
 associated_sessions:
 tags:
 due: 
@@ -465,7 +464,6 @@ Launch notes
 id: 22222222-2222-4222-8222-222222222222
 type: file
 created: 2026-07-01T12:00:00.000Z
-home_session: Steve
 associated_sessions:
 tags:
 due: 
@@ -921,7 +919,7 @@ Login Screenshot
       ),
       "utf8"
     );
-    assert.match(factMarkdown, /^home_session: Steve Ma$/m);
+    assert.doesNotMatch(factMarkdown, /^home_session:/m);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

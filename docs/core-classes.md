@@ -46,7 +46,9 @@ Responsibilities:
 - Enforce that every fact ID is a UUID.
 - Add or remove associated sessions without duplicating the home session.
 - Apply domain changes such as `setType`, `setDueDate`, and `associateSession`.
-- Produce a serializable representation for storage.
+- Produce a serializable representation for Markdown storage. The home session
+  stays on the domain object, but it is derived from the containing directory
+  and is not serialized into front matter.
 
 Does not:
 
@@ -279,7 +281,8 @@ Persists facts as Markdown files with front matter.
 Responsibilities:
 
 - Create facts in `<workspace>/<home session>/`.
-- Read facts from Markdown files.
+- Read facts from Markdown files and derive each fact's home session from its
+  containing directory.
 - Update front matter and content.
 - Move deleted facts into `.trash` under their home session.
 
@@ -330,6 +333,7 @@ Responsibilities:
 
 - Parse front matter.
 - Serialize front matter.
+- Require repository-provided storage context for the fact's home session.
 - Preserve fact body content.
 
 Does not:

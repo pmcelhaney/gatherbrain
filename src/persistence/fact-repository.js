@@ -29,7 +29,9 @@ export class FactRepository {
 
   async read(filePath) {
     const markdown = await fs.readFile(filePath, "utf8");
-    return this.codec.parse(markdown);
+    return this.codec.parse(markdown, {
+      homeSession: homeSessionFromPath(this.workspace.rootPath, filePath)
+    });
   }
 
   async list() {
@@ -119,6 +121,21 @@ function slugFor(content) {
     .slice(0, 48);
 
   return slug || "fact";
+}
+
+function homeSessionFromPath(rootPath, filePath) {
+  const relativePath = path.relative(rootPath, filePath);
+  const directoryParts = path.dirname(relativePath).split(path.sep).filter(Boolean);
+  const homeDirectoryIndex = directoryParts.at(-1) === ".trash"
+    ? directoryParts.length - 2
+    : directoryParts.length - 1;
+  const homeSession = directoryParts[homeDirectoryIndex];
+
+  if (!homeSession) {
+    throw new Error(`Fact path is not inside a session directory: ${filePath}`);
+  }
+
+  return homeSession;
 }
 
 async function findMarkdownFiles(rootPath) {

@@ -117,14 +117,16 @@ Directory layout:
 
 ```text
 <workspace>/
-    2026-06-30/
-        Architecture Review Board/
-            6f2308de-02e9-45db-8ff0-65ac793f4a24-review.md
-            9b099737-48ad-4b28-88d3-ae75c66c9e24-risk.md
+    Architecture Review Board/
+        6f2308de-02e9-45db-8ff0-65ac793f4a24-review.md
+        9b099737-48ad-4b28-88d3-ae75c66c9e24-risk.md
 
-        Steve/
-            5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a-follow-up.md
+    Steve/
+        5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a-follow-up.md
 ```
+
+The home session is defined by the containing session directory. It is not
+stored in front matter.
 
 Each fact contains front matter similar to:
 
@@ -133,7 +135,6 @@ Each fact contains front matter similar to:
 id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
 type: observation
 created: 2026-06-30T10:15:23-04:00
-home_session: Architecture Review Board
 associated_sessions:
   - Steve
   - Enterprise Architecture
@@ -150,7 +151,7 @@ Deleted facts are moved into a `.trash` directory beneath their home session.
 Example:
 
 ```text
-2026-06-30/
+<workspace>/
     Architecture Review Board/
         .trash/
 ```
