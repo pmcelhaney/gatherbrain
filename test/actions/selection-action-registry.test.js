@@ -37,6 +37,22 @@ describe("SelectionActionRegistry", () => {
     );
   });
 
+  it("sets due dates to today", async () => {
+    const factStore = new MemoryFactStore([buildFact()]);
+    const registry = SelectionActionRegistry.fromConfig();
+
+    await registry.execute("today", {
+      selection: new Selection(["6f2308de-02e9-45db-8ff0-65ac793f4a24"]),
+      factStore,
+      today: "2026-06-30"
+    });
+
+    assert.equal(
+      factStore.fact("6f2308de-02e9-45db-8ff0-65ac793f4a24").dueDate,
+      "2026-06-30"
+    );
+  });
+
   it("associates selected facts with the current session", async () => {
     const factStore = new MemoryFactStore([buildFact()]);
     const registry = SelectionActionRegistry.fromConfig();

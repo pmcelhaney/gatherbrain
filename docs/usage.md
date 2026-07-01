@@ -142,6 +142,7 @@ Dots select visible row positions:
 
 ```text
 . todo
+. today
 .. tomorrow
 ```
 
@@ -159,6 +160,7 @@ Current built-in actions:
 | `todo` | Sets type to `todo` |
 | `waiting` | Sets type to `waiting` |
 | `done` | Sets type to `done` |
+| `today` | Sets due date to today |
 | `tomorrow` | Sets due date to tomorrow |
 | `delete` | Moves the fact to `.trash` |
 | `gather` | Associates the fact with the current session |

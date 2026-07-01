@@ -102,6 +102,10 @@ export function defaultActionConfig() {
         action: "set_type",
         value: "done"
       },
+      today: {
+        action: "set_due",
+        value: "today"
+      },
       tomorrow: {
         action: "set_due",
         value: "tomorrow"

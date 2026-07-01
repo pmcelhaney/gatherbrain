@@ -286,6 +286,24 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("marks selected facts due today", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-due-today-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch empty-space");
+    await runtime.submit("first item in empty");
+    const result = await runtime.submit(". today");
+
+    assert.equal(result.message, "today applied to 1 fact");
+    assert.match(runtime.render(), /due:today/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("prefixes current-context facts with plus during search", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-context-prefix-"));

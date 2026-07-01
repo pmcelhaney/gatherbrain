@@ -33,6 +33,7 @@ describe("CompletionService", () => {
   it("completes selection actions", async () => {
     const service = new CompletionService();
 
+    assert.equal(await service.complete(". toda"), ". today");
     assert.equal(await service.complete(". tom"), ". tomorrow");
   });
 
