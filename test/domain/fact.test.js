@@ -60,7 +60,8 @@ describe("Fact", () => {
       dueDate: "2026-07-01",
       file: "launch-notes.txt",
       homeSession: "Steve",
-      associatedSessions: ["Architecture Review Board"]
+      associatedSessions: ["Architecture Review Board"],
+      tags: ["Devin", " devin ", "Steve Ma"]
     });
 
     assert.deepEqual(fact.toSerializable(), {
@@ -71,7 +72,8 @@ describe("Fact", () => {
       dueDate: "2026-07-01",
       file: "launch-notes.txt",
       homeSession: "Steve",
-      associatedSessions: ["Architecture Review Board"]
+      associatedSessions: ["Architecture Review Board"],
+      tags: ["Devin", "Steve Ma"]
     });
   });
 

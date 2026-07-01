@@ -45,6 +45,13 @@ describe("PromptController", () => {
     await fs.access(result.filePath);
   });
 
+  it("captures @ tags and leaves possessives as text", async () => {
+    const result = await controller.submit("@Steve\\ Ma said @Devin's trial ends.");
+
+    assert.equal(result.fact.content, "@Steve Ma said @Devin's trial ends.");
+    assert.deepEqual(result.fact.tags, ["Steve Ma", "Devin"]);
+  });
+
   it("requires a current session before capture", async () => {
     state.restart();
 

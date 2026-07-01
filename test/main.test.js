@@ -364,6 +364,7 @@ type: file
 created: 2026-07-01T12:00:00.000Z
 home_session: Steve
 associated_sessions:
+tags:
 due: 
 file: launch-notes.txt
 ---
@@ -412,6 +413,7 @@ type: file
 created: 2026-07-01T12:00:00.000Z
 home_session: Steve
 associated_sessions:
+tags:
 due: 
 file: login-screenshot.png
 ---

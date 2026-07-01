@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { Fact } from "../domain/index.js";
+import { extractTags, Fact, normalizeTaggedContent } from "../domain/index.js";
 import { SelectionActionRegistry } from "../actions/index.js";
 import {
   SearchEngine,
@@ -90,7 +90,8 @@ export class PromptController {
   }
 
   async capture(input) {
-    const content = input.trim();
+    const rawContent = input.trim();
+    const content = normalizeTaggedContent(rawContent);
 
     if (!content) {
       return InteractionResult.classified({
@@ -107,7 +108,8 @@ export class PromptController {
       content,
       type: this.defaultFactType,
       createdAt: this.clock(),
-      homeSession: this.state.currentSession
+      homeSession: this.state.currentSession,
+      tags: extractTags(rawContent)
     });
 
     const { filePath } = await this.factRepository.create(fact);

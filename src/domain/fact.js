@@ -1,4 +1,5 @@
 import { Session } from "./session.js";
+import { normalizeTags } from "./tags.js";
 
 export class Fact {
   constructor({
@@ -9,7 +10,8 @@ export class Fact {
     dueDate = null,
     file = null,
     homeSession,
-    associatedSessions = []
+    associatedSessions = [],
+    tags = []
   }) {
     if (typeof content !== "string" || content.trim().length === 0) {
       throw new Error("Fact content is required");
@@ -23,6 +25,7 @@ export class Fact {
     this.associatedSessions = [];
     this.dueDate = normalizeDate(dueDate);
     this.file = normalizeFile(file);
+    this.tags = normalizeTags(tags);
 
     for (const session of associatedSessions) {
       this.associateSession(session);
@@ -71,7 +74,8 @@ export class Fact {
       dueDate: this.dueDate,
       file: this.file,
       homeSession: this.homeSession.name,
-      associatedSessions: this.associatedSessions.map((session) => session.name)
+      associatedSessions: this.associatedSessions.map((session) => session.name),
+      tags: this.tags
     };
   }
 

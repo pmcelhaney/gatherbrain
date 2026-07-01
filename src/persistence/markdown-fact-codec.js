@@ -16,6 +16,11 @@ export class MarkdownFactCodec {
       lines.push(`  - ${session}`);
     }
 
+    lines.push("tags:");
+    for (const tag of serializable.tags) {
+      lines.push(`  - ${tag}`);
+    }
+
     lines.push(`due: ${serializable.dueDate ?? ""}`);
     lines.push(`file: ${serializable.file ?? ""}`);
     lines.push("---");
@@ -39,7 +44,8 @@ export class MarkdownFactCodec {
       dueDate: frontMatter.due || null,
       file: frontMatter.file || null,
       homeSession: requiredValue(frontMatter, "home_session"),
-      associatedSessions: frontMatter.associated_sessions ?? []
+      associatedSessions: frontMatter.associated_sessions ?? [],
+      tags: frontMatter.tags ?? []
     });
   }
 }
@@ -66,6 +72,7 @@ function splitFrontMatter(markdown) {
 function parseFrontMatter(lines) {
   const frontMatter = {};
   let currentListKey = null;
+  const listKeys = new Set(["associated_sessions", "tags"]);
 
   for (const line of lines) {
     if (line.trim().length === 0) {
@@ -88,8 +95,8 @@ function parseFrontMatter(lines) {
     const [, key, value = ""] = keyValueMatch;
 
     if (value === "") {
-      frontMatter[key] = key === "associated_sessions" ? [] : "";
-      currentListKey = key === "associated_sessions" ? key : null;
+      frontMatter[key] = listKeys.has(key) ? [] : "";
+      currentListKey = listKeys.has(key) ? key : null;
     } else {
       frontMatter[key] = value;
       currentListKey = null;
