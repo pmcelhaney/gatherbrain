@@ -68,6 +68,16 @@ is `fact`.
 Facts are stored as Markdown files with front matter beneath the workspace date
 and session folder.
 
+Use `@` to tag people, projects, or other named things in captured facts:
+
+```text
+@Steve\ Ma said to confirm when the @Devin trial ends
+```
+
+This saves tags `Steve Ma` and `Devin`. Escaped spaces are input syntax only;
+they are not stored in the tag value. Possessives keep the suffix as text, so
+`@Devin's` stores the tag `Devin`.
+
 ## Searching
 
 Search mode begins with `/`.
@@ -81,16 +91,21 @@ Search mode begins with `/`.
 /session:"Architecture Review Board"
 /session:Architecture Review Board
 /@Architecture Review Board
+/tag:Devin
+/tag:Steve Ma
 ```
 
 `/` by itself refreshes the current query. If there is no current query, it uses
 the current session query. If there is no current session, it lists all facts.
 
-Multi-word field values must be quoted:
+Multi-word values may be quoted:
 
 ```text
 /session:"Architecture Review Board"
+/tag:"Steve Ma"
 ```
+
+Session and tag fields also accept unquoted multi-word values.
 
 Adjacent terms imply `AND`:
 
@@ -233,7 +248,8 @@ Calendar rows are numbered in plan mode. Update or delete a visible time box:
 | `:quit` | Exits the app |
 
 In the interactive TUI, Tab completes commands, `:switch` session names, search
-shortcuts, selection actions, and visible result numbers.
+shortcuts, selection actions, visible result numbers, and known fact tags after
+`@` in capture text. Tag completion only uses tags already saved on facts.
 
 In the interactive TUI, `:restart` launches a fresh app process so recent code
 and configuration changes are loaded. Durable workspace state is preserved.

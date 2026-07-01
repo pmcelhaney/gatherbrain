@@ -4,11 +4,13 @@ import { SearchShortcutRegistry } from "../search/index.js";
 export class CompletionService {
   constructor({
     sessionRepository,
+    factSource = null,
     actionRegistry = SelectionActionRegistry.fromConfig(),
     shortcutRegistry = new SearchShortcutRegistry(),
     commandNames = ["exit", "help", "inspect", "paste", "quit", "restart", "session", "sessions", "switch", "timebox", "undo"]
   } = {}) {
     this.sessionRepository = sessionRepository;
+    this.factSource = factSource;
     this.actionRegistry = actionRegistry;
     this.shortcutRegistry = shortcutRegistry;
     this.commandNames = commandNames;
@@ -32,11 +34,51 @@ export class CompletionService {
       return completeSelection(input, this.actionRegistry.keywords(), context.resultSet);
     }
 
+    const tagCompletion = await this.completeTag(input);
+    if (tagCompletion) {
+      return tagCompletion;
+    }
+
     return input;
   }
 
   async sessionNames() {
     return this.sessionRepository ? this.sessionRepository.list() : [];
+  }
+
+  async completeTag(input) {
+    const activeTag = activeTagSegment(input);
+
+    if (!activeTag) {
+      return null;
+    }
+
+    const match = firstMatch(await this.tagNames(), activeTag.value);
+
+    if (!match) {
+      return null;
+    }
+
+    return `${input.slice(0, activeTag.startIndex)}@${escapeTag(match)}`;
+  }
+
+  async tagNames() {
+    if (!this.factSource) {
+      return [];
+    }
+
+    const facts = await this.factSource.list();
+    const tags = [];
+
+    for (const fact of facts) {
+      for (const tag of fact.tags ?? []) {
+        if (!tags.includes(tag)) {
+          tags.push(tag);
+        }
+      }
+    }
+
+    return tags.sort((left, right) => left.localeCompare(right, "en-US"));
   }
 }
 
@@ -77,4 +119,40 @@ function isSelectionInput(input) {
 
 function firstMatch(candidates, partial) {
   return candidates.find((candidate) => candidate.startsWith(partial));
+}
+
+function activeTagSegment(input) {
+  const startIndex = input.lastIndexOf("@");
+
+  if (startIndex === -1) {
+    return null;
+  }
+
+  let value = "";
+
+  for (let index = startIndex + 1; index < input.length; index += 1) {
+    const char = input[index];
+
+    if (char === "\\" && /\s/.test(input[index + 1] ?? "")) {
+      value += input[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (/\s/.test(char) || isTagStopChar(char)) {
+      return null;
+    }
+
+    value += char;
+  }
+
+  return value.length > 0 ? { startIndex, value } : null;
+}
+
+function isTagStopChar(char) {
+  return ["'", "\"", ".", ",", ";", ":", "!", "?", "(", ")", "[", "]", "{", "}", "<", ">"].includes(char);
+}
+
+function escapeTag(tag) {
+  return tag.replace(/\s/g, "\\$&");
 }

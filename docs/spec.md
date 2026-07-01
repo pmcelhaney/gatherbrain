@@ -61,6 +61,11 @@ Every fact belongs to exactly one home session.
 
 A fact may be associated with zero or more additional sessions.
 
+A fact may have zero or more tags. Tags are captured from `@` mentions in fact
+text. Escaped spaces are normalized when saving, so `@Steve\ Ma` stores the tag
+`Steve Ma`. Possessives keep the suffix as text, so `@Devin's` stores the tag
+`Devin`.
+
 ---
 
 ## Search
@@ -77,6 +82,9 @@ Search results are ordered newest first by fact creation time.
 
 Session search supports quoted values, unquoted multi-word session values, and
 `@Session Name` shorthand.
+
+Tag search supports `tag:<name>` field filters. Tags also participate in normal
+term search.
 
 ---
 
@@ -122,6 +130,9 @@ home_session: Architecture Review Board
 associated_sessions:
   - Steve
   - Enterprise Architecture
+tags:
+  - Devin
+  - Steve Ma
 due:
 file:
 ---
@@ -275,7 +286,8 @@ While the user is typing, the UI previews the inferred mode. Plan input previews
 the parsed time box before it is committed.
 
 Tab completion is available for commands, `:switch` session names, search
-shortcuts, selection actions, and visible result numbers.
+shortcuts, selection actions, visible result numbers, and known fact tags after
+`@` in capture text.
 
 ---
 
@@ -370,6 +382,10 @@ Examples:
 /due:today and "Steve Ma"
 
 /session:"Architecture Review Board"
+
+/tag:Devin
+
+/tag:Steve Ma
 ```
 
 Search supports:

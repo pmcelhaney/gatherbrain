@@ -764,6 +764,23 @@ Login Screenshot
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("completes capture tags from saved facts", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-tag-complete-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit("@Devin's trial ends.");
+
+    assert.equal(await runtime.complete("Confirm @Dev"), "Confirm @Devin");
+    assert.equal(await runtime.complete("@St"), "@St");
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("shows only facts associated with the switched session", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-switch-view-"));

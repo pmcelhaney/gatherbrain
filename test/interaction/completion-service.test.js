@@ -50,4 +50,40 @@ describe("CompletionService", () => {
 
     assert.equal(await service.complete("3", { resultSet }), "3");
   });
+
+  it("completes capture tags from saved fact tags", async () => {
+    const service = new CompletionService({
+      factSource: {
+        async list() {
+          return [
+            { tags: ["Steve Ma", "Devin"] }
+          ];
+        }
+      },
+      sessionRepository: {
+        async list() {
+          return ["Architecture Review Board"];
+        }
+      }
+    });
+
+    assert.equal(await service.complete("@St"), "@Steve\\ Ma");
+    assert.equal(await service.complete("Confirm when @Dev"), "Confirm when @Devin");
+    assert.equal(await service.complete("@Architecture"), "@Architecture");
+  });
+
+  it("does not complete inactive tag text", async () => {
+    const service = new CompletionService({
+      factSource: {
+        async list() {
+          return [
+            { tags: ["Devin"] }
+          ];
+        }
+      }
+    });
+
+    assert.equal(await service.complete("@Devin's"), "@Devin's");
+    assert.equal(await service.complete("@Devin trial"), "@Devin trial");
+  });
 });

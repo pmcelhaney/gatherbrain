@@ -38,6 +38,7 @@ export function createAppRuntime({
   const selectionActionRegistry = SelectionActionRegistry.fromConfig(appConfig.selectionActions);
   const completionService = new CompletionService({
     sessionRepository,
+    factSource: factIndex,
     actionRegistry: selectionActionRegistry,
     commandNames: ["exit", "help", "inspect", "paste", "quit", "restart", "session", "sessions", "switch", "timebox", "undo"]
   });
