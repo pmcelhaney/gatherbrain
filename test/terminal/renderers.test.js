@@ -58,6 +58,44 @@ describe("terminal renderers", () => {
     assert.match(rendered, /due:Jul 10/);
   });
 
+  it("marks preview-selected fact rows", () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const selectedFact = buildFact();
+    const resultSet = new SearchResultSet([selectedFact]);
+
+    assert.equal(
+      renderer.render({
+        state,
+        resultSet,
+        selectionPreview: { includes: (factId) => factId === selectedFact.id },
+        width: 80,
+        height: 10,
+        today: "2026-06-30"
+      }).join("\n"),
+      "> 1. todo Follow up with Steve. due:tomorrow"
+    );
+  });
+
+  it("uses reverse video for preview selection when color is enabled", () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const selectedFact = buildFact();
+    const resultSet = new SearchResultSet([selectedFact]);
+
+    const rendered = renderer.render({
+      state,
+      resultSet,
+      selectionPreview: { includes: (factId) => factId === selectedFact.id },
+      width: 80,
+      height: 10,
+      today: "2026-06-30",
+      colorEnabled: true
+    }).join("\n");
+
+    assert.match(rendered, /\x1b\[7m/);
+  });
+
   it("renders calendar rows and plan previews in plan mode", () => {
     const state = new AppState({
       currentSession: "Steve",

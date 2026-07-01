@@ -11,6 +11,7 @@ export class BodyRenderer {
     resultSet = null,
     timeBoxes = [],
     helpLines = null,
+    selectionPreview = null,
     width = 80,
     height = 20,
     today = null,
@@ -37,7 +38,9 @@ export class BodyRenderer {
     const rendered = [];
 
     for (const { number, fact } of rows) {
-      const prefix = `${padVisibleStart(String(number), numberWidth)}. `;
+      const isSelected = selectionPreview?.includes(fact.id) ?? false;
+      const basePrefix = `${padVisibleStart(String(number), numberWidth)}. `;
+      const prefix = isSelected && !colorEnabled ? `>${basePrefix}` : basePrefix;
       const type = fact.type ? `${fact.type} ` : "";
       const due = fact.dueDate ? ` due:${formatDueDate(fact.dueDate, today)}` : "";
       const firstLinePrefix = `${color(prefix, ansi.gray, colorEnabled)}${color(type, ansi.cyan, colorEnabled)}`;
@@ -46,10 +49,10 @@ export class BodyRenderer {
       const continuationWidth = Math.max(1, width - continuationPrefix.length);
       const [first, ...rest] = wrapPlain(`${fact.content}${due}`, firstLineWidth);
 
-      rendered.push(`${firstLinePrefix}${first}`);
+      rendered.push(highlight(`${firstLinePrefix}${first}`, isSelected, colorEnabled));
       for (const line of rest) {
         for (const wrapped of wrapPlain(line, continuationWidth)) {
-          rendered.push(`${continuationPrefix}${wrapped}`);
+          rendered.push(highlight(`${continuationPrefix}${wrapped}`, isSelected, colorEnabled));
         }
       }
     }
@@ -60,6 +63,14 @@ export class BodyRenderer {
 
     return rendered;
   }
+}
+
+function highlight(text, enabled, colorEnabled) {
+  if (!enabled || !colorEnabled) {
+    return text;
+  }
+
+  return `${ansi.reverse}${text}${ansi.reset}`;
 }
 
 function formatDueDate(dueDate, today) {

@@ -4,6 +4,7 @@ export const ansi = Object.freeze({
   hideCursor: "\x1b[?25l",
   showCursor: "\x1b[?25h",
   reset: "\x1b[0m",
+  reverse: "\x1b[7m",
   gray: "\x1b[90m",
   cyan: "\x1b[36m"
 });

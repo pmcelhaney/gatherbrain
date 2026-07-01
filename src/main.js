@@ -9,7 +9,7 @@ import { CompletionService, PromptClassifier, PromptController } from "./interac
 import { AppStateRepository, FactRepository, SessionRepository, Workspace } from "./persistence/index.js";
 import { PlanParser, TimeBoxRepository } from "./planning/index.js";
 import { FactIndex, SearchEngine, SearchQueryParser, SearchResultSet } from "./search/index.js";
-import { AppState } from "./state/index.js";
+import { AppState, Selection } from "./state/index.js";
 import { ansi, InputBuffer, TerminalApp } from "./terminal/index.js";
 
 export function createAppRuntime({
@@ -185,6 +185,7 @@ export function createAppRuntime({
         resultSet,
         timeBoxes,
         helpLines,
+        selectionPreview: selectionPreviewForInput(input, resultSet),
         input,
         cursor,
         showCursor,
@@ -199,6 +200,24 @@ export function createAppRuntime({
       return completionService.complete(input, { resultSet });
     }
   };
+}
+
+function selectionPreviewForInput(input, resultSet) {
+  if (!resultSet || !/^\s*(\d+|\.)/.test(input)) {
+    return null;
+  }
+
+  const selectors = input.trim().split(/\s+/).filter((token) => /^\d+$|^\.+$/.test(token));
+
+  if (selectors.length === 0) {
+    return null;
+  }
+
+  try {
+    return Selection.resolve(selectors, resultSet);
+  } catch {
+    return null;
+  }
 }
 
 function stateForPreview({ state, input, promptClassifier, planParser, clock }) {

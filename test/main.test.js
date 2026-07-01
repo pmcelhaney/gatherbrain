@@ -191,6 +191,24 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("previews selected rows while typing selectors", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-selection-preview-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit("Follow up with Steve.");
+
+    assert.match(runtime.render({ input: "1" }), /> 1\. fact Follow up with Steve/);
+    assert.match(runtime.render({ input: "." }), /> 1\. fact Follow up with Steve/);
+    assert.equal(runtime.state.currentMode, "Capture");
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("clears retained screen state on restart", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-restart-"));
