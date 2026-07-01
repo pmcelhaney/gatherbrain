@@ -38,7 +38,8 @@ function containsTerm(fact, term) {
     fact.content,
     fact.type,
     fact.homeSession.name,
-    ...fact.associatedSessions.map((session) => session.name)
+    ...fact.associatedSessions.map((session) => session.name),
+    ...fact.tags
   ].join(" ").toLocaleLowerCase("en-US");
 
   return haystack.includes(term.toLocaleLowerCase("en-US"));
@@ -58,6 +59,10 @@ function matchesField(fact, node, context) {
     ];
 
     return sessions.some((session) => compareText(session, node.operator, value));
+  }
+
+  if (node.field === "tag") {
+    return fact.tags.some((tag) => compareText(tag, node.operator, value));
   }
 
   if (node.field === "due") {

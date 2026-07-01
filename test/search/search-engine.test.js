@@ -59,6 +59,18 @@ describe("SearchEngine", () => {
       "6f2308de-02e9-45db-8ff0-65ac793f4a24"
     ]);
   });
+
+  it("searches tags through terms and tag filters", () => {
+    const term = engine.search(facts(), parser.parse("/Devin"));
+    const tag = engine.search(facts(), parser.parse("/tag:Steve Ma"));
+
+    assert.deepEqual(term.facts.map((fact) => fact.id), [
+      "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
+    ]);
+    assert.deepEqual(tag.facts.map((fact) => fact.id), [
+      "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
+    ]);
+  });
 });
 
 function facts() {
@@ -77,7 +89,8 @@ function facts() {
       type: "todo",
       createdAt: "2026-06-30T15:45:00.000Z",
       dueDate: "2026-06-30",
-      homeSession: "Steve"
+      homeSession: "Steve",
+      tags: ["Devin", "Steve Ma"]
     })
   ];
 }

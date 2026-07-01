@@ -104,10 +104,10 @@ function coalesceFieldValues(tokens) {
       continue;
     }
 
-    if (field.name === "session") {
+    if (field.name === "session" || field.name === "tag") {
       const values = [field.value];
 
-      while (index + 1 < tokens.length && isSessionFieldContinuation(tokens[index + 1])) {
+      while (index + 1 < tokens.length && isSpacedFieldContinuation(tokens[index + 1])) {
         index += 1;
         values.push(tokens[index].value);
       }
@@ -132,7 +132,7 @@ function coalesceFieldValues(tokens) {
   return result;
 }
 
-function isSessionFieldContinuation(token) {
+function isSpacedFieldContinuation(token) {
   if (!token || token.type !== "term" && token.type !== "phrase") {
     return false;
   }

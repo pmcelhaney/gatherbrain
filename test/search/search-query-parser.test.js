@@ -40,6 +40,15 @@ describe("SearchQueryParser", () => {
     });
   });
 
+  it("parses unquoted spaced tag field values", () => {
+    assert.deepEqual(parser.parse("/tag:Steve Ma"), {
+      type: "field",
+      field: "tag",
+      operator: ":",
+      value: "Steve Ma"
+    });
+  });
+
   it("parses @ session shorthand", () => {
     assert.deepEqual(parser.parse("/@Architecture Review Board"), {
       type: "field",
