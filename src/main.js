@@ -347,23 +347,23 @@ export async function main(argv = process.argv.slice(2)) {
   }
 }
 
-async function runTui(runtime) {
-  readline.emitKeypressEvents(input);
-  input.setRawMode(true);
-  output.write(ansi.hideCursor);
+export async function runTui(runtime, { inputStream = input, outputStream = output } = {}) {
+  readline.emitKeypressEvents(inputStream);
+  inputStream.setRawMode(true);
+  outputStream.write(ansi.hideCursor);
 
   const buffer = new InputBuffer();
   let status = "";
 
   const redraw = () => {
-    output.write(`${ansi.clear}${ansi.home}`);
-    output.write(runtime.render({
+    outputStream.write(`${ansi.clear}${ansi.home}`);
+    outputStream.write(runtime.render({
       input: buffer.text,
       cursor: buffer.cursor,
       showCursor: true,
       status,
-      width: output.columns ?? 80,
-      height: output.rows ?? 24,
+      width: outputStream.columns ?? 80,
+      height: outputStream.rows ?? 24,
       colorEnabled: true
     }));
   };
@@ -464,11 +464,12 @@ async function runTui(runtime) {
       }
     };
 
-    input.on("keypress", onKeypress);
+    inputStream.on("keypress", onKeypress);
   }).finally(() => {
-    input.off("keypress", onKeypress);
-    input.setRawMode(false);
-    output.write(`${ansi.showCursor}\n`);
+    inputStream.off("keypress", onKeypress);
+    inputStream.setRawMode(false);
+    inputStream.pause();
+    outputStream.write(`${ansi.showCursor}\n`);
   });
 }
 

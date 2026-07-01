@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { EventEmitter } from "node:events";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -139,6 +140,44 @@ describe("main", () => {
     assert.equal(result.status, 0);
     assert.match(result.stdout, /:switch <session>/);
     assert.match(result.stdout, /plain text\s+capture a fact/);
+  });
+
+  it("pauses tty input after quitting the interactive app", async () => {
+    const { runTui } = await import("../src/main.js");
+    const input = new EventEmitter();
+    const output = {
+      columns: 80,
+      rows: 24,
+      writes: [],
+      write(value) {
+        this.writes.push(value);
+      }
+    };
+    const rawModes = [];
+    let paused = false;
+    input.setRawMode = (value) => rawModes.push(value);
+    input.pause = () => {
+      paused = true;
+    };
+
+    const run = runTui({
+      render() {
+        return "";
+      }
+    }, { inputStream: input, outputStream: output });
+
+    input.emit("keypress", ":", { sequence: ":", name: undefined });
+    input.emit("keypress", "q", { sequence: "q", name: undefined });
+    input.emit("keypress", "u", { sequence: "u", name: undefined });
+    input.emit("keypress", "i", { sequence: "i", name: undefined });
+    input.emit("keypress", "t", { sequence: "t", name: undefined });
+    input.emit("keypress", "\r", { sequence: "\r", name: "return" });
+
+    await run;
+
+    assert.deepEqual(rawModes, [true, false]);
+    assert.equal(paused, true);
+    assert.equal(input.listenerCount("keypress"), 0);
   });
 });
 
