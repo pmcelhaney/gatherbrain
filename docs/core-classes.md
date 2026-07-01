@@ -95,7 +95,7 @@ Core fields:
 Responsibilities:
 
 - Enforce that facts cannot be captured before a session is selected.
-- Reset state for `:restart`.
+- Reset in-memory state during startup and runtime restart reloads.
 - Switch sessions and reset the query to `session:<new session>`.
 - Track mode transitions inferred from prompt input.
 

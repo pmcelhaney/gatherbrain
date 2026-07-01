@@ -53,32 +53,37 @@ export function createAppRuntime({
     currentTimeBoxesProvider: () => timeBoxes
   });
 
+  const initializeRuntimeState = async () => {
+    const today = clock().toISOString().slice(0, 10);
+    const savedState = await appStateRepository.load();
+
+    state.restart();
+    if (savedState?.currentSession) {
+      state.switchSession(savedState.currentSession);
+    }
+    if (savedState?.currentQuery) {
+      state.setQuery(savedState.currentQuery);
+    }
+
+    factIndex.invalidate();
+    resultSet = await initialResultSet({
+      state,
+      factIndex,
+      searchEngine,
+      searchQueryParser,
+      clock
+    });
+    timeBoxes = await timeBoxRepository.listByDate(today);
+    helpLines = null;
+    undoSnapshot = null;
+  };
+
   return {
     state,
     terminalApp,
     completionService,
     async initialize() {
-      const today = clock().toISOString().slice(0, 10);
-      const savedState = await appStateRepository.load();
-
-      if (savedState) {
-        state.restart();
-        if (savedState.currentSession) {
-          state.switchSession(savedState.currentSession);
-        }
-        if (savedState.currentQuery) {
-          state.setQuery(savedState.currentQuery);
-        }
-      }
-
-      resultSet = await initialResultSet({
-        state,
-        factIndex,
-        searchEngine,
-        searchQueryParser,
-        clock
-      });
-      timeBoxes = await timeBoxRepository.listByDate(today);
+      await initializeRuntimeState();
     },
     async submit(line) {
       if (line.trim() === "") {
@@ -161,10 +166,9 @@ export function createAppRuntime({
       }
 
       if (result.action === "restart") {
-        resultSet = null;
-        timeBoxes = [];
-        helpLines = null;
-        undoSnapshot = null;
+        await appStateRepository.save(state);
+        await initializeRuntimeState();
+        return result;
       }
 
       await appStateRepository.save(state);

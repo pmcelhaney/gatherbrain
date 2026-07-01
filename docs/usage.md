@@ -224,7 +224,7 @@ Calendar rows are numbered in plan mode. Update or delete a visible time box:
 | `:timebox delete <number>` | Deletes a visible time box |
 | `:undo` | Undoes the most recent selection action |
 | `:help` | Shows in-app help |
-| `:restart` | Clears current app state |
+| `:restart` | Restarts the app and reloads current state |
 | `:paste` | Recognized, but paste mode is not implemented yet |
 | `:exit` | Exits the app |
 | `:quit` | Exits the app |

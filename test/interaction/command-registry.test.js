@@ -17,12 +17,12 @@ describe("CommandRegistry", () => {
     assert.equal(state.currentQuery, "session:Architecture Review Board");
   });
 
-  it("restarts app state", async () => {
+  it("requests an app restart without clearing state", async () => {
     const state = new AppState({ currentSession: "Steve" });
     const result = await new CommandRegistry().execute(":restart", { state });
 
     assert.equal(result.action, "restart");
-    assert.equal(state.currentSession, null);
+    assert.equal(state.currentSession.name, "Steve");
   });
 
   it("recognizes paste before paste mode exists", async () => {

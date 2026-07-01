@@ -300,7 +300,7 @@ The mode is inferred from the first character entered.
 | `:timebox delete <number>` | Deletes a visible time box |
 | `:undo` | Undoes the most recent selection action in memory |
 | `:help` | Shows in-app help |
-| `:restart` | Clears current session, query, selection, plan preview, and visible panels |
+| `:restart` | Restarts the app, reloads current session/query, and clears transient panels |
 | `:paste` | Reserved for a future paste/import mode |
 | `:exit` / `:quit` | Exits the app |
 
@@ -454,9 +454,11 @@ session:<new session>
 
 ### `:restart`
 
-Returns the application to its initial state.
+Restarts the application runtime and reloads the saved current session and query.
 
-The current session is cleared.
+Transient state such as visible panels, selection previews, and undo history is
+cleared. Durable workspace state, including facts, time boxes, and the current
+session/query, is preserved.
 
 ### `:paste`
 

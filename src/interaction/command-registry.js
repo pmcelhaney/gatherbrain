@@ -38,12 +38,10 @@ class SwitchSessionCommand {
 }
 
 class RestartCommand {
-  execute(args, { state }) {
+  execute(args) {
     if (args.trim()) {
       throw new Error(":restart does not accept arguments");
     }
-
-    state.restart();
 
     return InteractionResult.classified({
       mode: AppMode.COMMAND,
@@ -84,7 +82,7 @@ class HelpCommand {
         ":timebox <number> <range> <session>  update a timebox",
         ":timebox delete <number>             delete a timebox",
         ":undo               undo the last selection action",
-        ":restart            clear current app state",
+        ":restart            restart the app and reload current state",
         ":paste              recognized; not implemented yet",
         ":help               show this help",
         ":exit / :quit       exit",
