@@ -53,10 +53,10 @@ export class BodyRenderer {
       const continuationWidth = Math.max(1, width - continuationPrefix.length);
       const [first, ...rest] = wrapPlain(fact.content, firstLineWidth);
 
-      rendered.push(highlight(`${firstLinePrefix}${first}`, isSelected, colorEnabled));
+      rendered.push(highlight(`${firstLinePrefix}${highlightTags(first, fact.tags, colorEnabled)}`, isSelected, colorEnabled));
       for (const line of rest) {
         for (const wrapped of wrapPlain(line, continuationWidth)) {
-          rendered.push(highlight(`${continuationPrefix}${wrapped}`, isSelected, colorEnabled));
+          rendered.push(highlight(`${continuationPrefix}${highlightTags(wrapped, fact.tags, colorEnabled)}`, isSelected, colorEnabled));
         }
       }
     }
@@ -92,6 +92,51 @@ function highlight(text, enabled, colorEnabled) {
   }
 
   return `${ansi.reverse}${text}${ansi.reset}`;
+}
+
+function highlightTags(text, tags = [], colorEnabled) {
+  if (!colorEnabled || tags.length === 0) {
+    return text;
+  }
+
+  const sortedTags = [...tags].sort((left, right) => right.length - left.length);
+  let rendered = "";
+  let index = 0;
+
+  while (index < text.length) {
+    if (text[index] !== "@") {
+      rendered += text[index];
+      index += 1;
+      continue;
+    }
+
+    const tag = sortedTags.find((candidate) => isTagMention(text, index, candidate));
+
+    if (!tag) {
+      rendered += text[index];
+      index += 1;
+      continue;
+    }
+
+    const mention = `@${tag}`;
+    rendered += color(mention, ansi.green, colorEnabled);
+    index += mention.length;
+  }
+
+  return rendered;
+}
+
+function isTagMention(text, startIndex, tag) {
+  if (text.slice(startIndex + 1, startIndex + 1 + tag.length) !== tag) {
+    return false;
+  }
+
+  const nextChar = text[startIndex + 1 + tag.length];
+  return !nextChar || isTagStopChar(nextChar);
+}
+
+function isTagStopChar(char) {
+  return /\s/.test(char) || ["'", "\"", ".", ",", ";", ":", "!", "?", "(", ")", "[", "]", "{", "}", "<", ">"].includes(char);
 }
 
 function formatDueDate(dueDate, today) {

@@ -47,6 +47,45 @@ describe("terminal renderers", () => {
     );
   });
 
+  it("colors tag mentions in fact rows", () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const resultSet = new SearchResultSet([
+      buildFact({
+        content: "@Steve Ma said @Devin's trial ends.",
+        tags: ["Steve Ma", "Devin"]
+      })
+    ]);
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+
+    assert.equal(
+      renderer.render({
+        state,
+        resultSet,
+        width: 80,
+        height: 10,
+        today: "2026-06-30",
+        colorEnabled: true
+      }).join("\n"),
+      `\x1b[90m+ 1. \x1b[0m\x1b[36mtodo \x1b[0m\x1b[35mtomorrow \x1b[0m\x1b[32m@Steve Ma\x1b[0m said \x1b[32m@Devin\x1b[0m's trial ends.`
+    );
+  });
+
+  it("leaves tag mentions plain when color is disabled", () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const resultSet = new SearchResultSet([
+      buildFact({
+        content: "@Steve Ma said @Devin's trial ends.",
+        tags: ["Steve Ma", "Devin"]
+      })
+    ]);
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+
+    assert.equal(
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      "+ 1. todo tomorrow @Steve Ma said @Devin's trial ends."
+    );
+  });
+
   it("renders friendly due labels", () => {
     const state = new AppState({ currentSession: "Steve" });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
