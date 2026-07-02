@@ -303,6 +303,9 @@ appears in gray, and multiple matches appear in a compact candidate line above
 the prompt. Press `Right` or `Ctrl+F` to accept a visible recommendation and
 keep typing after it.
 
+Command names can also be submitted as an unambiguous prefix. For example,
+`:s Steve` and `:sw Steve` execute the same way as `:switch Steve`.
+
 While typing in the interactive TUI, `Ctrl+A` moves to the start of the input
 and `Ctrl+E` moves to the end.
 

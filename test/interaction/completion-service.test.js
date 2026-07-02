@@ -8,6 +8,7 @@ describe("CompletionService", () => {
   it("completes commands", async () => {
     const service = new CompletionService();
 
+    assert.equal(await service.complete(":s"), ":switch");
     assert.equal(await service.complete(":sw"), ":switch");
     assert.equal(await service.complete(":qu"), ":quit");
   });

@@ -13,7 +13,8 @@ export class CommandRegistry {
 
   async execute(input, context) {
     const { name, args } = parseCommand(input);
-    const command = this.commands.get(name);
+    const commandName = resolveCommandName(name, this.commands);
+    const command = this.commands.get(commandName);
 
     if (!command) {
       throw new Error(`Unknown command: ${name}`);
@@ -371,4 +372,25 @@ function parseCommand(input) {
     name,
     args: rest.join(" ")
   };
+}
+
+function resolveCommandName(name, commands) {
+  if (commands.has(name)) {
+    return name;
+  }
+
+  const normalizedName = name.toLocaleLowerCase("en-US");
+  const matches = [...commands.keys()].filter((commandName) =>
+    commandName.toLocaleLowerCase("en-US").startsWith(normalizedName)
+  );
+
+  if (matches.length === 1) {
+    return matches[0];
+  }
+
+  if (matches.length > 1) {
+    throw new Error(`Ambiguous command: ${name} (${matches.map((match) => `:${match}`).join(", ")})`);
+  }
+
+  return name;
 }

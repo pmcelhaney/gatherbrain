@@ -28,6 +28,37 @@ describe("CommandRegistry", () => {
     assert.equal(state.currentQuery, "context:Steve Ma");
   });
 
+  it("executes unambiguous command shorthands", async () => {
+    const state = new AppState();
+    const result = await new CommandRegistry().execute(":sw Architecture Review Board", {
+      state
+    });
+
+    assert.equal(result.action, "switch_context");
+    assert.equal(state.currentContext.name, "Architecture Review Board");
+
+    const shortState = new AppState();
+    await new CommandRegistry().execute(":s Steve", {
+      state: shortState
+    });
+
+    assert.equal(shortState.currentContext.name, "Steve");
+  });
+
+  it("rejects ambiguous command shorthands", async () => {
+    await assert.rejects(
+      () => new CommandRegistry().execute(":c Steve", {
+        state: new AppState(),
+        contextRepository: {
+          async list() {
+            return ["Steve"];
+          }
+        }
+      }),
+      /Ambiguous command: c \(:context, :contexts\)/
+    );
+  });
+
   it("requests an app restart without clearing state", async () => {
     const state = new AppState({ currentContext: "Steve" });
     const result = await new CommandRegistry().execute(":restart", { state });
