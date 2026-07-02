@@ -87,9 +87,9 @@ lists all facts.
 
 Search results are ordered newest first by fact creation time.
 
-Search result rows show each fact's home session, so cross-session searches make
-the origin session visible even when the fact is also associated with the current
-session.
+Search result rows show a fact's home session only when the fact is outside the
+current session context. Facts that live in the current session or are associated
+with the current session keep the compact current-context row.
 
 Session search supports quoted values, unquoted multi-word session values, and
 `@Session Name` shorthand.

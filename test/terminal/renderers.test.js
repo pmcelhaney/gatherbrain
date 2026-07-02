@@ -249,6 +249,30 @@ describe("terminal renderers", () => {
     );
   });
 
+  it("does not show the home session for current-context search results", () => {
+    const state = new AppState({
+      currentSession: "Steve",
+      currentMode: AppMode.SEARCH
+    });
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const resultSet = new SearchResultSet([
+      buildFact({ homeSession: "Steve" }),
+      buildFact({
+        id: "6f2308de-02e9-45db-8ff0-65ac793f4a24",
+        homeSession: "Architecture Review Board",
+        associatedSessions: ["Steve"]
+      })
+    ]);
+
+    assert.equal(
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      [
+        "+ 1. todo tomorrow Follow up with Steve.",
+        "+ 2. todo tomorrow Follow up with Steve."
+      ].join("\n")
+    );
+  });
+
   it("marks facts associated with the current context", () => {
     const state = new AppState({ currentSession: "Steve" });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });

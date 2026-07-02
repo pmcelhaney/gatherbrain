@@ -83,7 +83,10 @@ function displayType(fact) {
 }
 
 function displayHomeSession(fact, state) {
-  if (state.currentMode !== AppMode.SEARCH) {
+  if (
+    state.currentMode !== AppMode.SEARCH ||
+    isFactInCurrentContext(fact, state.currentSession)
+  ) {
     return "";
   }
 
