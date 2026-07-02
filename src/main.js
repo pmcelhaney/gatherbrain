@@ -309,6 +309,7 @@ export function createAppRuntime({
         helpLines: contextListPreviewForInput({
           input,
           recentContexts,
+          facts: cachedFacts,
           height: bodyHeightForRender({
             height,
             status,
@@ -392,12 +393,12 @@ function recordRecentContext(recentContexts, context) {
   ];
 }
 
-function contextListPreviewForInput({ input, recentContexts, height }) {
+function contextListPreviewForInput({ input, recentContexts, facts = [], height }) {
   if (!input.startsWith("@")) {
     return null;
   }
 
-  if (scopedContextTarget(input, recentContexts)) {
+  if (scopedContextTarget(input, { recentContexts, facts })) {
     return null;
   }
 
@@ -528,7 +529,7 @@ function scopedResultSetForInput({
   searchQueryParser,
   clock
 }) {
-  const target = scopedContextTarget(input, recentContexts);
+  const target = scopedContextTarget(input, { recentContexts, facts });
 
   if (!target || !searchEngine || !searchQueryParser) {
     return null;
@@ -547,7 +548,7 @@ function scopedContextSelectionInput(input, {
   recentContexts = [],
   actionKeywords = []
 } = {}) {
-  const target = scopedContextTarget(input, recentContexts);
+  const target = scopedContextTarget(input, { recentContexts });
 
   if (!target || target.rest.trim().length === 0) {
     return null;
@@ -580,14 +581,32 @@ function scopedContextSelectionInput(input, {
   };
 }
 
-function scopedContextTarget(input, recentContexts = []) {
-  const match = String(input).match(/^@(?<selector>\d+|\.+)(?<rest>\s+.*)?$/);
+function scopedContextTarget(input, { recentContexts = [], facts = [] } = {}) {
+  const selectorMatch = String(input).match(/^@(?<selector>\d+|\.+)(?<rest>\s+.*)?$/);
 
-  if (!match) {
+  if (selectorMatch) {
+    const contextName = contextNameForRecentSelector(selectorMatch.groups.selector, recentContexts);
+
+    if (!contextName) {
+      return null;
+    }
+
+    return {
+      contextName,
+      rest: selectorMatch.groups.rest ?? ""
+    };
+  }
+
+  const contextMatch = String(input).match(/^@(?<context>\S+)$/);
+
+  if (!contextMatch) {
     return null;
   }
 
-  const contextName = contextNameForRecentSelector(match.groups.selector, recentContexts);
+  const contextName = contextNameForTypedPrefix(contextMatch.groups.context, {
+    recentContexts,
+    facts
+  });
 
   if (!contextName) {
     return null;
@@ -595,13 +614,64 @@ function scopedContextTarget(input, recentContexts = []) {
 
   return {
     contextName,
-    rest: match.groups.rest ?? ""
+    rest: ""
   };
 }
 
 function contextNameForRecentSelector(selector, recentContexts = []) {
   const index = /^\d+$/.test(selector) ? Number(selector) - 1 : selector.length - 1;
   return recentContexts[index] ?? null;
+}
+
+function contextNameForTypedPrefix(rawPrefix, { recentContexts = [], facts = [] } = {}) {
+  const prefix = Context.normalizeName(rawPrefix);
+
+  if (!prefix) {
+    return null;
+  }
+
+  const normalizedPrefix = Context.canonicalize(prefix);
+  const matches = contextNamesFromFactsAndRecentContexts(facts, recentContexts).filter((contextName) =>
+    Context.canonicalize(contextName).startsWith(normalizedPrefix)
+  );
+
+  if (matches.length === 1) {
+    return matches[0];
+  }
+
+  return matches.find((contextName) =>
+    Context.canonicalize(contextName) === normalizedPrefix
+  ) ?? null;
+}
+
+function contextNamesFromFactsAndRecentContexts(facts = [], recentContexts = []) {
+  const contextNames = [];
+
+  for (const contextName of recentContexts) {
+    appendUniqueContextName(contextNames, contextName);
+  }
+
+  for (const fact of facts) {
+    appendUniqueContextName(contextNames, fact.homeContext.name);
+
+    for (const context of fact.associatedContexts) {
+      appendUniqueContextName(contextNames, context.name);
+    }
+  }
+
+  return contextNames;
+}
+
+function appendUniqueContextName(contextNames, contextName) {
+  if (!contextName) {
+    return;
+  }
+
+  const normalizedName = Context.canonicalize(contextName);
+
+  if (!contextNames.some((existing) => Context.canonicalize(existing) === normalizedName)) {
+    contextNames.push(Context.normalizeName(contextName));
+  }
 }
 
 function resultSetForContext({

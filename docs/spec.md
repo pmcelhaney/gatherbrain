@@ -638,11 +638,12 @@ Dots refer to the nth visible item.
 
 Selection is a prefix for an action.
 
-When the prompt contains `@<number>` or `@<dots>`, the body previews the
-associated recent context. If the prompt is only `@<context>`, `@<number>`, or
-`@<dots>`, pressing Enter switches to that context. If the prompt continues
-with fact selectors and selection actions, the actions apply to the associated
-context's visible facts and then the app returns to the original context.
+When the prompt contains a typed `@<context>` prefix, `@<number>`, or
+`@<dots>`, the body previews the associated context. If the prompt is only
+`@<context>`, `@<number>`, or `@<dots>`, pressing Enter switches to that
+context. If the prompt continues with fact selectors and selection actions, the
+actions apply to the associated context's visible facts and then the app
+returns to the original context.
 
 General form:
 

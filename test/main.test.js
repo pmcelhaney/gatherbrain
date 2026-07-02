@@ -557,6 +557,32 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("previews a typed context's items before switching to it", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-typed-context-preview-"));
+    const runtime = createAppRuntime({ workspacePath });
+
+    await runtime.submit("@Gatherbrain");
+    await runtime.submit("Review Gatherbrain items.");
+    await runtime.submit("@Steve Ma");
+    await runtime.submit("Review Steve items.");
+
+    const typedPrefix = runtime.render({ input: "@Gat" });
+    const completedSuggestion = runtime.render({
+      input: "@Gatherbrain",
+      cursor: 4,
+      completionSuggestionStart: 4
+    });
+
+    assert.match(typedPrefix, /1\. Review Gatherbrain items\./);
+    assert.doesNotMatch(typedPrefix, /Review Steve items/);
+    assert.match(completedSuggestion, /1\. Review Gatherbrain items\./);
+    assert.doesNotMatch(completedSuggestion, /^ 1\. Steve Ma$/m);
+    assert.equal(runtime.state.currentContext.name, "Steve Ma");
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("previews and applies selection actions in a numbered recent context", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-scoped-selection-"));

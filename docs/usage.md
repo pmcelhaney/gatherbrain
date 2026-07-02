@@ -222,10 +222,10 @@ Multiple actions can be used together against the same selectors:
 ```
 
 You can scope a selection command to a recent context by starting with its
-`@` preview selector. While typing `@<number>` or `@<dots>`, the body shows that
-context. Pressing Enter on only `@<context>`, `@<number>`, or `@<dots>` switches
-there; adding selectors and actions commits those actions inside that context
-and returns to the original context.
+`@` preview selector. While typing a matching `@<context>` prefix, `@<number>`,
+or `@<dots>`, the body shows that context. Pressing Enter on only `@<context>`,
+`@<number>`, or `@<dots>` switches there; adding selectors and actions commits
+those actions inside that context and returns to the original context.
 
 ```text
 @2 1 task today
