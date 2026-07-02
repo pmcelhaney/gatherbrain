@@ -1,4 +1,5 @@
 import { AppMode } from "../state/index.js";
+import { ansi } from "./ansi.js";
 
 export class PromptRenderer {
   render({ state, input = "", cursor = input.length, showCursor = false }) {
@@ -8,7 +9,11 @@ export class PromptRenderer {
 }
 
 function renderCursor(input, cursor) {
-  return `${input.slice(0, cursor)}█${input.slice(cursor)}`;
+  if (cursor >= input.length) {
+    return `${input}█`;
+  }
+
+  return `${input.slice(0, cursor)}${ansi.reverse}${input[cursor]}${ansi.reset}${input.slice(cursor + 1)}`;
 }
 
 function prefixForMode(mode) {

@@ -263,9 +263,9 @@ describe("main", () => {
 
     input.emit("keypress", "a", { sequence: "a", name: undefined });
     input.emit("keypress", "c", { sequence: "c", name: undefined });
-    input.emit("keypress", "\u0001", { sequence: "\u0001", name: "a", ctrl: true });
+    input.emit("keypress", "\u0001", { sequence: "\u0001", name: "a" });
     input.emit("keypress", "b", { sequence: "b", name: undefined });
-    input.emit("keypress", "\u0005", { sequence: "\u0005", name: "e", ctrl: true });
+    input.emit("keypress", "\u0005", { sequence: "\u0005", name: "e" });
     input.emit("keypress", "d", { sequence: "d", name: undefined });
     input.emit("keypress", "\r", { sequence: "\r", name: "return" });
 

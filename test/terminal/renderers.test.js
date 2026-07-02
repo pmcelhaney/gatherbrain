@@ -353,7 +353,11 @@ describe("terminal renderers", () => {
     assert.equal(new PromptRenderer().render({ state, input: "Steve" }), "> Steve");
     assert.equal(
       new PromptRenderer().render({ state, input: "Steve", cursor: 2, showCursor: true }),
-      "> St█eve"
+      "> St\x1b[7me\x1b[0mve"
+    );
+    assert.equal(
+      new PromptRenderer().render({ state, input: "Steve", cursor: 0, showCursor: true }),
+      "> \x1b[7mS\x1b[0mteve"
     );
   });
 

@@ -334,6 +334,9 @@ prefix, pressing Tab repeatedly cycles through the matching candidates.
 While typing in the interactive prompt, `Ctrl+A` moves the cursor to the start
 of the input and `Ctrl+E` moves the cursor to the end.
 
+Cursor movement does not change the visible input text. At the start of a
+non-empty prompt input, the cursor is shown over the first character.
+
 ---
 
 # Prompt Modes

@@ -437,19 +437,19 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
 
   await new Promise((resolve) => {
     onKeypress = async (sequence, key) => {
-      if (key.ctrl && key.name === "c") {
+      if (isControlKey(key, sequence, "c", "\u0003")) {
         resolve();
         return;
       }
 
-      if (key.ctrl && key.name === "a") {
+      if (isControlKey(key, sequence, "a", "\u0001")) {
         resetCompletionCycle();
         buffer.moveHome();
         redraw();
         return;
       }
 
-      if (key.ctrl && key.name === "e") {
+      if (isControlKey(key, sequence, "e", "\u0005")) {
         resetCompletionCycle();
         buffer.moveEnd();
         redraw();
@@ -553,7 +553,7 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
         return;
       }
 
-      if (key.sequence && key.sequence.length === 1 && !key.ctrl && !key.meta) {
+      if (isPrintableKeypress(key, sequence)) {
         resetCompletionCycle();
         buffer.insert(sequence);
         redraw();
@@ -567,6 +567,19 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
     inputStream.pause();
     outputStream.write(`${ansi.showCursor}\n`);
   });
+}
+
+function isControlKey(key, sequence, name, controlSequence) {
+  return key?.sequence === controlSequence || sequence === controlSequence || (key?.ctrl && key?.name === name);
+}
+
+function isPrintableKeypress(key, sequence) {
+  return typeof sequence === "string"
+    && sequence.length === 1
+    && sequence >= " "
+    && sequence !== "\x7f"
+    && !key?.ctrl
+    && !key?.meta;
 }
 
 function suspendTuiInputForChildProcess(inputStream, outputStream) {
