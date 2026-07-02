@@ -37,6 +37,14 @@ describe("PlanParser", () => {
     assert.equal(preview.timeBox.context.name, "Reading");
   });
 
+  it("parses bare weekday date prefixes", () => {
+    const parser = new PlanParser({ today: "2026-06-30" });
+    const preview = parser.parse("; Friday 14:30-15:00 Reading");
+
+    assert.equal(preview.isValid(), true);
+    assert.equal(preview.timeBox.date, "2026-07-03");
+  });
+
   it("returns invalid previews for incomplete input", () => {
     const parser = new PlanParser({ today: "2026-06-30" });
     const preview = parser.parse("; 9-10");

@@ -71,6 +71,12 @@ describe("PromptController", () => {
     );
   });
 
+  it("captures bare weekdays as ISO dates", async () => {
+    const result = await controller.submit("I will meet with Joe on Friday");
+
+    assert.equal(result.fact.content, "I will meet with Joe on 2026-07-03");
+  });
+
   it("captures URL input as a bookmark without storing the URL in the body", async () => {
     const result = await controller.submit("Read the Node docs https://nodejs.org/api/test.html.");
     const markdown = await fs.readFile(result.filePath, "utf8");

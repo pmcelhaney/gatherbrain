@@ -81,15 +81,15 @@ The stored body is `Read the Node docs`, and the terminal row renders that text
 as a hyperlink to the saved URL.
 
 Natural language dates in captured text are stored as `YYYY-MM-DD`. Supported
-forms include `today`, `tomorrow`, `yesterday`, `next <weekday>`, and month-day
-phrases such as `June 1`:
+forms include `today`, `tomorrow`, `yesterday`, weekdays such as `Friday`,
+`next <weekday>`, and month-day phrases such as `June 1`:
 
 ```text
-Follow up tomorrow and next Friday
+I will meet with Joe on Friday
 ```
 
-The stored body is `Follow up 2026-07-01 and 2026-07-03` when today is
-2026-06-30. Terminal rows render those ISO dates back as friendly labels.
+The stored body is `I will meet with Joe on 2026-07-03` when today is
+2026-06-30. Terminal rows render ISO dates back as friendly labels.
 
 Facts are stored as Markdown files with front matter beneath the workspace
 context folder. Slash-separated context names are stored as nested directories,
@@ -192,6 +192,7 @@ Dots select visible row positions:
 . task
 . today
 .. tomorrow
+. Friday
 . next Friday
 . June 1
 . @Steve\ Ma
@@ -251,6 +252,7 @@ Plan mode begins with `;`.
 ; 9-10 Steve
 ; 11-12 Counterfact
 ; tomorrow 14:30-15:00 Reading
+; Friday 14:30-15:00 Reading
 ; next Friday 14:30-15:00 Reading
 ; June 1 9-10 Steve
 ```

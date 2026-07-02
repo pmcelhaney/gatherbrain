@@ -216,10 +216,10 @@ contains only the URL, the body uses a readable host/path label while the full
 URL remains only in front matter.
 
 Natural language dates in captured text are normalized to `YYYY-MM-DD` before
-storage. Supported input forms are `today`, `tomorrow`, `yesterday`,
-`next <weekday>`, and month-day phrases such as `June 1`. Month-day phrases use
-the current year. Stored ISO dates render back as natural labels in terminal
-output.
+storage. Supported input forms are `today`, `tomorrow`, `yesterday`, weekdays
+such as `Friday`, `next <weekday>`, and month-day phrases such as `June 1`.
+Month-day phrases use the current year. Stored ISO dates render back as natural
+labels in terminal output.
 
 **current_query**
 
@@ -623,6 +623,8 @@ Examples:
 
 7 tomorrow
 
+. Friday
+
 . next Friday
 
 . June 1
@@ -807,7 +809,8 @@ Entering plan mode replaces the body with the calendar.
 Planning commands associate dates and time ranges with contexts.
 
 Plan dates accept `today`, `tomorrow`, `yesterday`, `next <weekday>`, explicit
-`YYYY-MM-DD`, and month-day phrases such as `June 1`.
+`YYYY-MM-DD`, weekdays such as `Friday`, and month-day phrases such as
+`June 1`.
 
 Example:
 
@@ -831,6 +834,8 @@ Examples:
 ; 11-12 Counterfact
 
 ; tomorrow 2-3 Reading
+
+; Friday 14:30-15:00 Reading
 
 ; next Friday 14:30-15:00 Reading
 

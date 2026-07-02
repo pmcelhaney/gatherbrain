@@ -12,16 +12,18 @@ import {
 describe("date text", () => {
   it("normalizes natural language dates to ISO dates", () => {
     assert.equal(
-      normalizeNaturalDates("Follow up tomorrow, next Friday, and June 1.", {
+      normalizeNaturalDates("Follow up tomorrow, Friday, next Friday, and June 1.", {
         today: "2026-06-30"
       }),
-      "Follow up 2026-07-01, 2026-07-03, and 2026-06-01."
+      "Follow up 2026-07-01, 2026-07-03, 2026-07-03, and 2026-06-01."
     );
   });
 
   it("resolves natural language date expressions", () => {
     assert.equal(resolveDateExpression("tomorrow", { today: "2026-06-30" }), "2026-07-01");
+    assert.equal(resolveDateExpression("Friday", { today: "2026-06-30" }), "2026-07-03");
     assert.equal(resolveDateExpression("next Friday", { today: "2026-06-30" }), "2026-07-03");
+    assert.equal(resolveDateExpression("Tuesday", { today: "2026-06-30" }), "2026-06-30");
     assert.equal(resolveDateExpression("June 1", { today: "2026-06-30" }), "2026-06-01");
   });
 

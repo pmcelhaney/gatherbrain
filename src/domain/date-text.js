@@ -38,11 +38,11 @@ const MONTHS = new Map([
 const WEEKDAY_PATTERN = WEEKDAY_NAMES.join("|");
 const MONTH_PATTERN = [...MONTHS.keys()].join("|");
 const NATURAL_DATE_PATTERN = new RegExp(
-  `\\b(today|tomorrow|yesterday|next\\s+(?:${WEEKDAY_PATTERN})|(?:${MONTH_PATTERN})\\.?\\s+\\d{1,2}(?:,?\\s+\\d{4})?)\\b`,
+  `\\b(today|tomorrow|yesterday|next\\s+(?:${WEEKDAY_PATTERN})|(?:${WEEKDAY_PATTERN})|(?:${MONTH_PATTERN})\\.?\\s+\\d{1,2}(?:,?\\s+\\d{4})?)\\b`,
   "gi"
 );
 const NATURAL_DATE_PREFIX_PATTERN = new RegExp(
-  `^(?<date>today|tomorrow|yesterday|next\\s+(?:${WEEKDAY_PATTERN})|(?:${MONTH_PATTERN})\\.?\\s+\\d{1,2}(?:,?\\s+\\d{4})?)(?=\\s|$)`,
+  `^(?<date>today|tomorrow|yesterday|next\\s+(?:${WEEKDAY_PATTERN})|(?:${WEEKDAY_PATTERN})|(?:${MONTH_PATTERN})\\.?\\s+\\d{1,2}(?:,?\\s+\\d{4})?)(?=\\s|$)`,
   "i"
 );
 
@@ -171,7 +171,11 @@ function dateFromNaturalText(expression, { today } = {}) {
   const nextWeekday = normalized.match(/^next\s+([a-z]+)$/);
 
   if (nextWeekday) {
-    return dateForNextWeekday(today, nextWeekday[1]);
+    return dateForWeekday(today, nextWeekday[1], { includeToday: false });
+  }
+
+  if (WEEKDAY_NAMES.includes(normalized)) {
+    return dateForWeekday(today, normalized, { includeToday: true });
   }
 
   const monthDay = normalized.match(/^([a-z]+)\s+(\d{1,2})(?:,?\s+(\d{4}))?$/);
@@ -186,7 +190,7 @@ function dateFromNaturalText(expression, { today } = {}) {
   return null;
 }
 
-function dateForNextWeekday(today, weekdayName) {
+function dateForWeekday(today, weekdayName, { includeToday }) {
   const targetDay = WEEKDAY_NAMES.indexOf(weekdayName);
 
   if (targetDay === -1) {
@@ -195,7 +199,8 @@ function dateForNextWeekday(today, weekdayName) {
 
   const date = new Date(`${today}T00:00:00.000Z`);
   const currentDay = date.getUTCDay();
-  const daysUntilTarget = ((targetDay - currentDay + 7) % 7) || 7;
+  const sameDayOffset = includeToday ? 0 : 7;
+  const daysUntilTarget = ((targetDay - currentDay + 7) % 7) || sameDayOffset;
   date.setUTCDate(date.getUTCDate() + daysUntilTarget);
   return date.toISOString().slice(0, 10);
 }
