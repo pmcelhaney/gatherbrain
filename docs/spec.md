@@ -86,11 +86,20 @@ An empty search prompt (`/`) refreshes the current query. If no current query
 exists, it searches the current context. If there is no current context, it
 lists all facts.
 
-Search results are ordered newest first by fact creation time.
+Search results show matches from the current context first, ordered newest first
+by fact creation time. A blank line separates those matches from matches in
+other contexts, which are also ordered newest first by fact creation time.
 
 Search result rows show a fact's home context only when the fact is outside the
-current context context. Facts that live in the current context or are associated
+current context. Facts that live in the current context or are associated
 with the current context keep the compact current-context row.
+
+When search mode is active, the header appends the active search query after the
+current context:
+
+```text
+contexts/<current context> | <search query>
+```
 
 Context search supports quoted values, unquoted multi-word context values, and
 `@Context Name` shorthand.

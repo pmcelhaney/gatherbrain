@@ -771,7 +771,8 @@ async function searchCurrentFacts({
   const facts = await factIndex.list();
   const ast = searchQueryParser.parse(state.currentQuery);
   return searchEngine.search(facts, ast, {
-    today: clock().toISOString().slice(0, 10)
+    today: clock().toISOString().slice(0, 10),
+    currentContext: state.currentContext
   });
 }
 

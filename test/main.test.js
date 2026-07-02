@@ -927,7 +927,9 @@ Login Screenshot
 
     const rendered = runtime.render();
 
+    assert.match(rendered, /contexts\/Architecture Review Board \| Shared/);
     assert.match(rendered, / 1\. Shared search term in Architecture/);
+    assert.match(rendered, /Shared search term in Architecture\.\n\n 2\./);
     assert.match(rendered, /\n 2\. \[Steve\] Shared search term in Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });

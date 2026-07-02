@@ -23,6 +23,19 @@ describe("terminal renderers", () => {
     );
   });
 
+  it("renders active search query in the header", () => {
+    const state = new AppState({
+      currentContext: "Steve",
+      currentMode: AppMode.SEARCH,
+      currentQuery: "Shared"
+    });
+
+    assert.equal(
+      new HeaderRenderer().render({ state, today: "2026-06-30" }),
+      "contexts/Steve | Shared"
+    );
+  });
+
   it("renders fact rows in the body", () => {
     const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([buildFact()]);
@@ -246,6 +259,30 @@ describe("terminal renderers", () => {
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
       " 1. task tomorrow [Architecture Review Board] Follow up with Steve."
+    );
+  });
+
+  it("separates current-context search results from other contexts", () => {
+    const state = new AppState({
+      currentContext: "Steve",
+      currentMode: AppMode.SEARCH
+    });
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const resultSet = new SearchResultSet([
+      buildFact({ homeContext: "Steve" }),
+      buildFact({
+        id: "6f2308de-02e9-45db-8ff0-65ac793f4a24",
+        homeContext: "Architecture Review Board"
+      })
+    ]);
+
+    assert.equal(
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      [
+        " 1. task tomorrow Follow up with Steve.",
+        "",
+        " 2. task tomorrow [Architecture Review Board] Follow up with Steve."
+      ].join("\n")
     );
   });
 

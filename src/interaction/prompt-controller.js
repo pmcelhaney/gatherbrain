@@ -134,7 +134,10 @@ export class PromptController {
     const query = queryForSearch(normalizeNaturalDates(expandedQuery, { today }), this.state);
     const ast = query === "*" ? { type: "all" } : this.searchQueryParser.parse(query);
     const facts = await this.factSource.list();
-    const resultSet = this.searchEngine.search(facts, ast, { today });
+    const resultSet = this.searchEngine.search(facts, ast, {
+      today,
+      currentContext: this.state.currentContext
+    });
 
     this.state.setQuery(query);
 
