@@ -52,6 +52,15 @@ describe("PromptController", () => {
     assert.deepEqual(result.fact.tags, ["Steve Ma", "Devin"]);
   });
 
+  it("captures natural language dates as ISO dates", async () => {
+    const result = await controller.submit("Follow up tomorrow, next Friday, and June 1.");
+
+    assert.equal(
+      result.fact.content,
+      "Follow up 2026-07-01, 2026-07-03, and 2026-06-01."
+    );
+  });
+
   it("captures URL input as a bookmark without storing the URL in the body", async () => {
     const result = await controller.submit("Read the Node docs https://nodejs.org/api/test.html.");
     const markdown = await fs.readFile(result.filePath, "utf8");
@@ -94,6 +103,29 @@ describe("PromptController", () => {
     assert.equal(result.resultSet.count, 1);
   });
 
+  it("searches natural language dates through their stored ISO form", async () => {
+    await controller.submit("Follow up tomorrow.");
+
+    const result = await controller.submit("/tomorrow");
+
+    assert.equal(result.action, "search");
+    assert.equal(result.query, "2026-07-01");
+    assert.equal(result.resultSet.count, 1);
+  });
+
+  it("expands search shortcuts before normalizing date words", async () => {
+    await controller.submit("Follow up with Steve.");
+    const search = await controller.submit("/Steve");
+    currentResultSet = search.resultSet;
+    await controller.submit(". today");
+
+    const result = await controller.submit("//today");
+
+    assert.equal(result.action, "search");
+    assert.equal(result.query, "due:2026-06-30");
+    assert.equal(result.resultSet.count, 1);
+  });
+
   it("lists all facts for empty search when no query exists", async () => {
     await controller.submit("Follow up with Steve.");
     state.restart();
@@ -126,11 +158,31 @@ describe("PromptController", () => {
     assert.equal(saved.dueDate, "2026-07-01");
   });
 
+  it("executes selection due dates from natural date phrases", async () => {
+    await controller.submit("Follow up with Steve.");
+    const search = await controller.submit("/Steve");
+    currentResultSet = search.resultSet;
+
+    await controller.submit(". next Friday");
+
+    const saved = await controller.factRepository.getFactById(
+      "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
+    );
+    assert.equal(saved.dueDate, "2026-07-03");
+  });
+
   it("executes plan input by saving a time box", async () => {
     const result = await controller.submit("; 9-10 Steve");
 
     assert.equal(result.action, "plan");
     assert.equal(result.timeBox.date, "2026-06-30");
     assert.equal(result.message, "planned 09:00-10:00 Steve");
+  });
+
+  it("executes plan input with natural language dates", async () => {
+    const result = await controller.submit("; June 1 9-10 Steve");
+
+    assert.equal(result.action, "plan");
+    assert.equal(result.timeBox.date, "2026-06-01");
   });
 });

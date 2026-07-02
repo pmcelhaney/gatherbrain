@@ -185,6 +185,22 @@ describe("terminal renderers", () => {
     assert.match(rendered, /yesterday Follow up/);
   });
 
+  it("renders ISO dates in fact content as natural language", () => {
+    const state = new AppState({ currentSession: "Steve" });
+    const resultSet = new SearchResultSet([
+      buildFact({
+        content: "Follow up 2026-07-01, 2026-07-03, and 2026-06-01.",
+        dueDate: null
+      })
+    ]);
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+
+    assert.equal(
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      "+ 1. todo Follow up tomorrow, Fri, and Jun 1."
+    );
+  });
+
   it("marks preview-selected fact rows", () => {
     const state = new AppState({ currentSession: "Steve" });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });

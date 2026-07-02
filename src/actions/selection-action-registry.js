@@ -6,6 +6,7 @@ import {
   SetTypeAction,
   TrashFactAction
 } from "./selection-actions.js";
+import { isDateExpression, resolveDateExpression } from "../domain/date-text.js";
 
 export class SelectionActionRegistry {
   constructor(actions = {}, definitions = {}) {
@@ -33,6 +34,10 @@ export class SelectionActionRegistry {
     const action = this.actions.get(keyword);
 
     if (!action) {
+      if (isDateExpression(keyword)) {
+        return new SetDueDateAction(keyword);
+      }
+
       throw new Error(`Unknown selection action: ${keyword}`);
     }
 
@@ -57,6 +62,12 @@ export class SelectionActionRegistry {
     }
 
     const definition = this.definitions.get(keyword);
+
+    if (!definition && isDateExpression(resolvedKeyword)) {
+      const previewFact = fact.constructor.from(fact.toSerializable());
+      previewFact.setDueDate(resolvePreviewDueDate(resolvedKeyword, context));
+      return previewFact;
+    }
 
     if (!definition) {
       return null;
@@ -162,19 +173,5 @@ export function defaultActionConfig() {
 }
 
 function resolvePreviewDueDate(value, context) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return value;
-  }
-
-  if (value === "today") {
-    return context.today;
-  }
-
-  if (value === "tomorrow" && context.today) {
-    const date = new Date(`${context.today}T00:00:00.000Z`);
-    date.setUTCDate(date.getUTCDate() + 1);
-    return date.toISOString().slice(0, 10);
-  }
-
-  return null;
+  return resolveDateExpression(value, context);
 }

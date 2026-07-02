@@ -71,6 +71,23 @@ describe("SelectionActionRegistry", () => {
     );
   });
 
+  it("sets due dates from natural date phrases", async () => {
+    const factStore = new MemoryFactStore([buildFact()]);
+    const registry = SelectionActionRegistry.fromConfig();
+
+    await registry.execute("next", {
+      selection: new Selection(["6f2308de-02e9-45db-8ff0-65ac793f4a24"]),
+      factStore,
+      today: "2026-06-30",
+      actionArgs: ["Friday"]
+    });
+
+    assert.equal(
+      factStore.fact("6f2308de-02e9-45db-8ff0-65ac793f4a24").dueDate,
+      "2026-07-03"
+    );
+  });
+
   it("adds tags from dynamic @ selection actions", async () => {
     const factStore = new MemoryFactStore([buildFact()]);
     const registry = SelectionActionRegistry.fromConfig();
@@ -179,6 +196,19 @@ describe("SelectionActionRegistry", () => {
     const preview = registry.preview("tomorrow", fact, { today: "2026-06-30" });
 
     assert.equal(preview.dueDate, "2026-07-01");
+    assert.equal(fact.dueDate, null);
+  });
+
+  it("previews natural date phrase transformations", () => {
+    const fact = buildFact();
+    const registry = SelectionActionRegistry.fromConfig();
+
+    const preview = registry.preview("June", fact, {
+      today: "2026-06-30",
+      actionArgs: ["1"]
+    });
+
+    assert.equal(preview.dueDate, "2026-06-01");
     assert.equal(fact.dueDate, null);
   });
 

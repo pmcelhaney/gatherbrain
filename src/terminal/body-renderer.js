@@ -1,4 +1,8 @@
 import { AppMode } from "../state/index.js";
+import {
+  formatNaturalDate,
+  replaceIsoDatesWithNaturalDates
+} from "../domain/date-text.js";
 import { ansi, color, padVisibleStart, wrapPlain } from "./ansi.js";
 
 export class BodyRenderer {
@@ -51,7 +55,7 @@ export class BodyRenderer {
       const continuationPrefix = " ".repeat(numberWidth + 2);
       const firstLineWidth = Math.max(1, width - prefix.length - type.length - due.length);
       const continuationWidth = Math.max(1, width - continuationPrefix.length);
-      const [first, ...rest] = wrapPlain(displayContent(fact), firstLineWidth);
+      const [first, ...rest] = wrapPlain(displayContent(fact, today), firstLineWidth);
 
       rendered.push(highlight(`${firstLinePrefix}${renderContentLine(first, fact, colorEnabled)}`, isSelected, colorEnabled));
       for (const line of rest) {
@@ -77,14 +81,15 @@ function displayType(fact) {
   return `${fact.type} `;
 }
 
-function displayContent(fact) {
-  const appendedTags = unmentionedTags(fact.content, fact.tags);
+function displayContent(fact, today) {
+  const content = replaceIsoDatesWithNaturalDates(fact.content, { today });
+  const appendedTags = unmentionedTags(content, fact.tags);
 
   if (appendedTags.length === 0) {
-    return fact.content;
+    return content;
   }
 
-  return `${fact.content} ${appendedTags.map((tag) => `>${tag}`).join(" ")}`;
+  return `${content} ${appendedTags.map((tag) => `>${tag}`).join(" ")}`;
 }
 
 function renderContentLine(text, fact, colorEnabled) {
@@ -188,41 +193,5 @@ function isTagStopChar(char) {
 }
 
 function formatDueDate(dueDate, today) {
-  if (!today) {
-    return dueDate;
-  }
-
-  const days = daysBetween(today, dueDate);
-
-  if (days === 0) {
-    return "today";
-  }
-
-  if (days === 1) {
-    return "tomorrow";
-  }
-
-  if (days === -1) {
-    return "yesterday";
-  }
-
-  if (days > 1 && days < 7) {
-    return formatUtcDate(dueDate, { weekday: "short" });
-  }
-
-  return formatUtcDate(dueDate, { month: "short", day: "numeric" });
-}
-
-function daysBetween(startDate, endDate) {
-  const start = Date.parse(`${startDate}T00:00:00.000Z`);
-  const end = Date.parse(`${endDate}T00:00:00.000Z`);
-
-  return Math.round((end - start) / 86_400_000);
-}
-
-function formatUtcDate(date, options) {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "UTC",
-    ...options
-  }).format(new Date(`${date}T00:00:00.000Z`));
+  return formatNaturalDate(dueDate, { today });
 }

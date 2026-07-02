@@ -1,3 +1,5 @@
+import { resolveDateExpression } from "../domain/date-text.js";
+
 export class SetTypeAction {
   constructor(type) {
     this.type = type;
@@ -113,31 +115,5 @@ const defaultFileOpener = {
 };
 
 function resolveDueDate(expression, context) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(expression)) {
-    return expression;
-  }
-
-  if (expression === "today") {
-    return requireToday(context);
-  }
-
-  if (expression === "tomorrow") {
-    return addDays(requireToday(context), 1);
-  }
-
-  throw new Error(`Unsupported due date expression: ${expression}`);
-}
-
-function requireToday(context) {
-  if (!context.today) {
-    throw new Error("Today is required to resolve relative due dates");
-  }
-
-  return context.today;
-}
-
-function addDays(dateString, days) {
-  const date = new Date(`${dateString}T00:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
+  return resolveDateExpression(expression, context);
 }

@@ -1,4 +1,5 @@
 import { TimeBox } from "../domain/index.js";
+import { naturalDatePrefix } from "../domain/date-text.js";
 import { PlanPreview } from "../state/index.js";
 
 export class PlanParser {
@@ -26,9 +27,11 @@ export class PlanParser {
 
     let date = today;
     let rangeToken = parts.shift();
+    const prefixedDate = naturalDatePrefix(text, { today });
 
-    if (rangeToken === "today" || rangeToken === "tomorrow") {
-      date = rangeToken === "today" ? today : addDays(today, 1);
+    if (prefixedDate) {
+      date = prefixedDate.date;
+      parts.splice(0, prefixedDate.text.trim().split(/\s+/).length - 1);
       rangeToken = parts.shift();
     } else if (/^\d{4}-\d{2}-\d{2}$/.test(rangeToken)) {
       date = rangeToken;
@@ -101,10 +104,4 @@ function defaultTimeBoxId({ date, startsAt, endsAt, session }) {
     .replace(/^-+|-+$/g, "");
 
   return `${date}-${startsAt.replace(":", "")}-${endsAt.replace(":", "")}-${slug}`;
-}
-
-function addDays(dateString, days) {
-  const date = new Date(`${dateString}T00:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
 }

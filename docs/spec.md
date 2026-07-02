@@ -211,6 +211,12 @@ removed from the fact body. The remaining text becomes the body. If the capture
 contains only the URL, the body uses a readable host/path label while the full
 URL remains only in front matter.
 
+Natural language dates in captured text are normalized to `YYYY-MM-DD` before
+storage. Supported input forms are `today`, `tomorrow`, `yesterday`,
+`next <weekday>`, and month-day phrases such as `June 1`. Month-day phrases use
+the current year. Stored ISO dates render back as natural labels in terminal
+output.
+
 **current_query**
 
 The active search query.
@@ -293,6 +299,9 @@ Due dates are displayed as friendly labels when possible:
 - tomorrow
 - short weekday for nearby dates
 - month and day for later dates
+
+The same friendly display is applied to ISO dates found in fact content and
+fact inspection output.
 
 Transient status messages are rendered inside the managed terminal screen above
 the prompt.
@@ -602,6 +611,10 @@ Examples:
 
 7 tomorrow
 
+. next Friday
+
+. June 1
+
 3 delete
 
 .. gather
@@ -621,6 +634,8 @@ Example:
 
 ```text
 3 tomorrow
+. next Friday
+. June 1
 ```
 
 ---
@@ -759,6 +774,9 @@ Entering plan mode replaces the body with the calendar.
 
 Planning commands associate dates and time ranges with sessions.
 
+Plan dates accept `today`, `tomorrow`, `yesterday`, `next <weekday>`, explicit
+`YYYY-MM-DD`, and month-day phrases such as `June 1`.
+
 Example:
 
 ```text
@@ -781,6 +799,10 @@ Examples:
 ; 11-12 Counterfact
 
 ; tomorrow 2-3 Reading
+
+; next Friday 14:30-15:00 Reading
+
+; June 1 9-10 Steve
 ```
 
 Plan mode creates and edits time boxes only.

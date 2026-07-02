@@ -80,6 +80,17 @@ Read the Node docs https://nodejs.org/api/test.html
 The stored body is `Read the Node docs`, and the terminal row renders that text
 as a hyperlink to the saved URL.
 
+Natural language dates in captured text are stored as `YYYY-MM-DD`. Supported
+forms include `today`, `tomorrow`, `yesterday`, `next <weekday>`, and month-day
+phrases such as `June 1`:
+
+```text
+Follow up tomorrow and next Friday
+```
+
+The stored body is `Follow up 2026-07-01 and 2026-07-03` when today is
+2026-06-30. Terminal rows render those ISO dates back as friendly labels.
+
 Facts are stored as Markdown files with front matter beneath the workspace
 session folder. Slash-separated session names are stored as nested directories,
 so `Technology Assembly/2026-07-08` lives under
@@ -161,6 +172,8 @@ todo Fri Call Steve
 todo Jul 10 Call Steve
 ```
 
+ISO dates in fact content and `:inspect` output use the same friendly display.
+
 ## Selecting And Updating Facts
 
 Search results are numbered in the body. Selection mode starts with numbers or
@@ -179,6 +192,8 @@ Dots select visible row positions:
 . todo
 . today
 .. tomorrow
+. next Friday
+. June 1
 . @Steve\ Ma
 ```
 
@@ -235,6 +250,8 @@ Plan mode begins with `;`.
 ; 9-10 Steve
 ; 11-12 Counterfact
 ; tomorrow 14:30-15:00 Reading
+; next Friday 14:30-15:00 Reading
+; June 1 9-10 Steve
 ```
 
 Time boxes are independent from facts. They are stored in daily text files:

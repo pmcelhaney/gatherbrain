@@ -7,6 +7,7 @@ import path from "node:path";
 import { SelectionActionRegistry } from "./actions/index.js";
 import { defaultAppConfig, loadAppConfig, mergeAppConfig } from "./config/index.js";
 import { Fact } from "./domain/index.js";
+import { normalizeNaturalDates } from "./domain/date-text.js";
 import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
 import { AppStateRepository, ClipboardReader, FactRepository, FileOpener, PasteRepository, SessionRepository, TagRepository, Workspace } from "./persistence/index.js";
 import { PlanParser, TimeBoxRepository } from "./planning/index.js";
@@ -666,7 +667,9 @@ async function completePendingPaste({
   idGenerator,
   defaultFactType
 }) {
-  const name = line.trim();
+  const name = normalizeNaturalDates(line.trim(), {
+    today: clock().toISOString().slice(0, 10)
+  });
 
   if (!name) {
     throw new Error("Paste name is required");

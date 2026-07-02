@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { extractTags, Fact, normalizeTaggedContent } from "../domain/index.js";
+import { normalizeNaturalDates } from "../domain/date-text.js";
 import { SelectionActionRegistry } from "../actions/index.js";
 import {
   SearchEngine,
@@ -90,7 +91,9 @@ export class PromptController {
   }
 
   async capture(input) {
-    const rawContent = input.trim();
+    const rawContent = normalizeNaturalDates(input.trim(), {
+      today: this.clock().toISOString().slice(0, 10)
+    });
     const bookmark = extractBookmark(rawContent);
     const content = normalizeTaggedContent(bookmark.content);
 
@@ -124,13 +127,13 @@ export class PromptController {
   }
 
   async search(input) {
+    const today = this.clock().toISOString().slice(0, 10);
     const expandedQuery = this.searchShortcutRegistry.expand(input, {
       currentSession: this.state.currentSession
     });
-    const query = queryForSearch(expandedQuery, this.state);
+    const query = queryForSearch(normalizeNaturalDates(expandedQuery, { today }), this.state);
     const ast = query === "*" ? { type: "all" } : this.searchQueryParser.parse(query);
     const facts = await this.factSource.list();
-    const today = this.clock().toISOString().slice(0, 10);
     const resultSet = this.searchEngine.search(facts, ast, { today });
 
     this.state.setQuery(query);

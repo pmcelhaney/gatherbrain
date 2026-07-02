@@ -1,5 +1,9 @@
 import { AppMode } from "../state/index.js";
 import { TimeBox } from "../domain/index.js";
+import {
+  formatNaturalDate,
+  replaceIsoDatesWithNaturalDates
+} from "../domain/date-text.js";
 import { InteractionResult } from "./interaction-result.js";
 
 export class CommandRegistry {
@@ -113,7 +117,7 @@ class HelpCommand {
 }
 
 class InspectCommand {
-  async execute(args, { factRepository, resultSet }) {
+  async execute(args, { factRepository, resultSet, today }) {
     const selector = args.trim();
 
     if (!selector) {
@@ -136,7 +140,7 @@ class InspectCommand {
       mode: AppMode.COMMAND,
       action: "inspect",
       message: `inspected fact ${selector}`,
-      helpLines: factDetailLines(fact, filePath)
+      helpLines: factDetailLines(fact, filePath, today)
     });
   }
 }
@@ -315,18 +319,18 @@ function normalizeTime(hoursValue, minutesValue) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
-function factDetailLines(fact, filePath) {
+function factDetailLines(fact, filePath, today) {
   return [
     `Fact ${fact.id}`,
     `type: ${fact.type}`,
     `created: ${fact.createdAt.toISOString()}`,
     `home session: ${fact.homeSession.name}`,
     `associated sessions: ${fact.associatedSessions.map((session) => session.name).join(", ") || "(none)"}`,
-    `due: ${fact.dueDate ?? "(none)"}`,
+    `due: ${fact.dueDate ? formatNaturalDate(fact.dueDate, { today }) : "(none)"}`,
     `attached file: ${fact.file ?? "(none)"}`,
     `path: ${filePath ?? "(not found)"}`,
     "",
-    fact.content
+    replaceIsoDatesWithNaturalDates(fact.content, { today })
   ];
 }
 
