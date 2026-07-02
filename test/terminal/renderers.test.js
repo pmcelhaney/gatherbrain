@@ -292,7 +292,10 @@ describe("terminal renderers", () => {
   it("uses reverse video for preview selection when color is enabled", () => {
     const state = new AppState({ currentSession: "Steve" });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
-    const selectedFact = buildFact();
+    const selectedFact = buildFact({
+      content: "Follow up with @Steve Ma.",
+      tags: ["Steve Ma"]
+    });
     const resultSet = new SearchResultSet([selectedFact]);
 
     const rendered = renderer.render({
@@ -305,7 +308,10 @@ describe("terminal renderers", () => {
       colorEnabled: true
     }).join("\n");
 
-    assert.match(rendered, /\x1b\[7m/);
+    assert.equal(
+      rendered,
+      "\x1b[7m\x1b[90m+ 1. \x1b[0m\x1b[7m\x1b[36mtask \x1b[0m\x1b[7m\x1b[35mtomorrow \x1b[0m\x1b[7mFollow up with \x1b[32m@Steve Ma\x1b[0m\x1b[7m.\x1b[0m"
+    );
   });
 
   it("renders calendar rows and plan previews in plan mode", () => {

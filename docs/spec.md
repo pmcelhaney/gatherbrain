@@ -291,6 +291,8 @@ hyperlink to that URL.
 Tags that are not already mentioned in the fact content are shown after the
 content as `>Tag Name` in the tag color. Tags already mentioned inline are not
 repeated at the end of the row.
+When color is enabled, selected fact previews highlight the whole rendered fact
+row, including colored type, due-date, and tag segments.
 
 Timeline rows are spaced according to elapsed time. Busy time boxes use a solid
 line and filled marker. Free time uses a dotted line and open marker with the

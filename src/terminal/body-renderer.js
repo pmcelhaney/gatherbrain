@@ -131,7 +131,7 @@ function highlight(text, enabled, colorEnabled) {
     return text;
   }
 
-  return `${ansi.reverse}${text}${ansi.reset}`;
+  return `${ansi.reverse}${text.replaceAll(ansi.reset, `${ansi.reset}${ansi.reverse}`)}${ansi.reset}`;
 }
 
 function highlightTags(text, tags = [], colorEnabled) {
