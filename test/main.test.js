@@ -810,8 +810,8 @@ Login Screenshot
     await runtime.submit(":switch Steve");
     await runtime.submit("Follow up with Steve.");
 
-    assert.match(runtime.render({ input: "1" }), />\+ 1\. Follow up with Steve/);
-    assert.match(runtime.render({ input: "." }), />\+ 1\. Follow up with Steve/);
+    assert.match(runtime.render({ input: "1" }), /> 1\. Follow up with Steve/);
+    assert.match(runtime.render({ input: "." }), /> 1\. Follow up with Steve/);
     assert.equal(runtime.state.currentMode, "Capture");
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
@@ -830,7 +830,7 @@ Login Screenshot
 
     const rendered = runtime.render({ input: "1 done" });
 
-    assert.match(rendered, />\+ 1\. done Follow up with Steve/);
+    assert.match(rendered, /> 1\. done Follow up with Steve/);
     assert.match(runtime.render(), /1\. Follow up with Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
@@ -886,9 +886,9 @@ Login Screenshot
     const preview = runtime.render({ input: ". @Steve\\ Ma" });
     const result = await runtime.submit(". @Steve\\ Ma");
 
-    assert.match(preview, />\+ 1\. first item in empty >Steve Ma/);
+    assert.match(preview, /> 1\. first item in empty >Steve Ma/);
     assert.equal(result.message, "@Steve\\ Ma applied to 1 fact");
-    assert.match(runtime.render(), /\+ 1\. first item in empty >Steve Ma/);
+    assert.match(runtime.render(), / 1\. first item in empty >Steve Ma/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -911,7 +911,7 @@ Login Screenshot
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("prefixes current-context facts with plus during search", async () => {
+  it("shows home context only for outside-context search results", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-context-prefix-"));
     const runtime = createAppRuntime({
@@ -927,8 +927,8 @@ Login Screenshot
 
     const rendered = runtime.render();
 
-    assert.match(rendered, /\+ 1\. Shared search term in Architecture/);
-    assert.match(rendered, /\n  2\. \[Steve\] Shared search term in Steve/);
+    assert.match(rendered, / 1\. Shared search term in Architecture/);
+    assert.match(rendered, /\n 2\. \[Steve\] Shared search term in Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

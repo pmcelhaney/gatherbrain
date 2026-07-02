@@ -30,7 +30,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. task tomorrow Follow up with Steve."
+      " 1. task tomorrow Follow up with Steve."
     );
   });
 
@@ -43,7 +43,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. Follow up with Steve."
+      " 1. Follow up with Steve."
     );
   });
 
@@ -61,7 +61,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. bookmark \x1b]8;;https://nodejs.org/api/test.html\x1b\\Read the Node docs.\x1b]8;;\x1b\\"
+      " 1. bookmark \x1b]8;;https://nodejs.org/api/test.html\x1b\\Read the Node docs.\x1b]8;;\x1b\\"
     );
   });
 
@@ -84,7 +84,7 @@ describe("terminal renderers", () => {
         today: "2026-06-30",
         colorEnabled: true
       }).join("\n"),
-      `\x1b[90m+ 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0m\x1b[32m@Steve Ma\x1b[0m said \x1b[32m@Devin\x1b[0m's trial ends.`
+      `\x1b[90m 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0m\x1b[32m@Steve Ma\x1b[0m said \x1b[32m@Devin\x1b[0m's trial ends.`
     );
   });
 
@@ -100,7 +100,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. task tomorrow @Steve Ma said @Devin's trial ends."
+      " 1. task tomorrow @Steve Ma said @Devin's trial ends."
     );
   });
 
@@ -116,7 +116,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. task tomorrow Follow up tomorrow. >Steve Ma"
+      " 1. task tomorrow Follow up tomorrow. >Steve Ma"
     );
   });
 
@@ -139,7 +139,7 @@ describe("terminal renderers", () => {
         today: "2026-06-30",
         colorEnabled: true
       }).join("\n"),
-      `\x1b[90m+ 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0mFollow up tomorrow. \x1b[32m>Steve Ma\x1b[0m`
+      `\x1b[90m 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0mFollow up tomorrow. \x1b[32m>Steve Ma\x1b[0m`
     );
   });
 
@@ -155,7 +155,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. task tomorrow Follow up with @Steve Ma tomorrow."
+      " 1. task tomorrow Follow up with @Steve Ma tomorrow."
     );
   });
 
@@ -197,7 +197,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. task Follow up tomorrow, Fri, and Jun 1."
+      " 1. task Follow up tomorrow, Fri, and Jun 1."
     );
   });
 
@@ -216,11 +216,11 @@ describe("terminal renderers", () => {
         height: 10,
         today: "2026-06-30"
       }).join("\n"),
-      ">+ 1. task tomorrow Follow up with Steve."
+      "> 1. task tomorrow Follow up with Steve."
     );
   });
 
-  it("does not mark facts outside the current context", () => {
+  it("renders facts outside the current context without a context marker", () => {
     const state = new AppState({ currentContext: "Steve" });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
     const resultSet = new SearchResultSet([
@@ -229,7 +229,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "  1. task tomorrow Follow up with Steve."
+      " 1. task tomorrow Follow up with Steve."
     );
   });
 
@@ -245,7 +245,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "  1. task tomorrow [Architecture Review Board] Follow up with Steve."
+      " 1. task tomorrow [Architecture Review Board] Follow up with Steve."
     );
   });
 
@@ -267,13 +267,13 @@ describe("terminal renderers", () => {
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
       [
-        "+ 1. task tomorrow Follow up with Steve.",
-        "+ 2. task tomorrow Follow up with Steve."
+        " 1. task tomorrow Follow up with Steve.",
+        " 2. task tomorrow Follow up with Steve."
       ].join("\n")
     );
   });
 
-  it("marks facts associated with the current context", () => {
+  it("renders facts associated with the current context without a context marker", () => {
     const state = new AppState({ currentContext: "Steve" });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
     const resultSet = new SearchResultSet([
@@ -285,7 +285,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. task tomorrow Follow up with Steve."
+      " 1. task tomorrow Follow up with Steve."
     );
   });
 
@@ -310,7 +310,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       rendered,
-      "\x1b[7m\x1b[90m+ 1. \x1b[0m\x1b[7m\x1b[36mtask \x1b[0m\x1b[7m\x1b[35mtomorrow \x1b[0m\x1b[7mFollow up with \x1b[32m@Steve Ma\x1b[0m\x1b[7m.\x1b[0m"
+      "\x1b[7m\x1b[90m 1. \x1b[0m\x1b[7m\x1b[36mtask \x1b[0m\x1b[7m\x1b[35mtomorrow \x1b[0m\x1b[7mFollow up with \x1b[32m@Steve Ma\x1b[0m\x1b[7m.\x1b[0m"
     );
   });
 
@@ -384,7 +384,7 @@ describe("terminal renderers", () => {
     }), [
       "contexts/Steve",
       "----------------------------------------",
-      "+ 1. task tomorrow Follow up with Steve.",
+      " 1. task tomorrow Follow up with Steve.",
       "",
       "",
       ">"

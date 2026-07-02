@@ -46,8 +46,7 @@ export class BodyRenderer {
 
     for (const { number, fact } of rows) {
       const isSelected = selectionPreview?.includes(fact.id) ?? false;
-      const contextMarker = isFactInCurrentContext(fact, state.currentContext) ? "+" : " ";
-      const basePrefix = `${contextMarker}${padVisibleStart(String(number), numberWidth)}. `;
+      const basePrefix = `${padVisibleStart(String(number), numberWidth)}. `;
       const prefix = isSelected && !colorEnabled ? `>${basePrefix}` : basePrefix;
       const type = displayType(fact);
       const due = fact.dueDate ? `${formatDueDate(fact.dueDate, today)} ` : "";
