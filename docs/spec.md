@@ -337,7 +337,7 @@ The mode is inferred from the first character entered.
 | / | Search |
 | : | Command |
 | ; | Plan |
-| number or dots | Selection |
+| number or dots | Selection command |
 
 ---
 
@@ -705,6 +705,23 @@ resolved against the selected fact's own session folder.
 
 ---
 
+### Edit Fact
+
+Opens the selected fact's own Markdown file in `$EDITOR`.
+
+Example:
+
+```text
+. edit
+1 3 edit
+```
+
+Because the editor can only handle one Gatherbrain fact at a time, `edit`
+applies only to the last mentioned fact in the selection command. In `1 3 edit`,
+fact 3 is edited.
+
+---
+
 # Action DSL
 
 Selection actions are configurable.
@@ -748,6 +765,9 @@ actions:
 
   open:
     action: open_file
+
+  edit:
+    action: edit_file
 ```
 
 Example:

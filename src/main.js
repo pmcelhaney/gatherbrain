@@ -314,14 +314,23 @@ function selectionInputPreview(input, resultSet) {
   }
 
   try {
+    const actionKeyword = tokens[0] ?? null;
     return {
-      selection: Selection.resolve(selectors, resultSet),
-      actionKeyword: tokens[0] ?? null,
+      selection: Selection.resolve(selectorsForPreview(selectors, actionKeyword), resultSet),
+      actionKeyword,
       args: tokens.slice(1)
     };
   } catch {
     return null;
   }
+}
+
+function selectorsForPreview(selectors, actionKeyword) {
+  if (actionKeyword === "edit") {
+    return [selectors.at(-1)];
+  }
+
+  return selectors;
 }
 
 function stateForPreview({ state, input, promptClassifier, planParser, clock }) {
@@ -504,6 +513,10 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
           return;
         }
 
+        const restoreInput = isEditSelectionCommand(line)
+          ? suspendTuiInputForChildProcess(inputStream, outputStream)
+          : null;
+
         try {
           const result = await runtime.submit(line);
           status = result?.message ?? "";
@@ -518,6 +531,8 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
           }
         } catch (error) {
           status = `error: ${error.message}`;
+        } finally {
+          restoreInput?.();
         }
 
         redraw();
@@ -538,6 +553,30 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
     inputStream.pause();
     outputStream.write(`${ansi.showCursor}\n`);
   });
+}
+
+function suspendTuiInputForChildProcess(inputStream, outputStream) {
+  inputStream.setRawMode(false);
+  inputStream.pause?.();
+  outputStream.write(ansi.showCursor);
+
+  return () => {
+    inputStream.resume?.();
+    inputStream.setRawMode(true);
+    outputStream.write(ansi.hideCursor);
+  };
+}
+
+function isEditSelectionCommand(line) {
+  const tokens = String(line).trim().split(/\s+/);
+  let selectorCount = 0;
+
+  while (tokens.length > 0 && (/^\d+$/.test(tokens[0]) || /^\.+$/.test(tokens[0]))) {
+    tokens.shift();
+    selectorCount += 1;
+  }
+
+  return selectorCount > 0 && tokens[0] === "edit";
 }
 
 export function restartCurrentProcess({

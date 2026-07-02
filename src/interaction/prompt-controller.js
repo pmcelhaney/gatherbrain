@@ -153,7 +153,7 @@ export class PromptController {
       throw new Error("Selection requires visible search results");
     }
 
-    const selection = Selection.resolve(selectors, resultSet);
+    const selection = Selection.resolve(selectorsForAction(selectors, actionKeyword), resultSet);
     this.state.setSelection(selection);
     const undoSnapshot = await this.snapshotSelection(selection);
 
@@ -245,6 +245,10 @@ function selectionMessage(actionKeyword, results) {
       : `opened ${results.length} files`;
   }
 
+  if (results.every((result) => result.action === "edit_file")) {
+    return `editing ${results[0].value}`;
+  }
+
   return `${actionKeyword} applied to ${results.length} fact${results.length === 1 ? "" : "s"}`;
 }
 
@@ -289,4 +293,12 @@ function parseSelectionInput(input) {
   }
 
   return { selectors, actionKeyword, args: tokens };
+}
+
+function selectorsForAction(selectors, actionKeyword) {
+  if (actionKeyword === "edit") {
+    return [selectors.at(-1)];
+  }
+
+  return selectors;
 }

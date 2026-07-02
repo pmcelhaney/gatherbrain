@@ -233,6 +233,64 @@ describe("main", () => {
     assert.deepEqual(renderedInputs.slice(-4), ["@St", "@Stacy", "@Stan", "@Steve\\ Ma"]);
     assert.deepEqual(rawModes, [true, false]);
   });
+
+  it("suspends raw tty input while edit selection commands run", async () => {
+    const { runTui } = await import("../src/main.js");
+    const input = new EventEmitter();
+    const output = {
+      columns: 80,
+      rows: 24,
+      writes: [],
+      write(value) {
+        this.writes.push(value);
+      }
+    };
+    const rawModes = [];
+    const pauseCalls = [];
+    const resumeCalls = [];
+    let resolveSubmit;
+    input.setRawMode = (value) => rawModes.push(value);
+    input.pause = () => pauseCalls.push("pause");
+    input.resume = () => resumeCalls.push("resume");
+
+    const run = runTui({
+      render() {
+        return "";
+      },
+      async submit() {
+        return new Promise((resolve) => {
+          resolveSubmit = () => resolve({ message: "editing /tmp/fact.md" });
+        });
+      }
+    }, { inputStream: input, outputStream: output });
+
+    input.emit("keypress", ".", { sequence: ".", name: undefined });
+    input.emit("keypress", " ", { sequence: " ", name: undefined });
+    input.emit("keypress", "e", { sequence: "e", name: undefined });
+    input.emit("keypress", "d", { sequence: "d", name: undefined });
+    input.emit("keypress", "i", { sequence: "i", name: undefined });
+    input.emit("keypress", "t", { sequence: "t", name: undefined });
+    input.emit("keypress", "\r", { sequence: "\r", name: "return" });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.deepEqual(rawModes, [true, false]);
+    assert.deepEqual(pauseCalls, ["pause"]);
+    assert.deepEqual(resumeCalls, []);
+
+    resolveSubmit();
+    await new Promise((resolve) => setImmediate(resolve));
+    input.emit("keypress", ":", { sequence: ":", name: undefined });
+    input.emit("keypress", "q", { sequence: "q", name: undefined });
+    input.emit("keypress", "u", { sequence: "u", name: undefined });
+    input.emit("keypress", "i", { sequence: "i", name: undefined });
+    input.emit("keypress", "t", { sequence: "t", name: undefined });
+    input.emit("keypress", "\r", { sequence: "\r", name: "return" });
+
+    await run;
+
+    assert.deepEqual(rawModes, [true, false, true, false]);
+    assert.deepEqual(resumeCalls, ["resume"]);
+  });
 });
 
 describe("createAppRuntime", () => {

@@ -38,6 +38,7 @@ describe("CompletionService", () => {
     assert.equal(await service.complete(". inp"), ". inprogress");
     assert.equal(await service.complete(". toda"), ". today");
     assert.equal(await service.complete(". tom"), ". tomorrow");
+    assert.equal(await service.complete(". ed"), ". edit");
   });
 
   it("completes visible selectors", async () => {

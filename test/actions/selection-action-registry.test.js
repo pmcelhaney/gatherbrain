@@ -159,7 +159,31 @@ describe("SelectionActionRegistry", () => {
 
     assert.deepEqual(results.map((result) => result.action), ["open_file"]);
     assert.equal(opened[0].fact.file, "launch-notes.txt");
-    assert.equal(opened[0].factPath, "/tmp/session/fact.md");
+    assert.equal(opened[0].factPath, "/tmp/session/6f2308de-02e9-45db-8ff0-65ac793f4a24.md");
+  });
+
+  it("edits only the last selected fact file", async () => {
+    const firstFact = buildFact({ id: "06a54dbf-5407-49dd-a808-69eb581b0e74" });
+    const lastFact = buildFact({ id: "5d037d8e-40dd-4c9f-9890-5a73388dd0c8" });
+    const factStore = new MemoryFactStore([firstFact, lastFact]);
+    const edited = [];
+    const registry = SelectionActionRegistry.fromConfig();
+
+    const results = await registry.execute("edit", {
+      selection: new Selection([firstFact.id, lastFact.id]),
+      factStore,
+      fileOpener: {
+        async editFactFile({ fact: editedFact, factPath }) {
+          edited.push({ fact: editedFact, factPath });
+          return factPath;
+        }
+      }
+    });
+
+    assert.deepEqual(results.map((result) => result.action), ["edit_file"]);
+    assert.equal(edited.length, 1);
+    assert.equal(edited[0].fact.id, lastFact.id);
+    assert.equal(edited[0].factPath, "/tmp/session/5d037d8e-40dd-4c9f-9890-5a73388dd0c8.md");
   });
 
   it("rejects open for facts without associated files", async () => {
@@ -253,7 +277,7 @@ class MemoryFactStore {
       return null;
     }
 
-    return "/tmp/session/fact.md";
+    return `/tmp/session/${id}.md`;
   }
 
   async saveFact(fact) {

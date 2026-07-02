@@ -97,6 +97,27 @@ export class OpenFileAction {
   }
 }
 
+export class EditFactFileAction {
+  async execute(context) {
+    const opener = context.fileOpener ?? defaultFileOpener;
+    const factId = context.selection.toArray().at(-1);
+
+    if (!factId) {
+      throw new Error("Edit requires one selected fact");
+    }
+
+    const fact = await context.factStore.getFactById(factId);
+    const factPath = await context.factStore.findPathByFactId(factId);
+
+    if (!factPath) {
+      throw new Error(`Fact not found: ${factId}`);
+    }
+
+    const filePath = await opener.editFactFile({ fact, factPath });
+    return [{ fact, action: "edit_file", value: filePath }];
+  }
+}
+
 async function mutateSelectedFacts({ selection, factStore }, mutate) {
   const results = [];
 
@@ -110,6 +131,9 @@ async function mutateSelectedFacts({ selection, factStore }, mutate) {
 
 const defaultFileOpener = {
   async openAssociatedFile() {
+    throw new Error("File opener is required");
+  },
+  async editFactFile() {
     throw new Error("File opener is required");
   }
 };

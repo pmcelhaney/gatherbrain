@@ -39,6 +39,12 @@
       },
       "gather": {
         "action": "associate_current_session"
+      },
+      "open": {
+        "action": "open_file"
+      },
+      "edit": {
+        "action": "edit_file"
       }
     }
   }

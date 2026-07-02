@@ -174,10 +174,10 @@ todo Jul 10 Call Steve
 
 ISO dates in fact content and `:inspect` output use the same friendly display.
 
-## Selecting And Updating Facts
+## Selection Commands
 
-Search results are numbered in the body. Selection mode starts with numbers or
-dots.
+Search results are numbered in the body. A selection command starts with
+numbers or dots followed by an instruction.
 
 Numbers select displayed fact numbers:
 
@@ -218,6 +218,7 @@ Current built-in actions:
 | `delete` | Moves the fact to `.trash` |
 | `gather` | Associates the fact with the current session |
 | `open` | Opens the file associated with the fact |
+| `edit` | Opens the fact Markdown file in `$EDITOR`; with multiple selectors, only the last mentioned fact is edited |
 
 Any `@tag` action adds that tag to the selected facts. Escaped spaces are
 normalized the same way as capture text, so `. @Steve\ Ma` stores `Steve Ma`.

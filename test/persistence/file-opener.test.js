@@ -33,4 +33,32 @@ describe("FileOpener", () => {
       args: [filePath]
     }]);
   });
+
+  it("opens fact Markdown files in EDITOR", async () => {
+    const edited = [];
+    const opener = new FileOpener({
+      editor: "code -w",
+      async runEditor(editor, filePath) {
+        edited.push({ editor, filePath });
+      }
+    });
+    const factPath = path.join("/tmp", "workspace", "2026-07-01", "Steve", "fact.md");
+
+    const filePath = await opener.editFactFile({ factPath });
+
+    assert.equal(filePath, factPath);
+    assert.deepEqual(edited, [{
+      editor: "code -w",
+      filePath: factPath
+    }]);
+  });
+
+  it("requires EDITOR before editing fact Markdown files", async () => {
+    const opener = new FileOpener({ editor: "" });
+
+    await assert.rejects(
+      opener.editFactFile({ factPath: "/tmp/fact.md" }),
+      /EDITOR is required/
+    );
+  });
 });

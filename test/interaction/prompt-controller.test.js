@@ -14,18 +14,28 @@ describe("PromptController", () => {
   let state;
   let controller;
   let currentResultSet;
+  let generatedIds;
+  let editedFiles;
 
   beforeEach(async () => {
     rootPath = await fs.mkdtemp(path.join(os.tmpdir(), "gatherbrain-capture-"));
     state = new AppState({ currentSession: "Steve" });
+    generatedIds = ["5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"];
+    editedFiles = [];
     controller = new PromptController({
       state,
       factRepository: new FactRepository({ workspace: new Workspace(rootPath) }),
       factSource: new FactRepository({ workspace: new Workspace(rootPath) }),
       timeBoxRepository: new TimeBoxRepository({ workspace: new Workspace(rootPath) }),
       clock: () => new Date("2026-06-30T15:45:00.000Z"),
-      idGenerator: () => "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
-      currentResultSetProvider: () => currentResultSet
+      idGenerator: () => generatedIds.shift() ?? "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
+      currentResultSetProvider: () => currentResultSet,
+      fileOpener: {
+        async editFactFile({ factPath }) {
+          editedFiles.push(factPath);
+          return factPath;
+        }
+      }
     });
   });
 
@@ -169,6 +179,29 @@ describe("PromptController", () => {
       "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
     );
     assert.equal(saved.dueDate, "2026-07-03");
+  });
+
+  it("edits only the last mentioned fact in a selection command", async () => {
+    generatedIds.push("7f32fa70-f4b9-45fb-9ab7-2a48e9573f1b");
+    await controller.submit("First follow up.");
+    await controller.submit("Second follow up.");
+    currentResultSet = {
+      factIdForNumber(number) {
+        return [
+          "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
+          "7f32fa70-f4b9-45fb-9ab7-2a48e9573f1b"
+        ][number - 1];
+      },
+      factIdAtVisibleIndex(index) {
+        return this.factIdForNumber(index + 1);
+      }
+    };
+
+    const result = await controller.submit("1 2 edit");
+
+    assert.equal(result.action, "selection_action");
+    assert.equal(editedFiles.length, 1);
+    assert.match(editedFiles[0], /7f32fa70-f4b9-45fb-9ab7-2a48e9573f1b-second-follow-up\.md$/);
   });
 
   it("executes plan input by saving a time box", async () => {

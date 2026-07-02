@@ -1,6 +1,7 @@
 import {
   AddTagAction,
   AssociateCurrentSessionAction,
+  EditFactFileAction,
   OpenFileAction,
   SetDueDateAction,
   SetTypeAction,
@@ -89,6 +90,7 @@ export class SelectionActionRegistry {
         previewFact.associateSession(context.state.currentSession);
         return previewFact;
       case "open_file":
+      case "edit_file":
         return previewFact;
       case "trash":
         previewFact.setType("deleted");
@@ -123,6 +125,8 @@ function buildAction(definition) {
       return new AssociateCurrentSessionAction();
     case "open_file":
       return new OpenFileAction();
+    case "edit_file":
+      return new EditFactFileAction();
     default:
       throw new Error(`Unsupported selection action type: ${definition.action}`);
   }
@@ -167,6 +171,9 @@ export function defaultActionConfig() {
       },
       open: {
         action: "open_file"
+      },
+      edit: {
+        action: "edit_file"
       }
     }
   };
