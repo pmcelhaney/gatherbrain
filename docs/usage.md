@@ -334,8 +334,8 @@ use `@<context>` rather than a colon command, so `@St` completes to a known
 context such as `@Steve`.
 
 When the prompt starts with `@`, the body previews the recent-context switch
-list. The list is ordered by most recently visited context and is capped to the
-number of lines that fit in the body.
+list. The list excludes the current context, is ordered by most recently visited
+context, and is capped to the number of lines that fit in the body.
 
 While typing in the interactive TUI, `Ctrl+A` moves to the start of the input
 and `Ctrl+E` moves to the end.

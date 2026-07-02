@@ -66,7 +66,7 @@ export function createAppRuntime({
     defaultFactType: appConfig.defaultFactType,
     currentResultSetProvider: () => resultSet,
     currentTimeBoxesProvider: () => timeBoxes,
-    recentContextProvider: () => recentContexts
+    recentContextProvider: () => selectableRecentContexts(recentContexts, state.currentContext)
   });
 
   const initializeRuntimeState = async () => {
@@ -146,7 +146,7 @@ export function createAppRuntime({
       }
 
       const scopedSelection = scopedContextSelectionInput(line, {
-        recentContexts,
+        recentContexts: selectableRecentContexts(recentContexts, state.currentContext),
         actionKeywords: selectionActionRegistry.keywords()
       });
       if (scopedSelection) {
@@ -192,7 +192,7 @@ export function createAppRuntime({
 
       const result = await promptController.submit(canonicalizeContextSwitchInput(line, {
         facts: cachedFacts,
-        recentContexts
+        recentContexts: selectableRecentContexts(recentContexts, state.currentContext)
       }));
 
       if (result.action === "exit") {
@@ -298,8 +298,9 @@ export function createAppRuntime({
       const previewContext = viewedContextForInput({
         input,
         facts: cachedFacts,
-        recentContexts
+        recentContexts: selectableRecentContexts(recentContexts, state.currentContext)
       });
+      const visibleRecentContexts = selectableRecentContexts(recentContexts, state.currentContext);
 
       return terminalApp.render({
         state: stateForPreview({ state, input, promptClassifier, planParser, clock }),
@@ -310,7 +311,7 @@ export function createAppRuntime({
           facts: cachedFacts,
           selectionActionRegistry,
           state,
-          recentContexts,
+          recentContexts: visibleRecentContexts,
           searchEngine,
           searchQueryParser,
           clock
@@ -318,7 +319,7 @@ export function createAppRuntime({
         timeBoxes,
         helpLines: contextListPreviewForInput({
           input,
-          recentContexts,
+          recentContexts: visibleRecentContexts,
           facts: cachedFacts,
           height: bodyHeightForRender({
             height,
@@ -331,7 +332,7 @@ export function createAppRuntime({
           resultSet,
           facts: cachedFacts,
           selectionActionRegistry,
-          recentContexts,
+          recentContexts: visibleRecentContexts,
           searchEngine,
           searchQueryParser,
           clock
@@ -353,7 +354,7 @@ export function createAppRuntime({
     async suggestCompletion(input, { completionIndex = 0 } = {}) {
       const scopedCompletion = await scopedSelectionCompletion({
         input,
-        recentContexts,
+        recentContexts: selectableRecentContexts(recentContexts, state.currentContext),
         facts: cachedFacts,
         searchEngine,
         searchQueryParser,
@@ -371,7 +372,7 @@ export function createAppRuntime({
     async complete(input, { completionIndex = 0 } = {}) {
       const scopedCompletion = await scopedSelectionCompletion({
         input,
-        recentContexts,
+        recentContexts: selectableRecentContexts(recentContexts, state.currentContext),
         facts: cachedFacts,
         searchEngine,
         searchQueryParser,
@@ -403,6 +404,17 @@ function recordRecentContext(recentContexts, context) {
         && !nextContext.canonicalName.startsWith(canonicalName);
     })
   ];
+}
+
+function selectableRecentContexts(recentContexts, currentContext) {
+  if (!currentContext) {
+    return recentContexts;
+  }
+
+  const current = Context.from(currentContext);
+  return recentContexts.filter((contextName) =>
+    Context.canonicalize(contextName) !== current.canonicalName
+  );
 }
 
 function canonicalizeContextSwitchInput(input, { facts = [], recentContexts = [] } = {}) {

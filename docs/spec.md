@@ -345,8 +345,8 @@ While the user is typing, the UI previews the inferred mode. Plan input previews
 the parsed time box before it is committed.
 
 When the first prompt character is `@`, the body previews the most recently
-visited contexts, ordered newest first. The list shows as many contexts as fit
-in the body.
+visited contexts other than the current context, ordered newest first. The list
+shows as many contexts as fit in the body.
 
 Tab completion is available for commands, `@<context>` switches, search
 shortcuts, selection actions, visible result numbers, and known context names
@@ -559,8 +559,9 @@ prefix. When a full context name replaces a previously recorded prefix, the
 prefix is removed from recent-context history.
 
 When the first prompt character is `@`, the body shows the last contexts visited
-in most-recent-first order. Entering `@1` switches to the first listed context,
-and entering `@..` switches to the second listed context.
+other than the current context in most-recent-first order. Entering `@1` switches
+to the first listed context, and entering `@..` switches to the second listed
+context.
 
 The current query becomes:
 

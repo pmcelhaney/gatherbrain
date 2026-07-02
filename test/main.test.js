@@ -543,16 +543,16 @@ describe("createAppRuntime", () => {
 
     const rendered = runtime.render({ input: "@", height: 5 });
 
-    assert.match(rendered, /^ 1\. Gamma Context$/m);
-    assert.match(rendered, /^ 2\. Beta Context$/m);
-    assert.doesNotMatch(rendered, /^ 3\. Alpha Context$/m);
+    assert.doesNotMatch(rendered, /^ 1\. Gamma Context$/m);
+    assert.match(rendered, /^ 1\. Beta Context$/m);
+    assert.match(rendered, /^ 2\. Alpha Context$/m);
 
     const numberedSwitch = await runtime.submit("@2");
     assert.equal(numberedSwitch.action, "switch_context");
-    assert.equal(runtime.state.currentContext.name, "Beta Context");
+    assert.equal(runtime.state.currentContext.name, "Alpha Context");
 
     await runtime.submit("@..");
-    assert.equal(runtime.state.currentContext.name, "Gamma Context");
+    assert.equal(runtime.state.currentContext.name, "Beta Context");
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -605,7 +605,8 @@ describe("createAppRuntime", () => {
     assert.equal(switchResult.message, "switched to Gatherbrain");
     assert.equal(runtime.state.currentContext.name, "Gatherbrain");
     assert.equal(runtime.state.currentQuery, "context:Gatherbrain");
-    assert.match(recentPreview, /^ 1\. Gatherbrain$/m);
+    assert.doesNotMatch(recentPreview, /^ \d+\. Gatherbrain$/m);
+    assert.match(recentPreview, /^ 1\. Steve Ma$/m);
     assert.doesNotMatch(recentPreview, /^ \d+\. Ga$/m);
 
     const restoredRuntime = createAppRuntime({ workspacePath });
@@ -630,35 +631,35 @@ describe("createAppRuntime", () => {
     await runtime.submit("@Beta Context");
     await runtime.submit("Beta follow up.");
 
-    const preview = runtime.render({ input: "@2 1 task today" });
-    const completion = await runtime.suggestCompletion("@2 1 t");
+    const preview = runtime.render({ input: "@1 1 task today" });
+    const completion = await runtime.suggestCompletion("@1 1 t");
 
     assert.match(preview, /> 1\. task today Alpha follow up\./);
     assert.doesNotMatch(preview, /Beta follow up/);
     assert.deepEqual(completion, {
-      input: "@2 1 t",
-      completed: "@2 1 task",
-      candidates: ["@2 1 task", "@2 1 today", "@2 1 tomorrow"]
+      input: "@1 1 t",
+      completed: "@1 1 task",
+      candidates: ["@1 1 task", "@1 1 today", "@1 1 tomorrow"]
     });
 
-    const result = await runtime.submit("@2 1 task today");
+    const result = await runtime.submit("@1 1 task today");
 
     assert.equal(result.action, "selection_action");
     assert.equal(result.message, "task today applied to 1 fact");
     assert.equal(runtime.state.currentContext.name, "Beta Context");
 
-    const scopedView = runtime.render({ input: "@2" });
+    const scopedView = runtime.render({ input: "@1" });
 
     assert.match(scopedView, /1\. task today Alpha follow up\./);
     assert.doesNotMatch(scopedView, /Beta follow up/);
 
-    const dottedResult = await runtime.submit("@.. 1 waiting");
+    const dottedResult = await runtime.submit("@. 1 waiting");
 
     assert.equal(dottedResult.message, "waiting applied to 1 fact");
     assert.equal(runtime.state.currentContext.name, "Beta Context");
-    assert.match(runtime.render({ input: "@.." }), /1\. waiting today Alpha follow up\./);
+    assert.match(runtime.render({ input: "@." }), /1\. waiting today Alpha follow up\./);
 
-    const switchResult = await runtime.submit("@2");
+    const switchResult = await runtime.submit("@1");
 
     assert.equal(switchResult.action, "switch_context");
     assert.equal(runtime.state.currentContext.name, "Alpha Context");
