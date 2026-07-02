@@ -384,6 +384,26 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("renders completion recommendations in gray through the runtime", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-completion-render-"));
+    const runtime = createAppRuntime({ workspacePath });
+
+    await runtime.initialize();
+
+    const rendered = runtime.render({
+      input: "@Stephanie\\ Garoza",
+      cursor: 4,
+      showCursor: true,
+      completionSuggestionStart: 4,
+      colorEnabled: true
+    });
+
+    assert.match(rendered, /> @Ste█\x1b\[90mphanie\\ Garoza\x1b\[0m/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("previews plan input without committing it", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-plan-preview-"));
