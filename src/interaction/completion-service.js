@@ -8,7 +8,7 @@ export class CompletionService {
     tagRepository = null,
     actionRegistry = SelectionActionRegistry.fromConfig(),
     shortcutRegistry = new SearchShortcutRegistry(),
-    commandNames = ["exit", "help", "inspect", "paste", "quit", "restart", "context", "contexts", "switch", "timebox", "undo"]
+    commandNames = ["exit", "help", "inspect", "paste", "quit", "restart", "context", "contexts", "timebox", "undo"]
   } = {}) {
     this.contextRepository = contextRepository;
     this.factSource = factSource;
@@ -35,6 +35,11 @@ export class CompletionService {
 
     if (input.startsWith("//")) {
       return completeSuffix(input, "//", this.shortcutRegistry.names(), matchIndex);
+    }
+
+    const contextSwitchCompletion = await this.completeContextSwitch(input, matchIndex);
+    if (contextSwitchCompletion) {
+      return contextSwitchCompletion;
     }
 
     if (isSelectionInput(input)) {
@@ -75,6 +80,26 @@ export class CompletionService {
     return completionResult(
       input,
       matches.map((match) => `${input.slice(0, activeTag.startIndex)}@${escapeTag(match)}`),
+      matchIndex
+    );
+  }
+
+  async completeContextSwitch(input, matchIndex = 0) {
+    const activeContext = activeLeadingAtSegment(input);
+
+    if (!activeContext) {
+      return null;
+    }
+
+    const matches = matchingCandidates(await this.contextNames(), activeContext.value);
+
+    if (matches.length === 0) {
+      return null;
+    }
+
+    return completionResult(
+      input,
+      matches.map((match) => `@${escapeAtValue(match)}`),
       matchIndex
     );
   }
@@ -138,14 +163,6 @@ function contextCompletionPrefix(input, commandNames) {
 
   const commandToken = match[1];
   const commandName = resolveCommandName(commandToken, commandNames);
-
-  if (commandName === "switch") {
-    if (commandToken.toLocaleLowerCase("en-US") === "switch") {
-      return ":switch ";
-    }
-
-    return `:${commandToken} `;
-  }
 
   if (commandName === "context") {
     if (commandToken.toLocaleLowerCase("en-US") === "context") {
@@ -276,6 +293,20 @@ function noCompletion(input) {
 }
 
 function activeTagSegment(input, { allowEmpty = false } = {}) {
+  return activeAtSegment(input, { allowEmpty });
+}
+
+function activeLeadingAtSegment(input) {
+  if (!input.startsWith("@")) {
+    return null;
+  }
+
+  const activeContext = activeAtSegment(input, { allowEmpty: true });
+
+  return activeContext?.startIndex === 0 ? activeContext : null;
+}
+
+function activeAtSegment(input, { allowEmpty = false } = {}) {
   const startIndex = input.lastIndexOf("@");
 
   if (startIndex === -1) {
@@ -308,5 +339,9 @@ function isTagStopChar(char) {
 }
 
 function escapeTag(tag) {
-  return tag.replace(/\s/g, "\\$&");
+  return escapeAtValue(tag);
+}
+
+function escapeAtValue(value) {
+  return value.replace(/\s/g, "\\$&");
 }

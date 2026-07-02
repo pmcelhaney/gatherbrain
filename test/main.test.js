@@ -73,7 +73,7 @@ describe("main", () => {
 
     const result = spawnSync("node", ["src/main.js"], {
       cwd: process.cwd(),
-      input: ":switch Steve\nFollow up with Steve.\n/Steve\n. tomorrow\n; 9-10 Steve\n:exit\n",
+      input: "@Steve\nFollow up with Steve.\n/Steve\n. tomorrow\n; 9-10 Steve\n:exit\n",
       encoding: "utf8",
       env: {
         ...process.env,
@@ -138,7 +138,7 @@ describe("main", () => {
     });
 
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /:switch <context>/);
+    assert.match(result.stdout, /@<context>/);
     assert.match(result.stdout, /plain text\s+capture a fact/);
   });
 
@@ -519,7 +519,7 @@ describe("createAppRuntime", () => {
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Follow up with Steve.");
 
     const rendered = runtime.render({ input: ";", showCursor: true });
@@ -575,7 +575,7 @@ describe("createAppRuntime", () => {
     const clock = () => new Date("2026-06-30T12:00:00.000Z");
     const firstRuntime = createAppRuntime({ workspacePath, clock });
 
-    await firstRuntime.submit(":switch Steve");
+    await firstRuntime.submit("@Steve");
     await firstRuntime.submit("Follow up with Steve.");
     await firstRuntime.submit("; 9-10 Steve");
 
@@ -597,9 +597,9 @@ describe("createAppRuntime", () => {
     const clock = () => new Date("2026-06-30T12:00:00.000Z");
     const firstRuntime = createAppRuntime({ workspacePath, clock });
 
-    await firstRuntime.submit(":switch Steve");
+    await firstRuntime.submit("@Steve");
     await firstRuntime.submit("Steve-only fact.");
-    await firstRuntime.submit(":switch new context");
+    await firstRuntime.submit("@new context");
     await firstRuntime.submit("New-context fact.");
 
     const secondRuntime = createAppRuntime({ workspacePath, clock });
@@ -619,7 +619,7 @@ describe("createAppRuntime", () => {
     const clock = () => new Date("2026-06-30T12:00:00.000Z");
     const firstRuntime = createAppRuntime({ workspacePath, clock });
 
-    await firstRuntime.submit(":switch Steve");
+    await firstRuntime.submit("@Steve");
     await firstRuntime.submit("Visible task.");
     await firstRuntime.submit(". task");
     await firstRuntime.submit("Hidden fact.");
@@ -643,7 +643,7 @@ describe("createAppRuntime", () => {
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Task fact.");
     await runtime.submit(". task");
     await runtime.submit("Plain fact.");
@@ -678,7 +678,7 @@ describe("createAppRuntime", () => {
       }
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     const prompt = await runtime.submit(":paste");
     const result = await runtime.submit("Launch notes");
 
@@ -729,7 +729,7 @@ Launch notes
       }
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit(":paste");
     const result = await runtime.submit("Login Screenshot");
 
@@ -785,7 +785,7 @@ Login Screenshot
       }
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit(":paste");
     await runtime.submit("Launch notes");
     const result = await runtime.submit(". open");
@@ -814,7 +814,7 @@ Login Screenshot
       }
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("https://nodejs.org/api/test.html");
     const result = await runtime.submit(". open");
 
@@ -834,7 +834,7 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Follow up with Steve.");
 
     assert.match(runtime.render({ input: "1" }), /> 1\. Follow up with Steve/);
@@ -852,7 +852,7 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Follow up with Steve.");
 
     const rendered = runtime.render({ input: "1 done" });
@@ -871,7 +871,7 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Follow up with Steve.");
 
     const rendered = runtime.render({ input: "1 tomorrow" });
@@ -890,7 +890,7 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Follow up with Steve.");
 
     const rendered = runtime.render({ input: "1 task today" });
@@ -909,7 +909,7 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch empty-space");
+    await runtime.submit("@empty-space");
     await runtime.submit("first item in empty");
     const result = await runtime.submit(". today");
 
@@ -927,7 +927,7 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch empty-space");
+    await runtime.submit("@empty-space");
     await runtime.submit("first item in empty");
     const preview = runtime.render({ input: ". @Steve\\ Ma" });
     const result = await runtime.submit(". @Steve\\ Ma");
@@ -947,7 +947,7 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch empty-space");
+    await runtime.submit("@empty-space");
     await runtime.submit("Ask @Steve\\ Ma about the launch");
     await runtime.submit(". @Steve\\ Ma");
 
@@ -965,9 +965,9 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Shared search term in Steve.");
-    await runtime.submit(":switch Architecture Review Board");
+    await runtime.submit("@Architecture Review Board");
     await runtime.submit("Shared search term in Architecture.");
     await runtime.submit("/Shared");
 
@@ -989,7 +989,7 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Follow up with Steve.");
     await runtime.submit("; 9-10 Steve");
     await runtime.submit(":help");
@@ -999,7 +999,7 @@ Login Screenshot
     const planRendered = runtime.render({ input: ";" });
 
     assert.match(rendered, /Follow up with Steve/);
-    assert.doesNotMatch(rendered, /:switch <context>/);
+    assert.doesNotMatch(rendered, /@<context>/);
     assert.match(planRendered, /9:00  ●  Steve · 1h/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
@@ -1013,7 +1013,7 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Follow up with Steve.");
     await runtime.submit("; 9-10 Architecture Review Board");
     await runtime.submit(":contexts");
@@ -1035,9 +1035,9 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Steve-only fact.");
-    await runtime.submit(":switch Architecture Review Board");
+    await runtime.submit("@Architecture Review Board");
     await runtime.submit("Architecture fact.");
     await runtime.submit(":context 2");
 
@@ -1058,7 +1058,7 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Follow up with Steve.");
     await runtime.submit(":inspect 1");
 
@@ -1082,7 +1082,7 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Follow up with Steve.");
     await runtime.submit(". task");
     assert.match(runtime.render(), /task Follow up with Steve/);
@@ -1104,7 +1104,7 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Follow up with Steve.");
     await runtime.submit(". delete");
     assert.doesNotMatch(runtime.render(), /Follow up with Steve/);
@@ -1171,7 +1171,7 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Follow up with Steve.");
 
     let rendered = runtime.render();
@@ -1194,8 +1194,8 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
-    await runtime.submit("@Devin's trial ends.");
+    await runtime.submit("@Steve");
+    await runtime.submit("Ask @Devin about the trial.");
 
     assert.equal(await runtime.complete("Confirm @Dev"), "Confirm @Devin");
     assert.equal(await runtime.complete("@St"), "@Steve");
@@ -1213,9 +1213,9 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve");
+    await runtime.submit("@Steve");
     await runtime.submit("Steve-only fact.");
-    await runtime.submit(":switch new context");
+    await runtime.submit("@new context");
 
     let rendered = runtime.render();
     assert.doesNotMatch(rendered, /Steve-only fact/);
@@ -1238,7 +1238,7 @@ Login Screenshot
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Steve\\ Ma");
+    await runtime.submit("@Steve\\ Ma");
     await runtime.submit("Follow up with Steve.");
 
     const rendered = runtime.render();
@@ -1266,7 +1266,7 @@ Login Screenshot
       clock: () => new Date("2026-07-08T12:00:00.000Z")
     });
 
-    await runtime.submit(":switch Technology Assembly/2026-07-08");
+    await runtime.submit("@Technology Assembly/2026-07-08");
     await runtime.submit("Prep the assembly agenda.");
 
     const rendered = runtime.render();

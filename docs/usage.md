@@ -34,10 +34,10 @@ A context is the current unit of work. You must switch to a context before
 capturing facts.
 
 ```text
-:switch Steve
-:switch Architecture Review Board
-:switch Thinking about Gatherbrain design
-:switch Steve\ Ma
+@Steve
+@Architecture Review Board
+@Thinking about Gatherbrain design
+@Steve\ Ma
 ```
 
 Escaped spaces are normalized when switching, so the last example stores and
@@ -288,7 +288,7 @@ Calendar rows are numbered in plan mode. Update or delete a visible time box:
 
 | Command | Status |
 | --- | --- |
-| `:switch <context>` | Switches to a context |
+| `@<context>` | Switches to a context |
 | `:context <number>` | Switches to a numbered context from `:contexts` |
 | `:contexts` | Lists contexts discovered from facts and time boxes |
 | `:inspect <number>` | Shows full details for a visible fact |
@@ -301,18 +301,18 @@ Calendar rows are numbered in plan mode. Update or delete a visible time box:
 | `:exit` | Exits the app |
 | `:quit` | Exits the app |
 
-In the interactive TUI, Tab completes commands, `:switch` context names, search
+In the interactive TUI, Tab completes commands, `@<context>` switches, search
 shortcuts, selection actions, visible result numbers, and known context names
-after `@` in capture text. When multiple candidates match the same typed prefix,
+after inline `@` tags in capture text. When multiple candidates match the same typed prefix,
 the first Tab completes any shared prefix and later Tab presses cycle through
 them. The cursor stays on the typed prefix, the recommended completion suffix
 appears in gray, and multiple matches appear in a compact candidate line above
 the prompt. Press `Right` or `Ctrl+F` to accept a visible recommendation and
 keep typing after it.
 
-Command names can also be submitted as an unambiguous prefix. For example,
-`:s Steve` and `:sw Steve` execute the same way as `:switch Steve`. Argument
-completion works after command shorthands, so `:s St` completes to `:s Steve`.
+Command names can also be submitted as an unambiguous prefix. Context switches
+use `@<context>` rather than a colon command, so `@St` completes to a known
+context such as `@Steve`.
 
 While typing in the interactive TUI, `Ctrl+A` moves to the start of the input
 and `Ctrl+E` moves to the end.

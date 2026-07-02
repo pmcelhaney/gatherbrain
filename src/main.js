@@ -44,7 +44,7 @@ export function createAppRuntime({
     factSource: factIndex,
     tagRepository,
     actionRegistry: selectionActionRegistry,
-    commandNames: ["exit", "help", "inspect", "paste", "quit", "restart", "context", "contexts", "switch", "timebox", "undo"]
+    commandNames: ["exit", "help", "inspect", "paste", "quit", "restart", "context", "contexts", "timebox", "undo"]
   });
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;

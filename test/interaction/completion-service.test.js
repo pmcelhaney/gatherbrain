@@ -8,12 +8,12 @@ describe("CompletionService", () => {
   it("completes commands", async () => {
     const service = new CompletionService();
 
-    assert.equal(await service.complete(":s"), ":switch");
-    assert.equal(await service.complete(":sw"), ":switch");
+    assert.equal(await service.complete(":s"), ":s");
+    assert.equal(await service.complete(":sw"), ":sw");
     assert.equal(await service.complete(":qu"), ":quit");
   });
 
-  it("completes contexts for switch and context commands", async () => {
+  it("completes contexts for @ switches and context commands", async () => {
     const service = new CompletionService({
       contextRepository: {
         async list() {
@@ -22,11 +22,11 @@ describe("CompletionService", () => {
       }
     });
 
-    assert.equal(await service.complete(":switch Arch"), ":switch Architecture Review Board");
+    assert.equal(await service.complete("@Arch"), "@Architecture\\ Review\\ Board");
     assert.equal(await service.complete(":context Ste"), ":context Steve");
   });
 
-  it("completes contexts after switch command shorthands", async () => {
+  it("does not complete removed switch command shorthands", async () => {
     const service = new CompletionService({
       contextRepository: {
         async list() {
@@ -35,8 +35,8 @@ describe("CompletionService", () => {
       }
     });
 
-    assert.equal(await service.complete(":s St"), ":s Steve");
-    assert.equal(await service.complete(":sw St"), ":sw Steve");
+    assert.equal(await service.complete(":s St"), ":s St");
+    assert.equal(await service.complete(":sw St"), ":sw St");
   });
 
   it("completes search shortcuts", async () => {
@@ -101,7 +101,7 @@ describe("CompletionService", () => {
 
     assert.equal(await service.complete("@St"), "@Steve\\ Ma");
     assert.equal(await service.complete("Confirm when @Dev"), "Confirm when @Devin");
-    assert.equal(await service.complete("@Architecture"), "@Architecture");
+    assert.equal(await service.complete("@Architecture"), "@Architecture\\ Review\\ Board");
   });
 
   it("cycles through matching capture tag completions", async () => {
@@ -168,9 +168,9 @@ describe("CompletionService", () => {
       }
     });
 
-    assert.equal(await service.complete(":SW"), ":switch");
-    assert.equal(await service.complete(":switch arch"), ":switch Architecture Review Board");
-    assert.equal(await service.complete(":SWITCH arch"), ":switch Architecture Review Board");
+    assert.equal(await service.complete(":SW"), ":SW");
+    assert.equal(await service.complete("@arch"), "@Architecture\\ Review\\ Board");
+    assert.equal(await service.complete(":SWITCH arch"), ":SWITCH arch");
     assert.equal(await service.complete(":CONTEXT arch"), ":context Architecture Review Board");
     assert.equal(await service.complete("//CUR"), "//current");
     assert.equal(await service.complete(". INP"), ". inprogress");

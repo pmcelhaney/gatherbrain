@@ -12,7 +12,7 @@ specification in [docs/spec.md](docs/spec.md).
 The app currently supports:
 
 - A persistent terminal screen with a header, fact body, and prompt.
-- Context switching with `:switch <context>`.
+- Context switching with `@<context>`.
 - Context discovery with `:contexts`.
 - Numbered context navigation with `:context <number>`.
 - Capturing facts into the current context.
@@ -72,7 +72,7 @@ npm start -- --render-once
 Start by switching to a context:
 
 ```text
-:switch Thinking about Gatherbrain design
+@Thinking about Gatherbrain design
 ```
 
 Capture a fact by typing plain text:

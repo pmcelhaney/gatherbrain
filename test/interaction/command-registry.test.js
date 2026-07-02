@@ -8,7 +8,7 @@ import { AppState } from "../../src/state/index.js";
 describe("CommandRegistry", () => {
   it("switches the current context", async () => {
     const state = new AppState();
-    const result = await new CommandRegistry().execute(":switch Architecture Review Board", {
+    const result = await new CommandRegistry().execute("@Architecture Review Board", {
       state
     });
 
@@ -19,7 +19,7 @@ describe("CommandRegistry", () => {
 
   it("switches escaped-space context input to the canonical context name", async () => {
     const state = new AppState();
-    const result = await new CommandRegistry().execute(":switch Steve\\ Ma", {
+    const result = await new CommandRegistry().execute("@Steve\\ Ma", {
       state
     });
 
@@ -29,20 +29,18 @@ describe("CommandRegistry", () => {
   });
 
   it("executes unambiguous command shorthands", async () => {
-    const state = new AppState();
-    const result = await new CommandRegistry().execute(":sw Architecture Review Board", {
-      state
+    const result = await new CommandRegistry().execute(":r", {
+      state: new AppState({ currentContext: "Steve" })
     });
 
-    assert.equal(result.action, "switch_context");
-    assert.equal(state.currentContext.name, "Architecture Review Board");
+    assert.equal(result.action, "restart");
+  });
 
-    const shortState = new AppState();
-    await new CommandRegistry().execute(":s Steve", {
-      state: shortState
-    });
-
-    assert.equal(shortState.currentContext.name, "Steve");
+  it("rejects the old switch command", async () => {
+    await assert.rejects(
+      () => new CommandRegistry().execute(":switch Steve", { state: new AppState() }),
+      /Unknown command: switch/
+    );
   });
 
   it("rejects ambiguous command shorthands", async () => {
@@ -93,7 +91,7 @@ describe("CommandRegistry", () => {
     const result = await new CommandRegistry().execute(":help", { state });
 
     assert.equal(result.action, "help");
-    assert.match(result.helpLines.join("\n"), /:switch <context>/);
+    assert.match(result.helpLines.join("\n"), /@<context>/);
     assert.match(result.helpLines.join("\n"), /:contexts/);
   });
 

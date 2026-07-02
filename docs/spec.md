@@ -336,9 +336,9 @@ each interaction. The prompt remains at the bottom of the screen.
 While the user is typing, the UI previews the inferred mode. Plan input previews
 the parsed time box before it is committed.
 
-Tab completion is available for commands, `:switch` context names, search
+Tab completion is available for commands, `@<context>` switches, search
 shortcuts, selection actions, visible result numbers, and known context names
-after `@` in capture text. When multiple candidates match the same typed
+after inline `@` tags in capture text. When multiple candidates match the same typed
 prefix, the first Tab completes any shared prefix and later Tab presses cycle
 through the matching candidates. The typed prefix keeps the cursor in place
 while the recommended completion suffix is shown in gray. Multiple matches are
@@ -346,10 +346,9 @@ shown in a compact candidate line above the prompt. `Right` or `Ctrl+F`
 accepts a visible recommendation so typing can continue after the completed
 text.
 
-Command names may be typed as the shortest unambiguous prefix. For example,
-`:s Steve` and `:sw Steve` execute as `:switch Steve` because `:switch` is the
-only command matching those prefixes. Tab completion for command arguments also
-works after command shorthands, so `:s St` completes to `:s Steve`.
+Command names may be typed as the shortest unambiguous prefix. Context switches
+use `@<context>` rather than a colon command, so `@St` completes to a known
+context such as `@Steve`.
 
 While typing in the interactive prompt, `Ctrl+A` moves the cursor to the start
 of the input and `Ctrl+E` moves the cursor to the end.
@@ -367,7 +366,7 @@ The mode is inferred from the first character entered.
 | --- | --- |
 | none | Capture |
 | / | Search |
-| : | Command |
+| : or @ | Command |
 | ; | Plan |
 | number or dots | Selection command |
 
@@ -377,7 +376,7 @@ The mode is inferred from the first character entered.
 
 | Command | Behavior |
 | --- | --- |
-| `:switch <context>` | Switches to the named context |
+| `@<context>` | Switches to the named context |
 | `:context <number>` | Switches to a numbered context from `:contexts` |
 | `:contexts` | Lists contexts discovered from fact folders and timebox files |
 | `:inspect <number>` | Shows full metadata and file path for a visible fact |
@@ -524,19 +523,19 @@ Commands change application state.
 Initial commands:
 
 ```text
-:switch <context>
+@<context>
 
 :restart
 
 :paste
 ```
 
-### `:switch`
+### `@<context>`
 
 Changes the current context.
 
 Shell-style escaped spaces are normalized before the context is stored, so
-`:switch Steve\ Ma` switches to `Steve Ma`.
+`@Steve\ Ma` switches to `Steve Ma`.
 
 The current query becomes:
 

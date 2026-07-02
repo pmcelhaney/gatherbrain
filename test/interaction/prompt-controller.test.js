@@ -56,9 +56,9 @@ describe("PromptController", () => {
   });
 
   it("captures @ tags and leaves possessives as text", async () => {
-    const result = await controller.submit("@Steve\\ Ma said @Devin's trial ends.");
+    const result = await controller.submit("Ask @Steve\\ Ma when @Devin's trial ends.");
 
-    assert.equal(result.fact.content, "@Steve Ma said @Devin's trial ends.");
+    assert.equal(result.fact.content, "Ask @Steve Ma when @Devin's trial ends.");
     assert.deepEqual(result.fact.tags, ["Steve Ma", "Devin"]);
   });
 
@@ -154,7 +154,7 @@ describe("PromptController", () => {
   });
 
   it("executes commands through the interaction layer", async () => {
-    const result = await controller.submit(":switch Architecture Review Board");
+    const result = await controller.submit("@Architecture Review Board");
 
     assert.equal(result.action, "switch_context");
     assert.equal(state.currentContext.name, "Architecture Review Board");

@@ -12,7 +12,7 @@ export class PromptClassifier {
       return AppMode.SEARCH;
     }
 
-    if (firstCharacter === ":") {
+    if (firstCharacter === ":" || firstCharacter === "@") {
       return AppMode.COMMAND;
     }
 

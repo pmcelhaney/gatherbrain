@@ -29,7 +29,7 @@ class SwitchContextCommand {
     const contextName = args.trim();
 
     if (!contextName) {
-      throw new Error(":switch requires a context");
+      throw new Error("@ requires a context");
     }
 
     state.switchContext(contextName);
@@ -94,7 +94,7 @@ class HelpCommand {
       mode: AppMode.COMMAND,
       helpLines: [
         "Commands",
-        ":switch <context>   switch or create a context",
+        "@<context>          switch or create a context",
         ":contexts           list known contexts",
         ":context <number>   switch to a numbered context",
         ":inspect <number>   show visible fact details",
@@ -265,7 +265,7 @@ function defaultCommands() {
     quit: exitCommand,
     context: new ContextCommand(),
     contexts: new ContextsCommand(),
-    switch: new SwitchContextCommand(),
+    "@context-switch": new SwitchContextCommand(),
     timebox: new TimeBoxCommand(),
     undo: new UndoCommand(),
     restart: new RestartCommand(),
@@ -357,8 +357,15 @@ async function resolveContextName(target, contextRepository) {
 function parseCommand(input) {
   const text = input.trim();
 
+  if (text.startsWith("@")) {
+    return {
+      name: "@context-switch",
+      args: text.slice(1)
+    };
+  }
+
   if (!text.startsWith(":")) {
-    throw new Error("Command input must start with :");
+    throw new Error("Command input must start with : or @");
   }
 
   const withoutPrefix = text.slice(1).trim();
