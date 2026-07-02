@@ -418,12 +418,28 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
     completionCycle = null;
   };
 
+  const restoreCompletionInput = () => {
+    if (completionCycle?.completed === buffer.text) {
+      buffer.text = completionCycle.input;
+      buffer.cursor = completionCycle.cursor;
+    }
+    resetCompletionCycle();
+  };
+
+  const completionSuggestionStart = () => {
+    if (completionCycle?.completed !== buffer.text || completionCycle.cursor !== buffer.cursor) {
+      return null;
+    }
+    return buffer.cursor < buffer.text.length ? buffer.cursor : null;
+  };
+
   const redraw = () => {
     outputStream.write(`${ansi.clear}${ansi.home}`);
     outputStream.write(runtime.render({
       input: buffer.text,
       cursor: buffer.cursor,
       showCursor: true,
+      completionSuggestionStart: completionSuggestionStart(),
       status,
       width: outputStream.columns ?? 80,
       height: outputStream.rows ?? 24,
@@ -443,14 +459,14 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
       }
 
       if (isControlKey(key, sequence, "a", "\u0001")) {
-        resetCompletionCycle();
+        restoreCompletionInput();
         buffer.moveHome();
         redraw();
         return;
       }
 
       if (isControlKey(key, sequence, "e", "\u0005")) {
-        resetCompletionCycle();
+        restoreCompletionInput();
         buffer.moveEnd();
         redraw();
         return;
@@ -465,55 +481,57 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
       }
 
       if (key.name === "backspace") {
-        resetCompletionCycle();
+        restoreCompletionInput();
         buffer.backspace();
         redraw();
         return;
       }
 
       if (key.name === "delete") {
-        resetCompletionCycle();
+        restoreCompletionInput();
         buffer.delete();
         redraw();
         return;
       }
 
       if (key.name === "left") {
-        resetCompletionCycle();
+        restoreCompletionInput();
         buffer.moveLeft();
         redraw();
         return;
       }
 
       if (key.name === "right") {
-        resetCompletionCycle();
+        restoreCompletionInput();
         buffer.moveRight();
         redraw();
         return;
       }
 
       if (key.name === "home") {
-        resetCompletionCycle();
+        restoreCompletionInput();
         buffer.moveHome();
         redraw();
         return;
       }
 
       if (key.name === "end") {
-        resetCompletionCycle();
+        restoreCompletionInput();
         buffer.moveEnd();
         redraw();
         return;
       }
 
       if (key.name === "tab") {
-        const isContinuingCycle = completionCycle?.completed === buffer.text;
+        const isContinuingCycle = completionCycle?.completed === buffer.text
+          && completionCycle.cursor === buffer.cursor;
         const cycleInput = isContinuingCycle ? completionCycle.input : buffer.text;
         const completionIndex = isContinuingCycle ? completionCycle.index + 1 : 0;
+        const cursor = isContinuingCycle ? completionCycle.cursor : buffer.cursor;
         const completed = await runtime.complete(cycleInput, { completionIndex });
         buffer.text = completed;
-        buffer.moveEnd();
-        completionCycle = { input: cycleInput, index: completionIndex, completed };
+        buffer.cursor = Math.min(cursor, completed.length);
+        completionCycle = { input: cycleInput, cursor: buffer.cursor, index: completionIndex, completed };
         redraw();
         return;
       }
@@ -554,7 +572,7 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
       }
 
       if (isPrintableKeypress(key, sequence)) {
-        resetCompletionCycle();
+        restoreCompletionInput();
         buffer.insert(sequence);
         redraw();
       }

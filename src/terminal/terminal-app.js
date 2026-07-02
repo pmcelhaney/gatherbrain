@@ -25,6 +25,7 @@ export class TerminalApp {
     input = "",
     cursor = input.length,
     showCursor = false,
+    completionSuggestionStart = null,
     status = "",
     width = 80,
     height = 24,
@@ -39,7 +40,9 @@ export class TerminalApp {
       state,
       input,
       cursor,
-      showCursor
+      showCursor,
+      completionSuggestionStart,
+      colorEnabled
     });
     const statusLines = status ? [status] : [];
     const bodyHeight = Math.max(1, height - 3 - statusLines.length);

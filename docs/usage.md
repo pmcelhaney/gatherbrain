@@ -296,7 +296,8 @@ Calendar rows are numbered in plan mode. Update or delete a visible time box:
 In the interactive TUI, Tab completes commands, `:switch` context names, search
 shortcuts, selection actions, visible result numbers, and known context names
 after `@` in capture text. When multiple candidates match the same typed prefix,
-press Tab repeatedly to cycle through them.
+press Tab repeatedly to cycle through them. The cursor stays on the typed prefix
+and the recommended completion suffix appears in gray.
 
 While typing in the interactive TUI, `Ctrl+A` moves to the start of the input
 and `Ctrl+E` moves to the end.

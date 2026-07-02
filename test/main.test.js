@@ -195,19 +195,21 @@ describe("main", () => {
     const completions = ["@Stacy", "@Stan", "@Steve\\ Ma"];
     const completeCalls = [];
     const renderedInputs = [];
+    const submitted = [];
     input.setRawMode = (value) => rawModes.push(value);
     input.pause = () => {};
 
     const run = runTui({
-      render({ input: renderedInput }) {
-        renderedInputs.push(renderedInput);
+      render({ input: renderedInput, cursor, completionSuggestionStart }) {
+        renderedInputs.push({ input: renderedInput, cursor, completionSuggestionStart });
         return "";
       },
       async complete(value, options) {
         completeCalls.push({ value, options });
         return completions[options.completionIndex % completions.length];
       },
-      async submit() {
+      async submit(value) {
+        submitted.push(value);
         return { action: "exit" };
       }
     }, { inputStream: input, outputStream: output });
@@ -230,7 +232,13 @@ describe("main", () => {
       { value: "@St", options: { completionIndex: 1 } },
       { value: "@St", options: { completionIndex: 2 } }
     ]);
-    assert.deepEqual(renderedInputs.slice(-4), ["@St", "@Stacy", "@Stan", "@Steve\\ Ma"]);
+    assert.deepEqual(renderedInputs.slice(-4), [
+      { input: "@St", cursor: 3, completionSuggestionStart: null },
+      { input: "@Stacy", cursor: 3, completionSuggestionStart: 3 },
+      { input: "@Stan", cursor: 3, completionSuggestionStart: 3 },
+      { input: "@Steve\\ Ma", cursor: 3, completionSuggestionStart: 3 }
+    ]);
+    assert.deepEqual(submitted, ["@Steve\\ Ma"]);
     assert.deepEqual(rawModes, [true, false]);
   });
 

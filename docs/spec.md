@@ -330,7 +330,9 @@ the parsed time box before it is committed.
 Tab completion is available for commands, `:switch` context names, search
 shortcuts, selection actions, visible result numbers, and known context names
 after `@` in capture text. When multiple candidates match the same typed
-prefix, pressing Tab repeatedly cycles through the matching candidates.
+prefix, pressing Tab repeatedly cycles through the matching candidates. The
+typed prefix keeps the cursor in place while the recommended completion suffix
+is shown in gray.
 
 While typing in the interactive prompt, `Ctrl+A` moves the cursor to the start
 of the input and `Ctrl+E` moves the cursor to the end.

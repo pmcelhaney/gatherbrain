@@ -359,6 +359,17 @@ describe("terminal renderers", () => {
       new PromptRenderer().render({ state, input: "Steve", cursor: 0, showCursor: true }),
       "> \x1b[7mS\x1b[0mteve"
     );
+    assert.equal(
+      new PromptRenderer().render({
+        state,
+        input: "@Stacy",
+        cursor: 3,
+        showCursor: true,
+        completionSuggestionStart: 3,
+        colorEnabled: true
+      }),
+      "> @St█\x1b[90macy\x1b[0m"
+    );
   });
 
   it("composes the terminal app render", () => {
