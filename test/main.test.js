@@ -584,6 +584,37 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("switches typed context prefixes to the resolved context name", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-typed-context-switch-"));
+    const runtime = createAppRuntime({ workspacePath });
+
+    await runtime.submit("@Gatherbrain");
+    await runtime.submit("Review Gatherbrain items.");
+    await runtime.submit("@Steve Ma");
+    await runtime.submit("Review Steve items.");
+
+    const typedPrefix = runtime.render({ input: "@Ga" });
+    const switchResult = await runtime.submit("@Ga");
+    const recentPreview = runtime.render({ input: "@", height: 6 });
+
+    assert.match(typedPrefix, /^Steve Ma > Gatherbrain$/m);
+    assert.equal(switchResult.action, "switch_context");
+    assert.equal(switchResult.message, "switched to Gatherbrain");
+    assert.equal(runtime.state.currentContext.name, "Gatherbrain");
+    assert.equal(runtime.state.currentQuery, "context:Gatherbrain");
+    assert.match(recentPreview, /^ 1\. Gatherbrain$/m);
+    assert.doesNotMatch(recentPreview, /^ 1\. Ga$/m);
+
+    const restoredRuntime = createAppRuntime({ workspacePath });
+    await restoredRuntime.initialize();
+
+    assert.equal(restoredRuntime.state.currentContext.name, "Gatherbrain");
+    assert.equal(restoredRuntime.state.currentQuery, "context:Gatherbrain");
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("previews and applies selection actions in a numbered recent context", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-scoped-selection-"));

@@ -552,6 +552,11 @@ Changes the current context.
 Shell-style escaped spaces are normalized before the context is stored, so
 `@Steve\ Ma` switches to `Steve Ma`.
 
+If the typed context text is a unique prefix of a known context, submitting that
+prefix switches to the full known context name. The header, current query, saved
+state, and recent-context history use the resolved context name, not the typed
+prefix.
+
 When the first prompt character is `@`, the body shows the last contexts visited
 in most-recent-first order. Entering `@1` switches to the first listed context,
 and entering `@..` switches to the second listed context.

@@ -190,7 +190,10 @@ export function createAppRuntime({
         };
       }
 
-      const result = await promptController.submit(line);
+      const result = await promptController.submit(canonicalizeContextSwitchInput(line, {
+        facts: cachedFacts,
+        recentContexts
+      }));
 
       if (result.action === "exit") {
         await appStateRepository.save(state);
@@ -398,6 +401,16 @@ function recordRecentContext(recentContexts, context) {
       Context.canonicalize(name) !== nextContext.canonicalName
     )
   ];
+}
+
+function canonicalizeContextSwitchInput(input, { facts = [], recentContexts = [] } = {}) {
+  const target = scopedContextTarget(input, { recentContexts, facts });
+
+  if (!target || target.rest.trim()) {
+    return input;
+  }
+
+  return `@${target.contextName}`;
 }
 
 function contextListPreviewForInput({ input, recentContexts, facts = [], height }) {
