@@ -230,6 +230,8 @@ export function createAppRuntime({
       cursor = input.length,
       showCursor = false,
       completionSuggestionStart = null,
+      completionCandidates = [],
+      completionCandidateIndex = null,
       status = "",
       width = output.columns ?? 80,
       height = output.rows ?? 24,
@@ -251,6 +253,8 @@ export function createAppRuntime({
         cursor,
         showCursor,
         completionSuggestionStart,
+        completionCandidates,
+        completionCandidateIndex,
         status,
         width,
         height,
@@ -258,6 +262,9 @@ export function createAppRuntime({
         now: clock(),
         colorEnabled
       });
+    },
+    async suggestCompletion(input, { completionIndex = 0 } = {}) {
+      return completionService.suggest(input, { resultSet, completionIndex });
     },
     async complete(input, { completionIndex = 0 } = {}) {
       return completionService.complete(input, { resultSet, completionIndex });
@@ -428,11 +435,35 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
     resetCompletionCycle();
   };
 
+  const acceptCompletionSuggestion = () => {
+    if (completionCycle?.completed !== buffer.text || completionCycle.cursor !== buffer.cursor) {
+      return false;
+    }
+
+    buffer.moveEnd();
+    resetCompletionCycle();
+    return true;
+  };
+
   const completionSuggestionStart = () => {
     if (completionCycle?.completed !== buffer.text || completionCycle.cursor !== buffer.cursor) {
       return null;
     }
     return buffer.cursor < buffer.text.length ? buffer.cursor : null;
+  };
+
+  const completionCandidates = () => {
+    if (completionCycle?.completed !== buffer.text || completionCycle.cursor !== buffer.cursor) {
+      return [];
+    }
+    return completionCycle.candidates ?? [];
+  };
+
+  const completionCandidateIndex = () => {
+    if (completionCycle?.completed !== buffer.text || completionCycle.cursor !== buffer.cursor) {
+      return null;
+    }
+    return completionCycle.index >= 0 ? completionCycle.index : null;
   };
 
   const redraw = () => {
@@ -442,6 +473,8 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
       cursor: buffer.cursor,
       showCursor: true,
       completionSuggestionStart: completionSuggestionStart(),
+      completionCandidates: completionCandidates(),
+      completionCandidateIndex: completionCandidateIndex(),
       status,
       width: outputStream.columns ?? 80,
       height: outputStream.rows ?? 24,
@@ -470,6 +503,14 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
       if (isControlKey(key, sequence, "e", "\u0005")) {
         restoreCompletionInput();
         buffer.moveEnd();
+        redraw();
+        return;
+      }
+
+      if (isControlKey(key, sequence, "f", "\u0006")) {
+        if (!acceptCompletionSuggestion()) {
+          buffer.moveRight();
+        }
         redraw();
         return;
       }
@@ -504,8 +545,9 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
       }
 
       if (key.name === "right") {
-        restoreCompletionInput();
-        buffer.moveRight();
+        if (!acceptCompletionSuggestion()) {
+          buffer.moveRight();
+        }
         redraw();
         return;
       }
@@ -528,12 +570,27 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
         const isContinuingCycle = completionCycle?.completed === buffer.text
           && completionCycle.cursor === buffer.cursor;
         const cycleInput = isContinuingCycle ? completionCycle.input : buffer.text;
-        const completionIndex = isContinuingCycle ? completionCycle.index + 1 : 0;
+        const completionIndex = isContinuingCycle && completionCycle.phase !== "common-prefix"
+          ? completionCycle.index + 1
+          : 0;
         const cursor = isContinuingCycle ? completionCycle.cursor : buffer.cursor;
-        const completed = await runtime.complete(cycleInput, { completionIndex });
+        const suggestion = await completeRuntimeInput(runtime, cycleInput, { completionIndex });
+        const commonPrefix = commonCompletionPrefix(suggestion.candidates);
+        const shouldCompleteCommonPrefix = !isContinuingCycle
+          && suggestion.candidates.length > 1
+          && commonPrefix.length > cycleInput.length
+          && commonPrefix !== suggestion.completed;
+        const completed = shouldCompleteCommonPrefix ? commonPrefix : suggestion.completed;
         buffer.text = completed;
         buffer.cursor = Math.min(cursor, completed.length);
-        completionCycle = { input: cycleInput, cursor: buffer.cursor, index: completionIndex, completed };
+        completionCycle = {
+          input: cycleInput,
+          cursor: buffer.cursor,
+          index: shouldCompleteCommonPrefix ? -1 : completionIndex,
+          phase: shouldCompleteCommonPrefix ? "common-prefix" : "candidate",
+          completed,
+          candidates: suggestion.candidates
+        };
         redraw();
         return;
       }
@@ -587,6 +644,35 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
     inputStream.pause();
     outputStream.write(`${ansi.showCursor}\n`);
   });
+}
+
+async function completeRuntimeInput(runtime, input, { completionIndex = 0 } = {}) {
+  if (typeof runtime.suggestCompletion === "function") {
+    return runtime.suggestCompletion(input, { completionIndex });
+  }
+
+  const completed = await runtime.complete(input, { completionIndex });
+  return {
+    input,
+    completed,
+    candidates: completed === input ? [] : [completed]
+  };
+}
+
+function commonCompletionPrefix(candidates) {
+  if (!Array.isArray(candidates) || candidates.length === 0) {
+    return "";
+  }
+
+  let prefix = candidates[0];
+
+  for (const candidate of candidates.slice(1)) {
+    while (!candidate.startsWith(prefix) && prefix.length > 0) {
+      prefix = prefix.slice(0, -1);
+    }
+  }
+
+  return prefix;
 }
 
 function isControlKey(key, sequence, name, controlSequence) {

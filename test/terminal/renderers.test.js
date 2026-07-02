@@ -391,6 +391,25 @@ describe("terminal renderers", () => {
     ].join("\n"));
   });
 
+  it("renders compact completion candidates above the prompt", () => {
+    const state = new AppState({ currentContext: "Steve" });
+    const app = new TerminalApp({ state });
+
+    assert.equal(app.render({
+      completionCandidates: ["@Stephanie\\ Garoza", "@Stephanie\\ Smith"],
+      completionCandidateIndex: 1,
+      colorEnabled: true,
+      width: 40,
+      height: 5
+    }), [
+      "contexts/Steve",
+      "----------------------------------------",
+      "...",
+      "\x1b[90m@Stephanie\\ Garoza\x1b[0m  \x1b[36m@Stephanie\\ Smith\x1b[0m",
+      ">"
+    ].join("\n"));
+  });
+
   it("renders status above the prompt without changing total height", () => {
     const state = new AppState({ currentContext: "Steve" });
     const app = new TerminalApp({ state });

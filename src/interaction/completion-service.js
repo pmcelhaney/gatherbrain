@@ -19,6 +19,10 @@ export class CompletionService {
   }
 
   async complete(input, context = {}) {
+    return (await this.suggest(input, context)).completed;
+  }
+
+  async suggest(input, context = {}) {
     const matchIndex = context.completionIndex ?? 0;
     const contextCommandPrefix = contextCompletionPrefix(input);
     if (contextCommandPrefix) {
@@ -35,12 +39,12 @@ export class CompletionService {
 
     if (isSelectionInput(input)) {
       const selectionCompletion = completeSelection(input, this.actionRegistry.keywords(), context.resultSet, matchIndex);
-      if (selectionCompletion !== input) {
+      if (selectionCompletion) {
         return selectionCompletion;
       }
 
       const selectionTagCompletion = await this.completeSelectionTag(input, matchIndex);
-      return selectionTagCompletion ?? input;
+      return selectionTagCompletion ?? noCompletion(input);
     }
 
     const tagCompletion = await this.completeTag(input, matchIndex);
@@ -48,7 +52,7 @@ export class CompletionService {
       return tagCompletion;
     }
 
-    return input;
+    return noCompletion(input);
   }
 
   async contextNames() {
@@ -62,13 +66,17 @@ export class CompletionService {
       return null;
     }
 
-    const match = indexedMatch(await this.tagNames(), activeTag.value, matchIndex);
+    const matches = matchingCandidates(await this.tagNames(), activeTag.value);
 
-    if (!match) {
+    if (matches.length === 0) {
       return null;
     }
 
-    return `${input.slice(0, activeTag.startIndex)}@${escapeTag(match)}`;
+    return completionResult(
+      input,
+      matches.map((match) => `${input.slice(0, activeTag.startIndex)}@${escapeTag(match)}`),
+      matchIndex
+    );
   }
 
   async completeSelectionTag(input, matchIndex = 0) {
@@ -78,13 +86,17 @@ export class CompletionService {
       return null;
     }
 
-    const match = indexedMatch(await this.tagNames(), activeTag.value, matchIndex);
+    const matches = matchingCandidates(await this.tagNames(), activeTag.value);
 
-    if (!match) {
+    if (matches.length === 0) {
       return null;
     }
 
-    return `${input.slice(0, activeTag.startIndex)}@${escapeTag(match)}`;
+    return completionResult(
+      input,
+      matches.map((match) => `${input.slice(0, activeTag.startIndex)}@${escapeTag(match)}`),
+      matchIndex
+    );
   }
 
   async tagNames() {
@@ -112,9 +124,9 @@ export class CompletionService {
 
 function completeSuffix(input, prefix, candidates, matchIndex = 0) {
   const partial = input.slice(prefix.length);
-  const match = indexedMatch(candidates, partial, matchIndex);
+  const matches = matchingCandidates(candidates, partial);
 
-  return match ? `${prefix}${match}` : input;
+  return completionResult(input, matches.map((match) => `${prefix}${match}`), matchIndex);
 }
 
 function contextCompletionPrefix(input) {
@@ -137,22 +149,20 @@ function completeSelection(input, actionKeywords, resultSet, matchIndex = 0) {
 
   if (/^\d*$/.test(last) && resultSet && last.length > 0) {
     const numbers = resultSet.toRows().map(({ number }) => String(number));
-    const match = indexedMatch(numbers, last, matchIndex);
-    if (match) {
-      tokens[tokens.length - 1] = match;
-      return tokens.join(" ");
+    const matches = matchingCandidates(numbers, last);
+    if (matches.length > 0) {
+      return completionResult(input, matches.map((match) => replaceLastToken(tokens, match)), matchIndex);
     }
   }
 
   if (/^\d+$|^\.+$/.test(tokens[0]) && tokens.length > 1) {
-    const match = indexedMatch(actionKeywords, last, matchIndex);
-    if (match) {
-      tokens[tokens.length - 1] = match;
-      return tokens.join(" ");
+    const matches = matchingCandidates(actionKeywords, last);
+    if (matches.length > 0) {
+      return completionResult(input, matches.map((match) => replaceLastToken(tokens, match)), matchIndex);
     }
   }
 
-  return input;
+  return null;
 }
 
 function isSelectionInput(input) {
@@ -196,16 +206,37 @@ function selectionActionStartIndex(input) {
   return null;
 }
 
-function indexedMatch(candidates, partial, matchIndex = 0) {
-  const matches = matchingCandidates(candidates, partial);
-  return matches.length > 0 ? matches[matchIndex % matches.length] : null;
-}
-
 function matchingCandidates(candidates, partial) {
   const normalizedPartial = partial.toLocaleLowerCase("en-US");
   return candidates.filter((candidate) =>
     candidate.toLocaleLowerCase("en-US").startsWith(normalizedPartial)
   );
+}
+
+function replaceLastToken(tokens, replacement) {
+  const completed = [...tokens];
+  completed[completed.length - 1] = replacement;
+  return completed.join(" ");
+}
+
+function completionResult(input, candidates, matchIndex = 0) {
+  if (candidates.length === 0) {
+    return noCompletion(input);
+  }
+
+  return {
+    input,
+    completed: candidates[matchIndex % candidates.length],
+    candidates
+  };
+}
+
+function noCompletion(input) {
+  return {
+    input,
+    completed: input,
+    candidates: []
+  };
 }
 
 function activeTagSegment(input, { allowEmpty = false } = {}) {

@@ -242,6 +242,154 @@ describe("main", () => {
     assert.deepEqual(rawModes, [true, false]);
   });
 
+  it("completes the common prefix before cycling full candidates", async () => {
+    const { runTui } = await import("../src/main.js");
+    const input = new EventEmitter();
+    const output = {
+      columns: 80,
+      rows: 24,
+      writes: [],
+      write(value) {
+        this.writes.push(value);
+      }
+    };
+    const candidates = ["@Stephanie\\ Garoza", "@Stephanie\\ Smith"];
+    const suggestCalls = [];
+    const renderedInputs = [];
+    const submitted = [];
+    input.setRawMode = () => {};
+    input.pause = () => {};
+
+    const run = runTui({
+      render({
+        input: renderedInput,
+        cursor,
+        completionSuggestionStart,
+        completionCandidates,
+        completionCandidateIndex
+      }) {
+        renderedInputs.push({
+          input: renderedInput,
+          cursor,
+          completionSuggestionStart,
+          completionCandidates,
+          completionCandidateIndex
+        });
+        return "";
+      },
+      async suggestCompletion(value, options) {
+        suggestCalls.push({ value, options });
+        return {
+          input: value,
+          completed: candidates[options.completionIndex % candidates.length],
+          candidates
+        };
+      },
+      async submit(value) {
+        submitted.push(value);
+        return { action: "exit" };
+      }
+    }, { inputStream: input, outputStream: output });
+
+    input.emit("keypress", "@", { sequence: "@", name: undefined });
+    input.emit("keypress", "S", { sequence: "S", name: undefined });
+    input.emit("keypress", "t", { sequence: "t", name: undefined });
+    input.emit("keypress", "e", { sequence: "e", name: undefined });
+    input.emit("keypress", "\t", { sequence: "\t", name: "tab" });
+    await new Promise((resolve) => setImmediate(resolve));
+    input.emit("keypress", "\t", { sequence: "\t", name: "tab" });
+    await new Promise((resolve) => setImmediate(resolve));
+    input.emit("keypress", "\t", { sequence: "\t", name: "tab" });
+    await new Promise((resolve) => setImmediate(resolve));
+    input.emit("keypress", "\r", { sequence: "\r", name: "return" });
+
+    await run;
+
+    assert.deepEqual(suggestCalls, [
+      { value: "@Ste", options: { completionIndex: 0 } },
+      { value: "@Ste", options: { completionIndex: 0 } },
+      { value: "@Ste", options: { completionIndex: 1 } }
+    ]);
+    assert.deepEqual(renderedInputs.slice(-4), [
+      {
+        input: "@Ste",
+        cursor: 4,
+        completionSuggestionStart: null,
+        completionCandidates: [],
+        completionCandidateIndex: null
+      },
+      {
+        input: "@Stephanie\\ ",
+        cursor: 4,
+        completionSuggestionStart: 4,
+        completionCandidates: candidates,
+        completionCandidateIndex: null
+      },
+      {
+        input: "@Stephanie\\ Garoza",
+        cursor: 4,
+        completionSuggestionStart: 4,
+        completionCandidates: candidates,
+        completionCandidateIndex: 0
+      },
+      {
+        input: "@Stephanie\\ Smith",
+        cursor: 4,
+        completionSuggestionStart: 4,
+        completionCandidates: candidates,
+        completionCandidateIndex: 1
+      }
+    ]);
+    assert.deepEqual(submitted, ["@Stephanie\\ Smith"]);
+  });
+
+  it("accepts a visible completion before continuing input", async () => {
+    const { runTui } = await import("../src/main.js");
+    const input = new EventEmitter();
+    const output = {
+      columns: 80,
+      rows: 24,
+      writes: [],
+      write(value) {
+        this.writes.push(value);
+      }
+    };
+    const submitted = [];
+    input.setRawMode = () => {};
+    input.pause = () => {};
+
+    const run = runTui({
+      render() {
+        return "";
+      },
+      async suggestCompletion(value) {
+        return {
+          input: value,
+          completed: "@Stacy",
+          candidates: ["@Stacy"]
+        };
+      },
+      async submit(value) {
+        submitted.push(value);
+        return { action: "exit" };
+      }
+    }, { inputStream: input, outputStream: output });
+
+    input.emit("keypress", "@", { sequence: "@", name: undefined });
+    input.emit("keypress", "S", { sequence: "S", name: undefined });
+    input.emit("keypress", "t", { sequence: "t", name: undefined });
+    input.emit("keypress", "\t", { sequence: "\t", name: "tab" });
+    await new Promise((resolve) => setImmediate(resolve));
+    input.emit("keypress", undefined, { sequence: "\u001b[C", name: "right" });
+    input.emit("keypress", " ", { sequence: " ", name: undefined });
+    input.emit("keypress", "a", { sequence: "a", name: undefined });
+    input.emit("keypress", "\r", { sequence: "\r", name: "return" });
+
+    await run;
+
+    assert.deepEqual(submitted, ["@Stacy a"]);
+  });
+
   it("moves to the start and end of input with ctrl+a and ctrl+e", async () => {
     const { runTui } = await import("../src/main.js");
     const input = new EventEmitter();

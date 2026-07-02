@@ -107,6 +107,24 @@ describe("CompletionService", () => {
     assert.equal(await service.complete("@St", { completionIndex: 3 }), "@Stacy");
   });
 
+  it("returns matching candidates for richer completion displays", async () => {
+    const service = new CompletionService({
+      factSource: {
+        async list() {
+          return [
+            { tags: ["Stephanie Garoza", "Stephanie Smith", "Steve Ma"] }
+          ];
+        }
+      }
+    });
+
+    assert.deepEqual(await service.suggest("@Ste"), {
+      input: "@Ste",
+      completed: "@Stephanie\\ Garoza",
+      candidates: ["@Stephanie\\ Garoza", "@Stephanie\\ Smith", "@Steve\\ Ma"]
+    });
+  });
+
   it("completes capture tags from root context directory tags", async () => {
     const service = new CompletionService({
       tagRepository: {
