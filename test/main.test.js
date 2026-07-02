@@ -91,6 +91,47 @@ describe("main", () => {
     assert.match(result.stdout, /planned 09:00-10:00 Steve/);
   });
 
+  it("previews slash searches without making them sticky", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-transient-search-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T15:45:00.000Z"),
+      idGenerator: (() => {
+        const ids = [
+          "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
+          "7f32fa70-f4b9-45fb-9ab7-2a48e9573f1b"
+        ];
+        return () => ids.shift();
+      })()
+    });
+
+    try {
+      await runtime.initialize();
+      await runtime.submit("@Gatherbrain");
+      await runtime.submit("Today item");
+      await runtime.submit("Later item");
+      await runtime.submit("/Today item;1 today");
+
+      const preview = runtime.render({ input: "//today", width: 80, height: 12 });
+
+      assert.match(preview, /Gatherbrain \| due:2026-06-30/);
+      assert.match(preview, /today item/);
+      assert.doesNotMatch(preview, /Later item/);
+
+      const result = await runtime.submit("//today");
+      const currentContext = runtime.render({ width: 80, height: 12 });
+
+      assert.equal(result.action, "search");
+      assert.equal(result.transient, true);
+      assert.doesNotMatch(currentContext.split("\n")[0], /due:2026-06-30/);
+      assert.match(currentContext, /today item/);
+      assert.match(currentContext, /Later item/);
+    } finally {
+      fs.rmSync(workspacePath, { recursive: true, force: true });
+    }
+  });
+
   it("exits on quit commands with surrounding whitespace", () => {
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-exit-"));
 
@@ -772,7 +813,7 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("restores the last context and query on startup", async () => {
+  it("restores the last context on startup", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-state-restore-"));
     const clock = () => new Date("2026-06-30T12:00:00.000Z");
@@ -787,14 +828,14 @@ describe("createAppRuntime", () => {
     await secondRuntime.initialize();
     const rendered = secondRuntime.render();
 
-    assert.match(rendered, /^new context \| context:new context$/m);
+    assert.match(rendered, /^new context$/m);
     assert.match(rendered, /New-context fact/);
     assert.doesNotMatch(rendered, /Steve-only fact/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("restores the last explicit query on startup", async () => {
+  it("does not restore a transient search query on startup", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-query-restore-"));
     const clock = () => new Date("2026-06-30T12:00:00.000Z");
@@ -811,7 +852,7 @@ describe("createAppRuntime", () => {
     const rendered = secondRuntime.render();
 
     assert.match(rendered, /Visible task/);
-    assert.doesNotMatch(rendered, /Hidden fact/);
+    assert.match(rendered, /Hidden fact/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -828,9 +869,8 @@ describe("createAppRuntime", () => {
     await runtime.submit("Task fact.");
     await runtime.submit(". task");
     await runtime.submit("Plain fact.");
-    await runtime.submit("/type:task");
-    assert.match(runtime.render(), /Task fact/);
-    assert.doesNotMatch(runtime.render(), /Plain fact/);
+    assert.match(runtime.render({ input: "/type:task" }), /Task fact/);
+    assert.doesNotMatch(runtime.render({ input: "/type:task" }), /Plain fact/);
 
     const result = await runtime.submit("");
 
@@ -1150,9 +1190,8 @@ Login Screenshot
     await runtime.submit("Shared search term in Steve.");
     await runtime.submit("@Architecture Review Board");
     await runtime.submit("Shared search term in Architecture.");
-    await runtime.submit("/Shared");
 
-    const rendered = runtime.render();
+    const rendered = runtime.render({ input: "/Shared" });
 
     assert.match(rendered, /^Architecture Review Board \| Shared$/m);
     assert.match(rendered, / 1\. Shared search term in Architecture/);

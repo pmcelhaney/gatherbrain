@@ -80,11 +80,13 @@ actions, so typing `. @` or `1 @St` completes from known tags.
 
 Search retrieves facts.
 
-The current search determines what appears in the body of the interface.
+Search prompts are transient. While a slash search is being typed, the body
+previews the matching results before Enter is pressed. Pressing Enter on a
+plain search returns the body to the current context instead of making the
+search sticky.
 
-An empty search prompt (`/`) refreshes the current query. If no current query
-exists, it searches the current context. If there is no current context, it
-lists all facts.
+An empty search prompt (`/`) previews the current context query. If there is no
+current context, it previews all facts.
 
 Search results show matches from the current context first, ordered newest first
 by fact creation time. A blank line separates those matches from matches in
@@ -94,8 +96,8 @@ Search result rows show a fact's home context only when the fact is outside the
 current context. Facts that live in the current context or are associated
 with the current context keep the compact current-context row.
 
-When search mode is active, the header appends the active search query after the
-current context:
+While search mode is being previewed, the header appends the preview query
+after the current context:
 
 ```text
 <current context> | <search query>
@@ -205,7 +207,6 @@ The application maintains the following state.
 
 ```text
 current_context
-current_query
 current_selection
 current_mode
 plan_preview
@@ -230,18 +231,6 @@ storage. Supported input forms are `today`, `tomorrow`, `yesterday`, weekdays
 such as `Friday`, `next <weekday>`, and month-day phrases such as `June 1`.
 Month-day phrases use the current year. Stored ISO dates render back as natural
 labels in terminal output.
-
-**current_query**
-
-The active search query.
-
-The body always renders the results of this query.
-
-Default:
-
-```text
-context:<current_context>
-```
 
 **current_selection**
 
@@ -274,7 +263,7 @@ Displays application state.
 Examples:
 
 - current context
-- active query
+- preview query
 - current mode
 - result count
 
@@ -296,7 +285,8 @@ Steve Ma > Gatherbrain
 
 ## Body
 
-Displays the result of the active query.
+Displays the current context facts, or transient search results while slash
+input is being previewed.
 
 Normally this is a list of facts.
 
@@ -399,7 +389,7 @@ The mode is inferred from the first character entered.
 | `:timebox delete <number>` | Deletes a visible time box |
 | `:undo` | Undoes the most recent selection action in memory |
 | `:help` | Shows in-app help |
-| `:restart` | Restarts the app, reloads current context/query, and clears transient panels |
+| `:restart` | Restarts the app, reloads the current context, and clears transient panels |
 | `:paste` | Prompts for a paste name, writes the clipboard into the current context, and creates a `type: file` fact |
 | `:exit` / `:quit` | Exits the app |
 
@@ -450,7 +440,8 @@ Creates a new fact in the current context.
 
 Search mode begins with `/`.
 
-The entered query becomes the active query.
+The entered query previews results while it is in the prompt. Pressing Enter on
+a plain search returns to the current context.
 
 Examples:
 
@@ -553,17 +544,17 @@ Shell-style escaped spaces are normalized before the context is stored, so
 `@Steve\ Ma` switches to `Steve Ma`.
 
 If the typed context text is a unique prefix of a known context, submitting that
-prefix switches to the full known context name. The header, current query, saved
-state, and recent-context history use the resolved context name, not the typed
-prefix. When a full context name replaces a previously recorded prefix, the
-prefix is removed from recent-context history.
+prefix switches to the full known context name. The header, saved state, and
+recent-context history use the resolved context name, not the typed prefix. When
+a full context name replaces a previously recorded prefix, the prefix is
+removed from recent-context history.
 
 When the first prompt character is `@`, the body shows the last contexts visited
 other than the current context in most-recent-first order. Entering `@1` switches
 to the first listed context, and entering `@..` switches to the second listed
 context.
 
-The current query becomes:
+The current context view becomes:
 
 ```text
 context:<new context>
@@ -573,11 +564,11 @@ context:<new context>
 
 In the interactive TUI, restarts the application process so code and
 configuration changes are loaded. The restarted process reloads the saved
-current context and query.
+current context.
 
 Transient state such as visible panels, selection previews, and undo history is
 cleared. Durable workspace state, including facts, time boxes, and the current
-context/query, is preserved.
+context, is preserved.
 
 ### `:paste`
 
@@ -676,8 +667,8 @@ Multiple actions may be chained in the same prompt:
 
 A search prompt may include `;` to end the search text and start a selection
 command. The selection applies to the numbered results from the search before
-the delimiter, while the active context and active query return to their
-previous values after the action completes.
+the delimiter, while the app returns to the current context after the action
+completes.
 
 ```text
 /context:Project\ Sapphire;1 5 gather

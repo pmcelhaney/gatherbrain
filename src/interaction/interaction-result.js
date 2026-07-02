@@ -10,7 +10,8 @@ export class InteractionResult {
     timeBox = null,
     timeBoxDate = null,
     helpLines = null,
-    undoSnapshot = null
+    undoSnapshot = null,
+    transient = false
   } = {}) {
     this.mode = mode;
     this.action = action;
@@ -23,6 +24,7 @@ export class InteractionResult {
     this.timeBoxDate = timeBoxDate;
     this.helpLines = helpLines;
     this.undoSnapshot = undoSnapshot;
+    this.transient = transient;
   }
 
   static captured({ mode, fact, filePath }) {
@@ -48,13 +50,14 @@ export class InteractionResult {
     });
   }
 
-  static searched({ mode, query, resultSet }) {
+  static searched({ mode, query, resultSet, transient = false }) {
     return new InteractionResult({
       mode,
       action: "search",
       message: `${resultSet.count} result${resultSet.count === 1 ? "" : "s"}`,
       resultSet,
-      query
+      query,
+      transient
     });
   }
 

@@ -31,8 +31,7 @@ describe("AppStateRepository", () => {
     await repository.save(state);
 
     assert.deepEqual(await repository.load(), {
-      currentContext: "Steve",
-      currentQuery: "type:task"
+      currentContext: "Steve"
     });
   });
 
@@ -47,8 +46,7 @@ describe("AppStateRepository", () => {
     );
 
     assert.deepEqual(await repository.load(), {
-      currentContext: "Architecture Review Board",
-      currentQuery: "context:Architecture Review Board"
+      currentContext: "Architecture Review Board"
     });
   });
 });

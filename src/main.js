@@ -82,9 +82,6 @@ export function createAppRuntime({
       state.switchContext(savedState.currentContext);
       recentContexts = recordRecentContext(recentContexts, state.currentContext);
     }
-    if (savedState?.currentQuery) {
-      state.setQuery(savedState.currentQuery);
-    }
 
     factIndex.invalidate();
     cachedFacts = await factIndex.list();
@@ -224,7 +221,7 @@ export function createAppRuntime({
         result.message = "undid last selection action";
       }
 
-      if (result.resultSet) {
+      if (result.resultSet && !result.transient) {
         resultSet = result.resultSet;
         helpLines = null;
       }
@@ -307,7 +304,14 @@ export function createAppRuntime({
       const visibleRecentContexts = selectableRecentContexts(recentContexts, state.currentContext);
 
       return terminalApp.render({
-        state: stateForPreview({ state, input, promptClassifier, planParser, clock }),
+        state: stateForPreview({
+          state,
+          input,
+          promptClassifier,
+          planParser,
+          searchShortcutRegistry,
+          clock
+        }),
         viewedContext: previewContext,
         resultSet: previewResultSetForInput({
           input,
@@ -502,7 +506,7 @@ function previewResultSetForInput({
   searchShortcutRegistry,
   clock
 }) {
-  const activeResultSet = searchSelectionResultSetForInput({
+  const activeResultSet = searchResultSetForInput({
     input,
     state,
     facts,
@@ -542,7 +546,7 @@ function previewResultSetForInput({
   return new SearchResultSet(previewFacts);
 }
 
-function searchSelectionResultSetForInput({
+function searchResultSetForInput({
   input,
   state,
   facts = [],
@@ -551,16 +555,13 @@ function searchSelectionResultSetForInput({
   searchShortcutRegistry,
   clock
 }) {
-  const delimiterIndex = searchSelectionDelimiterIndex(input);
-
-  if (delimiterIndex === -1 || !searchEngine || !searchQueryParser || !searchShortcutRegistry) {
+  if (!String(input).trimStart().startsWith("/") || !searchEngine || !searchQueryParser || !searchShortcutRegistry) {
     return null;
   }
 
   try {
     const today = clock().toISOString().slice(0, 10);
-    const rawSearchInput = input.slice(0, delimiterIndex).trim();
-    const expandedQuery = searchShortcutRegistry.expand(rawSearchInput || "/", {
+    const expandedQuery = searchShortcutRegistry.expand(searchInputForPreview(input) || "/", {
       currentContext: state?.currentContext
     });
     const query = queryForRuntimeSearchInput(normalizeNaturalDates(expandedQuery, { today }), state);
@@ -573,6 +574,22 @@ function searchSelectionResultSetForInput({
   } catch {
     return null;
   }
+}
+
+function searchSelectionResultSetForInput(options) {
+  if (searchSelectionDelimiterIndex(options.input) === -1) {
+    return null;
+  }
+
+  return searchResultSetForInput(options);
+}
+
+function searchInputForPreview(input) {
+  const delimiterIndex = searchSelectionDelimiterIndex(input);
+  const rawSearchInput = delimiterIndex === -1
+    ? input
+    : input.slice(0, delimiterIndex);
+  return rawSearchInput.trim();
 }
 
 function viewedContextForInput({
@@ -595,7 +612,7 @@ function selectionPreviewForInput({
   searchShortcutRegistry,
   clock
 }) {
-  const activeResultSet = searchSelectionResultSetForInput({
+  const activeResultSet = searchResultSetForInput({
     input,
     state,
     facts,
@@ -992,7 +1009,14 @@ function selectionActionsText(actions) {
   ).join(" ");
 }
 
-function stateForPreview({ state, input, promptClassifier, planParser, clock }) {
+function stateForPreview({
+  state,
+  input,
+  promptClassifier,
+  planParser,
+  searchShortcutRegistry,
+  clock
+}) {
   if (!input) {
     return state;
   }
@@ -1009,9 +1033,36 @@ function stateForPreview({ state, input, promptClassifier, planParser, clock }) 
     });
   }
 
+  if (currentMode === "Search") {
+    previewState.currentQuery = queryForSearchPreview({
+      input,
+      state,
+      searchShortcutRegistry,
+      clock
+    });
+  }
+
   return {
     ...previewState
   };
+}
+
+function queryForSearchPreview({
+  input,
+  state,
+  searchShortcutRegistry,
+  clock
+}) {
+  try {
+    const today = clock().toISOString().slice(0, 10);
+    const expandedQuery = searchShortcutRegistry.expand(searchInputForPreview(input) || "/", {
+      currentContext: state?.currentContext
+    });
+
+    return queryForRuntimeSearchInput(normalizeNaturalDates(expandedQuery, { today }), state);
+  } catch {
+    return state.currentQuery;
+  }
 }
 
 export async function main(argv = process.argv.slice(2)) {

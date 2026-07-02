@@ -135,8 +135,11 @@ Search mode begins with `/`.
 /tag:Steve Ma
 ```
 
-`/` by itself refreshes the current query. If there is no current query, it uses
-the current context query. If there is no current context, it lists all facts.
+Slash searches preview matching facts while the query is in the prompt.
+Pressing Enter on a plain search returns to the current context.
+
+`/` by itself previews the current context query. If there is no current
+context, it previews all facts.
 
 Multi-word values may be quoted:
 
@@ -240,7 +243,7 @@ with `;` and placing the selectors and actions after it:
 ```
 
 This applies the action to the numbered results from the search before `;` and
-then returns to the previous active context and query.
+then returns to the current context.
 
 Current built-in actions:
 

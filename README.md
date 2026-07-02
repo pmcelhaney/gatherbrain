@@ -94,8 +94,9 @@ Search facts:
 //current
 ```
 
-`/` by itself refreshes the current query, uses the current context query, or
-lists all facts if no query exists.
+Slash searches preview matching facts while the query is in the prompt.
+Pressing Enter on a plain search returns to the current context. `/` by itself
+previews the current context query, or all facts if no context exists.
 
 Operate on visible facts:
 

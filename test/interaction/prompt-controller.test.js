@@ -106,7 +106,8 @@ describe("PromptController", () => {
     assert.equal(result.action, "search");
     assert.equal(result.mode, AppMode.SEARCH);
     assert.equal(result.resultSet.count, 1);
-    assert.equal(state.currentMode, AppMode.SEARCH);
+    assert.equal(result.transient, true);
+    assert.equal(state.currentMode, AppMode.CAPTURE);
   });
 
   it("uses the current query when search input is empty", async () => {

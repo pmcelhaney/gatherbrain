@@ -22,7 +22,7 @@ Responsibilities:
 Does not:
 
 - Own facts.
-- Know about the current query or selection.
+- Know about interactive query preview or selection state.
 - Manage time boxes directly.
 
 ### `Fact`
@@ -390,7 +390,7 @@ Does not:
 
 ### `HeaderRenderer`
 
-Renders current context, active query, mode, and result count.
+Renders current context, preview query, mode, and result count.
 
 ### `BodyRenderer`
 

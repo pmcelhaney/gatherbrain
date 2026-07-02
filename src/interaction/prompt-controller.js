@@ -163,6 +163,7 @@ export class PromptController {
         fileOpener: this.fileOpener,
         today
       });
+      restoreStableMode(this.state);
 
       return InteractionResult.selectionAction({
         mode: AppMode.SEARCH,
@@ -171,12 +172,13 @@ export class PromptController {
       });
     }
 
-    this.state.setQuery(query);
+    restoreStableMode(this.state);
 
     return InteractionResult.searched({
       mode: AppMode.SEARCH,
-      query: this.state.currentQuery,
-      resultSet
+      query,
+      resultSet,
+      transient: true
     });
   }
 
@@ -320,4 +322,8 @@ function queryForSearch(rawQuery, state) {
   }
 
   return "*";
+}
+
+function restoreStableMode(state) {
+  state.setMode(state.currentContext ? AppMode.CAPTURE : AppMode.COMMAND);
 }
