@@ -34,7 +34,13 @@ export class CompletionService {
     }
 
     if (isSelectionInput(input)) {
-      return completeSelection(input, this.actionRegistry.keywords(), context.resultSet, matchIndex);
+      const selectionCompletion = completeSelection(input, this.actionRegistry.keywords(), context.resultSet, matchIndex);
+      if (selectionCompletion !== input) {
+        return selectionCompletion;
+      }
+
+      const selectionTagCompletion = await this.completeSelectionTag(input, matchIndex);
+      return selectionTagCompletion ?? input;
     }
 
     const tagCompletion = await this.completeTag(input, matchIndex);
@@ -51,6 +57,22 @@ export class CompletionService {
 
   async completeTag(input, matchIndex = 0) {
     const activeTag = activeTagSegment(input);
+
+    if (!activeTag) {
+      return null;
+    }
+
+    const match = indexedMatch(await this.tagNames(), activeTag.value, matchIndex);
+
+    if (!match) {
+      return null;
+    }
+
+    return `${input.slice(0, activeTag.startIndex)}@${escapeTag(match)}`;
+  }
+
+  async completeSelectionTag(input, matchIndex = 0) {
+    const activeTag = activeSelectionTagSegment(input);
 
     if (!activeTag) {
       return null;
@@ -137,6 +159,43 @@ function isSelectionInput(input) {
   return /^\s*(\d+|\.)/.test(input);
 }
 
+function activeSelectionTagSegment(input) {
+  const actionStartIndex = selectionActionStartIndex(input);
+
+  if (actionStartIndex === null || input[actionStartIndex] !== "@") {
+    return null;
+  }
+
+  const activeTag = activeTagSegment(input.slice(actionStartIndex), { allowEmpty: true });
+
+  if (!activeTag) {
+    return null;
+  }
+
+  return {
+    startIndex: actionStartIndex + activeTag.startIndex,
+    value: activeTag.value
+  };
+}
+
+function selectionActionStartIndex(input) {
+  const tokens = input.matchAll(/\S+/g);
+  let hasSelector = false;
+
+  for (const token of tokens) {
+    const value = token[0];
+
+    if (/^\d+$/.test(value) || /^\.+$/.test(value)) {
+      hasSelector = true;
+      continue;
+    }
+
+    return hasSelector ? token.index : null;
+  }
+
+  return null;
+}
+
 function indexedMatch(candidates, partial, matchIndex = 0) {
   const matches = matchingCandidates(candidates, partial);
   return matches.length > 0 ? matches[matchIndex % matches.length] : null;
@@ -149,7 +208,7 @@ function matchingCandidates(candidates, partial) {
   );
 }
 
-function activeTagSegment(input) {
+function activeTagSegment(input, { allowEmpty = false } = {}) {
   const startIndex = input.lastIndexOf("@");
 
   if (startIndex === -1) {
@@ -174,7 +233,7 @@ function activeTagSegment(input) {
     value += char;
   }
 
-  return value.length > 0 ? { startIndex, value } : null;
+  return value.length > 0 || allowEmpty ? { startIndex, value } : null;
 }
 
 function isTagStopChar(char) {

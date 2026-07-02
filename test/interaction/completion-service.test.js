@@ -41,6 +41,23 @@ describe("CompletionService", () => {
     assert.equal(await service.complete(". ed"), ". edit");
   });
 
+  it("completes dynamic @ selection actions from known tags", async () => {
+    const service = new CompletionService({
+      factSource: {
+        async list() {
+          return [
+            { tags: ["Steve Ma", "Devin"] }
+          ];
+        }
+      }
+    });
+
+    assert.equal(await service.complete(". @"), ". @Devin");
+    assert.equal(await service.complete(". @", { completionIndex: 1 }), ". @Steve\\ Ma");
+    assert.equal(await service.complete(". @St"), ". @Steve\\ Ma");
+    assert.equal(await service.complete("1 @St"), "1 @Steve\\ Ma");
+  });
+
   it("completes visible selectors", async () => {
     const service = new CompletionService();
     const resultSet = new SearchResultSet([

@@ -975,6 +975,8 @@ Login Screenshot
 
     assert.equal(await runtime.complete("Confirm @Dev"), "Confirm @Devin");
     assert.equal(await runtime.complete("@St"), "@Steve");
+    assert.equal(await runtime.complete(". @"), ". @Devin");
+    assert.equal(await runtime.complete(". @Dev"), ". @Devin");
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

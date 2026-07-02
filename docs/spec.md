@@ -71,7 +71,8 @@ Tags may also be added to selected existing facts with selection input such as
 `. @Steve\ Ma` or `1 @Steve\ Ma`.
 
 Known tags are discovered from root-level workspace directories, the same way
-contexts are discovered.
+contexts are discovered. Tab completion applies to dynamic `@` selection
+actions, so typing `. @` or `1 @St` completes from known tags.
 
 ---
 
