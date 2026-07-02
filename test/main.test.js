@@ -589,6 +589,8 @@ describe("createAppRuntime", () => {
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-typed-context-switch-"));
     const runtime = createAppRuntime({ workspacePath });
 
+    await runtime.submit("@Ga");
+    assert.equal(runtime.state.currentContext.name, "Ga");
     await runtime.submit("@Gatherbrain");
     await runtime.submit("Review Gatherbrain items.");
     await runtime.submit("@Steve Ma");
@@ -604,7 +606,7 @@ describe("createAppRuntime", () => {
     assert.equal(runtime.state.currentContext.name, "Gatherbrain");
     assert.equal(runtime.state.currentQuery, "context:Gatherbrain");
     assert.match(recentPreview, /^ 1\. Gatherbrain$/m);
-    assert.doesNotMatch(recentPreview, /^ 1\. Ga$/m);
+    assert.doesNotMatch(recentPreview, /^ \d+\. Ga$/m);
 
     const restoredRuntime = createAppRuntime({ workspacePath });
     await restoredRuntime.initialize();

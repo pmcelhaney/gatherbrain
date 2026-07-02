@@ -397,9 +397,11 @@ function recordRecentContext(recentContexts, context) {
   const nextContext = Context.from(context);
   return [
     nextContext.name,
-    ...recentContexts.filter((name) =>
-      Context.canonicalize(name) !== nextContext.canonicalName
-    )
+    ...recentContexts.filter((name) => {
+      const canonicalName = Context.canonicalize(name);
+      return canonicalName !== nextContext.canonicalName
+        && !nextContext.canonicalName.startsWith(canonicalName);
+    })
   ];
 }
 
@@ -662,6 +664,13 @@ function contextNameForTypedPrefix(rawPrefix, { recentContexts = [], facts = [] 
   const matches = contextNamesFromFactsAndRecentContexts(facts, recentContexts).filter((contextName) =>
     Context.canonicalize(contextName).startsWith(normalizedPrefix)
   );
+  const strictMatches = matches.filter((contextName) =>
+    Context.canonicalize(contextName) !== normalizedPrefix
+  );
+
+  if (strictMatches.length === 1) {
+    return strictMatches[0];
+  }
 
   if (matches.length === 1) {
     return matches[0];
