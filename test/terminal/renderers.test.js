@@ -233,6 +233,22 @@ describe("terminal renderers", () => {
     );
   });
 
+  it("shows the home session when rendering search results", () => {
+    const state = new AppState({
+      currentSession: "Steve",
+      currentMode: AppMode.SEARCH
+    });
+    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const resultSet = new SearchResultSet([
+      buildFact({ homeSession: "Architecture Review Board" })
+    ]);
+
+    assert.equal(
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      "  1. todo tomorrow [Architecture Review Board] Follow up with Steve."
+    );
+  });
+
   it("marks facts associated with the current context", () => {
     const state = new AppState({ currentSession: "Steve" });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });

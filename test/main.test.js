@@ -703,8 +703,8 @@ Login Screenshot
 
     const rendered = runtime.render();
 
-    assert.match(rendered, /\+ 1\. Shared search term in Architecture/);
-    assert.match(rendered, /\n  2\. Shared search term in Steve/);
+    assert.match(rendered, /\+ 1\. \[Architecture Review Board\] Shared search term in Architecture/);
+    assert.match(rendered, /\n  2\. \[Steve\] Shared search term in Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

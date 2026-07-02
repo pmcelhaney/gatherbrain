@@ -51,9 +51,10 @@ export class BodyRenderer {
       const prefix = isSelected && !colorEnabled ? `>${basePrefix}` : basePrefix;
       const type = displayType(fact);
       const due = fact.dueDate ? `${formatDueDate(fact.dueDate, today)} ` : "";
-      const firstLinePrefix = `${color(prefix, ansi.gray, colorEnabled)}${color(type, ansi.cyan, colorEnabled)}${color(due, ansi.magenta, colorEnabled)}`;
+      const home = displayHomeSession(fact, state);
+      const firstLinePrefix = `${color(prefix, ansi.gray, colorEnabled)}${color(type, ansi.cyan, colorEnabled)}${color(due, ansi.magenta, colorEnabled)}${colorIfPresent(home, ansi.gray, colorEnabled)}`;
       const continuationPrefix = " ".repeat(numberWidth + 2);
-      const firstLineWidth = Math.max(1, width - prefix.length - type.length - due.length);
+      const firstLineWidth = Math.max(1, width - prefix.length - type.length - due.length - home.length);
       const continuationWidth = Math.max(1, width - continuationPrefix.length);
       const [first, ...rest] = wrapPlain(displayContent(fact, today), firstLineWidth);
 
@@ -79,6 +80,18 @@ function displayType(fact) {
   }
 
   return `${fact.type} `;
+}
+
+function displayHomeSession(fact, state) {
+  if (state.currentMode !== AppMode.SEARCH) {
+    return "";
+  }
+
+  return `[${fact.homeSession.name}] `;
+}
+
+function colorIfPresent(text, code, enabled) {
+  return text ? color(text, code, enabled) : "";
 }
 
 function displayContent(fact, today) {
