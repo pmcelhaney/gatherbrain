@@ -304,7 +304,8 @@ the prompt. Press `Right` or `Ctrl+F` to accept a visible recommendation and
 keep typing after it.
 
 Command names can also be submitted as an unambiguous prefix. For example,
-`:s Steve` and `:sw Steve` execute the same way as `:switch Steve`.
+`:s Steve` and `:sw Steve` execute the same way as `:switch Steve`. Argument
+completion works after command shorthands, so `:s St` completes to `:s Steve`.
 
 While typing in the interactive TUI, `Ctrl+A` moves to the start of the input
 and `Ctrl+E` moves to the end.

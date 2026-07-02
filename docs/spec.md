@@ -348,7 +348,8 @@ text.
 
 Command names may be typed as the shortest unambiguous prefix. For example,
 `:s Steve` and `:sw Steve` execute as `:switch Steve` because `:switch` is the
-only command matching those prefixes.
+only command matching those prefixes. Tab completion for command arguments also
+works after command shorthands, so `:s St` completes to `:s Steve`.
 
 While typing in the interactive prompt, `Ctrl+A` moves the cursor to the start
 of the input and `Ctrl+E` moves the cursor to the end.

@@ -24,7 +24,7 @@ export class CompletionService {
 
   async suggest(input, context = {}) {
     const matchIndex = context.completionIndex ?? 0;
-    const contextCommandPrefix = contextCompletionPrefix(input);
+    const contextCommandPrefix = contextCompletionPrefix(input, this.commandNames);
     if (contextCommandPrefix) {
       return completeSuffix(input, contextCommandPrefix, await this.contextNames(), matchIndex);
     }
@@ -129,15 +129,51 @@ function completeSuffix(input, prefix, candidates, matchIndex = 0) {
   return completionResult(input, matches.map((match) => `${prefix}${match}`), matchIndex);
 }
 
-function contextCompletionPrefix(input) {
-  const normalizedInput = input.toLocaleLowerCase("en-US");
+function contextCompletionPrefix(input, commandNames) {
+  const match = input.match(/^:([^\s]+)\s+/);
 
-  if (normalizedInput.startsWith(":switch ")) {
-    return ":switch ";
+  if (!match) {
+    return null;
   }
 
-  if (normalizedInput.startsWith(":context ")) {
-    return ":context ";
+  const commandToken = match[1];
+  const commandName = resolveCommandName(commandToken, commandNames);
+
+  if (commandName === "switch") {
+    if (commandToken.toLocaleLowerCase("en-US") === "switch") {
+      return ":switch ";
+    }
+
+    return `:${commandToken} `;
+  }
+
+  if (commandName === "context") {
+    if (commandToken.toLocaleLowerCase("en-US") === "context") {
+      return ":context ";
+    }
+
+    return `:${commandToken} `;
+  }
+
+  return null;
+}
+
+function resolveCommandName(commandToken, commandNames) {
+  const normalizedToken = commandToken.toLocaleLowerCase("en-US");
+  const exactMatch = commandNames.find((commandName) =>
+    commandName.toLocaleLowerCase("en-US") === normalizedToken
+  );
+
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const matches = commandNames.filter((commandName) =>
+    commandName.toLocaleLowerCase("en-US").startsWith(normalizedToken)
+  );
+
+  if (matches.length === 1) {
+    return matches[0];
   }
 
   return null;

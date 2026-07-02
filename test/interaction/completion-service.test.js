@@ -26,6 +26,19 @@ describe("CompletionService", () => {
     assert.equal(await service.complete(":context Ste"), ":context Steve");
   });
 
+  it("completes contexts after switch command shorthands", async () => {
+    const service = new CompletionService({
+      contextRepository: {
+        async list() {
+          return ["Architecture Review Board", "Steve"];
+        }
+      }
+    });
+
+    assert.equal(await service.complete(":s St"), ":s Steve");
+    assert.equal(await service.complete(":sw St"), ":sw Steve");
+  });
+
   it("completes search shortcuts", async () => {
     const service = new CompletionService();
 
