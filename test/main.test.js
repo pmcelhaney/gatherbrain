@@ -234,6 +234,54 @@ describe("main", () => {
     assert.deepEqual(rawModes, [true, false]);
   });
 
+  it("moves to the start and end of input with ctrl+a and ctrl+e", async () => {
+    const { runTui } = await import("../src/main.js");
+    const input = new EventEmitter();
+    const output = {
+      columns: 80,
+      rows: 24,
+      writes: [],
+      write(value) {
+        this.writes.push(value);
+      }
+    };
+    const renderedInputs = [];
+    const submitted = [];
+    input.setRawMode = () => {};
+    input.pause = () => {};
+
+    const run = runTui({
+      render({ input: renderedInput, cursor }) {
+        renderedInputs.push({ input: renderedInput, cursor });
+        return "";
+      },
+      async submit(value) {
+        submitted.push(value);
+        return { action: "exit" };
+      }
+    }, { inputStream: input, outputStream: output });
+
+    input.emit("keypress", "a", { sequence: "a", name: undefined });
+    input.emit("keypress", "c", { sequence: "c", name: undefined });
+    input.emit("keypress", "\u0001", { sequence: "\u0001", name: "a", ctrl: true });
+    input.emit("keypress", "b", { sequence: "b", name: undefined });
+    input.emit("keypress", "\u0005", { sequence: "\u0005", name: "e", ctrl: true });
+    input.emit("keypress", "d", { sequence: "d", name: undefined });
+    input.emit("keypress", "\r", { sequence: "\r", name: "return" });
+
+    await run;
+
+    assert.deepEqual(renderedInputs.slice(-6), [
+      { input: "a", cursor: 1 },
+      { input: "ac", cursor: 2 },
+      { input: "ac", cursor: 0 },
+      { input: "bac", cursor: 1 },
+      { input: "bac", cursor: 3 },
+      { input: "bacd", cursor: 4 }
+    ]);
+    assert.deepEqual(submitted, ["bacd"]);
+  });
+
   it("suspends raw tty input while edit selection commands run", async () => {
     const { runTui } = await import("../src/main.js");
     const input = new EventEmitter();

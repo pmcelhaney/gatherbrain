@@ -442,6 +442,20 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
         return;
       }
 
+      if (key.ctrl && key.name === "a") {
+        resetCompletionCycle();
+        buffer.moveHome();
+        redraw();
+        return;
+      }
+
+      if (key.ctrl && key.name === "e") {
+        resetCompletionCycle();
+        buffer.moveEnd();
+        redraw();
+        return;
+      }
+
       if (key.name === "escape") {
         resetCompletionCycle();
         buffer.clear();

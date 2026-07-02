@@ -296,6 +296,9 @@ shortcuts, selection actions, visible result numbers, and known session names
 after `@` in capture text. When multiple candidates match the same typed prefix,
 press Tab repeatedly to cycle through them.
 
+While typing in the interactive TUI, `Ctrl+A` moves to the start of the input
+and `Ctrl+E` moves to the end.
+
 In the interactive TUI, `:restart` launches a fresh app process so recent code
 and configuration changes are loaded. Durable workspace state is preserved.
 
