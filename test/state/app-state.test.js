@@ -5,32 +5,32 @@ import { TimeBox } from "../../src/domain/index.js";
 import { AppMode, AppState, PlanPreview, Selection } from "../../src/state/index.js";
 
 describe("AppState", () => {
-  it("starts without a capture session", () => {
+  it("starts without a capture context", () => {
     const state = new AppState();
 
-    assert.equal(state.currentSession, null);
+    assert.equal(state.currentContext, null);
     assert.equal(state.currentQuery, null);
     assert.equal(state.currentMode, AppMode.COMMAND);
     assert.equal(state.canCaptureFact(), false);
-    assert.throws(() => state.requireCaptureSession(), /current session is required/);
+    assert.throws(() => state.requireCaptureContext(), /current context is required/);
   });
 
-  it("switches sessions and resets query and selection", () => {
+  it("switches contexts and resets query and selection", () => {
     const state = new AppState({
       currentSelection: new Selection(["a", "b"])
     });
 
-    state.switchSession("Steve");
+    state.switchContext("Steve");
 
-    assert.equal(state.currentSession.name, "Steve");
-    assert.equal(state.currentQuery, "session:Steve");
+    assert.equal(state.currentContext.name, "Steve");
+    assert.equal(state.currentQuery, "context:Steve");
     assert.equal(state.currentSelection.isEmpty(), true);
     assert.equal(state.currentMode, AppMode.CAPTURE);
   });
 
   it("clears selection when search changes", () => {
     const state = new AppState({
-      currentSession: "Steve",
+      currentContext: "Steve",
       currentSelection: new Selection(["a"])
     });
 
@@ -42,11 +42,11 @@ describe("AppState", () => {
   });
 
   it("stores and clears plan previews", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const timeBox = new TimeBox({
       id: "plan-1",
       date: "2026-06-30",
-      session: "Steve",
+      context: "Steve",
       startsAt: "09:00",
       endsAt: "10:00"
     });
@@ -62,11 +62,11 @@ describe("AppState", () => {
   });
 
   it("restarts to the initial state", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
 
     state.restart();
 
-    assert.equal(state.currentSession, null);
+    assert.equal(state.currentContext, null);
     assert.equal(state.currentQuery, null);
     assert.equal(state.currentSelection.isEmpty(), true);
     assert.equal(state.currentMode, AppMode.COMMAND);

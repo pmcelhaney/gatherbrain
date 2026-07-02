@@ -53,19 +53,19 @@ export class TrashFactAction {
   }
 }
 
-export class AssociateCurrentSessionAction {
+export class AssociateCurrentContextAction {
   async execute(context) {
-    if (!context.state.currentSession) {
-      throw new Error("Current session is required to gather facts");
+    if (!context.state.currentContext) {
+      throw new Error("Current context is required to gather facts");
     }
 
     return mutateSelectedFacts(context, async (fact, factStore) => {
-      fact.associateSession(context.state.currentSession);
+      fact.associateContext(context.state.currentContext);
       await factStore.saveFact(fact);
       return {
         fact,
-        action: "associate_current_session",
-        value: context.state.currentSession.name
+        action: "associate_current_context",
+        value: context.state.currentContext.name
       };
     });
   }

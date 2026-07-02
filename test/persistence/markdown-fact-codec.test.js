@@ -15,8 +15,8 @@ describe("MarkdownFactCodec", () => {
       dueDate: null,
       file: "review-notes.txt",
       url: "https://example.com/review",
-      homeSession: "Architecture Review Board",
-      associatedSessions: ["Steve", "Enterprise Architecture"],
+      homeContext: "Architecture Review Board",
+      associatedContexts: ["Steve", "Enterprise Architecture"],
       tags: ["Devin", "Steve Ma"]
     });
 
@@ -24,7 +24,7 @@ describe("MarkdownFactCodec", () => {
 id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
 type: observation
 created: 2026-06-30T14:15:23.000Z
-associated_sessions:
+associated_contexts:
   - Steve
   - Enterprise Architecture
 tags:
@@ -44,7 +44,7 @@ Mike prefers async architecture reviews.
 id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
 type: observation
 created: 2026-06-30T14:15:23.000Z
-associated_sessions:
+associated_contexts:
   - Steve
 tags:
   - Devin
@@ -54,11 +54,11 @@ file: review-notes.txt
 url: https://example.com/review
 ---
 Mike prefers async architecture reviews.
-`, { homeSession: "Architecture Review Board" });
+`, { homeContext: "Architecture Review Board" });
 
     assert.equal(fact.id, "6f2308de-02e9-45db-8ff0-65ac793f4a24");
-    assert.equal(fact.homeSession.name, "Architecture Review Board");
-    assert.deepEqual(fact.associatedSessions.map((session) => session.name), ["Steve"]);
+    assert.equal(fact.homeContext.name, "Architecture Review Board");
+    assert.deepEqual(fact.associatedContexts.map((context) => context.name), ["Steve"]);
     assert.equal(fact.dueDate, "2026-07-01");
     assert.equal(fact.file, "review-notes.txt");
     assert.equal(fact.url, "https://example.com/review");
@@ -72,32 +72,49 @@ Mike prefers async architecture reviews.
 id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
 type: observation
 created: 2026-06-30T14:15:23.000Z
-associated_sessions:
+associated_contexts:
 due: 
 file: 
 ---
 Mike prefers async architecture reviews.
-`, { homeSession: "Architecture Review Board" });
+`, { homeContext: "Architecture Review Board" });
 
     assert.deepEqual(fact.tags, []);
     assert.equal(fact.url, null);
   });
 
-  it("ignores legacy home_session front matter when storage context is provided", () => {
+  it("parses legacy associated session front matter", () => {
     const codec = new MarkdownFactCodec();
     const fact = codec.parse(`---
 id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
 type: observation
 created: 2026-06-30T14:15:23.000Z
-home_session: Legacy Session
 associated_sessions:
+  - Steve
 due: 
 file: 
 ---
 Mike prefers async architecture reviews.
-`, { homeSession: "Architecture Review Board" });
+`, { homeContext: "Architecture Review Board" });
 
-    assert.equal(fact.homeSession.name, "Architecture Review Board");
+    assert.deepEqual(fact.associatedContexts.map((context) => context.name), ["Steve"]);
+  });
+
+  it("ignores legacy home_context front matter when storage context is provided", () => {
+    const codec = new MarkdownFactCodec();
+    const fact = codec.parse(`---
+id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
+type: observation
+created: 2026-06-30T14:15:23.000Z
+home_context: Legacy Context
+associated_contexts:
+due: 
+file: 
+---
+Mike prefers async architecture reviews.
+`, { homeContext: "Architecture Review Board" });
+
+    assert.equal(fact.homeContext.name, "Architecture Review Board");
   });
 
   it("requires storage context when parsing facts", () => {
@@ -107,11 +124,11 @@ Mike prefers async architecture reviews.
 id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
 type: observation
 created: 2026-06-30T14:15:23.000Z
-associated_sessions:
+associated_contexts:
 due: 
 file: 
 ---
 Mike prefers async architecture reviews.
-`), /Missing fact parse option: homeSession/);
+`), /Missing fact parse option: homeContext/);
   });
 });

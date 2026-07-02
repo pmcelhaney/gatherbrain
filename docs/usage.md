@@ -10,7 +10,7 @@ npm start
 
 Gatherbrain opens a terminal screen with:
 
-- a header showing the current date and session
+- a header showing the current date and context
 - a divider
 - a fact or calendar body
 - a prompt at the bottom
@@ -27,9 +27,9 @@ Use `GATHERBRAIN_WORKSPACE` to choose another storage location:
 GATHERBRAIN_WORKSPACE=~/gatherbrain-notes npm start
 ```
 
-## Sessions
+## Contexts
 
-A session is the current unit of work. You must switch to a session before
+A context is the current unit of work. You must switch to a context before
 capturing facts.
 
 ```text
@@ -40,27 +40,27 @@ capturing facts.
 ```
 
 Escaped spaces are normalized when switching, so the last example stores and
-searches the session as `Steve Ma`.
+searches the context as `Steve Ma`.
 
-There is no separate session creation command yet. Switching to a new name is
-enough; the session becomes real when facts or time boxes are stored for it.
+There is no separate context creation command yet. Switching to a new name is
+enough; the context becomes real when facts or time boxes are stored for it.
 
-List discovered sessions:
+List discovered contexts:
 
 ```text
-:sessions
+:contexts
 ```
 
-The current session is marked with `*`, and sessions are numbered. Switch to a
-numbered session:
+The current context is marked with `*`, and contexts are numbered. Switch to a
+numbered context:
 
 ```text
-:session 2
+:context 2
 ```
 
 ## Capturing Facts
 
-In capture mode, plain text becomes a fact in the current session.
+In capture mode, plain text becomes a fact in the current context.
 
 ```text
 Mike prefers async architecture reviews.
@@ -92,21 +92,21 @@ The stored body is `Follow up 2026-07-01 and 2026-07-03` when today is
 2026-06-30. Terminal rows render those ISO dates back as friendly labels.
 
 Facts are stored as Markdown files with front matter beneath the workspace
-session folder. Slash-separated session names are stored as nested directories,
+context folder. Slash-separated context names are stored as nested directories,
 so `Technology Assembly/2026-07-08` lives under
 `workspace/Technology Assembly/2026-07-08/`.
 
-Use `@` to refer to a session name in captured facts:
+Use `@` to refer to a context name in captured facts:
 
 ```text
 @Steve\ Ma said to confirm when the @Devin trial ends
 ```
 
-This saves tags `Steve Ma` and `Devin`, which share the session namespace.
+This saves tags `Steve Ma` and `Devin`, which share the context namespace.
 Escaped spaces are input syntax only; they are not stored in the tag value.
 Possessives keep the suffix as text, so `@Devin's` stores the tag `Devin`.
 
-Root-level workspace directories are known tag/session names and are used for
+Root-level workspace directories are known tag/context names and are used for
 completion.
 
 ## Searching
@@ -119,24 +119,24 @@ Search mode begins with `/`.
 /"async architecture"
 /type:task
 /due:today
-/session:"Architecture Review Board"
-/session:Architecture Review Board
+/context:"Architecture Review Board"
+/context:Architecture Review Board
 /@Architecture Review Board
 /tag:Devin
 /tag:Steve Ma
 ```
 
 `/` by itself refreshes the current query. If there is no current query, it uses
-the current session query. If there is no current session, it lists all facts.
+the current context query. If there is no current context, it lists all facts.
 
 Multi-word values may be quoted:
 
 ```text
-/session:"Architecture Review Board"
+/context:"Architecture Review Board"
 /tag:"Steve Ma"
 ```
 
-Session and tag fields also accept unquoted multi-word values.
+Context and tag fields also accept unquoted multi-word values.
 
 Adjacent terms imply `AND`:
 
@@ -157,11 +157,11 @@ Search shortcuts:
 ```text
 //current
 //today
-//session
+//context
 //overdue
 ```
 
-`//session` requires a current session.
+`//context` requires a current context.
 
 Due dates in fact rows render as friendly labels before the content:
 
@@ -216,7 +216,7 @@ Current built-in actions:
 | `today` | Sets due date to today |
 | `tomorrow` | Sets due date to tomorrow |
 | `delete` | Moves the fact to `.trash` |
-| `gather` | Associates the fact with the current session |
+| `gather` | Associates the fact with the current context |
 | `open` | Opens the file associated with the fact |
 | `edit` | Opens the fact Markdown file in `$EDITOR`; with multiple selectors, only the last mentioned fact is edited |
 
@@ -240,8 +240,8 @@ Inspect one visible fact:
 :inspect 1
 ```
 
-The inspect view shows the fact UUID, type, created timestamp, home session,
-associated sessions, due date, associated file, Markdown path, and content.
+The inspect view shows the fact UUID, type, created timestamp, home context,
+associated contexts, due date, associated file, Markdown path, and content.
 
 ## Planning Time
 
@@ -278,21 +278,21 @@ Calendar rows are numbered in plan mode. Update or delete a visible time box:
 
 | Command | Status |
 | --- | --- |
-| `:switch <session>` | Switches to a session |
-| `:session <number>` | Switches to a numbered session from `:sessions` |
-| `:sessions` | Lists sessions discovered from facts and time boxes |
+| `:switch <context>` | Switches to a context |
+| `:context <number>` | Switches to a numbered context from `:contexts` |
+| `:contexts` | Lists contexts discovered from facts and time boxes |
 | `:inspect <number>` | Shows full details for a visible fact |
-| `:timebox <number> <range> <session>` | Updates a visible time box |
+| `:timebox <number> <range> <context>` | Updates a visible time box |
 | `:timebox delete <number>` | Deletes a visible time box |
 | `:undo` | Undoes the most recent selection action |
 | `:help` | Shows in-app help |
 | `:restart` | Restarts the TUI process and reloads current state |
-| `:paste` | Prompts for a name, writes the clipboard into the current session, and creates a `type: file` fact |
+| `:paste` | Prompts for a name, writes the clipboard into the current context, and creates a `type: file` fact |
 | `:exit` | Exits the app |
 | `:quit` | Exits the app |
 
-In the interactive TUI, Tab completes commands, `:switch` session names, search
-shortcuts, selection actions, visible result numbers, and known session names
+In the interactive TUI, Tab completes commands, `:switch` context names, search
+shortcuts, selection actions, visible result numbers, and known context names
 after `@` in capture text. When multiple candidates match the same typed prefix,
 press Tab repeatedly to cycle through them.
 
@@ -302,9 +302,9 @@ and `Ctrl+E` moves to the end.
 In the interactive TUI, `:restart` launches a fresh app process so recent code
 and configuration changes are loaded. Durable workspace state is preserved.
 
-`:paste` requires a current session. After `:paste`, enter a name for the
+`:paste` requires a current context. After `:paste`, enter a name for the
 pasted item. Gatherbrain writes text clipboard data as `<name>.txt` and
-screenshot clipboard data as `<name>.png` in the current session folder, then
+screenshot clipboard data as `<name>.png` in the current context folder, then
 creates a `type: file` fact named the same way with `file: <filename>` in front
 matter. Select that fact and run `. open` to open the pasted file.
 
@@ -347,7 +347,7 @@ workspace/
       <uuid>-prep-the-assembly-agenda.md
 ```
 
-Pasted files live alongside facts in the same session folder:
+Pasted files live alongside facts in the same context folder:
 
 ```text
 workspace/

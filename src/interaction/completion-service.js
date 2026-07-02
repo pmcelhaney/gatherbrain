@@ -3,14 +3,14 @@ import { SearchShortcutRegistry } from "../search/index.js";
 
 export class CompletionService {
   constructor({
-    sessionRepository,
+    contextRepository,
     factSource = null,
     tagRepository = null,
     actionRegistry = SelectionActionRegistry.fromConfig(),
     shortcutRegistry = new SearchShortcutRegistry(),
-    commandNames = ["exit", "help", "inspect", "paste", "quit", "restart", "session", "sessions", "switch", "timebox", "undo"]
+    commandNames = ["exit", "help", "inspect", "paste", "quit", "restart", "context", "contexts", "switch", "timebox", "undo"]
   } = {}) {
-    this.sessionRepository = sessionRepository;
+    this.contextRepository = contextRepository;
     this.factSource = factSource;
     this.tagRepository = tagRepository;
     this.actionRegistry = actionRegistry;
@@ -20,9 +20,9 @@ export class CompletionService {
 
   async complete(input, context = {}) {
     const matchIndex = context.completionIndex ?? 0;
-    const sessionCommandPrefix = sessionCompletionPrefix(input);
-    if (sessionCommandPrefix) {
-      return completeSuffix(input, sessionCommandPrefix, await this.sessionNames(), matchIndex);
+    const contextCommandPrefix = contextCompletionPrefix(input);
+    if (contextCommandPrefix) {
+      return completeSuffix(input, contextCommandPrefix, await this.contextNames(), matchIndex);
     }
 
     if (input.startsWith(":")) {
@@ -45,8 +45,8 @@ export class CompletionService {
     return input;
   }
 
-  async sessionNames() {
-    return this.sessionRepository ? this.sessionRepository.list() : [];
+  async contextNames() {
+    return this.contextRepository ? this.contextRepository.list() : [];
   }
 
   async completeTag(input, matchIndex = 0) {
@@ -95,15 +95,15 @@ function completeSuffix(input, prefix, candidates, matchIndex = 0) {
   return match ? `${prefix}${match}` : input;
 }
 
-function sessionCompletionPrefix(input) {
+function contextCompletionPrefix(input) {
   const normalizedInput = input.toLocaleLowerCase("en-US");
 
   if (normalizedInput.startsWith(":switch ")) {
     return ":switch ";
   }
 
-  if (normalizedInput.startsWith(":session ")) {
-    return ":session ";
+  if (normalizedInput.startsWith(":context ")) {
+    return ":context ";
   }
 
   return null;

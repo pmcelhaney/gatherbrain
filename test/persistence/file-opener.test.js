@@ -19,7 +19,7 @@ describe("FileOpener", () => {
       type: "file",
       createdAt: "2026-07-01T12:00:00.000Z",
       file: "launch-notes.txt",
-      homeSession: "Steve"
+      homeContext: "Steve"
     });
 
     const filePath = await opener.openAssociatedFile({

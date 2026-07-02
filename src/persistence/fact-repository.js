@@ -14,10 +14,10 @@ export class FactRepository {
   async create(fact) {
     const nextFact = Fact.from(fact);
     const date = dateFromTimestamp(nextFact.createdAt);
-    const directory = this.workspace.sessionDirectory(date, nextFact.homeSession);
+    const directory = this.workspace.contextDirectory(date, nextFact.homeContext);
     const filePath = this.workspace.factPath({
       date,
-      session: nextFact.homeSession,
+      context: nextFact.homeContext,
       fileName: fileNameForFact(nextFact)
     });
 
@@ -30,7 +30,7 @@ export class FactRepository {
   async read(filePath) {
     const markdown = await fs.readFile(filePath, "utf8");
     return this.codec.parse(markdown, {
-      homeSession: homeSessionFromPath(this.workspace.rootPath, filePath)
+      homeContext: homeContextFromPath(this.workspace.rootPath, filePath)
     });
   }
 
@@ -85,7 +85,7 @@ export class FactRepository {
   async trash(filePath) {
     const fact = await this.read(filePath);
     const date = dateFromTimestamp(fact.createdAt);
-    const trashDirectory = this.workspace.trashDirectory(date, fact.homeSession);
+    const trashDirectory = this.workspace.trashDirectory(date, fact.homeContext);
     const targetPath = path.join(trashDirectory, path.basename(filePath));
 
     await fs.mkdir(trashDirectory, { recursive: true });
@@ -123,19 +123,19 @@ function slugFor(content) {
   return slug || "fact";
 }
 
-function homeSessionFromPath(rootPath, filePath) {
+function homeContextFromPath(rootPath, filePath) {
   const relativePath = path.relative(rootPath, filePath);
   const directoryParts = path.dirname(relativePath).split(path.sep).filter(Boolean);
-  const homeSessionParts = directoryParts.at(-1) === ".trash"
+  const homeContextParts = directoryParts.at(-1) === ".trash"
     ? directoryParts.slice(0, -1)
     : directoryParts;
-  const homeSession = homeSessionParts.join("/");
+  const homeContext = homeContextParts.join("/");
 
-  if (!homeSession) {
-    throw new Error(`Fact path is not inside a session directory: ${filePath}`);
+  if (!homeContext) {
+    throw new Error(`Fact path is not inside a context directory: ${filePath}`);
   }
 
-  return homeSession;
+  return homeContext;
 }
 
 async function findMarkdownFiles(rootPath) {

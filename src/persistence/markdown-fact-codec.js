@@ -8,11 +8,11 @@ export class MarkdownFactCodec {
       `id: ${serializable.id}`,
       `type: ${serializable.type}`,
       `created: ${serializable.createdAt}`,
-      "associated_sessions:"
+      "associated_contexts:"
     ];
 
-    for (const session of serializable.associatedSessions) {
-      lines.push(`  - ${session}`);
+    for (const context of serializable.associatedContexts) {
+      lines.push(`  - ${context}`);
     }
 
     lines.push("tags:");
@@ -29,7 +29,7 @@ export class MarkdownFactCodec {
     return `${lines.join("\n")}\n`;
   }
 
-  parse(markdown, { homeSession } = {}) {
+  parse(markdown, { homeContext } = {}) {
     if (typeof markdown !== "string") {
       throw new Error("Markdown fact content must be a string");
     }
@@ -44,8 +44,8 @@ export class MarkdownFactCodec {
       dueDate: frontMatter.due || null,
       file: frontMatter.file || null,
       url: frontMatter.url || null,
-      homeSession: requiredOption(homeSession, "homeSession"),
-      associatedSessions: frontMatter.associated_sessions ?? [],
+      homeContext: requiredOption(homeContext, "homeContext"),
+      associatedContexts: frontMatter.associated_contexts ?? frontMatter.associated_sessions ?? [],
       tags: frontMatter.tags ?? []
     });
   }
@@ -73,7 +73,7 @@ function splitFrontMatter(markdown) {
 function parseFrontMatter(lines) {
   const frontMatter = {};
   let currentListKey = null;
-  const listKeys = new Set(["associated_sessions", "tags"]);
+  const listKeys = new Set(["associated_contexts", "associated_sessions", "tags"]);
 
   for (const line of lines) {
     if (line.trim().length === 0) {

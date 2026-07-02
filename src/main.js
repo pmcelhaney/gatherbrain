@@ -9,7 +9,7 @@ import { defaultAppConfig, loadAppConfig, mergeAppConfig } from "./config/index.
 import { Fact } from "./domain/index.js";
 import { normalizeNaturalDates } from "./domain/date-text.js";
 import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
-import { AppStateRepository, ClipboardReader, FactRepository, FileOpener, PasteRepository, SessionRepository, TagRepository, Workspace } from "./persistence/index.js";
+import { AppStateRepository, ClipboardReader, FactRepository, FileOpener, PasteRepository, ContextRepository, TagRepository, Workspace } from "./persistence/index.js";
 import { PlanParser, TimeBoxRepository } from "./planning/index.js";
 import { FactIndex, SearchEngine, SearchQueryParser, SearchResultSet } from "./search/index.js";
 import { AppState, Selection } from "./state/index.js";
@@ -29,7 +29,7 @@ export function createAppRuntime({
   const appStateRepository = new AppStateRepository({ workspace });
   const factRepository = new FactRepository({ workspace });
   const pasteRepository = new PasteRepository({ workspace });
-  const sessionRepository = new SessionRepository({ workspace });
+  const contextRepository = new ContextRepository({ workspace });
   const tagRepository = new TagRepository({ workspace });
   const timeBoxRepository = new TimeBoxRepository({ workspace });
   const factIndex = new FactIndex(factRepository);
@@ -39,11 +39,11 @@ export function createAppRuntime({
   const planParser = new PlanParser();
   const selectionActionRegistry = SelectionActionRegistry.fromConfig(appConfig.selectionActions);
   const completionService = new CompletionService({
-    sessionRepository,
+    contextRepository,
     factSource: factIndex,
     tagRepository,
     actionRegistry: selectionActionRegistry,
-    commandNames: ["exit", "help", "inspect", "paste", "quit", "restart", "session", "sessions", "switch", "timebox", "undo"]
+    commandNames: ["exit", "help", "inspect", "paste", "quit", "restart", "context", "contexts", "switch", "timebox", "undo"]
   });
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;
@@ -55,7 +55,7 @@ export function createAppRuntime({
     state,
     factRepository,
     factSource: factIndex,
-    sessionRepository,
+    contextRepository,
       selectionActionRegistry,
       timeBoxRepository,
       fileOpener,
@@ -70,8 +70,8 @@ export function createAppRuntime({
     const savedState = await appStateRepository.load();
 
     state.restart();
-    if (savedState?.currentSession) {
-      state.switchSession(savedState.currentSession);
+    if (savedState?.currentContext) {
+      state.switchContext(savedState.currentContext);
     }
     if (savedState?.currentQuery) {
       state.setQuery(savedState.currentQuery);
@@ -125,7 +125,7 @@ export function createAppRuntime({
       }
 
       if (line.trim() === "") {
-        const result = await resetToCurrentSession({
+        const result = await resetToCurrentContext({
           state,
           factIndex,
           searchEngine,
@@ -177,7 +177,7 @@ export function createAppRuntime({
         timeBoxes = await timeBoxRepository.listByDate(result.timeBoxDate);
       }
 
-      if (result.action === "switch_session") {
+      if (result.action === "switch_context") {
         resultSet = await searchCurrentFacts({
           state,
           factIndex,
@@ -189,7 +189,7 @@ export function createAppRuntime({
       }
 
       if (result.action === "paste_name_requested") {
-        state.requireCaptureSession();
+        state.requireCaptureContext();
         pendingPaste = true;
         helpLines = null;
       }
@@ -697,22 +697,22 @@ async function restoreUndoSnapshot({ undoSnapshot, factRepository }) {
   }
 }
 
-async function resetToCurrentSession({
+async function resetToCurrentContext({
   state,
   factIndex,
   searchEngine,
   searchQueryParser,
   clock
 }) {
-  if (state.currentSession) {
-    state.setQuery(`session:"${state.currentSession.name}"`);
+  if (state.currentContext) {
+    state.setQuery(`context:"${state.currentContext.name}"`);
   } else {
     state.restart();
   }
 
   return {
-    action: "reset_to_current_session",
-    message: state.currentSession ? `showing ${state.currentSession.name}` : "cleared search",
+    action: "reset_to_current_context",
+    message: state.currentContext ? `showing ${state.currentContext.name}` : "cleared search",
     resultSet: await initialResultSet({
       state,
       factIndex,
@@ -741,14 +741,14 @@ async function completePendingPaste({
     throw new Error("Paste name is required");
   }
 
-  state.requireCaptureSession();
+  state.requireCaptureContext();
 
   const createdAt = clock();
   const date = createdAt.toISOString().slice(0, 10);
   const clipboardItem = await clipboardReader.read();
   const paste = await pasteRepository.create({
     date,
-    session: state.currentSession,
+    context: state.currentContext,
     name,
     clipboardItem
   });
@@ -758,7 +758,7 @@ async function completePendingPaste({
     type: "file",
     createdAt,
     file: paste.fileName,
-    homeSession: state.currentSession
+    homeContext: state.currentContext
   });
 
   await factRepository.create(fact);

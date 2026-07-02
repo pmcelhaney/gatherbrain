@@ -1,18 +1,18 @@
-export class Session {
+export class Context {
   constructor(name) {
-    const normalizedName = Session.normalizeName(name);
+    const normalizedName = Context.normalizeName(name);
 
     if (!normalizedName) {
-      throw new Error("Session name is required");
+      throw new Error("Context name is required");
     }
 
     this.name = normalizedName;
-    this.canonicalName = Session.canonicalize(normalizedName);
+    this.canonicalName = Context.canonicalize(normalizedName);
   }
 
   static normalizeName(name) {
     if (typeof name !== "string") {
-      throw new TypeError("Session name must be a string");
+      throw new TypeError("Context name must be a string");
     }
 
     return name
@@ -25,12 +25,12 @@ export class Session {
   }
 
   static canonicalize(name) {
-    return Session.normalizeName(name).toLocaleLowerCase("en-US");
+    return Context.normalizeName(name).toLocaleLowerCase("en-US");
   }
 
   equals(other) {
-    const otherSession = Session.from(other);
-    return this.canonicalName === otherSession.canonicalName;
+    const otherContext = Context.from(other);
+    return this.canonicalName === otherContext.canonicalName;
   }
 
   pathSegment() {
@@ -57,10 +57,10 @@ export class Session {
   }
 
   static from(value) {
-    if (value instanceof Session) {
+    if (value instanceof Context) {
       return value;
     }
 
-    return new Session(value);
+    return new Context(value);
   }
 }

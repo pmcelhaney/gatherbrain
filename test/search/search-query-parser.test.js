@@ -23,18 +23,18 @@ describe("SearchQueryParser", () => {
   });
 
   it("parses quoted spaced field values", () => {
-    assert.deepEqual(parser.parse('/session:"Architecture Review Board"'), {
+    assert.deepEqual(parser.parse('/context:"Architecture Review Board"'), {
       type: "field",
-      field: "session",
+      field: "context",
       operator: ":",
       value: "Architecture Review Board"
     });
   });
 
-  it("parses unquoted spaced session field values", () => {
-    assert.deepEqual(parser.parse("/session:Architecture Review Board"), {
+  it("parses unquoted spaced context field values", () => {
+    assert.deepEqual(parser.parse("/context:Architecture Review Board"), {
       type: "field",
-      field: "session",
+      field: "context",
       operator: ":",
       value: "Architecture Review Board"
     });
@@ -49,10 +49,19 @@ describe("SearchQueryParser", () => {
     });
   });
 
-  it("parses @ session shorthand", () => {
+  it("parses @ context shorthand", () => {
     assert.deepEqual(parser.parse("/@Architecture Review Board"), {
       type: "field",
-      field: "session",
+      field: "context",
+      operator: ":",
+      value: "Architecture Review Board"
+    });
+  });
+
+  it("parses legacy session filters as context filters", () => {
+    assert.deepEqual(parser.parse("/session:Architecture Review Board"), {
+      type: "field",
+      field: "context",
       operator: ":",
       value: "Architecture Review Board"
     });

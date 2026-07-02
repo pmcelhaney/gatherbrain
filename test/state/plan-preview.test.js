@@ -9,7 +9,7 @@ describe("PlanPreview", () => {
     const timeBox = new TimeBox({
       id: "plan-1",
       date: "2026-06-30",
-      session: "Steve",
+      context: "Steve",
       startsAt: "09:00",
       endsAt: "10:00"
     });

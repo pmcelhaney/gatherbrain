@@ -54,6 +54,6 @@ describe("TimeBoxRepository", () => {
   });
 });
 
-function buildTimeBox(id, date, startsAt, endsAt, session) {
-  return new TimeBox({ id, date, startsAt, endsAt, session });
+function buildTimeBox(id, date, startsAt, endsAt, context) {
+  return new TimeBox({ id, date, startsAt, endsAt, context });
 }

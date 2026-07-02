@@ -1,7 +1,7 @@
 export class HeaderRenderer {
   render({ state, today = null }) {
-    const session = state.currentSession?.name ?? "(no session)";
+    const context = state.currentContext?.name ?? "(no context)";
 
-    return `sessions/${session}`;
+    return `contexts/${context}`;
   }
 }

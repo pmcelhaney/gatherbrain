@@ -19,11 +19,11 @@ describe("TagRepository", () => {
     await fs.rm(rootPath, { recursive: true, force: true });
   });
 
-  it("returns no tags when root session directories are absent", async () => {
+  it("returns no tags when root context directories are absent", async () => {
     assert.deepEqual(await new TagRepository({ workspace }).list(), []);
   });
 
-  it("reads tags from root session directories", async () => {
+  it("reads tags from root context directories", async () => {
     await fs.mkdir(path.join(rootPath, "Steve Ma"));
     await fs.mkdir(path.join(rootPath, "Devin"));
     await fs.mkdir(path.join(rootPath, "timeboxes"));

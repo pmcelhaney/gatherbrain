@@ -13,8 +13,8 @@ describe("SearchShortcutRegistry", () => {
     );
     assert.equal(registry.expand("//overdue"), "due<today");
     assert.equal(
-      registry.expand("//session", { currentSession: { name: "Architecture Review Board" } }),
-      'session:"Architecture Review Board"'
+      registry.expand("//context", { currentContext: { name: "Architecture Review Board" } }),
+      'context:"Architecture Review Board"'
     );
   });
 

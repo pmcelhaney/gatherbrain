@@ -38,8 +38,8 @@ function containsTerm(fact, term) {
     fact.content,
     fact.type,
     fact.url,
-    fact.homeSession.name,
-    ...fact.associatedSessions.map((session) => session.name),
+    fact.homeContext.name,
+    ...fact.associatedContexts.map((context) => context.name),
     ...fact.tags
   ].join(" ").toLocaleLowerCase("en-US");
 
@@ -53,13 +53,13 @@ function matchesField(fact, node, context) {
     return compareText(fact.type, node.operator, value);
   }
 
-  if (node.field === "session") {
-    const sessions = [
-      fact.homeSession.name,
-      ...fact.associatedSessions.map((session) => session.name)
+  if (node.field === "context") {
+    const contexts = [
+      fact.homeContext.name,
+      ...fact.associatedContexts.map((context) => context.name)
     ];
 
-    return sessions.some((session) => compareText(session, node.operator, value));
+    return contexts.some((context) => compareText(context, node.operator, value));
   }
 
   if (node.field === "tag") {

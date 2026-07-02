@@ -12,17 +12,17 @@ specification in [docs/spec.md](docs/spec.md).
 The app currently supports:
 
 - A persistent terminal screen with a header, fact body, and prompt.
-- Session switching with `:switch <session>`.
-- Session discovery with `:sessions`.
-- Numbered session navigation with `:session <number>`.
-- Capturing facts into the current session.
+- Context switching with `:switch <context>`.
+- Context discovery with `:contexts`.
+- Numbered context navigation with `:context <number>`.
+- Capturing facts into the current context.
 - Searching persisted facts with `/...` queries and shortcuts.
 - Fact inspection with `:inspect <number>`.
 - Selection commands such as `. tomorrow`, `. task`, `. gather`, `. open`, `. edit`, and `. delete`.
 - Undo for the last selection action with `:undo`.
 - Planning time boxes with `; 9-10 Steve`.
 - Updating and deleting time boxes with `:timebox`.
-- Pasting clipboard text or screenshots into the current session with `:paste`.
+- Pasting clipboard text or screenshots into the current context with `:paste`.
 - Live mode, plan, and completion feedback while typing in the TUI.
 - Config loading from `gatherbrain.config.json`.
 - Markdown fact storage and daily text-file timebox storage.
@@ -69,7 +69,7 @@ npm start -- --render-once
 
 ## Basic Workflow
 
-Start by switching to a session:
+Start by switching to a context:
 
 ```text
 :switch Thinking about Gatherbrain design
@@ -86,15 +86,15 @@ Search facts:
 ```text
 / 
 /Search shortcuts
-/session:"Thinking about Gatherbrain design"
-/session:Thinking about Gatherbrain design
+/context:"Thinking about Gatherbrain design"
+/context:Thinking about Gatherbrain design
 /@Thinking about Gatherbrain design
 /type:task
 /due:today
 //current
 ```
 
-`/` by itself refreshes the current query, uses the current session query, or
+`/` by itself refreshes the current query, uses the current context query, or
 lists all facts if no query exists.
 
 Operate on visible facts:

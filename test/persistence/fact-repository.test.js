@@ -20,7 +20,7 @@ describe("FactRepository", () => {
     await fs.rm(rootPath, { recursive: true, force: true });
   });
 
-  it("creates facts under root-level home session directories", async () => {
+  it("creates facts under root-level home context directories", async () => {
     const fact = buildFact();
 
     const result = await repository.create(fact);
@@ -37,17 +37,17 @@ describe("FactRepository", () => {
     const markdown = await fs.readFile(result.filePath, "utf8");
 
     assert.equal(saved.content, fact.content);
-    assert.equal(saved.homeSession.name, "Architecture Review Board");
-    assert.doesNotMatch(markdown, /^home_session:/m);
+    assert.equal(saved.homeContext.name, "Architecture Review Board");
+    assert.doesNotMatch(markdown, /^home_context:/m);
   });
 
-  it("creates and reads facts under slash-separated session subdirectories", async () => {
+  it("creates and reads facts under slash-separated context subdirectories", async () => {
     const fact = new Fact({
       id: "a75ee82c-6b89-4676-8cb1-01222f976885",
       content: "Prep the assembly agenda.",
       type: "fact",
       createdAt: "2026-07-08T14:15:23.000Z",
-      homeSession: "Technology Assembly/2026-07-08"
+      homeContext: "Technology Assembly/2026-07-08"
     });
 
     const result = await repository.create(fact);
@@ -61,8 +61,8 @@ describe("FactRepository", () => {
         "a75ee82c-6b89-4676-8cb1-01222f976885-prep-the-assembly-agenda.md"
       )
     );
-    assert.equal((await repository.read(result.filePath)).homeSession.name, "Technology Assembly/2026-07-08");
-    assert.deepEqual((await repository.list()).map((saved) => saved.homeSession.name), [
+    assert.equal((await repository.read(result.filePath)).homeContext.name, "Technology Assembly/2026-07-08");
+    assert.deepEqual((await repository.list()).map((saved) => saved.homeContext.name), [
       "Technology Assembly/2026-07-08"
     ]);
   });
@@ -76,17 +76,17 @@ describe("FactRepository", () => {
 
     const saved = await repository.read(filePath);
     assert.equal(saved.type, "decision");
-    assert.equal(saved.homeSession.name, "Architecture Review Board");
+    assert.equal(saved.homeContext.name, "Architecture Review Board");
   });
 
-  it("derives a fact home session from its containing directory", async () => {
+  it("derives a fact home context from its containing directory", async () => {
     const filePath = path.join(rootPath, "Steve Ma", "6f2308de-02e9-45db-8ff0-65ac793f4a24-review.md");
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, `---
 id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
 type: observation
 created: 2026-06-30T14:15:23.000Z
-associated_sessions:
+associated_contexts:
 due:
 file:
 ---
@@ -95,10 +95,10 @@ Mike prefers async architecture reviews.
 
     const saved = await repository.read(filePath);
 
-    assert.equal(saved.homeSession.name, "Steve Ma");
+    assert.equal(saved.homeContext.name, "Steve Ma");
   });
 
-  it("derives a slash-separated home session from nested containing directories", async () => {
+  it("derives a slash-separated home context from nested containing directories", async () => {
     const filePath = path.join(
       rootPath,
       "Technology Assembly",
@@ -110,7 +110,7 @@ Mike prefers async architecture reviews.
 id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
 type: observation
 created: 2026-06-30T14:15:23.000Z
-associated_sessions:
+associated_contexts:
 due: 
 file: 
 ---
@@ -119,7 +119,7 @@ Mike prefers async architecture reviews.
 
     const saved = await repository.read(filePath);
 
-    assert.equal(saved.homeSession.name, "Technology Assembly/2026-07-08");
+    assert.equal(saved.homeContext.name, "Technology Assembly/2026-07-08");
   });
 
   it("lists and looks up active facts by id", async () => {
@@ -142,7 +142,7 @@ Mike prefers async architecture reviews.
     await assert.rejects(() => repository.getFactById(fact.id), /Fact not found/);
   });
 
-  it("moves deleted facts into home session trash", async () => {
+  it("moves deleted facts into home context trash", async () => {
     const { filePath } = await repository.create(buildFact());
 
     const result = await repository.trash(filePath);
@@ -160,7 +160,7 @@ function buildFact() {
     content: "Mike prefers async architecture reviews.",
     type: "observation",
     createdAt: "2026-06-30T14:15:23.000Z",
-    homeSession: "Architecture Review Board",
-    associatedSessions: ["Steve"]
+    homeContext: "Architecture Review Board",
+    associatedContexts: ["Steve"]
   });
 }

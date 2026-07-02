@@ -2,10 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { TimeBoxTextCodec } from "../planning/index.js";
-import { Session } from "../domain/index.js";
+import { Context } from "../domain/index.js";
 import { Workspace } from "./workspace.js";
 
-export class SessionRepository {
+export class ContextRepository {
   constructor({ workspace, timeBoxCodec = new TimeBoxTextCodec() }) {
     this.workspace = workspace instanceof Workspace ? workspace : new Workspace(workspace);
     this.timeBoxCodec = timeBoxCodec;
@@ -14,25 +14,25 @@ export class SessionRepository {
   async list() {
     const names = new Map();
 
-    for (const name of await this.listFactSessions()) {
-      names.set(Session.canonicalize(name), name);
+    for (const name of await this.listFactContexts()) {
+      names.set(Context.canonicalize(name), name);
     }
 
-    for (const name of await this.listTimeBoxSessions()) {
-      names.set(Session.canonicalize(name), name);
+    for (const name of await this.listTimeBoxContexts()) {
+      names.set(Context.canonicalize(name), name);
     }
 
     return [...names.values()].sort((left, right) => left.localeCompare(right));
   }
 
-  async listFactSessions() {
-    return findFactSessionNames(this.workspace.rootPath);
+  async listFactContexts() {
+    return findFactContextNames(this.workspace.rootPath);
   }
 
-  async listTimeBoxSessions() {
+  async listTimeBoxContexts() {
     const timeBoxDirectory = path.join(this.workspace.rootPath, "timeboxes");
     const files = await listFiles(timeBoxDirectory);
-    const sessions = [];
+    const contexts = [];
 
     for (const filePath of files) {
       const match = path.basename(filePath).match(/^(\d{4}-\d{2}-\d{2})\.txt$/);
@@ -42,10 +42,10 @@ export class SessionRepository {
       }
 
       const timeBoxes = this.timeBoxCodec.parse(match[1], await fs.readFile(filePath, "utf8"));
-      sessions.push(...timeBoxes.map((timeBox) => timeBox.session.name));
+      contexts.push(...timeBoxes.map((timeBox) => timeBox.context.name));
     }
 
-    return sessions;
+    return contexts;
   }
 }
 
@@ -57,8 +57,8 @@ function isIgnoredWorkspaceDirectory(name) {
   );
 }
 
-async function findFactSessionNames(rootPath) {
-  const sessions = new Set();
+async function findFactContextNames(rootPath) {
+  const contexts = new Set();
 
   async function walk(directory) {
     let entries;
@@ -77,7 +77,7 @@ async function findFactSessionNames(rootPath) {
       const relativeDirectory = path.relative(rootPath, directory);
 
       if (relativeDirectory) {
-        sessions.add(relativeDirectory.split(path.sep).join("/"));
+        contexts.add(relativeDirectory.split(path.sep).join("/"));
       }
     }
 
@@ -91,7 +91,7 @@ async function findFactSessionNames(rootPath) {
   }
 
   await walk(rootPath);
-  return [...sessions];
+  return [...contexts];
 }
 
 async function listFiles(directory) {

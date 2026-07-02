@@ -14,17 +14,17 @@ import {
 
 describe("terminal renderers", () => {
   it("renders header state", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([buildFact()]);
 
     assert.equal(
       new HeaderRenderer().render({ state, resultSet, today: "2026-06-30" }),
-      "sessions/Steve"
+      "contexts/Steve"
     );
   });
 
   it("renders fact rows in the body", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([buildFact()]);
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
 
@@ -35,7 +35,7 @@ describe("terminal renderers", () => {
   });
 
   it("hides the default fact type in body rows", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([
       buildFact({ type: "fact", dueDate: null })
     ]);
@@ -48,7 +48,7 @@ describe("terminal renderers", () => {
   });
 
   it("renders bookmark content as a terminal hyperlink", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([
       buildFact({
         content: "Read the Node docs.",
@@ -66,7 +66,7 @@ describe("terminal renderers", () => {
   });
 
   it("colors tag mentions in fact rows", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([
       buildFact({
         content: "@Steve Ma said @Devin's trial ends.",
@@ -89,7 +89,7 @@ describe("terminal renderers", () => {
   });
 
   it("leaves tag mentions plain when color is disabled", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([
       buildFact({
         content: "@Steve Ma said @Devin's trial ends.",
@@ -105,7 +105,7 @@ describe("terminal renderers", () => {
   });
 
   it("renders unmentioned tags after fact content", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([
       buildFact({
         content: "Follow up tomorrow.",
@@ -121,7 +121,7 @@ describe("terminal renderers", () => {
   });
 
   it("colors unmentioned tags after fact content", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([
       buildFact({
         content: "Follow up tomorrow.",
@@ -144,7 +144,7 @@ describe("terminal renderers", () => {
   });
 
   it("does not repeat tags already mentioned in fact content", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([
       buildFact({
         content: "Follow up with @Steve Ma tomorrow.",
@@ -160,7 +160,7 @@ describe("terminal renderers", () => {
   });
 
   it("renders friendly due labels", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
     const resultSet = new SearchResultSet([
       buildFact({ id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a", dueDate: "2026-06-30" }),
@@ -186,7 +186,7 @@ describe("terminal renderers", () => {
   });
 
   it("renders ISO dates in fact content as natural language", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([
       buildFact({
         content: "Follow up 2026-07-01, 2026-07-03, and 2026-06-01.",
@@ -202,7 +202,7 @@ describe("terminal renderers", () => {
   });
 
   it("marks preview-selected fact rows", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
     const selectedFact = buildFact();
     const resultSet = new SearchResultSet([selectedFact]);
@@ -221,10 +221,10 @@ describe("terminal renderers", () => {
   });
 
   it("does not mark facts outside the current context", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
     const resultSet = new SearchResultSet([
-      buildFact({ homeSession: "Architecture Review Board" })
+      buildFact({ homeContext: "Architecture Review Board" })
     ]);
 
     assert.equal(
@@ -233,14 +233,14 @@ describe("terminal renderers", () => {
     );
   });
 
-  it("shows the home session when rendering search results", () => {
+  it("shows the home context when rendering search results", () => {
     const state = new AppState({
-      currentSession: "Steve",
+      currentContext: "Steve",
       currentMode: AppMode.SEARCH
     });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
     const resultSet = new SearchResultSet([
-      buildFact({ homeSession: "Architecture Review Board" })
+      buildFact({ homeContext: "Architecture Review Board" })
     ]);
 
     assert.equal(
@@ -249,18 +249,18 @@ describe("terminal renderers", () => {
     );
   });
 
-  it("does not show the home session for current-context search results", () => {
+  it("does not show the home context for current-context search results", () => {
     const state = new AppState({
-      currentSession: "Steve",
+      currentContext: "Steve",
       currentMode: AppMode.SEARCH
     });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
     const resultSet = new SearchResultSet([
-      buildFact({ homeSession: "Steve" }),
+      buildFact({ homeContext: "Steve" }),
       buildFact({
         id: "6f2308de-02e9-45db-8ff0-65ac793f4a24",
-        homeSession: "Architecture Review Board",
-        associatedSessions: ["Steve"]
+        homeContext: "Architecture Review Board",
+        associatedContexts: ["Steve"]
       })
     ]);
 
@@ -274,12 +274,12 @@ describe("terminal renderers", () => {
   });
 
   it("marks facts associated with the current context", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
     const resultSet = new SearchResultSet([
       buildFact({
-        homeSession: "Architecture Review Board",
-        associatedSessions: ["Steve"]
+        homeContext: "Architecture Review Board",
+        associatedContexts: ["Steve"]
       })
     ]);
 
@@ -290,7 +290,7 @@ describe("terminal renderers", () => {
   });
 
   it("uses reverse video for preview selection when color is enabled", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
     const selectedFact = buildFact({
       content: "Follow up with @Steve Ma.",
@@ -316,7 +316,7 @@ describe("terminal renderers", () => {
 
   it("renders calendar rows and plan previews in plan mode", () => {
     const state = new AppState({
-      currentSession: "Steve",
+      currentContext: "Steve",
       currentMode: AppMode.PLAN,
       planPreview: PlanPreview.valid(buildTimeBox("preview", "11:00", "12:00", "Counterfact"))
     });
@@ -362,7 +362,7 @@ describe("terminal renderers", () => {
   });
 
   it("composes the terminal app render", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const app = new TerminalApp({ state });
 
     assert.equal(app.render({
@@ -371,7 +371,7 @@ describe("terminal renderers", () => {
       height: 6,
       today: "2026-06-30"
     }), [
-      "sessions/Steve",
+      "contexts/Steve",
       "----------------------------------------",
       "+ 1. task tomorrow Follow up with Steve.",
       "",
@@ -381,7 +381,7 @@ describe("terminal renderers", () => {
   });
 
   it("renders status above the prompt without changing total height", () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const app = new TerminalApp({ state });
     const rendered = app.render({
       resultSet: new SearchResultSet([buildFact()]),
@@ -404,17 +404,17 @@ function buildFact(overrides = {}) {
     type: "task",
     createdAt: "2026-06-30T15:45:00.000Z",
     dueDate: "2026-07-01",
-    homeSession: "Steve",
+    homeContext: "Steve",
     ...overrides
   });
 }
 
-function buildTimeBox(id, startsAt, endsAt, session) {
+function buildTimeBox(id, startsAt, endsAt, context) {
   return new TimeBox({
     id,
     date: "2026-06-30",
     startsAt,
     endsAt,
-    session
+    context
   });
 }

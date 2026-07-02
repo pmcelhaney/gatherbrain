@@ -19,7 +19,7 @@ describe("PromptController", () => {
 
   beforeEach(async () => {
     rootPath = await fs.mkdtemp(path.join(os.tmpdir(), "gatherbrain-capture-"));
-    state = new AppState({ currentSession: "Steve" });
+    state = new AppState({ currentContext: "Steve" });
     generatedIds = ["5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"];
     editedFiles = [];
     controller = new PromptController({
@@ -43,14 +43,14 @@ describe("PromptController", () => {
     await fs.rm(rootPath, { recursive: true, force: true });
   });
 
-  it("captures plain input as a fact in the current session", async () => {
+  it("captures plain input as a fact in the current context", async () => {
     const result = await controller.submit(" Follow up with Steve. ");
 
     assert.equal(result.action, "capture");
     assert.equal(result.fact.id, "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a");
     assert.equal(result.fact.type, "fact");
     assert.equal(result.fact.content, "Follow up with Steve.");
-    assert.equal(result.fact.homeSession.name, "Steve");
+    assert.equal(result.fact.homeContext.name, "Steve");
     assert.equal(state.currentMode, AppMode.CAPTURE);
     await fs.access(result.filePath);
   });
@@ -84,12 +84,12 @@ describe("PromptController", () => {
     assert.doesNotMatch(markdown.split("---").at(-1), /https:\/\/nodejs\.org/);
   });
 
-  it("requires a current session before capture", async () => {
+  it("requires a current context before capture", async () => {
     state.restart();
 
     await assert.rejects(
       () => controller.submit("Cannot capture yet."),
-      /current session is required/
+      /current context is required/
     );
   });
 
@@ -109,7 +109,7 @@ describe("PromptController", () => {
     const result = await controller.submit("/");
 
     assert.equal(result.action, "search");
-    assert.equal(result.query, "session:Steve");
+    assert.equal(result.query, "context:Steve");
     assert.equal(result.resultSet.count, 1);
   });
 
@@ -150,8 +150,8 @@ describe("PromptController", () => {
   it("executes commands through the interaction layer", async () => {
     const result = await controller.submit(":switch Architecture Review Board");
 
-    assert.equal(result.action, "switch_session");
-    assert.equal(state.currentSession.name, "Architecture Review Board");
+    assert.equal(result.action, "switch_context");
+    assert.equal(state.currentContext.name, "Architecture Review Board");
   });
 
   it("executes selection actions against visible results", async () => {

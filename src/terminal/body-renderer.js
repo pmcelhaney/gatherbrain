@@ -46,12 +46,12 @@ export class BodyRenderer {
 
     for (const { number, fact } of rows) {
       const isSelected = selectionPreview?.includes(fact.id) ?? false;
-      const contextMarker = isFactInCurrentContext(fact, state.currentSession) ? "+" : " ";
+      const contextMarker = isFactInCurrentContext(fact, state.currentContext) ? "+" : " ";
       const basePrefix = `${contextMarker}${padVisibleStart(String(number), numberWidth)}. `;
       const prefix = isSelected && !colorEnabled ? `>${basePrefix}` : basePrefix;
       const type = displayType(fact);
       const due = fact.dueDate ? `${formatDueDate(fact.dueDate, today)} ` : "";
-      const home = displayHomeSession(fact, state);
+      const home = displayHomeContext(fact, state);
       const firstLinePrefix = `${color(prefix, ansi.gray, colorEnabled)}${color(type, ansi.cyan, colorEnabled)}${color(due, ansi.magenta, colorEnabled)}${colorIfPresent(home, ansi.gray, colorEnabled)}`;
       const continuationPrefix = " ".repeat(numberWidth + 2);
       const firstLineWidth = Math.max(1, width - prefix.length - type.length - due.length - home.length);
@@ -82,15 +82,15 @@ function displayType(fact) {
   return `${fact.type} `;
 }
 
-function displayHomeSession(fact, state) {
+function displayHomeContext(fact, state) {
   if (
     state.currentMode !== AppMode.SEARCH ||
-    isFactInCurrentContext(fact, state.currentSession)
+    isFactInCurrentContext(fact, state.currentContext)
   ) {
     return "";
   }
 
-  return `[${fact.homeSession.name}] `;
+  return `[${fact.homeContext.name}] `;
 }
 
 function colorIfPresent(text, code, enabled) {
@@ -117,13 +117,13 @@ function hyperlink(text, url) {
   return `\x1b]8;;${url}\x1b\\${text}\x1b]8;;\x1b\\`;
 }
 
-function isFactInCurrentContext(fact, currentSession) {
-  if (!currentSession) {
+function isFactInCurrentContext(fact, currentContext) {
+  if (!currentContext) {
     return false;
   }
 
-  return fact.homeSession.equals(currentSession) ||
-    fact.associatedSessions.some((session) => session.equals(currentSession));
+  return fact.homeContext.equals(currentContext) ||
+    fact.associatedContexts.some((context) => context.equals(currentContext));
 }
 
 function highlight(text, enabled, colorEnabled) {

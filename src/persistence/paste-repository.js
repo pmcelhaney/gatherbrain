@@ -8,18 +8,18 @@ export class PasteRepository {
     this.workspace = workspace instanceof Workspace ? workspace : new Workspace(workspace);
   }
 
-  async create({ date, session, name, clipboardItem }) {
+  async create({ date, context, name, clipboardItem }) {
     if (!clipboardItem?.data || !clipboardItem?.extension) {
       throw new Error("Clipboard item is required");
     }
 
-    const directory = this.workspace.sessionDirectory(date, session);
+    const directory = this.workspace.contextDirectory(date, context);
     const fileName = await this.uniqueFileName({
       directory,
       name,
       extension: clipboardItem.extension
     });
-    const filePath = this.workspace.pastePath({ date, session, fileName });
+    const filePath = this.workspace.pastePath({ date, context, fileName });
 
     await fs.mkdir(directory, { recursive: true });
     await fs.writeFile(filePath, clipboardItem.data);

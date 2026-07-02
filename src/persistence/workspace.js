@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { Session } from "../domain/index.js";
+import { Context } from "../domain/index.js";
 
 export class Workspace {
   constructor(rootPath) {
@@ -11,28 +11,28 @@ export class Workspace {
     this.rootPath = path.resolve(rootPath);
   }
 
-  sessionDirectory(_date, session) {
-    return path.join(this.rootPath, ...Session.from(session).pathSegments());
+  contextDirectory(_date, context) {
+    return path.join(this.rootPath, ...Context.from(context).pathSegments());
   }
 
-  trashDirectory(date, session) {
-    return path.join(this.sessionDirectory(date, session), ".trash");
+  trashDirectory(date, context) {
+    return path.join(this.contextDirectory(date, context), ".trash");
   }
 
-  factPath({ date, session, fileName }) {
+  factPath({ date, context, fileName }) {
     if (typeof fileName !== "string" || fileName.trim().length === 0) {
       throw new Error("Fact file name is required");
     }
 
-    return path.join(this.sessionDirectory(date, session), fileName);
+    return path.join(this.contextDirectory(date, context), fileName);
   }
 
-  pastePath({ date, session, fileName }) {
+  pastePath({ date, context, fileName }) {
     if (typeof fileName !== "string" || fileName.trim().length === 0) {
       throw new Error("Paste file name is required");
     }
 
-    return path.join(this.sessionDirectory(date, session), fileName);
+    return path.join(this.contextDirectory(date, context), fileName);
   }
 
   timeBoxPath(date) {

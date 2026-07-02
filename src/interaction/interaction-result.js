@@ -62,7 +62,7 @@ export class InteractionResult {
     return new InteractionResult({
       mode,
       action: "plan",
-      message: `planned ${timeBox.startsAt}-${timeBox.endsAt} ${timeBox.session.name}`,
+      message: `planned ${timeBox.startsAt}-${timeBox.endsAt} ${timeBox.context.name}`,
       timeBox
     });
   }

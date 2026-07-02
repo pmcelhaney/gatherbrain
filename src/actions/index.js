@@ -1,6 +1,6 @@
 export { defaultActionConfig, SelectionActionRegistry } from "./selection-action-registry.js";
 export {
-  AssociateCurrentSessionAction,
+  AssociateCurrentContextAction,
   SetDueDateAction,
   SetTypeAction,
   TrashFactAction

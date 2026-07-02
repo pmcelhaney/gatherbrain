@@ -13,14 +13,14 @@ describe("TimeBoxTextCodec", () => {
         date: "2026-06-30",
         startsAt: "11:00",
         endsAt: "12:00",
-        session: "Counterfact"
+        context: "Counterfact"
       }),
       new TimeBox({
         id: "earlier",
         date: "2026-06-30",
         startsAt: "09:00",
         endsAt: "10:00",
-        session: "Steve"
+        context: "Steve"
       })
     ]);
 
@@ -33,6 +33,6 @@ describe("TimeBoxTextCodec", () => {
 
     assert.equal(timeBoxes[0].id, "earlier");
     assert.equal(timeBoxes[0].date, "2026-06-30");
-    assert.equal(timeBoxes[0].session.name, "Steve");
+    assert.equal(timeBoxes[0].context.name, "Steve");
   });
 });

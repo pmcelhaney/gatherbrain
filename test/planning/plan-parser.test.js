@@ -12,7 +12,7 @@ describe("PlanParser", () => {
     assert.equal(preview.timeBox.date, "2026-06-30");
     assert.equal(preview.timeBox.startsAt, "09:00");
     assert.equal(preview.timeBox.endsAt, "10:00");
-    assert.equal(preview.timeBox.session.name, "Steve");
+    assert.equal(preview.timeBox.context.name, "Steve");
   });
 
   it("parses explicit relative dates", () => {
@@ -23,7 +23,7 @@ describe("PlanParser", () => {
     assert.equal(preview.timeBox.date, "2026-07-01");
     assert.equal(preview.timeBox.startsAt, "14:30");
     assert.equal(preview.timeBox.endsAt, "15:00");
-    assert.equal(preview.timeBox.session.name, "Reading");
+    assert.equal(preview.timeBox.context.name, "Reading");
   });
 
   it("parses natural language date prefixes", () => {
@@ -34,7 +34,7 @@ describe("PlanParser", () => {
     assert.equal(preview.timeBox.date, "2026-07-03");
     assert.equal(preview.timeBox.startsAt, "14:30");
     assert.equal(preview.timeBox.endsAt, "15:00");
-    assert.equal(preview.timeBox.session.name, "Reading");
+    assert.equal(preview.timeBox.context.name, "Reading");
   });
 
   it("returns invalid previews for incomplete input", () => {
@@ -42,6 +42,6 @@ describe("PlanParser", () => {
     const preview = parser.parse("; 9-10");
 
     assert.equal(preview.isValid(), false);
-    assert.match(preview.error, /requires a session/);
+    assert.match(preview.error, /requires a context/);
   });
 });

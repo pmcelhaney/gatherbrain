@@ -8,18 +8,18 @@ export class PlanParser {
     this.idGenerator = idGenerator;
   }
 
-  parse(input, context = {}) {
+  parse(input, parseContext = {}) {
     try {
-      return PlanPreview.valid(this.parseTimeBox(input, context), input);
+      return PlanPreview.valid(this.parseTimeBox(input, parseContext), input);
     } catch (error) {
       return PlanPreview.invalid(input, error);
     }
   }
 
-  parseTimeBox(input, context = {}) {
+  parseTimeBox(input, parseContext = {}) {
     const text = normalizePlanInput(input);
     const parts = text.split(/\s+/);
-    const today = context.today ?? this.today;
+    const today = parseContext.today ?? this.today;
 
     if (!today) {
       throw new Error("Today is required to parse plan input");
@@ -43,18 +43,18 @@ export class PlanParser {
     }
 
     const [startsAt, endsAt] = parseRange(rangeToken);
-    const session = parts.join(" ").trim();
+    const context = parts.join(" ").trim();
 
-    if (!session) {
-      throw new Error("Plan input requires a session");
+    if (!context) {
+      throw new Error("Plan input requires a context");
     }
 
     return new TimeBox({
-      id: this.idGenerator({ date, startsAt, endsAt, session }),
+      id: this.idGenerator({ date, startsAt, endsAt, context }),
       date,
       startsAt,
       endsAt,
-      session
+      context
     });
   }
 }
@@ -97,8 +97,8 @@ function normalizeTime(hoursValue, minutesValue) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
-function defaultTimeBoxId({ date, startsAt, endsAt, session }) {
-  const slug = session
+function defaultTimeBoxId({ date, startsAt, endsAt, context }) {
+  const slug = context
     .toLocaleLowerCase("en-US")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");

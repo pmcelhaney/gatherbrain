@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { Fact, Session } from "../../src/domain/index.js";
+import { Fact, Context } from "../../src/domain/index.js";
 
 describe("Fact", () => {
-  it("requires exactly one home session", () => {
+  it("requires exactly one home context", () => {
     assert.throws(
       () => new Fact({
         id: "6f2308de-02e9-45db-8ff0-65ac793f4a24",
@@ -12,22 +12,22 @@ describe("Fact", () => {
         type: "observation",
         createdAt: "2026-06-30T10:15:23-04:00"
       }),
-      /Fact home session is required/
+      /Fact home context is required/
     );
   });
 
-  it("does not duplicate the home session in associated sessions", () => {
+  it("does not duplicate the home context in associated contexts", () => {
     const fact = new Fact({
       id: "6f2308de-02e9-45db-8ff0-65ac793f4a24",
       content: "Mike prefers async architecture reviews.",
       type: "observation",
       createdAt: "2026-06-30T10:15:23-04:00",
-      homeSession: "Architecture Review Board",
-      associatedSessions: ["Steve", " architecture review board ", "Steve"]
+      homeContext: "Architecture Review Board",
+      associatedContexts: ["Steve", " architecture review board ", "Steve"]
     });
 
     assert.deepEqual(
-      fact.associatedSessions.map((session) => session.name),
+      fact.associatedContexts.map((context) => context.name),
       ["Steve"]
     );
   });
@@ -38,17 +38,17 @@ describe("Fact", () => {
       content: "Follow up with Steve.",
       type: "task",
       createdAt: new Date("2026-06-30T11:45:00-04:00"),
-      homeSession: new Session("Steve")
+      homeContext: new Context("Steve")
     });
 
     fact.setType("waiting");
     fact.setDueDate("2026-07-01");
-    fact.associateSession("Architecture Review Board");
-    fact.dissociateSession("architecture review board");
+    fact.associateContext("Architecture Review Board");
+    fact.dissociateContext("architecture review board");
 
     assert.equal(fact.type, "waiting");
     assert.equal(fact.dueDate, "2026-07-01");
-    assert.deepEqual(fact.associatedSessions, []);
+    assert.deepEqual(fact.associatedContexts, []);
   });
 
   it("serializes without storage details", () => {
@@ -60,8 +60,8 @@ describe("Fact", () => {
       dueDate: "2026-07-01",
       file: "launch-notes.txt",
       url: "https://example.com/launch",
-      homeSession: "Steve",
-      associatedSessions: ["Architecture Review Board"],
+      homeContext: "Steve",
+      associatedContexts: ["Architecture Review Board"],
       tags: ["Devin", " devin ", "Steve Ma"]
     });
 
@@ -73,8 +73,8 @@ describe("Fact", () => {
       dueDate: "2026-07-01",
       file: "launch-notes.txt",
       url: "https://example.com/launch",
-      homeSession: "Steve",
-      associatedSessions: ["Architecture Review Board"],
+      homeContext: "Steve",
+      associatedContexts: ["Architecture Review Board"],
       tags: ["Devin", "Steve Ma"]
     });
   });
@@ -86,7 +86,7 @@ describe("Fact", () => {
         content: "Bad due date",
         type: "task",
         createdAt: "2026-06-30T10:15:23-04:00",
-        homeSession: "Steve",
+        homeContext: "Steve",
         dueDate: "tomorrow"
       }),
       /Due date must use YYYY-MM-DD format/
@@ -100,7 +100,7 @@ describe("Fact", () => {
         content: "Bad id",
         type: "task",
         createdAt: "2026-06-30T10:15:23-04:00",
-        homeSession: "Steve"
+        homeContext: "Steve"
       }),
       /Fact id must be a UUID/
     );

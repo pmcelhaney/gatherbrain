@@ -34,12 +34,12 @@ function defaultShortcuts() {
     current: () => "(type:task OR type:inprogress OR type:waiting) AND due<=today",
     overdue: () => "due<today",
     today: () => "due:today",
-    session: ({ currentSession }) => {
-      if (!currentSession) {
-        throw new Error("Current session is required for //session");
+    context: ({ currentContext }) => {
+      if (!currentContext) {
+        throw new Error("Current context is required for //context");
       }
 
-      return `session:"${currentSession.name ?? currentSession}"`;
+      return `context:"${currentContext.name ?? currentContext}"`;
     }
   };
 }

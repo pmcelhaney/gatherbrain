@@ -6,34 +6,34 @@ import { CommandRegistry } from "../../src/interaction/index.js";
 import { AppState } from "../../src/state/index.js";
 
 describe("CommandRegistry", () => {
-  it("switches the current session", async () => {
+  it("switches the current context", async () => {
     const state = new AppState();
     const result = await new CommandRegistry().execute(":switch Architecture Review Board", {
       state
     });
 
-    assert.equal(result.action, "switch_session");
-    assert.equal(state.currentSession.name, "Architecture Review Board");
-    assert.equal(state.currentQuery, "session:Architecture Review Board");
+    assert.equal(result.action, "switch_context");
+    assert.equal(state.currentContext.name, "Architecture Review Board");
+    assert.equal(state.currentQuery, "context:Architecture Review Board");
   });
 
-  it("switches escaped-space session input to the canonical session name", async () => {
+  it("switches escaped-space context input to the canonical context name", async () => {
     const state = new AppState();
     const result = await new CommandRegistry().execute(":switch Steve\\ Ma", {
       state
     });
 
     assert.equal(result.message, "switched to Steve Ma");
-    assert.equal(state.currentSession.name, "Steve Ma");
-    assert.equal(state.currentQuery, "session:Steve Ma");
+    assert.equal(state.currentContext.name, "Steve Ma");
+    assert.equal(state.currentQuery, "context:Steve Ma");
   });
 
   it("requests an app restart without clearing state", async () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     const result = await new CommandRegistry().execute(":restart", { state });
 
     assert.equal(result.action, "restart");
-    assert.equal(state.currentSession.name, "Steve");
+    assert.equal(state.currentContext.name, "Steve");
   });
 
   it("requests a paste name", async () => {
@@ -62,46 +62,46 @@ describe("CommandRegistry", () => {
     const result = await new CommandRegistry().execute(":help", { state });
 
     assert.equal(result.action, "help");
-    assert.match(result.helpLines.join("\n"), /:switch <session>/);
-    assert.match(result.helpLines.join("\n"), /:sessions/);
+    assert.match(result.helpLines.join("\n"), /:switch <context>/);
+    assert.match(result.helpLines.join("\n"), /:contexts/);
   });
 
-  it("lists known sessions", async () => {
-    const state = new AppState({ currentSession: "Steve" });
-    const sessionRepository = {
+  it("lists known contexts", async () => {
+    const state = new AppState({ currentContext: "Steve" });
+    const contextRepository = {
       async list() {
         return ["Architecture Review Board", "Steve"];
       }
     };
 
-    const result = await new CommandRegistry().execute(":sessions", {
+    const result = await new CommandRegistry().execute(":contexts", {
       state,
-      sessionRepository
+      contextRepository
     });
 
     assert.equal(result.action, "help");
     assert.deepEqual(result.helpLines, [
-      "Sessions",
+      "Contexts",
       " 1.   Architecture Review Board",
       " 2. * Steve"
     ]);
   });
 
-  it("switches to a numbered session", async () => {
-    const state = new AppState({ currentSession: "Steve" });
-    const sessionRepository = {
+  it("switches to a numbered context", async () => {
+    const state = new AppState({ currentContext: "Steve" });
+    const contextRepository = {
       async list() {
         return ["Architecture Review Board", "Steve"];
       }
     };
 
-    const result = await new CommandRegistry().execute(":session 1", {
+    const result = await new CommandRegistry().execute(":context 1", {
       state,
-      sessionRepository
+      contextRepository
     });
 
-    assert.equal(result.action, "switch_session");
-    assert.equal(state.currentSession.name, "Architecture Review Board");
+    assert.equal(result.action, "switch_context");
+    assert.equal(state.currentContext.name, "Architecture Review Board");
   });
 
   it("inspects a visible fact", async () => {
@@ -111,8 +111,8 @@ describe("CommandRegistry", () => {
       type: "task",
       createdAt: "2026-06-30T15:45:00.000Z",
       dueDate: "2026-07-01",
-      homeSession: "Steve",
-      associatedSessions: ["Architecture Review Board"]
+      homeContext: "Steve",
+      associatedContexts: ["Architecture Review Board"]
     });
     const resultSet = {
       factIdForNumber(number) {
@@ -138,7 +138,7 @@ describe("CommandRegistry", () => {
 
     assert.equal(result.action, "inspect");
     assert.match(result.helpLines.join("\n"), /Fact 5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a/);
-    assert.match(result.helpLines.join("\n"), /associated sessions: Architecture Review Board/);
+    assert.match(result.helpLines.join("\n"), /associated contexts: Architecture Review Board/);
     assert.match(result.helpLines.join("\n"), /attached file: \(none\)/);
     assert.match(result.helpLines.join("\n"), /path: \/tmp\/fact\.md/);
   });

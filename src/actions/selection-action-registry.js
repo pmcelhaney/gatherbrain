@@ -1,6 +1,6 @@
 import {
   AddTagAction,
-  AssociateCurrentSessionAction,
+  AssociateCurrentContextAction,
   EditFactFileAction,
   OpenFileAction,
   SetDueDateAction,
@@ -83,11 +83,12 @@ export class SelectionActionRegistry {
       case "set_due":
         previewFact.setDueDate(resolvePreviewDueDate(definition.value, context));
         return previewFact;
+      case "associate_current_context":
       case "associate_current_session":
-        if (!context.state?.currentSession) {
+        if (!context.state?.currentContext) {
           return previewFact;
         }
-        previewFact.associateSession(context.state.currentSession);
+        previewFact.associateContext(context.state.currentContext);
         return previewFact;
       case "open_file":
       case "edit_file":
@@ -121,8 +122,9 @@ function buildAction(definition) {
       return new SetDueDateAction(definition.value);
     case "trash":
       return new TrashFactAction();
+    case "associate_current_context":
     case "associate_current_session":
-      return new AssociateCurrentSessionAction();
+      return new AssociateCurrentContextAction();
     case "open_file":
       return new OpenFileAction();
     case "edit_file":
@@ -167,7 +169,7 @@ export function defaultActionConfig() {
         action: "trash"
       },
       gather: {
-        action: "associate_current_session"
+        action: "associate_current_context"
       },
       open: {
         action: "open_file"

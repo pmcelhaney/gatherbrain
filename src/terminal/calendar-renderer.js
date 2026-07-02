@@ -152,7 +152,7 @@ function renderRow({ events, connector, colorEnabled }) {
   }
 
   const marker = event.kind === "preview" ? "?" : "●";
-  const label = `${event.timeBox.session.name} · ${formatDuration(event.timeBox.endMinute - event.timeBox.startMinute)}`;
+  const label = `${event.timeBox.context.name} · ${formatDuration(event.timeBox.endMinute - event.timeBox.startMinute)}`;
   return `${formatMinute(event.timeBox.startMinute)}  ${color(marker, ansi.cyan, colorEnabled)}  ${color(label, ansi.cyan, colorEnabled)}${nowSuffix}`;
 }
 

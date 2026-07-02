@@ -24,7 +24,7 @@ export class PromptController {
     searchQueryParser = new SearchQueryParser(),
     searchEngine = new SearchEngine(),
     factSource = factRepository,
-    sessionRepository = null,
+    contextRepository = null,
     selectionActionRegistry = SelectionActionRegistry.fromConfig(),
     currentResultSetProvider = () => null,
     currentTimeBoxesProvider = () => [],
@@ -43,7 +43,7 @@ export class PromptController {
     this.searchQueryParser = searchQueryParser;
     this.searchEngine = searchEngine;
     this.factSource = factSource;
-    this.sessionRepository = sessionRepository;
+    this.contextRepository = contextRepository;
     this.selectionActionRegistry = selectionActionRegistry;
     this.currentResultSetProvider = currentResultSetProvider;
     this.currentTimeBoxesProvider = currentTimeBoxesProvider;
@@ -66,7 +66,7 @@ export class PromptController {
     if (mode === AppMode.COMMAND) {
       return this.commandRegistry.execute(input, {
         state: this.state,
-        sessionRepository: this.sessionRepository,
+        contextRepository: this.contextRepository,
         factRepository: this.factRepository,
         resultSet: this.currentResultSetProvider(),
         timeBoxRepository: this.timeBoxRepository,
@@ -105,14 +105,14 @@ export class PromptController {
       });
     }
 
-    this.state.requireCaptureSession();
+    this.state.requireCaptureContext();
 
     const fact = new Fact({
       id: this.idGenerator(),
       content,
       type: bookmark.url ? "bookmark" : this.defaultFactType,
       createdAt: this.clock(),
-      homeSession: this.state.currentSession,
+      homeContext: this.state.currentContext,
       url: bookmark.url,
       tags: extractTags(rawContent)
     });
@@ -129,7 +129,7 @@ export class PromptController {
   async search(input) {
     const today = this.clock().toISOString().slice(0, 10);
     const expandedQuery = this.searchShortcutRegistry.expand(input, {
-      currentSession: this.state.currentSession
+      currentContext: this.state.currentContext
     });
     const query = queryForSearch(normalizeNaturalDates(expandedQuery, { today }), this.state);
     const ast = query === "*" ? { type: "all" } : this.searchQueryParser.parse(query);
@@ -267,8 +267,8 @@ function queryForSearch(rawQuery, state) {
     return state.currentQuery;
   }
 
-  if (state.currentSession) {
-    return `session:"${state.currentSession.name}"`;
+  if (state.currentContext) {
+    return `context:"${state.currentContext.name}"`;
   }
 
   return "*";

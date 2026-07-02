@@ -9,7 +9,7 @@ export class TimeBoxTextCodec {
           throw new Error("Cannot serialize time boxes from different dates");
         }
 
-        return `${timeBox.startsAt}-${timeBox.endsAt} | ${timeBox.session.name} | ${timeBox.id}`;
+        return `${timeBox.startsAt}-${timeBox.endsAt} | ${timeBox.context.name} | ${timeBox.id}`;
       });
 
     return lines.length > 0 ? `${lines.join("\n")}\n` : "";
@@ -28,9 +28,9 @@ export class TimeBoxTextCodec {
 }
 
 function parseLine(date, line) {
-  const [range, session, id] = line.split("|").map((part) => part.trim());
+  const [range, context, id] = line.split("|").map((part) => part.trim());
 
-  if (!range || !session || !id) {
+  if (!range || !context || !id) {
     throw new Error(`Invalid time box line: ${line}`);
   }
 
@@ -41,6 +41,6 @@ function parseLine(date, line) {
     date,
     startsAt,
     endsAt,
-    session
+    context
   });
 }

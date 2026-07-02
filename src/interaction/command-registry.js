@@ -23,20 +23,20 @@ export class CommandRegistry {
   }
 }
 
-class SwitchSessionCommand {
+class SwitchContextCommand {
   execute(args, { state }) {
-    const sessionName = args.trim();
+    const contextName = args.trim();
 
-    if (!sessionName) {
-      throw new Error(":switch requires a session");
+    if (!contextName) {
+      throw new Error(":switch requires a context");
     }
 
-    state.switchSession(sessionName);
+    state.switchContext(contextName);
 
     return InteractionResult.classified({
       mode: AppMode.COMMAND,
-      action: "switch_session",
-      message: `switched to ${state.currentSession.name}`
+      action: "switch_context",
+      message: `switched to ${state.currentContext.name}`
     });
   }
 }
@@ -93,15 +93,15 @@ class HelpCommand {
       mode: AppMode.COMMAND,
       helpLines: [
         "Commands",
-        ":switch <session>   switch or create a session",
-        ":sessions           list known sessions",
-        ":session <number>   switch to a numbered session",
+        ":switch <context>   switch or create a context",
+        ":contexts           list known contexts",
+        ":context <number>   switch to a numbered context",
         ":inspect <number>   show visible fact details",
-        ":timebox <number> <range> <session>  update a timebox",
+        ":timebox <number> <range> <context>  update a timebox",
         ":timebox delete <number>             delete a timebox",
         ":undo               undo the last selection action",
         ":restart            restart the app and reload current state",
-        ":paste              paste clipboard into the current session",
+        ":paste              paste clipboard into the current context",
         ":help               show this help",
         ":exit / :quit       exit",
         "",
@@ -110,7 +110,7 @@ class HelpCommand {
         "/query              search facts",
         ". task              update first visible fact",
         ". @tag              tag first visible fact",
-        "; 9-10 Session      plan a timebox"
+        "; 9-10 Context      plan a timebox"
       ]
     });
   }
@@ -159,27 +159,27 @@ class UndoCommand {
   }
 }
 
-class SessionsCommand {
-  async execute(args, { state, sessionRepository }) {
+class ContextsCommand {
+  async execute(args, { state, contextRepository }) {
     if (args.trim()) {
-      throw new Error(":sessions does not accept arguments");
+      throw new Error(":contexts does not accept arguments");
     }
 
-    if (!sessionRepository) {
-      throw new Error(":sessions requires a session repository");
+    if (!contextRepository) {
+      throw new Error(":contexts requires a context repository");
     }
 
-    const sessions = await sessionRepository.list();
-    const currentName = state.currentSession?.name ?? null;
-    const helpLines = sessions.length > 0
+    const contexts = await contextRepository.list();
+    const currentName = state.currentContext?.name ?? null;
+    const helpLines = contexts.length > 0
       ? [
-          "Sessions",
-          ...sessions.map((session, index) => {
-            const marker = session === currentName ? "*" : " ";
-            return `${String(index + 1).padStart(2, " ")}. ${marker} ${session}`;
+          "Contexts",
+          ...contexts.map((context, index) => {
+            const marker = context === currentName ? "*" : " ";
+            return `${String(index + 1).padStart(2, " ")}. ${marker} ${context}`;
           })
         ]
-      : ["Sessions", "(none)"];
+      : ["Contexts", "(none)"];
 
     return InteractionResult.help({
       mode: AppMode.COMMAND,
@@ -188,21 +188,21 @@ class SessionsCommand {
   }
 }
 
-class SessionCommand {
-  async execute(args, { state, sessionRepository }) {
+class ContextCommand {
+  async execute(args, { state, contextRepository }) {
     const target = args.trim();
 
     if (!target) {
-      throw new Error(":session requires a number or session name");
+      throw new Error(":context requires a number or context name");
     }
 
-    const sessionName = await resolveSessionName(target, sessionRepository);
-    state.switchSession(sessionName);
+    const contextName = await resolveContextName(target, contextRepository);
+    state.switchContext(contextName);
 
     return InteractionResult.classified({
       mode: AppMode.COMMAND,
-      action: "switch_session",
-      message: `switched to ${state.currentSession.name}`
+      action: "switch_context",
+      message: `switched to ${state.currentContext.name}`
     });
   }
 }
@@ -228,10 +228,10 @@ class TimeBoxCommand {
 
     const timeBox = resolveTimeBoxNumber(tokens.shift(), timeBoxes);
     const rangeToken = tokens.shift();
-    const session = tokens.join(" ").trim();
+    const context = tokens.join(" ").trim();
 
-    if (!rangeToken || !session) {
-      throw new Error(":timebox update requires a number, range, and session");
+    if (!rangeToken || !context) {
+      throw new Error(":timebox update requires a number, range, and context");
     }
 
     const [startsAt, endsAt] = parseTimeRange(rangeToken);
@@ -240,7 +240,7 @@ class TimeBoxCommand {
       date: today ?? timeBox.date,
       startsAt,
       endsAt,
-      session
+      context
     });
 
     await timeBoxRepository.save(updatedTimeBox);
@@ -262,9 +262,9 @@ function defaultCommands() {
     help: new HelpCommand(),
     inspect: new InspectCommand(),
     quit: exitCommand,
-    session: new SessionCommand(),
-    sessions: new SessionsCommand(),
-    switch: new SwitchSessionCommand(),
+    context: new ContextCommand(),
+    contexts: new ContextsCommand(),
+    switch: new SwitchContextCommand(),
     timebox: new TimeBoxCommand(),
     undo: new UndoCommand(),
     restart: new RestartCommand(),
@@ -324,8 +324,8 @@ function factDetailLines(fact, filePath, today) {
     `Fact ${fact.id}`,
     `type: ${fact.type}`,
     `created: ${fact.createdAt.toISOString()}`,
-    `home session: ${fact.homeSession.name}`,
-    `associated sessions: ${fact.associatedSessions.map((session) => session.name).join(", ") || "(none)"}`,
+    `home context: ${fact.homeContext.name}`,
+    `associated contexts: ${fact.associatedContexts.map((context) => context.name).join(", ") || "(none)"}`,
     `due: ${fact.dueDate ? formatNaturalDate(fact.dueDate, { today }) : "(none)"}`,
     `attached file: ${fact.file ?? "(none)"}`,
     `path: ${filePath ?? "(not found)"}`,
@@ -334,23 +334,23 @@ function factDetailLines(fact, filePath, today) {
   ];
 }
 
-async function resolveSessionName(target, sessionRepository) {
+async function resolveContextName(target, contextRepository) {
   if (!/^\d+$/.test(target)) {
     return target;
   }
 
-  if (!sessionRepository) {
-    throw new Error(":session number requires a session repository");
+  if (!contextRepository) {
+    throw new Error(":context number requires a context repository");
   }
 
-  const sessions = await sessionRepository.list();
-  const sessionName = sessions[Number(target) - 1];
+  const contexts = await contextRepository.list();
+  const contextName = contexts[Number(target) - 1];
 
-  if (!sessionName) {
-    throw new Error(`No session numbered ${target}`);
+  if (!contextName) {
+    throw new Error(`No context numbered ${target}`);
   }
 
-  return sessionName;
+  return contextName;
 }
 
 function parseCommand(input) {

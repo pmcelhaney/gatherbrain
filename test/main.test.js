@@ -63,7 +63,7 @@ describe("main", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
 
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /sessions\/\(no session\)/);
+    assert.match(result.stdout, /contexts\/\(no context\)/);
     assert.match(result.stdout, /^-{80}$/m);
     assert.match(result.stdout, />\n$/);
   });
@@ -138,7 +138,7 @@ describe("main", () => {
     });
 
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /:switch <session>/);
+    assert.match(result.stdout, /:switch <context>/);
     assert.match(result.stdout, /plain text\s+capture a fact/);
   });
 
@@ -415,7 +415,7 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("restores the last session and query on startup", async () => {
+  it("restores the last context and query on startup", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-state-restore-"));
     const clock = () => new Date("2026-06-30T12:00:00.000Z");
@@ -423,15 +423,15 @@ describe("createAppRuntime", () => {
 
     await firstRuntime.submit(":switch Steve");
     await firstRuntime.submit("Steve-only fact.");
-    await firstRuntime.submit(":switch new session");
-    await firstRuntime.submit("New-session fact.");
+    await firstRuntime.submit(":switch new context");
+    await firstRuntime.submit("New-context fact.");
 
     const secondRuntime = createAppRuntime({ workspacePath, clock });
     await secondRuntime.initialize();
     const rendered = secondRuntime.render();
 
-    assert.match(rendered, /sessions\/new session/);
-    assert.match(rendered, /New-session fact/);
+    assert.match(rendered, /contexts\/new context/);
+    assert.match(rendered, /New-context fact/);
     assert.doesNotMatch(rendered, /Steve-only fact/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
@@ -459,7 +459,7 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("returns to the current session view on empty submit", async () => {
+  it("returns to the current context view on empty submit", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-empty-submit-"));
     const runtime = createAppRuntime({
@@ -477,7 +477,7 @@ describe("createAppRuntime", () => {
 
     const result = await runtime.submit("");
 
-    assert.equal(result.action, "reset_to_current_session");
+    assert.equal(result.action, "reset_to_current_context");
     assert.match(runtime.render(), /Task fact/);
     assert.match(runtime.render(), /Plain fact/);
 
@@ -522,7 +522,7 @@ describe("createAppRuntime", () => {
 id: 11111111-1111-4111-8111-111111111111
 type: file
 created: 2026-07-01T12:00:00.000Z
-associated_sessions:
+associated_contexts:
 tags:
 due: 
 file: launch-notes.txt
@@ -571,7 +571,7 @@ Launch notes
 id: 22222222-2222-4222-8222-222222222222
 type: file
 created: 2026-07-01T12:00:00.000Z
-associated_sessions:
+associated_contexts:
 tags:
 due: 
 file: login-screenshot.png
@@ -775,15 +775,15 @@ Login Screenshot
     const planRendered = runtime.render({ input: ";" });
 
     assert.match(rendered, /Follow up with Steve/);
-    assert.doesNotMatch(rendered, /:switch <session>/);
+    assert.doesNotMatch(rendered, /:switch <context>/);
     assert.match(planRendered, /9:00  ●  Steve · 1h/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("lists discovered sessions in the terminal body", async () => {
+  it("lists discovered contexts in the terminal body", async () => {
     const { createAppRuntime } = await import("../src/main.js");
-    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-sessions-command-"));
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-contexts-command-"));
     const runtime = createAppRuntime({
       workspacePath,
       clock: () => new Date("2026-06-30T12:00:00.000Z")
@@ -792,20 +792,20 @@ Login Screenshot
     await runtime.submit(":switch Steve");
     await runtime.submit("Follow up with Steve.");
     await runtime.submit("; 9-10 Architecture Review Board");
-    await runtime.submit(":sessions");
+    await runtime.submit(":contexts");
 
     const rendered = runtime.render();
 
-    assert.match(rendered, /Sessions/);
+    assert.match(rendered, /Contexts/);
     assert.match(rendered, /2\. \* Steve/);
     assert.match(rendered, /1\.   Architecture Review Board/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("switches sessions by number from the session list", async () => {
+  it("switches contexts by number from the context list", async () => {
     const { createAppRuntime } = await import("../src/main.js");
-    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-numbered-session-"));
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-numbered-context-"));
     const runtime = createAppRuntime({
       workspacePath,
       clock: () => new Date("2026-06-30T12:00:00.000Z")
@@ -815,11 +815,11 @@ Login Screenshot
     await runtime.submit("Steve-only fact.");
     await runtime.submit(":switch Architecture Review Board");
     await runtime.submit("Architecture fact.");
-    await runtime.submit(":session 2");
+    await runtime.submit(":context 2");
 
     const rendered = runtime.render();
 
-    assert.match(rendered, /sessions\/Steve/);
+    assert.match(rendered, /contexts\/Steve/);
     assert.match(rendered, /Steve-only fact/);
     assert.doesNotMatch(rendered, /Architecture fact/);
 
@@ -842,7 +842,7 @@ Login Screenshot
 
     assert.match(rendered, /Fact [0-9a-f-]{36}/);
     assert.match(rendered, /type: fact/);
-    assert.match(rendered, /home session: Steve/);
+    assert.match(rendered, /home context: Steve/);
     assert.match(rendered, /attached file: \(none\)/);
     assert.match(rendered, /path: .*follow-up-with-steve\.md/);
     assert.match(rendered, /Follow up with Steve\./);
@@ -979,7 +979,7 @@ Login Screenshot
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("shows only facts associated with the switched session", async () => {
+  it("shows only facts associated with the switched context", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-switch-view-"));
     const runtime = createAppRuntime({
@@ -989,24 +989,24 @@ Login Screenshot
 
     await runtime.submit(":switch Steve");
     await runtime.submit("Steve-only fact.");
-    await runtime.submit(":switch new session");
+    await runtime.submit(":switch new context");
 
     let rendered = runtime.render();
     assert.doesNotMatch(rendered, /Steve-only fact/);
     assert.match(rendered, /\.\.\./);
 
-    await runtime.submit("New-session fact.");
+    await runtime.submit("New-context fact.");
     rendered = runtime.render();
 
-    assert.match(rendered, /New-session fact/);
+    assert.match(rendered, /New-context fact/);
     assert.doesNotMatch(rendered, /Steve-only fact/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("renders facts captured after switching with an escaped-space session name", async () => {
+  it("renders facts captured after switching with an escaped-space context name", async () => {
     const { createAppRuntime } = await import("../src/main.js");
-    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-escaped-session-"));
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-escaped-context-"));
     const runtime = createAppRuntime({
       workspacePath,
       clock: () => new Date("2026-06-30T12:00:00.000Z")
@@ -1016,7 +1016,7 @@ Login Screenshot
     await runtime.submit("Follow up with Steve.");
 
     const rendered = runtime.render();
-    assert.match(rendered, /sessions\/Steve Ma/);
+    assert.match(rendered, /contexts\/Steve Ma/);
     assert.match(rendered, /Follow up with Steve/);
 
     const factMarkdown = fs.readFileSync(
@@ -1027,14 +1027,14 @@ Login Screenshot
       ),
       "utf8"
     );
-    assert.doesNotMatch(factMarkdown, /^home_session:/m);
+    assert.doesNotMatch(factMarkdown, /^home_context:/m);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("renders facts captured after switching to a slash-separated session subdirectory", async () => {
+  it("renders facts captured after switching to a slash-separated context subdirectory", async () => {
     const { createAppRuntime } = await import("../src/main.js");
-    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-nested-session-"));
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-nested-context-"));
     const runtime = createAppRuntime({
       workspacePath,
       clock: () => new Date("2026-07-08T12:00:00.000Z")
@@ -1044,15 +1044,15 @@ Login Screenshot
     await runtime.submit("Prep the assembly agenda.");
 
     const rendered = runtime.render();
-    assert.match(rendered, /sessions\/Technology Assembly\/2026-07-08/);
+    assert.match(rendered, /contexts\/Technology Assembly\/2026-07-08/);
     assert.match(rendered, /Prep the assembly agenda/);
 
-    const sessionDirectory = path.join(workspacePath, "Technology Assembly", "2026-07-08");
+    const contextDirectory = path.join(workspacePath, "Technology Assembly", "2026-07-08");
     const factMarkdown = fs.readFileSync(
-      path.join(sessionDirectory, fs.readdirSync(sessionDirectory).find((name) => name.endsWith(".md"))),
+      path.join(contextDirectory, fs.readdirSync(contextDirectory).find((name) => name.endsWith(".md"))),
       "utf8"
     );
-    assert.doesNotMatch(factMarkdown, /^home_session:/m);
+    assert.doesNotMatch(factMarkdown, /^home_context:/m);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

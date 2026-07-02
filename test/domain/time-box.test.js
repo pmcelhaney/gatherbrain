@@ -10,13 +10,13 @@ describe("TimeBox", () => {
       date: "2026-06-30",
       startsAt: "9:00",
       endsAt: "10:00",
-      session: "Steve"
+      context: "Steve"
     });
 
     assert.equal(timeBox.date, "2026-06-30");
     assert.equal(timeBox.startsAt, "09:00");
     assert.equal(timeBox.endsAt, "10:00");
-    assert.equal(timeBox.session.name, "Steve");
+    assert.equal(timeBox.context.name, "Steve");
   });
 
   it("rejects ranges whose end is not after the start", () => {
@@ -26,7 +26,7 @@ describe("TimeBox", () => {
         date: "2026-06-30",
         startsAt: "10:00",
         endsAt: "10:00",
-        session: "Steve"
+        context: "Steve"
       }),
       /end time must be after start time/
     );
@@ -38,7 +38,7 @@ describe("TimeBox", () => {
       date: "2026-06-30",
       startsAt: "09:00",
       endsAt: "10:00",
-      session: "Architecture Review Board"
+      context: "Architecture Review Board"
     });
 
     assert.equal(timeBox.containsTime("09:00"), true);
@@ -52,7 +52,7 @@ describe("TimeBox", () => {
       date: "2026-06-30",
       startsAt: "09:00",
       endsAt: "10:00",
-      session: "Steve"
+      context: "Steve"
     });
 
     const overlapping = new TimeBox({
@@ -60,7 +60,7 @@ describe("TimeBox", () => {
       date: "2026-06-30",
       startsAt: "09:30",
       endsAt: "10:30",
-      session: "Counterfact"
+      context: "Counterfact"
     });
 
     const differentDate = new TimeBox({
@@ -68,7 +68,7 @@ describe("TimeBox", () => {
       date: "2026-07-01",
       startsAt: "09:30",
       endsAt: "10:30",
-      session: "Counterfact"
+      context: "Counterfact"
     });
 
     assert.equal(first.overlaps(overlapping), true);

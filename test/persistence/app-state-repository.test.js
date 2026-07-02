@@ -25,14 +25,30 @@ describe("AppStateRepository", () => {
   });
 
   it("saves and loads resumable app state", async () => {
-    const state = new AppState({ currentSession: "Steve" });
+    const state = new AppState({ currentContext: "Steve" });
     state.setQuery("type:task");
 
     await repository.save(state);
 
     assert.deepEqual(await repository.load(), {
-      currentSession: "Steve",
+      currentContext: "Steve",
       currentQuery: "type:task"
+    });
+  });
+
+  it("loads legacy session state as context state", async () => {
+    await fs.writeFile(
+      new Workspace(rootPath).appStatePath(),
+      `${JSON.stringify({
+        currentSession: "Architecture Review Board",
+        currentQuery: "session:Architecture Review Board"
+      })}\n`,
+      "utf8"
+    );
+
+    assert.deepEqual(await repository.load(), {
+      currentContext: "Architecture Review Board",
+      currentQuery: "context:Architecture Review Board"
     });
   });
 });

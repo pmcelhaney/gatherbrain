@@ -13,8 +13,8 @@ export class AppStateRepository {
       const data = JSON.parse(await fs.readFile(this.workspace.appStatePath(), "utf8"));
 
       return {
-        currentSession: data.currentSession ?? null,
-        currentQuery: data.currentQuery ?? null
+        currentContext: data.currentContext ?? data.currentSession ?? null,
+        currentQuery: migrateQuery(data.currentQuery ?? null)
       };
     } catch (error) {
       if (error.code === "ENOENT") {
@@ -32,11 +32,19 @@ export class AppStateRepository {
   async save(state) {
     const filePath = this.workspace.appStatePath();
     const data = {
-      currentSession: state.currentSession?.name ?? null,
+      currentContext: state.currentContext?.name ?? null,
       currentQuery: state.currentQuery ?? null
     };
 
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
   }
+}
+
+function migrateQuery(query) {
+  if (typeof query !== "string") {
+    return null;
+  }
+
+  return query.replace(/\bsession(?=:)/g, "context");
 }

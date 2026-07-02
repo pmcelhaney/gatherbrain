@@ -1,14 +1,14 @@
-import { Session } from "./session.js";
+import { Context } from "./context.js";
 
 export class TimeBox {
-  constructor({ id, date, session, startsAt, endsAt }) {
+  constructor({ id, date, context, startsAt, endsAt }) {
     if (!id) {
       throw new Error("TimeBox id is required");
     }
 
     this.id = String(id);
     this.date = normalizeDate(date);
-    this.session = Session.from(session);
+    this.context = Context.from(context);
     this.startsAt = normalizeTime(startsAt, "startsAt");
     this.endsAt = normalizeTime(endsAt, "endsAt");
 
@@ -45,7 +45,7 @@ export class TimeBox {
     return {
       id: this.id,
       date: this.date,
-      session: this.session.name,
+      context: this.context.name,
       startsAt: this.startsAt,
       endsAt: this.endsAt
     };

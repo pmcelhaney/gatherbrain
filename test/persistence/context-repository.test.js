@@ -5,15 +5,15 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 
 import { Fact, TimeBox } from "../../src/domain/index.js";
-import { FactRepository, SessionRepository, Workspace } from "../../src/persistence/index.js";
+import { FactRepository, ContextRepository, Workspace } from "../../src/persistence/index.js";
 import { TimeBoxRepository } from "../../src/planning/index.js";
 
-describe("SessionRepository", () => {
+describe("ContextRepository", () => {
   let rootPath;
   let workspace;
 
   beforeEach(async () => {
-    rootPath = await fs.mkdtemp(path.join(os.tmpdir(), "gatherbrain-sessions-"));
+    rootPath = await fs.mkdtemp(path.join(os.tmpdir(), "gatherbrain-contexts-"));
     workspace = new Workspace(rootPath);
   });
 
@@ -21,38 +21,38 @@ describe("SessionRepository", () => {
     await fs.rm(rootPath, { recursive: true, force: true });
   });
 
-  it("discovers sessions from fact folders and timebox files", async () => {
+  it("discovers contexts from fact folders and timebox files", async () => {
     await new FactRepository({ workspace }).create(new Fact({
       id: "6f2308de-02e9-45db-8ff0-65ac793f4a24",
       content: "Discuss architecture.",
       type: "fact",
       createdAt: "2026-06-30T14:00:00.000Z",
-      homeSession: "Architecture Review Board"
+      homeContext: "Architecture Review Board"
     }));
     await new TimeBoxRepository({ workspace }).save(new TimeBox({
       id: "reading",
       date: "2026-06-30",
       startsAt: "09:00",
       endsAt: "10:00",
-      session: "Reading"
+      context: "Reading"
     }));
 
-    assert.deepEqual(await new SessionRepository({ workspace }).list(), [
+    assert.deepEqual(await new ContextRepository({ workspace }).list(), [
       "Architecture Review Board",
       "Reading"
     ]);
   });
 
-  it("discovers nested sessions from fact folders", async () => {
+  it("discovers nested contexts from fact folders", async () => {
     await new FactRepository({ workspace }).create(new Fact({
       id: "a75ee82c-6b89-4676-8cb1-01222f976885",
       content: "Prep the assembly agenda.",
       type: "fact",
       createdAt: "2026-07-08T14:00:00.000Z",
-      homeSession: "Technology Assembly/2026-07-08"
+      homeContext: "Technology Assembly/2026-07-08"
     }));
 
-    assert.deepEqual(await new SessionRepository({ workspace }).list(), [
+    assert.deepEqual(await new ContextRepository({ workspace }).list(), [
       "Technology Assembly/2026-07-08"
     ]);
   });

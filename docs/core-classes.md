@@ -9,15 +9,15 @@ JavaScript classes unless a later implementation note says otherwise.
 
 ## Domain Classes
 
-### `Session`
+### `Context`
 
 Represents a named unit of work.
 
 Responsibilities:
 
-- Normalize and expose the session name.
+- Normalize and expose the context name.
 - Provide filesystem-safe path segments for storage.
-- Compare sessions by canonical name.
+- Compare contexts by canonical name.
 
 Does not:
 
@@ -37,16 +37,16 @@ Core fields:
 - `createdAt`
 - `dueDate`
 - `file`
-- `homeSession`
-- `associatedSessions`
+- `homeContext`
+- `associatedContexts`
 
 Responsibilities:
 
-- Enforce the invariant that every fact has exactly one home session.
+- Enforce the invariant that every fact has exactly one home context.
 - Enforce that every fact ID is a UUID.
-- Add or remove associated sessions without duplicating the home session.
-- Apply domain changes such as `setType`, `setDueDate`, and `associateSession`.
-- Produce a serializable representation for Markdown storage. The home session
+- Add or remove associated contexts without duplicating the home context.
+- Apply domain changes such as `setType`, `setDueDate`, and `associateContext`.
+- Produce a serializable representation for Markdown storage. The home context
   stays on the domain object, but it is derived from the containing directory
   and is not serialized into front matter.
 
@@ -58,13 +58,13 @@ Does not:
 
 ### `TimeBox`
 
-Represents planned work for a time range, date, and session.
+Represents planned work for a time range, date, and context.
 
 Core fields:
 
 - `id`
 - `date`
-- `session`
+- `context`
 - `startsAt`
 - `endsAt`
 
@@ -79,7 +79,7 @@ Responsibilities:
 Does not:
 
 - Create facts.
-- Change the current session on its own.
+- Change the current context on its own.
 
 ## Application State
 
@@ -89,7 +89,7 @@ Owns the current interactive state from the spec.
 
 Core fields:
 
-- `currentSession`
+- `currentContext`
 - `currentQuery`
 - `currentSelection`
 - `currentMode`
@@ -97,9 +97,9 @@ Core fields:
 
 Responsibilities:
 
-- Enforce that facts cannot be captured before a session is selected.
+- Enforce that facts cannot be captured before a context is selected.
 - Reset in-memory state during startup and runtime restart reloads.
-- Switch sessions and reset the query to `session:<new session>`.
+- Switch contexts and reset the query to `context:<new context>`.
 - Track mode transitions inferred from prompt input.
 
 Does not:
@@ -116,7 +116,7 @@ Responsibilities:
 
 - Resolve number and dot selectors against the current `SearchResultSet`.
 - Preserve selected fact IDs for command execution.
-- Clear when the session or query changes.
+- Clear when the context or query changes.
 
 Does not:
 
@@ -192,7 +192,7 @@ Expands `//shortcut` queries.
 Responsibilities:
 
 - Store named shortcut definitions.
-- Resolve dynamic values such as current session, today, and this week.
+- Resolve dynamic values such as current context, today, and this week.
 - Return a complete search query string before parsing.
 
 Does not:
@@ -206,7 +206,7 @@ Maps `:` command names to command objects.
 
 Initial commands:
 
-- `SwitchSessionCommand`
+- `SwitchContextCommand`
 - `RestartCommand`
 - `PasteCommand`
 
@@ -229,7 +229,7 @@ Initial actions:
 - `SetTypeAction`
 - `SetDueDateAction`
 - `TrashFactAction`
-- `AssociateCurrentSessionAction`
+- `AssociateCurrentContextAction`
 
 Responsibilities:
 
@@ -264,7 +264,7 @@ Represents the root storage location.
 
 Responsibilities:
 
-- Locate root-level session folders, fact files, and `.trash`.
+- Locate root-level context folders, fact files, and `.trash`.
 - Locate the daily time box text file for a given date.
 - Provide path-building helpers for repositories.
 
@@ -280,11 +280,11 @@ Persists facts as Markdown files with front matter.
 
 Responsibilities:
 
-- Create facts in `<workspace>/<home session>/`.
-- Read facts from Markdown files and derive each fact's home session from its
+- Create facts in `<workspace>/<home context>/`.
+- Read facts from Markdown files and derive each fact's home context from its
   containing directory.
 - Update front matter and content.
-- Move deleted facts into `.trash` under their home session.
+- Move deleted facts into `.trash` under their home context.
 
 Does not:
 
@@ -333,7 +333,7 @@ Responsibilities:
 
 - Parse front matter.
 - Serialize front matter.
-- Require repository-provided storage context for the fact's home session.
+- Require repository-provided storage context for the fact's home context.
 - Preserve fact body content.
 
 Does not:
@@ -350,7 +350,7 @@ Executes parsed search queries against facts.
 Responsibilities:
 
 - Evaluate query AST nodes against facts.
-- Support field filters such as `type`, `due`, and `session`.
+- Support field filters such as `type`, `due`, and `context`.
 - Return a stable `SearchResultSet`.
 
 Does not:
@@ -364,7 +364,7 @@ Represents the facts visible in the body.
 
 Responsibilities:
 
-- Maintain stable fact numbers until the session or search changes.
+- Maintain stable fact numbers until the context or search changes.
 - Expose visible ordering for rendering and dot selection.
 - Resolve displayed numbers to fact IDs.
 
@@ -390,7 +390,7 @@ Does not:
 
 ### `HeaderRenderer`
 
-Renders current session, active query, mode, and result count.
+Renders current context, active query, mode, and result count.
 
 ### `BodyRenderer`
 
@@ -421,7 +421,7 @@ Domain classes should not import UI, parser, or persistence code.
 
 ## First Implementation Slices
 
-1. Domain classes: `Session`, `Fact`, `TimeBox`.
+1. Domain classes: `Context`, `Fact`, `TimeBox`.
 2. State classes: `AppState`, `Selection`, `PlanPreview`.
 3. Fact persistence: `Workspace`, `MarkdownFactCodec`, `FactRepository`.
 4. Prompt classification and capture flow.

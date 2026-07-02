@@ -12,7 +12,7 @@ Gatherbrain will be built in Node.js.
 
 Gatherbrain is a local-first terminal application for capturing knowledge while doing work.
 
-The user is always working in a session.
+The user is always working in a context.
 
 Knowledge is captured as small facts.
 
@@ -24,11 +24,11 @@ The interface is optimized for keyboard-first operation with minimal mode switch
 
 # Core Primitives
 
-## Session
+## Context
 
-A session is the unit of work.
+A context is the unit of work.
 
-Every interaction occurs within a current session.
+Every interaction occurs within a current context.
 
 Examples:
 
@@ -38,7 +38,7 @@ Examples:
 - Reading: Team Topologies
 - 2026-06-30 ARB Meeting
 
-Sessions may be associated with facts and time boxes.
+Contexts may be associated with facts and time boxes.
 
 ---
 
@@ -54,16 +54,16 @@ A fact has:
 - created timestamp
 - optional due date
 - optional associated file
-- home session
-- associated sessions
+- home context
+- associated contexts
 
-Every fact belongs to exactly one home session.
+Every fact belongs to exactly one home context.
 
-A fact may be associated with zero or more additional sessions.
+A fact may be associated with zero or more additional contexts.
 
-A fact may have zero or more tags. Tags and sessions share the same workspace
+A fact may have zero or more tags. Tags and contexts share the same workspace
 namespace. Tags are captured from `@` mentions in fact text, and `@` refers to a
-session name. Escaped spaces are normalized when saving, so `@Steve\ Ma` stores
+context name. Escaped spaces are normalized when saving, so `@Steve\ Ma` stores
 the tag `Steve Ma`. Possessives keep the suffix as text, so `@Devin's` stores
 the tag `Devin`.
 
@@ -71,7 +71,7 @@ Tags may also be added to selected existing facts with selection input such as
 `. @Steve\ Ma` or `1 @Steve\ Ma`.
 
 Known tags are discovered from root-level workspace directories, the same way
-sessions are discovered.
+contexts are discovered.
 
 ---
 
@@ -82,17 +82,17 @@ Search retrieves facts.
 The current search determines what appears in the body of the interface.
 
 An empty search prompt (`/`) refreshes the current query. If no current query
-exists, it searches the current session. If there is no current session, it
+exists, it searches the current context. If there is no current context, it
 lists all facts.
 
 Search results are ordered newest first by fact creation time.
 
-Search result rows show a fact's home session only when the fact is outside the
-current session context. Facts that live in the current session or are associated
-with the current session keep the compact current-context row.
+Search result rows show a fact's home context only when the fact is outside the
+current context context. Facts that live in the current context or are associated
+with the current context keep the compact current-context row.
 
-Session search supports quoted values, unquoted multi-word session values, and
-`@Session Name` shorthand.
+Context search supports quoted values, unquoted multi-word context values, and
+`@Context Name` shorthand.
 
 Tag search supports `tag:<name>` field filters. Tags also participate in normal
 term search.
@@ -103,7 +103,7 @@ term search.
 
 A time box represents planned work.
 
-A time box associates a date and period of time with a session.
+A time box associates a date and period of time with a context.
 
 Time boxes are independent of facts.
 
@@ -133,9 +133,9 @@ Directory layout:
             a75ee82c-6b89-4676-8cb1-01222f976885-prep.md
 ```
 
-The home session is defined by the containing session directory. Slash-separated
-session names are stored as nested directories, so a fact in
-`Technology Assembly/2026-07-08` lives under that subdirectory. The home session
+The home context is defined by the containing context directory. Slash-separated
+context names are stored as nested directories, so a fact in
+`Technology Assembly/2026-07-08` lives under that subdirectory. The home context
 is not stored in front matter.
 
 Each fact contains front matter similar to:
@@ -145,7 +145,7 @@ Each fact contains front matter similar to:
 id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
 type: observation
 created: 2026-06-30T10:15:23-04:00
-associated_sessions:
+associated_contexts:
   - Steve
   - Enterprise Architecture
 tags:
@@ -157,7 +157,7 @@ url:
 ---
 ```
 
-Deleted facts are moved into a `.trash` directory beneath their home session.
+Deleted facts are moved into a `.trash` directory beneath their home context.
 
 Example:
 
@@ -194,7 +194,7 @@ Initial time box text format:
 The application maintains the following state.
 
 ```text
-current_session
+current_context
 current_query
 current_selection
 current_mode
@@ -203,11 +203,11 @@ plan_preview
 
 Definitions:
 
-**current_session**
+**current_context**
 
-The session the user is currently working in.
+The context the user is currently working in.
 
-A session must be entered before facts may be captured.
+A context must be entered before facts may be captured.
 
 If captured text contains an `http://` or `https://` URL, the fact is captured
 as `type: bookmark`. The first URL is stored in front matter as `url:` and is
@@ -230,7 +230,7 @@ The body always renders the results of this query.
 Default:
 
 ```text
-session:<current_session>
+context:<current_context>
 ```
 
 **current_selection**
@@ -263,7 +263,7 @@ Displays application state.
 
 Examples:
 
-- current session
+- current context
 - active query
 - current mode
 - result count
@@ -271,7 +271,7 @@ Examples:
 The primary header form is a workspace-style path:
 
 ```text
-sessions/Thinking about Gatherbrain design
+contexts/Thinking about Gatherbrain design
 ```
 
 ---
@@ -326,8 +326,8 @@ each interaction. The prompt remains at the bottom of the screen.
 While the user is typing, the UI previews the inferred mode. Plan input previews
 the parsed time box before it is committed.
 
-Tab completion is available for commands, `:switch` session names, search
-shortcuts, selection actions, visible result numbers, and known session names
+Tab completion is available for commands, `:switch` context names, search
+shortcuts, selection actions, visible result numbers, and known context names
 after `@` in capture text. When multiple candidates match the same typed
 prefix, pressing Tab repeatedly cycles through the matching candidates.
 
@@ -357,16 +357,16 @@ The mode is inferred from the first character entered.
 
 | Command | Behavior |
 | --- | --- |
-| `:switch <session>` | Switches to the named session |
-| `:session <number>` | Switches to a numbered session from `:sessions` |
-| `:sessions` | Lists sessions discovered from fact folders and timebox files |
+| `:switch <context>` | Switches to the named context |
+| `:context <number>` | Switches to a numbered context from `:contexts` |
+| `:contexts` | Lists contexts discovered from fact folders and timebox files |
 | `:inspect <number>` | Shows full metadata and file path for a visible fact |
-| `:timebox <number> <range> <session>` | Updates a visible time box |
+| `:timebox <number> <range> <context>` | Updates a visible time box |
 | `:timebox delete <number>` | Deletes a visible time box |
 | `:undo` | Undoes the most recent selection action in memory |
 | `:help` | Shows in-app help |
-| `:restart` | Restarts the app, reloads current session/query, and clears transient panels |
-| `:paste` | Prompts for a paste name, writes the clipboard into the current session, and creates a `type: file` fact |
+| `:restart` | Restarts the app, reloads current context/query, and clears transient panels |
+| `:paste` | Prompts for a paste name, writes the clipboard into the current context, and creates a `type: file` fact |
 | `:exit` / `:quit` | Exits the app |
 
 ---
@@ -408,7 +408,7 @@ Example:
 Mike prefers async architecture reviews.
 ```
 
-Creates a new fact in the current session.
+Creates a new fact in the current context.
 
 ---
 
@@ -429,7 +429,7 @@ Examples:
 
 /due:today and "Steve Ma"
 
-/session:"Architecture Review Board"
+/context:"Architecture Review Board"
 
 /tag:Devin
 
@@ -477,7 +477,7 @@ and due<=today
 
 Shortcuts may reference dynamic values such as:
 
-- current session
+- current context
 - today
 - this week
 
@@ -488,7 +488,7 @@ Examples:
 
 //today
 
-//session
+//context
 
 //overdue
 ```
@@ -504,7 +504,7 @@ Commands change application state.
 Initial commands:
 
 ```text
-:switch <session>
+:switch <context>
 
 :restart
 
@@ -513,26 +513,26 @@ Initial commands:
 
 ### `:switch`
 
-Changes the current session.
+Changes the current context.
 
-Shell-style escaped spaces are normalized before the session is stored, so
+Shell-style escaped spaces are normalized before the context is stored, so
 `:switch Steve\ Ma` switches to `Steve Ma`.
 
 The current query becomes:
 
 ```text
-session:<new session>
+context:<new context>
 ```
 
 ### `:restart`
 
 In the interactive TUI, restarts the application process so code and
 configuration changes are loaded. The restarted process reloads the saved
-current session and query.
+current context and query.
 
 Transient state such as visible panels, selection previews, and undo history is
 cleared. Durable workspace state, including facts, time boxes, and the current
-session/query, is preserved.
+context/query, is preserved.
 
 ### `:paste`
 
@@ -540,17 +540,17 @@ Prompts for a name for the pasted item.
 
 The next entered line becomes both the fact title and the file-name stem.
 
-The command requires a current session.
+The command requires a current context.
 
-Clipboard text is saved as a `.txt` file in the current session folder.
+Clipboard text is saved as a `.txt` file in the current context folder.
 
-Clipboard screenshots are saved as `.png` files in the current session folder.
+Clipboard screenshots are saved as `.png` files in the current context folder.
 
-After writing the pasted file, the app creates a normal fact in the same session
+After writing the pasted file, the app creates a normal fact in the same context
 with type `file`, the entered name as content, and `file: <filename>` in front
 matter.
 
-The pasted file and the fact are both stored under the current session folder.
+The pasted file and the fact are both stored under the current context folder.
 
 ---
 
@@ -578,7 +578,7 @@ Examples:
 
 Numbers refer to displayed fact numbers.
 
-Fact numbers remain stable until the session or search changes.
+Fact numbers remain stable until the context or search changes.
 
 Example:
 
@@ -654,7 +654,7 @@ Example:
 
 ### Delete
 
-Moves the fact into the `.trash` folder within its home session.
+Moves the fact into the `.trash` folder within its home context.
 
 Example:
 
@@ -666,7 +666,7 @@ Example:
 
 ### Gather
 
-Associates the selected fact with the current session.
+Associates the selected fact with the current context.
 
 Example:
 
@@ -713,7 +713,7 @@ Example:
 ```
 
 The selected fact must have a `file` front matter value. Relative file names are
-resolved against the selected fact's own session folder.
+resolved against the selected fact's own context folder.
 
 ---
 
@@ -773,7 +773,7 @@ actions:
     action: trash
 
   gather:
-    action: associate_current_session
+    action: associate_current_context
 
   open:
     action: open_file
@@ -804,7 +804,7 @@ Plan mode begins with `;`.
 
 Entering plan mode replaces the body with the calendar.
 
-Planning commands associate dates and time ranges with sessions.
+Planning commands associate dates and time ranges with contexts.
 
 Plan dates accept `today`, `tomorrow`, `yesterday`, `next <weekday>`, explicit
 `YYYY-MM-DD`, and month-day phrases such as `June 1`.
@@ -867,6 +867,6 @@ Operate on existing facts.
 
 **Plan**
 
-Allocate time to sessions.
+Allocate time to contexts.
 
 Together these modes provide a complete keyboard-first workflow for capturing knowledge, retrieving it, organizing it, and planning future work while keeping the underlying interaction model small and predictable.

@@ -110,20 +110,20 @@ describe("SelectionActionRegistry", () => {
     );
   });
 
-  it("associates selected facts with the current session", async () => {
+  it("associates selected facts with the current context", async () => {
     const factStore = new MemoryFactStore([buildFact()]);
     const registry = SelectionActionRegistry.fromConfig();
 
     await registry.execute("gather", {
       selection: new Selection(["6f2308de-02e9-45db-8ff0-65ac793f4a24"]),
       factStore,
-      state: new AppState({ currentSession: "Steve" })
+      state: new AppState({ currentContext: "Steve" })
     });
 
     assert.deepEqual(
       factStore
         .fact("6f2308de-02e9-45db-8ff0-65ac793f4a24")
-        .associatedSessions.map((session) => session.name),
+        .associatedContexts.map((context) => context.name),
       ["Steve"]
     );
   });
@@ -152,14 +152,14 @@ describe("SelectionActionRegistry", () => {
       fileOpener: {
         async openAssociatedFile({ fact: openedFact, factPath }) {
           opened.push({ fact: openedFact, factPath });
-          return "/tmp/session/launch-notes.txt";
+          return "/tmp/context/launch-notes.txt";
         }
       }
     });
 
     assert.deepEqual(results.map((result) => result.action), ["open_file"]);
     assert.equal(opened[0].fact.file, "launch-notes.txt");
-    assert.equal(opened[0].factPath, "/tmp/session/6f2308de-02e9-45db-8ff0-65ac793f4a24.md");
+    assert.equal(opened[0].factPath, "/tmp/context/6f2308de-02e9-45db-8ff0-65ac793f4a24.md");
   });
 
   it("edits only the last selected fact file", async () => {
@@ -183,7 +183,7 @@ describe("SelectionActionRegistry", () => {
     assert.deepEqual(results.map((result) => result.action), ["edit_file"]);
     assert.equal(edited.length, 1);
     assert.equal(edited[0].fact.id, lastFact.id);
-    assert.equal(edited[0].factPath, "/tmp/session/5d037d8e-40dd-4c9f-9890-5a73388dd0c8.md");
+    assert.equal(edited[0].factPath, "/tmp/context/5d037d8e-40dd-4c9f-9890-5a73388dd0c8.md");
   });
 
   it("rejects open for facts without associated files", async () => {
@@ -253,7 +253,7 @@ function buildFact(overrides = {}) {
     content: "Mike prefers async architecture reviews.",
     type: "observation",
     createdAt: "2026-06-30T14:15:23.000Z",
-    homeSession: "Architecture Review Board",
+    homeContext: "Architecture Review Board",
     ...overrides
   });
 }
@@ -277,7 +277,7 @@ class MemoryFactStore {
       return null;
     }
 
-    return `/tmp/session/${id}.md`;
+    return `/tmp/context/${id}.md`;
   }
 
   async saveFact(fact) {

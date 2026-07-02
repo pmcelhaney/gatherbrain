@@ -1,4 +1,4 @@
-import { Session } from "./session.js";
+import { Context } from "./context.js";
 import { normalizeTags } from "./tags.js";
 
 export class Fact {
@@ -10,8 +10,8 @@ export class Fact {
     dueDate = null,
     file = null,
     url = null,
-    homeSession,
-    associatedSessions = [],
+    homeContext,
+    associatedContexts = [],
     tags = []
   }) {
     if (typeof content !== "string" || content.trim().length === 0) {
@@ -22,15 +22,15 @@ export class Fact {
     this.content = content;
     this.type = normalizeType(type);
     this.createdAt = normalizeTimestamp(createdAt, "createdAt");
-    this.homeSession = normalizeHomeSession(homeSession);
-    this.associatedSessions = [];
+    this.homeContext = normalizeHomeContext(homeContext);
+    this.associatedContexts = [];
     this.dueDate = normalizeDate(dueDate);
     this.file = normalizeFile(file);
     this.url = normalizeUrl(url);
     this.tags = normalizeTags(tags);
 
-    for (const session of associatedSessions) {
-      this.associateSession(session);
+    for (const context of associatedContexts) {
+      this.associateContext(context);
     }
   }
 
@@ -50,23 +50,23 @@ export class Fact {
     this.tags = normalizeTags([...this.tags, tag]);
   }
 
-  associateSession(session) {
-    const nextSession = Session.from(session);
+  associateContext(context) {
+    const nextContext = Context.from(context);
 
-    if (this.homeSession.equals(nextSession)) {
+    if (this.homeContext.equals(nextContext)) {
       return;
     }
 
-    if (this.associatedSessions.some((existing) => existing.equals(nextSession))) {
+    if (this.associatedContexts.some((existing) => existing.equals(nextContext))) {
       return;
     }
 
-    this.associatedSessions.push(nextSession);
+    this.associatedContexts.push(nextContext);
   }
 
-  dissociateSession(session) {
-    const target = Session.from(session);
-    this.associatedSessions = this.associatedSessions.filter(
+  dissociateContext(context) {
+    const target = Context.from(context);
+    this.associatedContexts = this.associatedContexts.filter(
       (existing) => !existing.equals(target)
     );
   }
@@ -80,8 +80,8 @@ export class Fact {
       dueDate: this.dueDate,
       file: this.file,
       url: this.url,
-      homeSession: this.homeSession.name,
-      associatedSessions: this.associatedSessions.map((session) => session.name),
+      homeContext: this.homeContext.name,
+      associatedContexts: this.associatedContexts.map((context) => context.name),
       tags: this.tags
     };
   }
@@ -113,12 +113,12 @@ function normalizeUuid(id) {
   return normalizedId;
 }
 
-function normalizeHomeSession(homeSession) {
-  if (homeSession === null || homeSession === undefined) {
-    throw new Error("Fact home session is required");
+function normalizeHomeContext(homeContext) {
+  if (homeContext === null || homeContext === undefined) {
+    throw new Error("Fact home context is required");
   }
 
-  return Session.from(homeSession);
+  return Context.from(homeContext);
 }
 
 function normalizeType(type) {

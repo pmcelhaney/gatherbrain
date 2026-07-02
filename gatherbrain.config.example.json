@@ -38,7 +38,7 @@
         "action": "trash"
       },
       "gather": {
-        "action": "associate_current_session"
+        "action": "associate_current_context"
       },
       "open": {
         "action": "open_file"

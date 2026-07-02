@@ -12,9 +12,9 @@ describe("CompletionService", () => {
     assert.equal(await service.complete(":qu"), ":quit");
   });
 
-  it("completes sessions for switch and session commands", async () => {
+  it("completes contexts for switch and context commands", async () => {
     const service = new CompletionService({
-      sessionRepository: {
+      contextRepository: {
         async list() {
           return ["Architecture Review Board", "Steve"];
         }
@@ -22,7 +22,7 @@ describe("CompletionService", () => {
     });
 
     assert.equal(await service.complete(":switch Arch"), ":switch Architecture Review Board");
-    assert.equal(await service.complete(":session Ste"), ":session Steve");
+    assert.equal(await service.complete(":context Ste"), ":context Steve");
   });
 
   it("completes search shortcuts", async () => {
@@ -61,7 +61,7 @@ describe("CompletionService", () => {
           ];
         }
       },
-      sessionRepository: {
+      contextRepository: {
         async list() {
           return ["Architecture Review Board"];
         }
@@ -90,7 +90,7 @@ describe("CompletionService", () => {
     assert.equal(await service.complete("@St", { completionIndex: 3 }), "@Stacy");
   });
 
-  it("completes capture tags from root session directory tags", async () => {
+  it("completes capture tags from root context directory tags", async () => {
     const service = new CompletionService({
       tagRepository: {
         async list() {
@@ -112,7 +112,7 @@ describe("CompletionService", () => {
 
   it("matches completion prefixes case-insensitively", async () => {
     const service = new CompletionService({
-      sessionRepository: {
+      contextRepository: {
         async list() {
           return ["Architecture Review Board"];
         }
@@ -122,7 +122,7 @@ describe("CompletionService", () => {
     assert.equal(await service.complete(":SW"), ":switch");
     assert.equal(await service.complete(":switch arch"), ":switch Architecture Review Board");
     assert.equal(await service.complete(":SWITCH arch"), ":switch Architecture Review Board");
-    assert.equal(await service.complete(":SESSION arch"), ":session Architecture Review Board");
+    assert.equal(await service.complete(":CONTEXT arch"), ":context Architecture Review Board");
     assert.equal(await service.complete("//CUR"), "//current");
     assert.equal(await service.complete(". INP"), ". inprogress");
   });

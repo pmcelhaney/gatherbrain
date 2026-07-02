@@ -8,10 +8,10 @@ describe("SearchEngine", () => {
   const parser = new SearchQueryParser();
   const engine = new SearchEngine();
 
-  it("searches terms and session filters", () => {
+  it("searches terms and context filters", () => {
     const result = engine.search(
       facts(),
-      parser.parse('/session:"Architecture Review Board" AND "async architecture"')
+      parser.parse('/context:"Architecture Review Board" AND "async architecture"')
     );
 
     assert.deepEqual(result.facts.map((fact) => fact.id), [
@@ -43,10 +43,10 @@ describe("SearchEngine", () => {
     assert.equal(result.factIdForNumber(1), "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a");
   });
 
-  it("searches sessions through shorthand parser forms", () => {
+  it("searches contexts through shorthand parser forms", () => {
     const unquoted = engine.search(
       facts(),
-      parser.parse("/session:Architecture Review Board")
+      parser.parse("/context:Architecture Review Board")
     );
     const shorthand = engine.search(
       facts(),
@@ -61,10 +61,10 @@ describe("SearchEngine", () => {
     ]);
   });
 
-  it("searches slash-separated session names", () => {
+  it("searches slash-separated context names", () => {
     const result = engine.search(
       facts(),
-      parser.parse("/session:Technology Assembly/2026-07-08")
+      parser.parse("/context:Technology Assembly/2026-07-08")
     );
 
     assert.deepEqual(result.facts.map((fact) => fact.id), [
@@ -92,8 +92,8 @@ function facts() {
       content: "Mike prefers async architecture reviews.",
       type: "observation",
       createdAt: "2026-06-30T14:15:23.000Z",
-      homeSession: "Architecture Review Board",
-      associatedSessions: ["Steve"]
+      homeContext: "Architecture Review Board",
+      associatedContexts: ["Steve"]
     }),
     new Fact({
       id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
@@ -101,7 +101,7 @@ function facts() {
       type: "task",
       createdAt: "2026-06-30T15:45:00.000Z",
       dueDate: "2026-06-30",
-      homeSession: "Steve",
+      homeContext: "Steve",
       tags: ["Devin", "Steve Ma"]
     }),
     new Fact({
@@ -109,7 +109,7 @@ function facts() {
       content: "Prep the assembly agenda.",
       type: "fact",
       createdAt: "2026-06-30T13:00:00.000Z",
-      homeSession: "Technology Assembly/2026-07-08"
+      homeContext: "Technology Assembly/2026-07-08"
     })
   ];
 }

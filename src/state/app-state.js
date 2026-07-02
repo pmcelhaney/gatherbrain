@@ -1,4 +1,4 @@
-import { Session } from "../domain/index.js";
+import { Context } from "../domain/index.js";
 import { PlanPreview } from "./plan-preview.js";
 import { Selection } from "./selection.js";
 
@@ -12,32 +12,32 @@ export const AppMode = Object.freeze({
 
 export class AppState {
   constructor({
-    currentSession = null,
+    currentContext = null,
     currentQuery = null,
     currentSelection = new Selection(),
     currentMode = AppMode.COMMAND,
     planPreview = null
   } = {}) {
-    this.currentSession = currentSession ? Session.from(currentSession) : null;
-    this.currentQuery = currentQuery ?? defaultQueryFor(this.currentSession);
+    this.currentContext = currentContext ? Context.from(currentContext) : null;
+    this.currentQuery = currentQuery ?? defaultQueryFor(this.currentContext);
     this.currentSelection = Selection.from(currentSelection);
     this.currentMode = normalizeMode(currentMode);
     this.planPreview = planPreview ? PlanPreview.from(planPreview) : null;
   }
 
   canCaptureFact() {
-    return this.currentSession !== null;
+    return this.currentContext !== null;
   }
 
-  requireCaptureSession() {
+  requireCaptureContext() {
     if (!this.canCaptureFact()) {
-      throw new Error("A current session is required before capturing facts");
+      throw new Error("A current context is required before capturing facts");
     }
   }
 
-  switchSession(session) {
-    this.currentSession = Session.from(session);
-    this.currentQuery = defaultQueryFor(this.currentSession);
+  switchContext(context) {
+    this.currentContext = Context.from(context);
+    this.currentQuery = defaultQueryFor(this.currentContext);
     this.currentSelection.clear();
     this.planPreview = null;
     this.currentMode = AppMode.CAPTURE;
@@ -77,7 +77,7 @@ export class AppState {
   }
 
   restart() {
-    this.currentSession = null;
+    this.currentContext = null;
     this.currentQuery = null;
     this.currentSelection.clear();
     this.currentMode = AppMode.COMMAND;
@@ -85,8 +85,8 @@ export class AppState {
   }
 }
 
-function defaultQueryFor(session) {
-  return session ? `session:${session.name}` : null;
+function defaultQueryFor(context) {
+  return context ? `context:${context.name}` : null;
 }
 
 function normalizeMode(mode) {

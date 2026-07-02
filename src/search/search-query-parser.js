@@ -21,7 +21,7 @@ function normalizeQuery(rawQuery) {
   const query = rawQuery.trim().replace(/^\//, "").trim();
 
   if (query.startsWith("@") && !/\s+(AND|OR|NOT)\s+/i.test(query)) {
-    return `session:"${query.slice(1).trim()}"`;
+    return `context:"${query.slice(1).trim()}"`;
   }
 
   return query;
@@ -104,7 +104,7 @@ function coalesceFieldValues(tokens) {
       continue;
     }
 
-    if (field.name === "session" || field.name === "tag") {
+    if (field.name === "context" || field.name === "tag") {
       const values = [field.value];
 
       while (index + 1 < tokens.length && isSpacedFieldContinuation(tokens[index + 1])) {
@@ -151,8 +151,10 @@ function parseFieldToken(token) {
     return null;
   }
 
+  const name = match[1].toLowerCase();
+
   return {
-    name: match[1].toLowerCase(),
+    name: name === "session" ? "context" : name,
     operator: match[2],
     value: match[3]
   };
