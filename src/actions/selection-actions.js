@@ -79,8 +79,8 @@ export class OpenFileAction {
     for (const factId of context.selection.toArray()) {
       const fact = await context.factStore.getFactById(factId);
 
-      if (!fact.file) {
-        throw new Error("Selected fact has no associated file");
+      if (!fact.url && !fact.file) {
+        throw new Error("Selected fact has no associated URL or file");
       }
 
       const factPath = await context.factStore.findPathByFactId(factId);
@@ -89,8 +89,8 @@ export class OpenFileAction {
         throw new Error(`Fact not found: ${factId}`);
       }
 
-      const filePath = await opener.openAssociatedFile({ fact, factPath });
-      results.push({ fact, action: "open_file", value: filePath });
+      const openedTargets = await opener.openAssociatedFile({ fact, factPath });
+      results.push({ fact, action: "open_file", value: openedTargets });
     }
 
     return results;

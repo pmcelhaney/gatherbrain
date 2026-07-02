@@ -219,7 +219,7 @@ Current built-in actions:
 | `tomorrow` | Sets due date to tomorrow |
 | `delete` | Moves the fact to `.trash` |
 | `gather` | Associates the fact with the current context |
-| `open` | Opens the file associated with the fact |
+| `open` | Opens the URL, file, or both associated with the fact |
 | `edit` | Opens the fact Markdown file in `$EDITOR`; with multiple selectors, only the last mentioned fact is edited |
 
 Any `@tag` action adds that tag to the selected facts. Escaped spaces are
@@ -317,7 +317,9 @@ and configuration changes are loaded. Durable workspace state is preserved.
 pasted item. Gatherbrain writes text clipboard data as `<name>.txt` and
 screenshot clipboard data as `<name>.png` in the current context folder, then
 creates a `type: file` fact named the same way with `file: <filename>` in front
-matter. Select that fact and run `. open` to open the pasted file.
+matter. Select that fact and run `. open` to open the pasted file. Bookmark
+facts with `url:` front matter open the stored URL; if a fact has both `url:`
+and `file:`, `. open` opens both targets.
 
 While typing, the header and body preview the inferred mode. Plan input previews
 the parsed time box before Enter commits it.

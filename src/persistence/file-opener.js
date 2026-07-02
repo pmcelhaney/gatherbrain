@@ -13,13 +13,25 @@ export class FileOpener {
   }
 
   async openAssociatedFile({ fact, factPath }) {
-    if (!fact.file) {
-      throw new Error("Fact has no associated file");
+    const targets = [];
+
+    if (fact.url) {
+      targets.push(fact.url);
     }
 
-    const filePath = path.resolve(path.dirname(factPath), fact.file);
-    await this.execFile("open", [filePath]);
-    return filePath;
+    if (fact.file) {
+      targets.push(path.resolve(path.dirname(factPath), fact.file));
+    }
+
+    if (targets.length === 0) {
+      throw new Error("Fact has no associated URL or file");
+    }
+
+    for (const target of targets) {
+      await this.execFile("open", [target]);
+    }
+
+    return targets;
   }
 
   async editFactFile({ factPath }) {

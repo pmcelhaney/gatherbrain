@@ -140,7 +140,7 @@ describe("SelectionActionRegistry", () => {
     assert.deepEqual(factStore.trashedIds, ["6f2308de-02e9-45db-8ff0-65ac793f4a24"]);
   });
 
-  it("opens associated files from selected facts", async () => {
+  it("opens associated URLs and files from selected facts", async () => {
     const fact = buildFact({ file: "launch-notes.txt" });
     const factStore = new MemoryFactStore([fact]);
     const opened = [];
@@ -152,13 +152,37 @@ describe("SelectionActionRegistry", () => {
       fileOpener: {
         async openAssociatedFile({ fact: openedFact, factPath }) {
           opened.push({ fact: openedFact, factPath });
-          return "/tmp/context/launch-notes.txt";
+          return ["/tmp/context/launch-notes.txt"];
         }
       }
     });
 
     assert.deepEqual(results.map((result) => result.action), ["open_file"]);
+    assert.deepEqual(results[0].value, ["/tmp/context/launch-notes.txt"]);
     assert.equal(opened[0].fact.file, "launch-notes.txt");
+    assert.equal(opened[0].factPath, "/tmp/context/6f2308de-02e9-45db-8ff0-65ac793f4a24.md");
+  });
+
+  it("opens selected facts with only URLs", async () => {
+    const fact = buildFact({ file: null, url: "https://example.com/launch" });
+    const factStore = new MemoryFactStore([fact]);
+    const opened = [];
+    const registry = SelectionActionRegistry.fromConfig();
+
+    const results = await registry.execute("open", {
+      selection: new Selection([fact.id]),
+      factStore,
+      fileOpener: {
+        async openAssociatedFile({ fact: openedFact, factPath }) {
+          opened.push({ fact: openedFact, factPath });
+          return ["https://example.com/launch"];
+        }
+      }
+    });
+
+    assert.deepEqual(results.map((result) => result.action), ["open_file"]);
+    assert.deepEqual(results[0].value, ["https://example.com/launch"]);
+    assert.equal(opened[0].fact.url, "https://example.com/launch");
     assert.equal(opened[0].factPath, "/tmp/context/6f2308de-02e9-45db-8ff0-65ac793f4a24.md");
   });
 
@@ -186,7 +210,7 @@ describe("SelectionActionRegistry", () => {
     assert.equal(edited[0].factPath, "/tmp/context/5d037d8e-40dd-4c9f-9890-5a73388dd0c8.md");
   });
 
-  it("rejects open for facts without associated files", async () => {
+  it("rejects open for facts without associated URLs or files", async () => {
     const fact = buildFact();
     const factStore = new MemoryFactStore([fact]);
     const registry = SelectionActionRegistry.fromConfig();
@@ -199,7 +223,7 @@ describe("SelectionActionRegistry", () => {
           async openAssociatedFile() {}
         }
       }),
-      /no associated file/
+      /no associated URL or file/
     );
   });
 

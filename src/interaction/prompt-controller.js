@@ -243,9 +243,13 @@ function labelForUrl(url) {
 
 function selectionMessage(actionKeyword, results) {
   if (results.every((result) => result.action === "open_file")) {
-    return results.length === 1
-      ? `opened ${results[0].fact.file}`
-      : `opened ${results.length} files`;
+    const targetCount = results.reduce((count, result) => count + result.value.length, 0);
+
+    if (targetCount === 1) {
+      return `opened ${openLabel(results[0])}`;
+    }
+
+    return `opened ${targetCount} targets`;
   }
 
   if (results.every((result) => result.action === "edit_file")) {
@@ -253,6 +257,10 @@ function selectionMessage(actionKeyword, results) {
   }
 
   return `${actionKeyword} applied to ${results.length} fact${results.length === 1 ? "" : "s"}`;
+}
+
+function openLabel(result) {
+  return result.fact.url || result.fact.file;
 }
 
 function selectionActionText(actionKeyword, args = []) {

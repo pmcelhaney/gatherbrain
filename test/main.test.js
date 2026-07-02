@@ -780,7 +780,7 @@ Login Screenshot
       fileOpener: {
         async openAssociatedFile({ fact, factPath }) {
           opened.push({ file: fact.file, factPath });
-          return path.join(path.dirname(factPath), fact.file);
+          return [path.join(path.dirname(factPath), fact.file)];
         }
       }
     });
@@ -795,6 +795,33 @@ Login Screenshot
       file: "launch-notes.txt",
       factPath: path.join(workspacePath, "Steve", "33333333-3333-4333-8333-333333333333-launch-notes.md")
     }]);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
+  it("opens URLs associated with selected facts", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-open-url-"));
+    const opened = [];
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-07-01T12:00:00.000Z"),
+      fileOpener: {
+        async openAssociatedFile({ fact, factPath }) {
+          opened.push({ url: fact.url, factPath });
+          return [fact.url];
+        }
+      }
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit("https://nodejs.org/api/test.html");
+    const result = await runtime.submit(". open");
+
+    assert.equal(result.message, "opened https://nodejs.org/api/test.html");
+    assert.deepEqual(opened.map((item) => item.url), ["https://nodejs.org/api/test.html"]);
+    assert.equal(path.dirname(opened[0].factPath), path.join(workspacePath, "Steve"));
+    assert.match(path.basename(opened[0].factPath), /^[0-9a-f-]+-nodejs-org-api-test-html\.md$/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

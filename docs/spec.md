@@ -724,9 +724,9 @@ Example:
 
 ---
 
-### Open File
+### Open
 
-Opens the file associated with the selected fact.
+Opens the URL, file, or both associated with the selected fact.
 
 Example:
 
@@ -734,8 +734,9 @@ Example:
 . open
 ```
 
-The selected fact must have a `file` front matter value. Relative file names are
-resolved against the selected fact's own context folder.
+The selected fact must have a `url` or `file` front matter value. Relative file
+names are resolved against the selected fact's own context folder. If both
+values are present, both targets are opened.
 
 ---
 
