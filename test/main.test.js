@@ -882,6 +882,25 @@ Login Screenshot
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("previews multiple selection actions before submit", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-multi-preview-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Steve");
+    await runtime.submit("Follow up with Steve.");
+
+    const rendered = runtime.render({ input: "1 task today" });
+
+    assert.match(rendered, /> 1\. task today Follow up with Steve/);
+    assert.doesNotMatch(runtime.render(), /task today Follow up with Steve/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("marks selected facts due today", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-due-today-"));

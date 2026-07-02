@@ -206,6 +206,13 @@ Multiple selectors can be used together:
 1 3 7 delete
 ```
 
+Multiple actions can be used together against the same selectors:
+
+```text
+3 task today
+. waiting tomorrow
+```
+
 Current built-in actions:
 
 | Action | Effect |

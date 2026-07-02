@@ -174,6 +174,34 @@ describe("PromptController", () => {
     assert.equal(saved.dueDate, "2026-07-01");
   });
 
+  it("executes multiple selection actions from one prompt", async () => {
+    await controller.submit("Follow up with Steve.");
+    const search = await controller.submit("/Steve");
+    currentResultSet = search.resultSet;
+
+    const result = await controller.submit("1 task today");
+
+    assert.equal(result.action, "selection_action");
+    assert.equal(result.message, "task today applied to 1 fact");
+    const saved = await controller.factRepository.getFactById(
+      "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
+    );
+    assert.equal(saved.type, "task");
+    assert.equal(saved.dueDate, "2026-06-30");
+  });
+
+  it("does not partially apply multiple selection actions when one is unknown", async () => {
+    await controller.submit("Follow up with Steve.");
+    const search = await controller.submit("/Steve");
+    currentResultSet = search.resultSet;
+
+    await assert.rejects(() => controller.submit("1 task nope"), /Unknown selection action: nope/);
+    const saved = await controller.factRepository.getFactById(
+      "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
+    );
+    assert.equal(saved.type, "fact");
+  });
+
   it("executes selection due dates from natural date phrases", async () => {
     await controller.submit("Follow up with Steve.");
     const search = await controller.submit("/Steve");

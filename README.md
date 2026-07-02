@@ -101,6 +101,7 @@ Operate on visible facts:
 
 ```text
 . task
+. task today
 . inprogress
 . tomorrow
 . open

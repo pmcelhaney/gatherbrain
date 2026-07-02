@@ -9,6 +9,7 @@ import { defaultAppConfig, loadAppConfig, mergeAppConfig } from "./config/index.
 import { Fact } from "./domain/index.js";
 import { normalizeNaturalDates } from "./domain/date-text.js";
 import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
+import { parseSelectionActions, selectorsForSelectionActions } from "./interaction/selection-input.js";
 import { AppStateRepository, ClipboardReader, FactRepository, FileOpener, PasteRepository, ContextRepository, TagRepository, Workspace } from "./persistence/index.js";
 import { PlanParser, TimeBoxRepository } from "./planning/index.js";
 import { FactIndex, SearchEngine, SearchQueryParser, SearchResultSet } from "./search/index.js";
@@ -248,7 +249,7 @@ export function createAppRuntime({
         }),
         timeBoxes,
         helpLines,
-        selectionPreview: selectionPreviewForInput(input, resultSet),
+        selectionPreview: selectionPreviewForInput(input, resultSet, selectionActionRegistry),
         input,
         cursor,
         showCursor,
@@ -279,9 +280,9 @@ function previewResultSetForInput({
   state,
   clock
 }) {
-  const parsed = selectionInputPreview(input, resultSet);
+  const parsed = selectionInputPreview(input, resultSet, selectionActionRegistry);
 
-  if (!parsed?.actionKeyword) {
+  if (!parsed?.actions.length) {
     return resultSet;
   }
 
@@ -292,21 +293,20 @@ function previewResultSetForInput({
       return fact;
     }
 
-    return selectionActionRegistry.preview(parsed.actionKeyword, fact, {
+    return selectionActionRegistry.previewAll(parsed.actions, fact, {
       state,
-      today,
-      actionArgs: parsed.args
+      today
     }) ?? fact;
   });
 
   return new SearchResultSet(previewFacts);
 }
 
-function selectionPreviewForInput(input, resultSet) {
-  return selectionInputPreview(input, resultSet)?.selection ?? null;
+function selectionPreviewForInput(input, resultSet, selectionActionRegistry) {
+  return selectionInputPreview(input, resultSet, selectionActionRegistry)?.selection ?? null;
 }
 
-function selectionInputPreview(input, resultSet) {
+function selectionInputPreview(input, resultSet, selectionActionRegistry) {
   if (!resultSet || !/^\s*(\d+|\.)/.test(input)) {
     return null;
   }
@@ -323,23 +323,16 @@ function selectionInputPreview(input, resultSet) {
   }
 
   try {
-    const actionKeyword = tokens[0] ?? null;
+    const actions = parseSelectionActions(tokens, {
+      actionKeywords: selectionActionRegistry.keywords()
+    });
     return {
-      selection: Selection.resolve(selectorsForPreview(selectors, actionKeyword), resultSet),
-      actionKeyword,
-      args: tokens.slice(1)
+      selection: Selection.resolve(selectorsForSelectionActions(selectors, actions), resultSet),
+      actions
     };
   } catch {
     return null;
   }
-}
-
-function selectorsForPreview(selectors, actionKeyword) {
-  if (actionKeyword === "edit") {
-    return [selectors.at(-1)];
-  }
-
-  return selectors;
 }
 
 function stateForPreview({ state, input, promptClassifier, planParser, clock }) {

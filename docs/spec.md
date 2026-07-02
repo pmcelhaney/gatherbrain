@@ -634,12 +634,20 @@ General form:
 <selectors> <action> [arguments]
 ```
 
+Multiple actions may be chained in the same prompt:
+
+```text
+<selectors> <action> [arguments] <action> [arguments]
+```
+
 Examples:
 
 ```text
 . task
 
 . .. task
+
+3 task today
 
 7 tomorrow
 

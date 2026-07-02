@@ -46,7 +46,21 @@ export class SelectionActionRegistry {
   }
 
   async execute(keyword, context) {
-    return this.resolve(actionText(keyword, context.actionArgs)).execute(context);
+    return this.executeAll([{ actionKeyword: keyword, args: context.actionArgs ?? [] }], context);
+  }
+
+  async executeAll(actions, context) {
+    const resolvedActions = actions.map((action) => ({
+      ...action,
+      action: this.resolve(selectionActionText(action))
+    }));
+    const results = [];
+
+    for (const { action, args } of resolvedActions) {
+      results.push(...await action.execute({ ...context, actionArgs: args }));
+    }
+
+    return results;
   }
 
   keywords() {
@@ -54,7 +68,18 @@ export class SelectionActionRegistry {
   }
 
   preview(keyword, fact, context = {}) {
-    const resolvedKeyword = actionText(keyword, context.actionArgs);
+    return this.previewAll([{ actionKeyword: keyword, args: context.actionArgs ?? [] }], fact, context);
+  }
+
+  previewAll(actions, fact, context = {}) {
+    return actions.reduce((previewFact, action) => {
+      return this.previewOne(action, previewFact, context) ?? previewFact;
+    }, fact);
+  }
+
+  previewOne(action, fact, context = {}) {
+    const resolvedKeyword = selectionActionText(action);
+    const keyword = action.actionKeyword;
 
     if (isTagAction(resolvedKeyword)) {
       const previewFact = fact.constructor.from(fact.toSerializable());
@@ -102,8 +127,8 @@ export class SelectionActionRegistry {
   }
 }
 
-function actionText(keyword, args = []) {
-  return [keyword, ...args].filter(Boolean).join(" ");
+function selectionActionText({ actionKeyword, args = [] }) {
+  return [actionKeyword, ...args].filter(Boolean).join(" ");
 }
 
 function isTagAction(keyword) {

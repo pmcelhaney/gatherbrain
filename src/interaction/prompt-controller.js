@@ -13,6 +13,7 @@ import { AppMode, Selection } from "../state/index.js";
 import { CommandRegistry } from "./command-registry.js";
 import { InteractionResult } from "./interaction-result.js";
 import { PromptClassifier } from "./prompt-classifier.js";
+import { parseSelectionInput, selectorsForSelectionActions } from "./selection-input.js";
 
 export class PromptController {
   constructor({
@@ -149,29 +150,30 @@ export class PromptController {
   }
 
   async selection(input) {
-    const { selectors, actionKeyword, args } = parseSelectionInput(input);
+    const { selectors, actions } = parseSelectionInput(input, {
+      actionKeywords: this.selectionActionRegistry.keywords()
+    });
     const resultSet = this.currentResultSetProvider();
 
     if (!resultSet) {
       throw new Error("Selection requires visible search results");
     }
 
-    const selection = Selection.resolve(selectorsForAction(selectors, actionKeyword), resultSet);
+    const selection = Selection.resolve(selectorsForSelectionActions(selectors, actions), resultSet);
     this.state.setSelection(selection);
     const undoSnapshot = await this.snapshotSelection(selection);
 
-    const results = await this.selectionActionRegistry.execute(actionKeyword, {
+    const results = await this.selectionActionRegistry.executeAll(actions, {
       selection,
       factStore: this.factRepository,
       state: this.state,
       fileOpener: this.fileOpener,
-      today: this.clock().toISOString().slice(0, 10),
-      actionArgs: args
+      today: this.clock().toISOString().slice(0, 10)
     });
 
     return InteractionResult.selectionAction({
       mode: AppMode.SELECTION,
-      message: selectionMessage(selectionActionText(actionKeyword, args), results),
+      message: selectionMessage(selectionActionsText(actions), selection, results),
       undoSnapshot
     });
   }
@@ -241,7 +243,7 @@ function labelForUrl(url) {
   }
 }
 
-function selectionMessage(actionKeyword, results) {
+function selectionMessage(actionText, selection, results) {
   if (results.every((result) => result.action === "open_file")) {
     const targetCount = results.reduce((count, result) => count + result.value.length, 0);
 
@@ -256,14 +258,18 @@ function selectionMessage(actionKeyword, results) {
     return `editing ${results[0].value}`;
   }
 
-  return `${actionKeyword} applied to ${results.length} fact${results.length === 1 ? "" : "s"}`;
+  return `${actionText} applied to ${selection.size} fact${selection.size === 1 ? "" : "s"}`;
 }
 
 function openLabel(result) {
   return result.fact.url || result.fact.file;
 }
 
-function selectionActionText(actionKeyword, args = []) {
+function selectionActionsText(actions) {
+  return actions.map(selectionActionText).join(" ");
+}
+
+function selectionActionText({ actionKeyword, args = [] }) {
   return [actionKeyword, ...args].filter(Boolean).join(" ");
 }
 
@@ -283,33 +289,4 @@ function queryForSearch(rawQuery, state) {
   }
 
   return "*";
-}
-
-function parseSelectionInput(input) {
-  const tokens = input.trim().split(/\s+/);
-  const selectors = [];
-
-  while (tokens.length > 0 && (/^\d+$/.test(tokens[0]) || /^\.+$/.test(tokens[0]))) {
-    selectors.push(tokens.shift());
-  }
-
-  if (selectors.length === 0) {
-    throw new Error("Selection input requires at least one selector");
-  }
-
-  const actionKeyword = tokens.shift();
-
-  if (!actionKeyword) {
-    throw new Error("Selection input requires an action");
-  }
-
-  return { selectors, actionKeyword, args: tokens };
-}
-
-function selectorsForAction(selectors, actionKeyword) {
-  if (actionKeyword === "edit") {
-    return [selectors.at(-1)];
-  }
-
-  return selectors;
 }
