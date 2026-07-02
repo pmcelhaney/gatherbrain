@@ -19,7 +19,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       new HeaderRenderer().render({ state, resultSet, today: "2026-06-30" }),
-      "contexts/Steve"
+      "Steve"
     );
   });
 
@@ -32,7 +32,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       new HeaderRenderer().render({ state, today: "2026-06-30" }),
-      "contexts/Steve | Shared"
+      "Steve | Shared"
     );
   });
 
@@ -419,7 +419,7 @@ describe("terminal renderers", () => {
       height: 6,
       today: "2026-06-30"
     }), [
-      "contexts/Steve",
+      "Steve",
       "----------------------------------------",
       " 1. task tomorrow Follow up with Steve.",
       "",
@@ -439,7 +439,7 @@ describe("terminal renderers", () => {
       width: 40,
       height: 5
     }), [
-      "contexts/Steve",
+      "Steve",
       "----------------------------------------",
       "...",
       "\x1b[90m@Stephanie\\ Garoza\x1b[0m  \x1b[36m@Stephanie\\ Smith\x1b[0m",

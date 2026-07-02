@@ -63,7 +63,7 @@ describe("main", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
 
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /contexts\/\(no context\)/);
+    assert.match(result.stdout, /^\(no context\)$/m);
     assert.match(result.stdout, /^-{80}$/m);
     assert.match(result.stdout, />\n$/);
   });
@@ -606,7 +606,7 @@ describe("createAppRuntime", () => {
     await secondRuntime.initialize();
     const rendered = secondRuntime.render();
 
-    assert.match(rendered, /contexts\/new context/);
+    assert.match(rendered, /^new context \| context:new context$/m);
     assert.match(rendered, /New-context fact/);
     assert.doesNotMatch(rendered, /Steve-only fact/);
 
@@ -927,7 +927,7 @@ Login Screenshot
 
     const rendered = runtime.render();
 
-    assert.match(rendered, /contexts\/Architecture Review Board \| Shared/);
+    assert.match(rendered, /^Architecture Review Board \| Shared$/m);
     assert.match(rendered, / 1\. Shared search term in Architecture/);
     assert.match(rendered, /Shared search term in Architecture\.\n\n 2\./);
     assert.match(rendered, /\n 2\. \[Steve\] Shared search term in Steve/);
@@ -997,7 +997,7 @@ Login Screenshot
 
     const rendered = runtime.render();
 
-    assert.match(rendered, /contexts\/Steve/);
+    assert.match(rendered, /^Steve$/m);
     assert.match(rendered, /Steve-only fact/);
     assert.doesNotMatch(rendered, /Architecture fact/);
 
@@ -1196,7 +1196,7 @@ Login Screenshot
     await runtime.submit("Follow up with Steve.");
 
     const rendered = runtime.render();
-    assert.match(rendered, /contexts\/Steve Ma/);
+    assert.match(rendered, /^Steve Ma$/m);
     assert.match(rendered, /Follow up with Steve/);
 
     const factMarkdown = fs.readFileSync(
@@ -1224,7 +1224,7 @@ Login Screenshot
     await runtime.submit("Prep the assembly agenda.");
 
     const rendered = runtime.render();
-    assert.match(rendered, /contexts\/Technology Assembly\/2026-07-08/);
+    assert.match(rendered, /^Technology Assembly\/2026-07-08$/m);
     assert.match(rendered, /Prep the assembly agenda/);
 
     const contextDirectory = path.join(workspacePath, "Technology Assembly", "2026-07-08");

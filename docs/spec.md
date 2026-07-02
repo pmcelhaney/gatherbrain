@@ -98,7 +98,7 @@ When search mode is active, the header appends the active search query after the
 current context:
 
 ```text
-contexts/<current context> | <search query>
+<current context> | <search query>
 ```
 
 Context search supports quoted values, unquoted multi-word context values, and
@@ -278,10 +278,10 @@ Examples:
 - current mode
 - result count
 
-The primary header form is a workspace-style path:
+The primary header form is the current context name:
 
 ```text
-contexts/Thinking about Gatherbrain design
+Thinking about Gatherbrain design
 ```
 
 ---
