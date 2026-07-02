@@ -6,7 +6,7 @@ import path from "node:path";
 
 import { SelectionActionRegistry } from "./actions/index.js";
 import { defaultAppConfig, loadAppConfig, mergeAppConfig } from "./config/index.js";
-import { Fact } from "./domain/index.js";
+import { Context, Fact } from "./domain/index.js";
 import { normalizeNaturalDates } from "./domain/date-text.js";
 import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
 import { parseSelectionActions, selectorsForSelectionActions } from "./interaction/selection-input.js";
@@ -52,18 +52,20 @@ export function createAppRuntime({
   let helpLines = null;
   let undoSnapshot = null;
   let pendingPaste = false;
+  let recentContexts = [];
   const promptController = new PromptController({
     state,
     factRepository,
     factSource: factIndex,
     contextRepository,
-      selectionActionRegistry,
-      timeBoxRepository,
-      fileOpener,
-      clock,
+    selectionActionRegistry,
+    timeBoxRepository,
+    fileOpener,
+    clock,
     defaultFactType: appConfig.defaultFactType,
     currentResultSetProvider: () => resultSet,
-    currentTimeBoxesProvider: () => timeBoxes
+    currentTimeBoxesProvider: () => timeBoxes,
+    recentContextProvider: () => recentContexts
   });
 
   const initializeRuntimeState = async () => {
@@ -73,6 +75,7 @@ export function createAppRuntime({
     state.restart();
     if (savedState?.currentContext) {
       state.switchContext(savedState.currentContext);
+      recentContexts = recordRecentContext(recentContexts, state.currentContext);
     }
     if (savedState?.currentQuery) {
       state.setQuery(savedState.currentQuery);
@@ -179,6 +182,7 @@ export function createAppRuntime({
       }
 
       if (result.action === "switch_context") {
+        recentContexts = recordRecentContext(recentContexts, state.currentContext);
         resultSet = await searchCurrentFacts({
           state,
           factIndex,
@@ -248,7 +252,15 @@ export function createAppRuntime({
           clock
         }),
         timeBoxes,
-        helpLines,
+        helpLines: contextListPreviewForInput({
+          input,
+          recentContexts,
+          height: bodyHeightForRender({
+            height,
+            status,
+            completionCandidates
+          })
+        }) ?? helpLines,
         selectionPreview: selectionPreviewForInput(input, resultSet, selectionActionRegistry),
         input,
         cursor,
@@ -271,6 +283,40 @@ export function createAppRuntime({
       return completionService.complete(input, { resultSet, completionIndex });
     }
   };
+}
+
+function recordRecentContext(recentContexts, context) {
+  if (!context) {
+    return recentContexts;
+  }
+
+  const nextContext = Context.from(context);
+  return [
+    nextContext.name,
+    ...recentContexts.filter((name) =>
+      Context.canonicalize(name) !== nextContext.canonicalName
+    )
+  ];
+}
+
+function contextListPreviewForInput({ input, recentContexts, height }) {
+  if (!input.startsWith("@")) {
+    return null;
+  }
+
+  return recentContexts
+    .slice(0, height)
+    .map((contextName, index) => `${String(index + 1).padStart(2, " ")}. ${contextName}`);
+}
+
+function bodyHeightForRender({
+  height,
+  status,
+  completionCandidates
+}) {
+  const completionLineCount = Array.isArray(completionCandidates) && completionCandidates.length > 1 ? 1 : 0;
+  const statusLineCount = status ? 1 : 0;
+  return Math.max(1, height - 3 - completionLineCount - statusLineCount);
 }
 
 function previewResultSetForInput({

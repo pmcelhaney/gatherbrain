@@ -25,12 +25,14 @@ export class CommandRegistry {
 }
 
 class SwitchContextCommand {
-  execute(args, { state }) {
-    const contextName = args.trim();
+  execute(args, { state, recentContexts = [] }) {
+    const target = args.trim();
 
-    if (!contextName) {
+    if (!target) {
       throw new Error("@ requires a context");
     }
+
+    const contextName = resolveRecentContextTarget(target, recentContexts);
 
     state.switchContext(contextName);
 
@@ -352,6 +354,30 @@ async function resolveContextName(target, contextRepository) {
   }
 
   return contextName;
+}
+
+function resolveRecentContextTarget(target, recentContexts) {
+  if (/^\d+$/.test(target)) {
+    const contextName = recentContexts[Number(target) - 1];
+
+    if (!contextName) {
+      throw new Error(`No recent context numbered ${target}`);
+    }
+
+    return contextName;
+  }
+
+  if (/^\.+$/.test(target)) {
+    const contextName = recentContexts[target.length - 1];
+
+    if (!contextName) {
+      throw new Error(`No recent context selected by @${target}`);
+    }
+
+    return contextName;
+  }
+
+  return target;
 }
 
 function parseCommand(input) {

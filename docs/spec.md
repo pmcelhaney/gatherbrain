@@ -336,6 +336,10 @@ each interaction. The prompt remains at the bottom of the screen.
 While the user is typing, the UI previews the inferred mode. Plan input previews
 the parsed time box before it is committed.
 
+When the first prompt character is `@`, the body previews the most recently
+visited contexts, ordered newest first. The list shows as many contexts as fit
+in the body.
+
 Tab completion is available for commands, `@<context>` switches, search
 shortcuts, selection actions, visible result numbers, and known context names
 after inline `@` tags in capture text. When multiple candidates match the same typed
@@ -377,6 +381,8 @@ The mode is inferred from the first character entered.
 | Command | Behavior |
 | --- | --- |
 | `@<context>` | Switches to the named context |
+| `@<number>` | Switches to a numbered context from the current `@` preview list |
+| `@<dots>` | Switches to a dot-selected context from the current `@` preview list |
 | `:context <number>` | Switches to a numbered context from `:contexts` |
 | `:contexts` | Lists contexts discovered from fact folders and timebox files |
 | `:inspect <number>` | Shows full metadata and file path for a visible fact |
@@ -536,6 +542,10 @@ Changes the current context.
 
 Shell-style escaped spaces are normalized before the context is stored, so
 `@Steve\ Ma` switches to `Steve Ma`.
+
+When the first prompt character is `@`, the body shows the last contexts visited
+in most-recent-first order. Entering `@1` switches to the first listed context,
+and entering `@..` switches to the second listed context.
 
 The current query becomes:
 

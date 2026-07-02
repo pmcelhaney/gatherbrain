@@ -29,6 +29,7 @@ export class PromptController {
     selectionActionRegistry = SelectionActionRegistry.fromConfig(),
     currentResultSetProvider = () => null,
     currentTimeBoxesProvider = () => [],
+    recentContextProvider = () => [],
     planParser = null,
     timeBoxRepository = null,
     fileOpener = null,
@@ -48,6 +49,7 @@ export class PromptController {
     this.selectionActionRegistry = selectionActionRegistry;
     this.currentResultSetProvider = currentResultSetProvider;
     this.currentTimeBoxesProvider = currentTimeBoxesProvider;
+    this.recentContextProvider = recentContextProvider;
     this.planParser = planParser;
     this.timeBoxRepository = timeBoxRepository;
     this.fileOpener = fileOpener;
@@ -72,6 +74,7 @@ export class PromptController {
         resultSet: this.currentResultSetProvider(),
         timeBoxRepository: this.timeBoxRepository,
         timeBoxes: this.currentTimeBoxesProvider(),
+        recentContexts: this.recentContextProvider(),
         today: this.clock().toISOString().slice(0, 10)
       });
     }

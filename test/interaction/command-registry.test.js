@@ -28,6 +28,28 @@ describe("CommandRegistry", () => {
     assert.equal(state.currentQuery, "context:Steve Ma");
   });
 
+  it("switches to a numbered recent context", async () => {
+    const state = new AppState({ currentContext: "Steve" });
+    const result = await new CommandRegistry().execute("@2", {
+      state,
+      recentContexts: ["Architecture Review Board", "Steve"]
+    });
+
+    assert.equal(result.action, "switch_context");
+    assert.equal(state.currentContext.name, "Steve");
+  });
+
+  it("switches to a dot-selected recent context", async () => {
+    const state = new AppState({ currentContext: "Steve" });
+    const result = await new CommandRegistry().execute("@..", {
+      state,
+      recentContexts: ["Architecture Review Board", "Steve"]
+    });
+
+    assert.equal(result.action, "switch_context");
+    assert.equal(state.currentContext.name, "Steve");
+  });
+
   it("executes unambiguous command shorthands", async () => {
     const result = await new CommandRegistry().execute(":r", {
       state: new AppState({ currentContext: "Steve" })

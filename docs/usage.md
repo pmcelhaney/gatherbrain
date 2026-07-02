@@ -46,6 +46,14 @@ searches the context as `Steve Ma`.
 There is no separate context creation command yet. Switching to a new name is
 enough; the context becomes real when facts or time boxes are stored for it.
 
+While typing a prompt that starts with `@`, the body shows the most recently
+visited contexts in newest-first order. Enter a listed number or dots to switch:
+
+```text
+@1
+@..
+```
+
 List discovered contexts:
 
 ```text
@@ -313,6 +321,10 @@ keep typing after it.
 Command names can also be submitted as an unambiguous prefix. Context switches
 use `@<context>` rather than a colon command, so `@St` completes to a known
 context such as `@Steve`.
+
+When the prompt starts with `@`, the body previews the recent-context switch
+list. The list is ordered by most recently visited context and is capped to the
+number of lines that fit in the body.
 
 While typing in the interactive TUI, `Ctrl+A` moves to the start of the input
 and `Ctrl+E` moves to the end.

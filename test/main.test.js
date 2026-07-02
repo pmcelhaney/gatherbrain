@@ -532,6 +532,31 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("previews recent contexts for @ input and switches by list selector", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-recent-contexts-"));
+    const runtime = createAppRuntime({ workspacePath });
+
+    await runtime.submit("@Alpha Context");
+    await runtime.submit("@Beta Context");
+    await runtime.submit("@Gamma Context");
+
+    const rendered = runtime.render({ input: "@", height: 5 });
+
+    assert.match(rendered, /^ 1\. Gamma Context$/m);
+    assert.match(rendered, /^ 2\. Beta Context$/m);
+    assert.doesNotMatch(rendered, /^ 3\. Alpha Context$/m);
+
+    const numberedSwitch = await runtime.submit("@2");
+    assert.equal(numberedSwitch.action, "switch_context");
+    assert.equal(runtime.state.currentContext.name, "Beta Context");
+
+    await runtime.submit("@..");
+    assert.equal(runtime.state.currentContext.name, "Gamma Context");
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("renders completion recommendations in gray through the runtime", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-completion-render-"));
