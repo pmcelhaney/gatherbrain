@@ -108,7 +108,7 @@ class HelpCommand {
         "Input",
         "plain text          capture a fact",
         "/query              search facts",
-        ". todo              update first visible fact",
+        ". task              update first visible fact",
         ". @tag              tag first visible fact",
         "; 9-10 Session      plan a timebox"
       ]

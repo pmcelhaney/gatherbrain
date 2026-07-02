@@ -34,9 +34,9 @@ describe("AppState", () => {
       currentSelection: new Selection(["a"])
     });
 
-    state.setQuery("type:todo");
+    state.setQuery("type:task");
 
-    assert.equal(state.currentQuery, "type:todo");
+    assert.equal(state.currentQuery, "type:task");
     assert.equal(state.currentSelection.isEmpty(), true);
     assert.equal(state.currentMode, AppMode.SEARCH);
   });

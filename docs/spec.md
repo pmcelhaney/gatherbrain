@@ -463,7 +463,7 @@ Example:
 expands to
 
 ```text
-(type:todo or type:inprogress or type:waiting)
+(type:task or type:inprogress or type:waiting)
 and due<=today
 ```
 
@@ -609,9 +609,9 @@ General form:
 Examples:
 
 ```text
-. todo
+. task
 
-. .. todo
+. .. task
 
 7 tomorrow
 
@@ -675,7 +675,7 @@ Changes the fact type.
 Example:
 
 ```text
-. todo
+. task
 ```
 
 ---
@@ -737,9 +737,9 @@ Example configuration:
 ```yaml
 actions:
 
-  todo:
+  task:
     action: set_type
-    value: todo
+    value: task
 
   waiting:
     action: set_type
@@ -777,7 +777,7 @@ actions:
 Example:
 
 ```text
-. .. todo
+. .. task
 ```
 
 expands conceptually to:
@@ -785,7 +785,7 @@ expands conceptually to:
 ```text
 Select first and second visible facts.
 
-Set type = todo.
+Set type = task.
 ```
 
 ---

@@ -117,7 +117,7 @@ Search mode begins with `/`.
 /
 /Steve
 /"async architecture"
-/type:todo
+/type:task
 /due:today
 /session:"Architecture Review Board"
 /session:Architecture Review Board
@@ -147,9 +147,9 @@ Adjacent terms imply `AND`:
 Boolean operators are supported:
 
 ```text
-/type:todo OR type:waiting
+/type:task OR type:waiting
 /Steve AND NOT done
-/(type:todo OR type:inprogress OR type:waiting) AND due<=today
+/(type:task OR type:inprogress OR type:waiting) AND due<=today
 ```
 
 Search shortcuts:
@@ -166,10 +166,10 @@ Search shortcuts:
 Due dates in fact rows render as friendly labels before the content:
 
 ```text
-todo today Call Steve
-todo tomorrow Call Steve
-todo Fri Call Steve
-todo Jul 10 Call Steve
+task today Call Steve
+task tomorrow Call Steve
+task Fri Call Steve
+task Jul 10 Call Steve
 ```
 
 ISO dates in fact content and `:inspect` output use the same friendly display.
@@ -182,14 +182,14 @@ numbers or dots followed by an instruction.
 Numbers select displayed fact numbers:
 
 ```text
-1 todo
+1 task
 3 delete
 ```
 
 Dots select visible row positions:
 
 ```text
-. todo
+. task
 . today
 .. tomorrow
 . next Friday
@@ -200,7 +200,7 @@ Dots select visible row positions:
 Multiple selectors can be used together:
 
 ```text
-. .. todo
+. .. task
 1 3 7 delete
 ```
 
@@ -208,7 +208,7 @@ Current built-in actions:
 
 | Action | Effect |
 | --- | --- |
-| `todo` | Sets type to `todo` |
+| `task` | Sets type to `task` |
 | `waiting` | Sets type to `waiting` |
 | `inprogress` | Sets type to `inprogress` |
 | `abandoned` | Sets type to `abandoned` |

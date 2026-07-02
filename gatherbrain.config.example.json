@@ -6,9 +6,9 @@
         "action": "set_type",
         "value": "idea"
       },
-      "todo": {
+      "task": {
         "action": "set_type",
-        "value": "todo"
+        "value": "task"
       },
       "waiting": {
         "action": "set_type",

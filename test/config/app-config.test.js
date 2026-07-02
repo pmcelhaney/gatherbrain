@@ -21,7 +21,7 @@ describe("app config", () => {
     const config = await loadAppConfig({ cwd: rootPath });
 
     assert.equal(config.defaultFactType, "fact");
-    assert.equal(config.selectionActions.actions.todo.action, "set_type");
+    assert.equal(config.selectionActions.actions.task.action, "set_type");
   });
 
   it("merges user selection actions over defaults", () => {
@@ -29,7 +29,7 @@ describe("app config", () => {
       defaultFactType: "fact",
       selectionActions: {
         actions: {
-          todo: { action: "set_type", value: "todo" }
+          task: { action: "set_type", value: "task" }
         }
       }
     }, {
@@ -42,7 +42,7 @@ describe("app config", () => {
     });
 
     assert.equal(config.defaultFactType, "note");
-    assert.equal(config.selectionActions.actions.todo.value, "todo");
+    assert.equal(config.selectionActions.actions.task.value, "task");
     assert.equal(config.selectionActions.actions.idea.value, "idea");
   });
 
@@ -60,6 +60,6 @@ describe("app config", () => {
 
     assert.equal(config.defaultFactType, "note");
     assert.equal(config.selectionActions.actions.idea.value, "idea");
-    assert.equal(config.selectionActions.actions.todo.value, "todo");
+    assert.equal(config.selectionActions.actions.task.value, "task");
   });
 });

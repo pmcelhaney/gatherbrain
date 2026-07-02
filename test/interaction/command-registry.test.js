@@ -108,7 +108,7 @@ describe("CommandRegistry", () => {
     const fact = new Fact({
       id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
       content: "Follow up with Steve.",
-      type: "todo",
+      type: "task",
       createdAt: "2026-06-30T15:45:00.000Z",
       dueDate: "2026-07-01",
       homeSession: "Steve",

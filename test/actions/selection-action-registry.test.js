@@ -10,14 +10,14 @@ describe("SelectionActionRegistry", () => {
     const factStore = new MemoryFactStore([buildFact()]);
     const registry = SelectionActionRegistry.fromConfig();
 
-    await registry.execute("todo", {
+    await registry.execute("task", {
       selection: new Selection(["6f2308de-02e9-45db-8ff0-65ac793f4a24"]),
       factStore
     });
 
     assert.equal(
       factStore.fact("6f2308de-02e9-45db-8ff0-65ac793f4a24").type,
-      "todo"
+      "task"
     );
   });
 
@@ -28,10 +28,10 @@ describe("SelectionActionRegistry", () => {
       registry.keywords().filter((keyword) => [
         "abandoned",
         "inprogress",
-        "todo",
+        "task",
         "waiting"
       ].includes(keyword)),
-      ["abandoned", "inprogress", "todo", "waiting"]
+      ["abandoned", "inprogress", "task", "waiting"]
     );
 
     assert.equal(registry.preview("waiting", buildFact()).type, "waiting");

@@ -13,7 +13,7 @@ describe("PromptClassifier", () => {
     assert.equal(classifier.classify(":switch Steve"), AppMode.COMMAND);
     assert.equal(classifier.classify("; 9-10 Steve"), AppMode.PLAN);
     assert.equal(classifier.classify("7 tomorrow"), AppMode.SELECTION);
-    assert.equal(classifier.classify(".. todo"), AppMode.SELECTION);
+    assert.equal(classifier.classify(".. task"), AppMode.SELECTION);
   });
 
   it("treats leading spaces as capture content", () => {

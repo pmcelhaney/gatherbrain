@@ -30,7 +30,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. todo tomorrow Follow up with Steve."
+      "+ 1. task tomorrow Follow up with Steve."
     );
   });
 
@@ -84,7 +84,7 @@ describe("terminal renderers", () => {
         today: "2026-06-30",
         colorEnabled: true
       }).join("\n"),
-      `\x1b[90m+ 1. \x1b[0m\x1b[36mtodo \x1b[0m\x1b[35mtomorrow \x1b[0m\x1b[32m@Steve Ma\x1b[0m said \x1b[32m@Devin\x1b[0m's trial ends.`
+      `\x1b[90m+ 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0m\x1b[32m@Steve Ma\x1b[0m said \x1b[32m@Devin\x1b[0m's trial ends.`
     );
   });
 
@@ -100,7 +100,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. todo tomorrow @Steve Ma said @Devin's trial ends."
+      "+ 1. task tomorrow @Steve Ma said @Devin's trial ends."
     );
   });
 
@@ -116,7 +116,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. todo tomorrow Follow up tomorrow. >Steve Ma"
+      "+ 1. task tomorrow Follow up tomorrow. >Steve Ma"
     );
   });
 
@@ -139,7 +139,7 @@ describe("terminal renderers", () => {
         today: "2026-06-30",
         colorEnabled: true
       }).join("\n"),
-      `\x1b[90m+ 1. \x1b[0m\x1b[36mtodo \x1b[0m\x1b[35mtomorrow \x1b[0mFollow up tomorrow. \x1b[32m>Steve Ma\x1b[0m`
+      `\x1b[90m+ 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0mFollow up tomorrow. \x1b[32m>Steve Ma\x1b[0m`
     );
   });
 
@@ -155,7 +155,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. todo tomorrow Follow up with @Steve Ma tomorrow."
+      "+ 1. task tomorrow Follow up with @Steve Ma tomorrow."
     );
   });
 
@@ -197,7 +197,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. todo Follow up tomorrow, Fri, and Jun 1."
+      "+ 1. task Follow up tomorrow, Fri, and Jun 1."
     );
   });
 
@@ -216,7 +216,7 @@ describe("terminal renderers", () => {
         height: 10,
         today: "2026-06-30"
       }).join("\n"),
-      ">+ 1. todo tomorrow Follow up with Steve."
+      ">+ 1. task tomorrow Follow up with Steve."
     );
   });
 
@@ -229,7 +229,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "  1. todo tomorrow Follow up with Steve."
+      "  1. task tomorrow Follow up with Steve."
     );
   });
 
@@ -245,7 +245,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "  1. todo tomorrow [Architecture Review Board] Follow up with Steve."
+      "  1. task tomorrow [Architecture Review Board] Follow up with Steve."
     );
   });
 
@@ -267,8 +267,8 @@ describe("terminal renderers", () => {
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
       [
-        "+ 1. todo tomorrow Follow up with Steve.",
-        "+ 2. todo tomorrow Follow up with Steve."
+        "+ 1. task tomorrow Follow up with Steve.",
+        "+ 2. task tomorrow Follow up with Steve."
       ].join("\n")
     );
   });
@@ -285,7 +285,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      "+ 1. todo tomorrow Follow up with Steve."
+      "+ 1. task tomorrow Follow up with Steve."
     );
   });
 
@@ -363,7 +363,7 @@ describe("terminal renderers", () => {
     }), [
       "sessions/Steve",
       "----------------------------------------",
-      "+ 1. todo tomorrow Follow up with Steve.",
+      "+ 1. task tomorrow Follow up with Steve.",
       "",
       "",
       ">"
@@ -391,7 +391,7 @@ function buildFact(overrides = {}) {
   return new Fact({
     id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
     content: "Follow up with Steve.",
-    type: "todo",
+    type: "task",
     createdAt: "2026-06-30T15:45:00.000Z",
     dueDate: "2026-07-01",
     homeSession: "Steve",

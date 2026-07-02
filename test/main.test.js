@@ -396,16 +396,16 @@ describe("createAppRuntime", () => {
     const firstRuntime = createAppRuntime({ workspacePath, clock });
 
     await firstRuntime.submit(":switch Steve");
-    await firstRuntime.submit("Visible todo.");
-    await firstRuntime.submit(". todo");
+    await firstRuntime.submit("Visible task.");
+    await firstRuntime.submit(". task");
     await firstRuntime.submit("Hidden fact.");
-    await firstRuntime.submit("/type:todo");
+    await firstRuntime.submit("/type:task");
 
     const secondRuntime = createAppRuntime({ workspacePath, clock });
     await secondRuntime.initialize();
     const rendered = secondRuntime.render();
 
-    assert.match(rendered, /Visible todo/);
+    assert.match(rendered, /Visible task/);
     assert.doesNotMatch(rendered, /Hidden fact/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
@@ -420,17 +420,17 @@ describe("createAppRuntime", () => {
     });
 
     await runtime.submit(":switch Steve");
-    await runtime.submit("Todo fact.");
-    await runtime.submit(". todo");
+    await runtime.submit("Task fact.");
+    await runtime.submit(". task");
     await runtime.submit("Plain fact.");
-    await runtime.submit("/type:todo");
-    assert.match(runtime.render(), /Todo fact/);
+    await runtime.submit("/type:task");
+    assert.match(runtime.render(), /Task fact/);
     assert.doesNotMatch(runtime.render(), /Plain fact/);
 
     const result = await runtime.submit("");
 
     assert.equal(result.action, "reset_to_current_session");
-    assert.match(runtime.render(), /Todo fact/);
+    assert.match(runtime.render(), /Task fact/);
     assert.match(runtime.render(), /Plain fact/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
@@ -812,14 +812,14 @@ Login Screenshot
 
     await runtime.submit(":switch Steve");
     await runtime.submit("Follow up with Steve.");
-    await runtime.submit(". todo");
-    assert.match(runtime.render(), /todo Follow up with Steve/);
+    await runtime.submit(". task");
+    assert.match(runtime.render(), /task Follow up with Steve/);
 
     const result = await runtime.submit(":undo");
 
     assert.equal(result.message, "undid last selection action");
     assert.match(runtime.render(), /1\. Follow up with Steve/);
-    assert.doesNotMatch(runtime.render(), /todo Follow up with Steve/);
+    assert.doesNotMatch(runtime.render(), /task Follow up with Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

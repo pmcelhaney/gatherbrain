@@ -23,7 +23,7 @@ describe("SearchEngine", () => {
   it("supports due comparisons with dynamic today", () => {
     const result = engine.search(
       facts(),
-      parser.parse("(type:todo OR type:waiting) AND due<=today"),
+      parser.parse("(type:task OR type:waiting) AND due<=today"),
       { today: "2026-06-30" }
     );
 
@@ -98,7 +98,7 @@ function facts() {
     new Fact({
       id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
       content: "Follow up with Steve.",
-      type: "todo",
+      type: "task",
       createdAt: "2026-06-30T15:45:00.000Z",
       dueDate: "2026-06-30",
       homeSession: "Steve",

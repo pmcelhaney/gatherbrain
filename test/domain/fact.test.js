@@ -36,7 +36,7 @@ describe("Fact", () => {
     const fact = new Fact({
       id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
       content: "Follow up with Steve.",
-      type: "todo",
+      type: "task",
       createdAt: new Date("2026-06-30T11:45:00-04:00"),
       homeSession: new Session("Steve")
     });
@@ -55,7 +55,7 @@ describe("Fact", () => {
     const fact = new Fact({
       id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
       content: "Follow up with Steve.",
-      type: "todo",
+      type: "task",
       createdAt: "2026-06-30T15:45:00.000Z",
       dueDate: "2026-07-01",
       file: "launch-notes.txt",
@@ -68,7 +68,7 @@ describe("Fact", () => {
     assert.deepEqual(fact.toSerializable(), {
       id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
       content: "Follow up with Steve.",
-      type: "todo",
+      type: "task",
       createdAt: "2026-06-30T15:45:00.000Z",
       dueDate: "2026-07-01",
       file: "launch-notes.txt",
@@ -84,7 +84,7 @@ describe("Fact", () => {
       () => new Fact({
         id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
         content: "Bad due date",
-        type: "todo",
+        type: "task",
         createdAt: "2026-06-30T10:15:23-04:00",
         homeSession: "Steve",
         dueDate: "tomorrow"
@@ -98,7 +98,7 @@ describe("Fact", () => {
       () => new Fact({
         id: "202606301145",
         content: "Bad id",
-        type: "todo",
+        type: "task",
         createdAt: "2026-06-30T10:15:23-04:00",
         homeSession: "Steve"
       }),

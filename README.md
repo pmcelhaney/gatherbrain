@@ -18,7 +18,7 @@ The app currently supports:
 - Capturing facts into the current session.
 - Searching persisted facts with `/...` queries and shortcuts.
 - Fact inspection with `:inspect <number>`.
-- Selection commands such as `. tomorrow`, `. todo`, `. gather`, `. open`, `. edit`, and `. delete`.
+- Selection commands such as `. tomorrow`, `. task`, `. gather`, `. open`, `. edit`, and `. delete`.
 - Undo for the last selection action with `:undo`.
 - Planning time boxes with `; 9-10 Steve`.
 - Updating and deleting time boxes with `:timebox`.
@@ -89,7 +89,7 @@ Search facts:
 /session:"Thinking about Gatherbrain design"
 /session:Thinking about Gatherbrain design
 /@Thinking about Gatherbrain design
-/type:todo
+/type:task
 /due:today
 //current
 ```
@@ -100,7 +100,7 @@ lists all facts if no query exists.
 Operate on visible facts:
 
 ```text
-. todo
+. task
 . inprogress
 . tomorrow
 . open

@@ -26,13 +26,13 @@ describe("AppStateRepository", () => {
 
   it("saves and loads resumable app state", async () => {
     const state = new AppState({ currentSession: "Steve" });
-    state.setQuery("type:todo");
+    state.setQuery("type:task");
 
     await repository.save(state);
 
     assert.deepEqual(await repository.load(), {
       currentSession: "Steve",
-      currentQuery: "type:todo"
+      currentQuery: "type:task"
     });
   });
 });

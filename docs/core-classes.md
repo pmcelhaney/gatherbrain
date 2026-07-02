@@ -234,7 +234,7 @@ Initial actions:
 Responsibilities:
 
 - Load the action DSL.
-- Resolve an action keyword such as `todo`, `tomorrow`, `delete`, or `gather`.
+- Resolve an action keyword such as `task`, `tomorrow`, `delete`, or `gather`.
 - Apply the action to selected facts through repositories.
 
 Does not:

@@ -135,9 +135,9 @@ function buildAction(definition) {
 export function defaultActionConfig() {
   return {
     actions: {
-      todo: {
+      task: {
         action: "set_type",
-        value: "todo"
+        value: "task"
       },
       waiting: {
         action: "set_type",
