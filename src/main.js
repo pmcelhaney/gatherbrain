@@ -53,6 +53,7 @@ export function createAppRuntime({
   let undoSnapshot = null;
   let pendingPaste = false;
   let recentContexts = [];
+  let cachedFacts = [];
   const promptController = new PromptController({
     state,
     factRepository,
@@ -82,6 +83,7 @@ export function createAppRuntime({
     }
 
     factIndex.invalidate();
+    cachedFacts = await factIndex.list();
     resultSet = await initialResultSet({
       state,
       factIndex,
@@ -116,6 +118,7 @@ export function createAppRuntime({
 
         pendingPaste = false;
         factIndex.invalidate();
+        cachedFacts = await factIndex.list();
         resultSet = await searchCurrentFacts({
           state,
           factIndex,
@@ -142,6 +145,51 @@ export function createAppRuntime({
         return result;
       }
 
+      const scopedSelection = scopedContextSelectionInput(line, {
+        recentContexts,
+        actionKeywords: selectionActionRegistry.keywords()
+      });
+      if (scopedSelection) {
+        const targetResultSet = resultSetForContext({
+          contextName: scopedSelection.contextName,
+          facts: cachedFacts,
+          searchEngine,
+          searchQueryParser,
+          clock
+        });
+        const targetState = new AppState({ currentContext: scopedSelection.contextName });
+        const selection = Selection.resolve(
+          selectorsForSelectionActions(scopedSelection.selectors, scopedSelection.actions),
+          targetResultSet
+        );
+        const scopedUndoSnapshot = await promptController.snapshotSelection(selection);
+        const scopedResults = await selectionActionRegistry.executeAll(scopedSelection.actions, {
+          selection,
+          factStore: factRepository,
+          state: targetState,
+          fileOpener,
+          today: clock().toISOString().slice(0, 10)
+        });
+
+        undoSnapshot = scopedUndoSnapshot;
+        factIndex.invalidate();
+        cachedFacts = await factIndex.list();
+        resultSet = await searchCurrentFacts({
+          state,
+          factIndex,
+          searchEngine,
+          searchQueryParser,
+          clock
+        });
+        helpLines = null;
+        await appStateRepository.save(state);
+
+        return {
+          action: "selection_action",
+          message: selectionActionMessage(scopedSelection.actions, selection, scopedResults)
+        };
+      }
+
       const result = await promptController.submit(line);
 
       if (result.action === "exit") {
@@ -156,6 +204,7 @@ export function createAppRuntime({
 
         await restoreUndoSnapshot({ undoSnapshot, factRepository });
         factIndex.invalidate();
+        cachedFacts = await factIndex.list();
         resultSet = await searchCurrentFacts({
           state,
           factIndex,
@@ -201,6 +250,7 @@ export function createAppRuntime({
 
       if (result.fact || result.action === "selection_action") {
         factIndex.invalidate();
+        cachedFacts = await factIndex.list();
         resultSet = await searchCurrentFacts({
           state,
           factIndex,
@@ -247,8 +297,12 @@ export function createAppRuntime({
         resultSet: previewResultSetForInput({
           input,
           resultSet,
+          facts: cachedFacts,
           selectionActionRegistry,
           state,
+          recentContexts,
+          searchEngine,
+          searchQueryParser,
           clock
         }),
         timeBoxes,
@@ -261,7 +315,16 @@ export function createAppRuntime({
             completionCandidates
           })
         }) ?? helpLines,
-        selectionPreview: selectionPreviewForInput(input, resultSet, selectionActionRegistry),
+        selectionPreview: selectionPreviewForInput({
+          input,
+          resultSet,
+          facts: cachedFacts,
+          selectionActionRegistry,
+          recentContexts,
+          searchEngine,
+          searchQueryParser,
+          clock
+        }),
         input,
         cursor,
         showCursor,
@@ -277,9 +340,39 @@ export function createAppRuntime({
       });
     },
     async suggestCompletion(input, { completionIndex = 0 } = {}) {
+      const scopedCompletion = await scopedSelectionCompletion({
+        input,
+        recentContexts,
+        facts: cachedFacts,
+        searchEngine,
+        searchQueryParser,
+        completionService,
+        completionIndex,
+        clock
+      });
+
+      if (scopedCompletion) {
+        return scopedCompletion;
+      }
+
       return completionService.suggest(input, { resultSet, completionIndex });
     },
     async complete(input, { completionIndex = 0 } = {}) {
+      const scopedCompletion = await scopedSelectionCompletion({
+        input,
+        recentContexts,
+        facts: cachedFacts,
+        searchEngine,
+        searchQueryParser,
+        completionService,
+        completionIndex,
+        clock
+      });
+
+      if (scopedCompletion) {
+        return scopedCompletion.completed;
+      }
+
       return completionService.complete(input, { resultSet, completionIndex });
     }
   };
@@ -304,6 +397,10 @@ function contextListPreviewForInput({ input, recentContexts, height }) {
     return null;
   }
 
+  if (scopedContextTarget(input, recentContexts)) {
+    return null;
+  }
+
   return recentContexts
     .slice(0, height)
     .map((contextName, index) => `${String(index + 1).padStart(2, " ")}. ${contextName}`);
@@ -322,25 +419,39 @@ function bodyHeightForRender({
 function previewResultSetForInput({
   input,
   resultSet,
+  facts = [],
   selectionActionRegistry,
   state,
+  recentContexts = [],
+  searchEngine,
+  searchQueryParser,
   clock
 }) {
-  const parsed = selectionInputPreview(input, resultSet, selectionActionRegistry);
+  const activeResultSet = scopedResultSetForInput({
+    input,
+    facts,
+    recentContexts,
+    searchEngine,
+    searchQueryParser,
+    clock
+  }) ?? resultSet;
+  const parsed = selectionInputPreview(input, activeResultSet, selectionActionRegistry, {
+    recentContexts
+  });
 
   if (!parsed?.actions.length) {
-    return resultSet;
+    return activeResultSet;
   }
 
   const selectedIds = new Set(parsed.selection.toArray());
   const today = clock().toISOString().slice(0, 10);
-  const previewFacts = resultSet.facts.map((fact) => {
+  const previewFacts = activeResultSet.facts.map((fact) => {
     if (!selectedIds.has(fact.id)) {
       return fact;
     }
 
     return selectionActionRegistry.previewAll(parsed.actions, fact, {
-      state,
+      state: parsed.contextName ? new AppState({ currentContext: parsed.contextName }) : state,
       today
     }) ?? fact;
   });
@@ -348,16 +459,43 @@ function previewResultSetForInput({
   return new SearchResultSet(previewFacts);
 }
 
-function selectionPreviewForInput(input, resultSet, selectionActionRegistry) {
-  return selectionInputPreview(input, resultSet, selectionActionRegistry)?.selection ?? null;
+function selectionPreviewForInput({
+  input,
+  resultSet,
+  facts = [],
+  selectionActionRegistry,
+  recentContexts = [],
+  searchEngine,
+  searchQueryParser,
+  clock
+}) {
+  const activeResultSet = scopedResultSetForInput({
+    input,
+    facts,
+    recentContexts,
+    searchEngine,
+    searchQueryParser,
+    clock
+  }) ?? resultSet;
+  return selectionInputPreview(input, activeResultSet, selectionActionRegistry, {
+    recentContexts
+  })?.selection ?? null;
 }
 
-function selectionInputPreview(input, resultSet, selectionActionRegistry) {
-  if (!resultSet || !/^\s*(\d+|\.)/.test(input)) {
+function selectionInputPreview(input, resultSet, selectionActionRegistry, {
+  recentContexts = []
+} = {}) {
+  const scopedSelection = scopedContextSelectionInput(input, {
+    recentContexts,
+    actionKeywords: selectionActionRegistry.keywords()
+  });
+  const selectionInput = scopedSelection?.selectionInput ?? input;
+
+  if (!resultSet || !/^\s*(\d+|\.)/.test(selectionInput)) {
     return null;
   }
 
-  const tokens = input.trim().split(/\s+/);
+  const tokens = selectionInput.trim().split(/\s+/);
   const selectors = [];
 
   while (tokens.length > 0 && (/^\d+$/.test(tokens[0]) || /^\.+$/.test(tokens[0]))) {
@@ -374,11 +512,190 @@ function selectionInputPreview(input, resultSet, selectionActionRegistry) {
     });
     return {
       selection: Selection.resolve(selectorsForSelectionActions(selectors, actions), resultSet),
-      actions
+      actions,
+      contextName: scopedSelection?.contextName ?? null
     };
   } catch {
     return null;
   }
+}
+
+function scopedResultSetForInput({
+  input,
+  facts,
+  recentContexts,
+  searchEngine,
+  searchQueryParser,
+  clock
+}) {
+  const target = scopedContextTarget(input, recentContexts);
+
+  if (!target || !searchEngine || !searchQueryParser) {
+    return null;
+  }
+
+  return resultSetForContext({
+    contextName: target.contextName,
+    facts,
+    searchEngine,
+    searchQueryParser,
+    clock
+  });
+}
+
+function scopedContextSelectionInput(input, {
+  recentContexts = [],
+  actionKeywords = []
+} = {}) {
+  const target = scopedContextTarget(input, recentContexts);
+
+  if (!target || target.rest.trim().length === 0) {
+    return null;
+  }
+
+  const tokens = target.rest.trim().split(/\s+/);
+  const selectors = [];
+
+  while (tokens.length > 0 && (/^\d+$/.test(tokens[0]) || /^\.+$/.test(tokens[0]))) {
+    selectors.push(tokens.shift());
+  }
+
+  if (selectors.length === 0) {
+    return null;
+  }
+
+  const actions = parseSelectionActions(tokens, {
+    actionKeywords
+  });
+
+  if (actions.length === 0) {
+    return null;
+  }
+
+  return {
+    contextName: target.contextName,
+    selectionInput: target.rest,
+    selectors,
+    actions
+  };
+}
+
+function scopedContextTarget(input, recentContexts = []) {
+  const match = String(input).match(/^@(?<selector>\d+|\.+)(?<rest>\s+.*)?$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const contextName = contextNameForRecentSelector(match.groups.selector, recentContexts);
+
+  if (!contextName) {
+    return null;
+  }
+
+  return {
+    contextName,
+    rest: match.groups.rest ?? ""
+  };
+}
+
+function contextNameForRecentSelector(selector, recentContexts = []) {
+  const index = /^\d+$/.test(selector) ? Number(selector) - 1 : selector.length - 1;
+  return recentContexts[index] ?? null;
+}
+
+function resultSetForContext({
+  contextName,
+  facts,
+  searchEngine,
+  searchQueryParser,
+  clock
+}) {
+  const query = `context:"${contextName}"`;
+  const ast = searchQueryParser.parse(query);
+  return searchEngine.search(facts, ast, {
+    today: clock().toISOString().slice(0, 10),
+    currentContext: new Context(contextName)
+  });
+}
+
+async function scopedSelectionCompletion({
+  input,
+  recentContexts,
+  facts,
+  searchEngine,
+  searchQueryParser,
+  completionService,
+  completionIndex,
+  clock
+}) {
+  const scopedInput = scopedSelectionCompletionInput(input, recentContexts);
+
+  if (!scopedInput) {
+    return null;
+  }
+
+  const targetResultSet = resultSetForContext({
+    contextName: scopedInput.contextName,
+    facts,
+    searchEngine,
+    searchQueryParser,
+    clock
+  });
+  const suggestion = await completionService.suggest(scopedInput.selectionInput, {
+    resultSet: targetResultSet,
+    completionIndex
+  });
+
+  return {
+    input,
+    completed: `${scopedInput.prefix}${suggestion.completed}`,
+    candidates: suggestion.candidates.map((candidate) => `${scopedInput.prefix}${candidate}`)
+  };
+}
+
+function scopedSelectionCompletionInput(input, recentContexts = []) {
+  const match = String(input).match(/^(?<prefix>@(?<selector>\d+|\.{1,})\s+)(?<selectionInput>.*)$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const contextName = contextNameForRecentSelector(match.groups.selector, recentContexts);
+
+  if (!contextName) {
+    return null;
+  }
+
+  return {
+    contextName,
+    prefix: match.groups.prefix,
+    selectionInput: match.groups.selectionInput
+  };
+}
+
+function selectionActionMessage(actions, selection, results) {
+  if (results.every((result) => result.action === "open_file")) {
+    const targetCount = results.reduce((count, result) => count + result.value.length, 0);
+
+    if (targetCount === 1) {
+      return `opened ${results[0].fact.url || results[0].fact.file}`;
+    }
+
+    return `opened ${targetCount} targets`;
+  }
+
+  if (results.every((result) => result.action === "edit_file")) {
+    return `editing ${results[0].value}`;
+  }
+
+  return `${selectionActionsText(actions)} applied to ${selection.size} fact${selection.size === 1 ? "" : "s"}`;
+}
+
+function selectionActionsText(actions) {
+  return actions.map(({ actionKeyword, args = [] }) =>
+    [actionKeyword, ...args].filter(Boolean).join(" ")
+  ).join(" ");
 }
 
 function stateForPreview({ state, input, promptClassifier, planParser, clock }) {
@@ -741,6 +1058,11 @@ function suspendTuiInputForChildProcess(inputStream, outputStream) {
 
 function isEditSelectionCommand(line) {
   const tokens = String(line).trim().split(/\s+/);
+
+  if (/^@(?:\d+|\.+)$/.test(tokens[0] ?? "")) {
+    tokens.shift();
+  }
+
   let selectorCount = 0;
 
   while (tokens.length > 0 && (/^\d+$/.test(tokens[0]) || /^\.+$/.test(tokens[0]))) {

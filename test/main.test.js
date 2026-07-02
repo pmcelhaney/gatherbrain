@@ -557,6 +557,55 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("previews and applies selection actions in a numbered recent context", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-scoped-selection-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit("@Alpha Context");
+    await runtime.submit("Alpha follow up.");
+    await runtime.submit("@Beta Context");
+    await runtime.submit("Beta follow up.");
+
+    const preview = runtime.render({ input: "@2 1 task today" });
+    const completion = await runtime.suggestCompletion("@2 1 t");
+
+    assert.match(preview, /> 1\. task today Alpha follow up\./);
+    assert.doesNotMatch(preview, /Beta follow up/);
+    assert.deepEqual(completion, {
+      input: "@2 1 t",
+      completed: "@2 1 task",
+      candidates: ["@2 1 task", "@2 1 today", "@2 1 tomorrow"]
+    });
+
+    const result = await runtime.submit("@2 1 task today");
+
+    assert.equal(result.action, "selection_action");
+    assert.equal(result.message, "task today applied to 1 fact");
+    assert.equal(runtime.state.currentContext.name, "Beta Context");
+
+    const scopedView = runtime.render({ input: "@2" });
+
+    assert.match(scopedView, /1\. task today Alpha follow up\./);
+    assert.doesNotMatch(scopedView, /Beta follow up/);
+
+    const dottedResult = await runtime.submit("@.. 1 waiting");
+
+    assert.equal(dottedResult.message, "waiting applied to 1 fact");
+    assert.equal(runtime.state.currentContext.name, "Beta Context");
+    assert.match(runtime.render({ input: "@.." }), /1\. waiting today Alpha follow up\./);
+
+    const switchResult = await runtime.submit("@2");
+
+    assert.equal(switchResult.action, "switch_context");
+    assert.equal(runtime.state.currentContext.name, "Alpha Context");
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("renders completion recommendations in gray through the runtime", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-completion-render-"));

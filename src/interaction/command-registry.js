@@ -112,6 +112,7 @@ class HelpCommand {
         "plain text          capture a fact",
         "/query              search facts",
         ". task              update first visible fact",
+        "@2 1 task          update fact 1 in recent context 2",
         ". @tag              tag first visible fact",
         "; 9-10 Context      plan a timebox"
       ]

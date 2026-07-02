@@ -383,6 +383,7 @@ The mode is inferred from the first character entered.
 | `@<context>` | Switches to the named context |
 | `@<number>` | Switches to a numbered context from the current `@` preview list |
 | `@<dots>` | Switches to a dot-selected context from the current `@` preview list |
+| `@<number-or-dots> <selectors> <actions>` | Applies selection actions inside that recent context, then keeps the original context active |
 | `:context <number>` | Switches to a numbered context from `:contexts` |
 | `:contexts` | Lists contexts discovered from fact folders and timebox files |
 | `:inspect <number>` | Shows full metadata and file path for a visible fact |
@@ -637,10 +638,17 @@ Dots refer to the nth visible item.
 
 Selection is a prefix for an action.
 
+When the prompt contains `@<number>` or `@<dots>`, the body previews the
+associated recent context. If the prompt is only `@<context>`, `@<number>`, or
+`@<dots>`, pressing Enter switches to that context. If the prompt continues
+with fact selectors and selection actions, the actions apply to the associated
+context's visible facts and then the app returns to the original context.
+
 General form:
 
 ```text
 <selectors> <action> [arguments]
+@<number-or-dots> <selectors> <action> [arguments]
 ```
 
 Multiple actions may be chained in the same prompt:
@@ -671,6 +679,10 @@ Examples:
 .. gather
 
 . @Steve\ Ma
+
+@2 1 task today
+
+@.. . waiting
 ```
 
 ---
