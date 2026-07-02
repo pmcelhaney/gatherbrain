@@ -576,6 +576,7 @@ describe("createAppRuntime", () => {
 
     assert.match(typedPrefix, /1\. Review Gatherbrain items\./);
     assert.doesNotMatch(typedPrefix, /Review Steve items/);
+    assert.match(typedPrefix, /^Steve Ma > Gatherbrain$/m);
     assert.match(completedSuggestion, /1\. Review Gatherbrain items\./);
     assert.doesNotMatch(completedSuggestion, /^ 1\. Steve Ma$/m);
     assert.equal(runtime.state.currentContext.name, "Steve Ma");

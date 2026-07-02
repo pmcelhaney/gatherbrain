@@ -292,8 +292,15 @@ export function createAppRuntime({
       height = output.rows ?? 24,
       colorEnabled = false
     } = {}) {
+      const previewContext = viewedContextForInput({
+        input,
+        facts: cachedFacts,
+        recentContexts
+      });
+
       return terminalApp.render({
         state: stateForPreview({ state, input, promptClassifier, planParser, clock }),
+        viewedContext: previewContext,
         resultSet: previewResultSetForInput({
           input,
           resultSet,
@@ -458,6 +465,14 @@ function previewResultSetForInput({
   });
 
   return new SearchResultSet(previewFacts);
+}
+
+function viewedContextForInput({
+  input,
+  facts = [],
+  recentContexts = []
+}) {
+  return scopedContextTarget(input, { recentContexts, facts })?.contextName ?? null;
 }
 
 function selectionPreviewForInput({

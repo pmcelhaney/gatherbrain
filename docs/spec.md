@@ -284,6 +284,14 @@ The primary header form is the current context name:
 Thinking about Gatherbrain design
 ```
 
+When the body is previewing a different context while the current context is
+unchanged, the header shows the current context as a muted parent followed by
+the viewed context:
+
+```text
+Steve Ma > Gatherbrain
+```
+
 ---
 
 ## Body

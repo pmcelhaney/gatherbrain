@@ -35,9 +35,16 @@ export class TerminalApp {
     today = null,
     now = null,
     colorEnabled = false,
-    state = this.state
+    state = this.state,
+    viewedContext = null
   } = {}) {
-    const header = this.headerRenderer.render({ state, resultSet, today });
+    const header = this.headerRenderer.render({
+      state,
+      resultSet,
+      viewedContext,
+      colorEnabled,
+      today
+    });
     const divider = "-".repeat(width);
     const prompt = this.promptRenderer.render({
       state,

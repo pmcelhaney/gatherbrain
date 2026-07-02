@@ -36,6 +36,19 @@ describe("terminal renderers", () => {
     );
   });
 
+  it("renders a breadcrumb when previewing another context", () => {
+    const state = new AppState({ currentContext: "Steve Ma" });
+
+    assert.equal(
+      new HeaderRenderer().render({
+        state,
+        viewedContext: "Gatherbrain",
+        colorEnabled: true
+      }),
+      "\x1b[90mSteve Ma > \x1b[0mGatherbrain"
+    );
+  });
+
   it("renders fact rows in the body", () => {
     const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([buildFact()]);
