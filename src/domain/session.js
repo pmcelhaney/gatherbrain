@@ -18,7 +18,10 @@ export class Session {
     return name
       .replace(/\\(\s)/g, "$1")
       .trim()
-      .replace(/\s+/g, " ");
+      .replace(/\s+/g, " ")
+      .replace(/\s*\/\s*/g, "/")
+      .replace(/\/+/g, "/")
+      .replace(/^\/|\/$/g, "");
   }
 
   static canonicalize(name) {
@@ -31,10 +34,18 @@ export class Session {
   }
 
   pathSegment() {
+    return this.pathSegments().join("/");
+  }
+
+  pathSegments() {
     return this.name
-      .replace(/[/:\\\0-\x1F\x7F]/g, "-")
-      .replace(/\s+/g, " ")
-      .trim();
+      .split("/")
+      .map((segment) => segment
+        .replace(/[:\\\0-\x1F\x7F]/g, "-")
+        .replace(/\s+/g, " ")
+        .trim())
+      .filter(Boolean)
+      .map((segment) => segment === "." || segment === ".." ? "-" : segment);
   }
 
   toString() {

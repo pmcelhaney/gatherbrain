@@ -123,10 +123,16 @@ Directory layout:
 
     Steve/
         5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a-follow-up.md
+
+    Technology Assembly/
+        2026-07-08/
+            a75ee82c-6b89-4676-8cb1-01222f976885-prep.md
 ```
 
-The home session is defined by the containing session directory. It is not
-stored in front matter.
+The home session is defined by the containing session directory. Slash-separated
+session names are stored as nested directories, so a fact in
+`Technology Assembly/2026-07-08` lives under that subdirectory. The home session
+is not stored in front matter.
 
 Each fact contains front matter similar to:
 

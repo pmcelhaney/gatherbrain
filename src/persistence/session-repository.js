@@ -26,20 +26,7 @@ export class SessionRepository {
   }
 
   async listFactSessions() {
-    const sessions = [];
-    const sessionDirectories = await listDirectories(this.workspace.rootPath);
-
-    for (const sessionDirectory of sessionDirectories) {
-      const name = path.basename(sessionDirectory);
-
-      if (!isWorkspaceSessionDirectory(name)) {
-        continue;
-      }
-
-      sessions.push(name);
-    }
-
-    return sessions;
+    return findFactSessionNames(this.workspace.rootPath);
   }
 
   async listTimeBoxSessions() {
@@ -62,17 +49,49 @@ export class SessionRepository {
   }
 }
 
-function isWorkspaceSessionDirectory(name) {
+function isIgnoredWorkspaceDirectory(name) {
   return (
-    name !== "timeboxes" &&
-    name !== ".trash" &&
-    !name.startsWith(".") &&
-    !/^\d{4}-\d{2}-\d{2}$/.test(name)
+    name === "timeboxes" ||
+    name === ".trash" ||
+    name.startsWith(".")
   );
 }
 
-async function listDirectories(directory) {
-  return listEntries(directory, (entry) => entry.isDirectory());
+async function findFactSessionNames(rootPath) {
+  const sessions = new Set();
+
+  async function walk(directory) {
+    let entries;
+
+    try {
+      entries = await fs.readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        return;
+      }
+
+      throw error;
+    }
+
+    if (entries.some((entry) => entry.isFile() && entry.name.endsWith(".md"))) {
+      const relativeDirectory = path.relative(rootPath, directory);
+
+      if (relativeDirectory) {
+        sessions.add(relativeDirectory.split(path.sep).join("/"));
+      }
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory() || isIgnoredWorkspaceDirectory(entry.name)) {
+        continue;
+      }
+
+      await walk(path.join(directory, entry.name));
+    }
+  }
+
+  await walk(rootPath);
+  return [...sessions];
 }
 
 async function listFiles(directory) {

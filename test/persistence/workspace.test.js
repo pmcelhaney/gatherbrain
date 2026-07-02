@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 import { Workspace } from "../../src/persistence/index.js";
 
 describe("Workspace", () => {
-  it("builds fact and trash paths from root-level sessions", () => {
+  it("builds fact and trash paths from session names", () => {
     const workspace = new Workspace("/tmp/gatherbrain");
 
     assert.equal(
@@ -15,6 +15,10 @@ describe("Workspace", () => {
     assert.equal(
       workspace.trashDirectory("2026-06-30", "Steve"),
       path.join("/tmp/gatherbrain", "Steve", ".trash")
+    );
+    assert.equal(
+      workspace.sessionDirectory("2026-07-08", "Technology Assembly/2026-07-08"),
+      path.join("/tmp/gatherbrain", "Technology Assembly", "2026-07-08")
     );
     assert.equal(
       workspace.pastePath({ date: "2026-06-30", session: "Steve", fileName: "diagram.png" }),

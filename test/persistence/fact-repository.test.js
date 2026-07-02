@@ -41,6 +41,32 @@ describe("FactRepository", () => {
     assert.doesNotMatch(markdown, /^home_session:/m);
   });
 
+  it("creates and reads facts under slash-separated session subdirectories", async () => {
+    const fact = new Fact({
+      id: "a75ee82c-6b89-4676-8cb1-01222f976885",
+      content: "Prep the assembly agenda.",
+      type: "fact",
+      createdAt: "2026-07-08T14:15:23.000Z",
+      homeSession: "Technology Assembly/2026-07-08"
+    });
+
+    const result = await repository.create(fact);
+
+    assert.equal(
+      result.filePath,
+      path.join(
+        rootPath,
+        "Technology Assembly",
+        "2026-07-08",
+        "a75ee82c-6b89-4676-8cb1-01222f976885-prep-the-assembly-agenda.md"
+      )
+    );
+    assert.equal((await repository.read(result.filePath)).homeSession.name, "Technology Assembly/2026-07-08");
+    assert.deepEqual((await repository.list()).map((saved) => saved.homeSession.name), [
+      "Technology Assembly/2026-07-08"
+    ]);
+  });
+
   it("updates an existing fact file", async () => {
     const fact = buildFact();
     const { filePath } = await repository.create(fact);
@@ -61,6 +87,30 @@ id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
 type: observation
 created: 2026-06-30T14:15:23.000Z
 associated_sessions:
+due:
+file:
+---
+Mike prefers async architecture reviews.
+`, "utf8");
+
+    const saved = await repository.read(filePath);
+
+    assert.equal(saved.homeSession.name, "Steve Ma");
+  });
+
+  it("derives a slash-separated home session from nested containing directories", async () => {
+    const filePath = path.join(
+      rootPath,
+      "Technology Assembly",
+      "2026-07-08",
+      "6f2308de-02e9-45db-8ff0-65ac793f4a24-review.md"
+    );
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, `---
+id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
+type: observation
+created: 2026-06-30T14:15:23.000Z
+associated_sessions:
 due: 
 file: 
 ---
@@ -69,7 +119,7 @@ Mike prefers async architecture reviews.
 
     const saved = await repository.read(filePath);
 
-    assert.equal(saved.homeSession.name, "Steve Ma");
+    assert.equal(saved.homeSession.name, "Technology Assembly/2026-07-08");
   });
 
   it("lists and looks up active facts by id", async () => {

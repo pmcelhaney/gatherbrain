@@ -126,10 +126,10 @@ function slugFor(content) {
 function homeSessionFromPath(rootPath, filePath) {
   const relativePath = path.relative(rootPath, filePath);
   const directoryParts = path.dirname(relativePath).split(path.sep).filter(Boolean);
-  const homeDirectoryIndex = directoryParts.at(-1) === ".trash"
-    ? directoryParts.length - 2
-    : directoryParts.length - 1;
-  const homeSession = directoryParts[homeDirectoryIndex];
+  const homeSessionParts = directoryParts.at(-1) === ".trash"
+    ? directoryParts.slice(0, -1)
+    : directoryParts;
+  const homeSession = homeSessionParts.join("/");
 
   if (!homeSession) {
     throw new Error(`Fact path is not inside a session directory: ${filePath}`);

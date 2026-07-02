@@ -12,7 +12,7 @@ export class Workspace {
   }
 
   sessionDirectory(_date, session) {
-    return path.join(this.rootPath, Session.from(session).pathSegment());
+    return path.join(this.rootPath, ...Session.from(session).pathSegments());
   }
 
   trashDirectory(date, session) {

@@ -80,8 +80,10 @@ Read the Node docs https://nodejs.org/api/test.html
 The stored body is `Read the Node docs`, and the terminal row renders that text
 as a hyperlink to the saved URL.
 
-Facts are stored as Markdown files with front matter beneath the root-level
-workspace session folder.
+Facts are stored as Markdown files with front matter beneath the workspace
+session folder. Slash-separated session names are stored as nested directories,
+so `Technology Assembly/2026-07-08` lives under
+`workspace/Technology Assembly/2026-07-08/`.
 
 Use `@` to refer to a session name in captured facts:
 
@@ -319,6 +321,9 @@ Facts:
 workspace/
   Steve/
     <uuid>-follow-up-with-steve.md
+  Technology Assembly/
+    2026-07-08/
+      <uuid>-prep-the-assembly-agenda.md
 ```
 
 Pasted files live alongside facts in the same session folder:

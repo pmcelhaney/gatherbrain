@@ -42,4 +42,18 @@ describe("SessionRepository", () => {
       "Reading"
     ]);
   });
+
+  it("discovers nested sessions from fact folders", async () => {
+    await new FactRepository({ workspace }).create(new Fact({
+      id: "a75ee82c-6b89-4676-8cb1-01222f976885",
+      content: "Prep the assembly agenda.",
+      type: "fact",
+      createdAt: "2026-07-08T14:00:00.000Z",
+      homeSession: "Technology Assembly/2026-07-08"
+    }));
+
+    assert.deepEqual(await new SessionRepository({ workspace }).list(), [
+      "Technology Assembly/2026-07-08"
+    ]);
+  });
 });

@@ -925,4 +925,29 @@ Login Screenshot
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
+
+  it("renders facts captured after switching to a slash-separated session subdirectory", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-nested-session-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-07-08T12:00:00.000Z")
+    });
+
+    await runtime.submit(":switch Technology Assembly/2026-07-08");
+    await runtime.submit("Prep the assembly agenda.");
+
+    const rendered = runtime.render();
+    assert.match(rendered, /sessions\/Technology Assembly\/2026-07-08/);
+    assert.match(rendered, /Prep the assembly agenda/);
+
+    const sessionDirectory = path.join(workspacePath, "Technology Assembly", "2026-07-08");
+    const factMarkdown = fs.readFileSync(
+      path.join(sessionDirectory, fs.readdirSync(sessionDirectory).find((name) => name.endsWith(".md"))),
+      "utf8"
+    );
+    assert.doesNotMatch(factMarkdown, /^home_session:/m);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
 });

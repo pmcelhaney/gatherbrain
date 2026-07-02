@@ -37,7 +37,8 @@ describe("SearchEngine", () => {
 
     assert.deepEqual(result.facts.map((fact) => fact.id), [
       "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
-      "6f2308de-02e9-45db-8ff0-65ac793f4a24"
+      "6f2308de-02e9-45db-8ff0-65ac793f4a24",
+      "a75ee82c-6b89-4676-8cb1-01222f976885"
     ]);
     assert.equal(result.factIdForNumber(1), "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a");
   });
@@ -57,6 +58,17 @@ describe("SearchEngine", () => {
     ]);
     assert.deepEqual(shorthand.facts.map((fact) => fact.id), [
       "6f2308de-02e9-45db-8ff0-65ac793f4a24"
+    ]);
+  });
+
+  it("searches slash-separated session names", () => {
+    const result = engine.search(
+      facts(),
+      parser.parse("/session:Technology Assembly/2026-07-08")
+    );
+
+    assert.deepEqual(result.facts.map((fact) => fact.id), [
+      "a75ee82c-6b89-4676-8cb1-01222f976885"
     ]);
   });
 
@@ -91,6 +103,13 @@ function facts() {
       dueDate: "2026-06-30",
       homeSession: "Steve",
       tags: ["Devin", "Steve Ma"]
+    }),
+    new Fact({
+      id: "a75ee82c-6b89-4676-8cb1-01222f976885",
+      content: "Prep the assembly agenda.",
+      type: "fact",
+      createdAt: "2026-06-30T13:00:00.000Z",
+      homeSession: "Technology Assembly/2026-07-08"
     })
   ];
 }

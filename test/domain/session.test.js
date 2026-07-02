@@ -18,6 +18,13 @@ describe("Session", () => {
     assert.equal(session.pathSegment(), "Steve Ma");
   });
 
+  it("normalizes slash-separated session hierarchies", () => {
+    const session = new Session("  Technology Assembly / 2026-07-08  ");
+
+    assert.equal(session.name, "Technology Assembly/2026-07-08");
+    assert.deepEqual(session.pathSegments(), ["Technology Assembly", "2026-07-08"]);
+  });
+
   it("compares sessions by canonical name", () => {
     const session = new Session("Steve Ma");
 
@@ -29,10 +36,12 @@ describe("Session", () => {
   it("provides a filesystem-safe path segment", () => {
     const session = new Session("Reading: Team/Topologies");
 
-    assert.equal(session.pathSegment(), "Reading- Team-Topologies");
+    assert.equal(session.pathSegment(), "Reading- Team/Topologies");
+    assert.deepEqual(new Session("../Escape").pathSegments(), ["-", "Escape"]);
   });
 
   it("rejects empty names", () => {
     assert.throws(() => new Session("   "), /Session name is required/);
+    assert.throws(() => new Session(" / "), /Session name is required/);
   });
 });
