@@ -45,7 +45,7 @@ export class MarkdownFactCodec {
       file: frontMatter.file || null,
       url: frontMatter.url || null,
       homeContext: requiredOption(homeContext, "homeContext"),
-      associatedContexts: frontMatter.associated_contexts ?? frontMatter.associated_sessions ?? [],
+      associatedContexts: frontMatter.associated_contexts ?? [],
       tags: frontMatter.tags ?? []
     });
   }
@@ -73,7 +73,7 @@ function splitFrontMatter(markdown) {
 function parseFrontMatter(lines) {
   const frontMatter = {};
   let currentListKey = null;
-  const listKeys = new Set(["associated_contexts", "associated_sessions", "tags"]);
+  const listKeys = new Set(["associated_contexts", "tags"]);
 
   for (const line of lines) {
     if (line.trim().length === 0) {

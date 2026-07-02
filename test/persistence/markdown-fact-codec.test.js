@@ -83,23 +83,6 @@ Mike prefers async architecture reviews.
     assert.equal(fact.url, null);
   });
 
-  it("parses legacy associated session front matter", () => {
-    const codec = new MarkdownFactCodec();
-    const fact = codec.parse(`---
-id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
-type: observation
-created: 2026-06-30T14:15:23.000Z
-associated_sessions:
-  - Steve
-due: 
-file: 
----
-Mike prefers async architecture reviews.
-`, { homeContext: "Architecture Review Board" });
-
-    assert.deepEqual(fact.associatedContexts.map((context) => context.name), ["Steve"]);
-  });
-
   it("ignores legacy home_context front matter when storage context is provided", () => {
     const codec = new MarkdownFactCodec();
     const fact = codec.parse(`---
