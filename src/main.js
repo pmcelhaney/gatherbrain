@@ -9,10 +9,11 @@ import { defaultAppConfig, loadAppConfig, mergeAppConfig } from "./config/index.
 import { Context, Fact } from "./domain/index.js";
 import { normalizeNaturalDates } from "./domain/date-text.js";
 import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
+import { parseSearchSelectionInput, searchSelectionDelimiterIndex } from "./interaction/search-selection-input.js";
 import { parseSelectionActions, selectorsForSelectionActions } from "./interaction/selection-input.js";
 import { AppStateRepository, ClipboardReader, FactRepository, FileOpener, PasteRepository, ContextRepository, TagRepository, Workspace } from "./persistence/index.js";
 import { PlanParser, TimeBoxRepository } from "./planning/index.js";
-import { FactIndex, SearchEngine, SearchQueryParser, SearchResultSet } from "./search/index.js";
+import { FactIndex, SearchEngine, SearchQueryParser, SearchResultSet, SearchShortcutRegistry } from "./search/index.js";
 import { AppState, Selection } from "./state/index.js";
 import { ansi, InputBuffer, TerminalApp } from "./terminal/index.js";
 
@@ -36,6 +37,7 @@ export function createAppRuntime({
   const factIndex = new FactIndex(factRepository);
   const searchEngine = new SearchEngine();
   const searchQueryParser = new SearchQueryParser();
+  const searchShortcutRegistry = new SearchShortcutRegistry();
   const promptClassifier = new PromptClassifier();
   const planParser = new PlanParser();
   const selectionActionRegistry = SelectionActionRegistry.fromConfig(appConfig.selectionActions);
@@ -44,6 +46,7 @@ export function createAppRuntime({
     factSource: factIndex,
     tagRepository,
     actionRegistry: selectionActionRegistry,
+    shortcutRegistry: searchShortcutRegistry,
     commandNames: ["exit", "help", "inspect", "paste", "quit", "restart", "context", "contexts", "timebox", "undo"]
   });
   const terminalApp = new TerminalApp({ state });
@@ -59,6 +62,7 @@ export function createAppRuntime({
     factRepository,
     factSource: factIndex,
     contextRepository,
+    searchShortcutRegistry,
     selectionActionRegistry,
     timeBoxRepository,
     fileOpener,
@@ -314,6 +318,7 @@ export function createAppRuntime({
           recentContexts: visibleRecentContexts,
           searchEngine,
           searchQueryParser,
+          searchShortcutRegistry,
           clock
         }),
         timeBoxes,
@@ -332,9 +337,11 @@ export function createAppRuntime({
           resultSet,
           facts: cachedFacts,
           selectionActionRegistry,
+          state,
           recentContexts: visibleRecentContexts,
           searchEngine,
           searchQueryParser,
+          searchShortcutRegistry,
           clock
         }),
         input,
@@ -352,6 +359,22 @@ export function createAppRuntime({
       });
     },
     async suggestCompletion(input, { completionIndex = 0 } = {}) {
+      const searchSelectionCompletionResult = await searchSelectionCompletion({
+        input,
+        state,
+        facts: cachedFacts,
+        searchEngine,
+        searchQueryParser,
+        searchShortcutRegistry,
+        completionService,
+        completionIndex,
+        clock
+      });
+
+      if (searchSelectionCompletionResult) {
+        return searchSelectionCompletionResult;
+      }
+
       const scopedCompletion = await scopedSelectionCompletion({
         input,
         recentContexts: selectableRecentContexts(recentContexts, state.currentContext),
@@ -370,6 +393,22 @@ export function createAppRuntime({
       return completionService.suggest(input, { resultSet, completionIndex });
     },
     async complete(input, { completionIndex = 0 } = {}) {
+      const searchSelectionCompletionResult = await searchSelectionCompletion({
+        input,
+        state,
+        facts: cachedFacts,
+        searchEngine,
+        searchQueryParser,
+        searchShortcutRegistry,
+        completionService,
+        completionIndex,
+        clock
+      });
+
+      if (searchSelectionCompletionResult) {
+        return searchSelectionCompletionResult.completed;
+      }
+
       const scopedCompletion = await scopedSelectionCompletion({
         input,
         recentContexts: selectableRecentContexts(recentContexts, state.currentContext),
@@ -460,9 +499,18 @@ function previewResultSetForInput({
   recentContexts = [],
   searchEngine,
   searchQueryParser,
+  searchShortcutRegistry,
   clock
 }) {
-  const activeResultSet = scopedResultSetForInput({
+  const activeResultSet = searchSelectionResultSetForInput({
+    input,
+    state,
+    facts,
+    searchEngine,
+    searchQueryParser,
+    searchShortcutRegistry,
+    clock
+  }) ?? scopedResultSetForInput({
     input,
     facts,
     recentContexts,
@@ -494,6 +542,39 @@ function previewResultSetForInput({
   return new SearchResultSet(previewFacts);
 }
 
+function searchSelectionResultSetForInput({
+  input,
+  state,
+  facts = [],
+  searchEngine,
+  searchQueryParser,
+  searchShortcutRegistry,
+  clock
+}) {
+  const delimiterIndex = searchSelectionDelimiterIndex(input);
+
+  if (delimiterIndex === -1 || !searchEngine || !searchQueryParser || !searchShortcutRegistry) {
+    return null;
+  }
+
+  try {
+    const today = clock().toISOString().slice(0, 10);
+    const rawSearchInput = input.slice(0, delimiterIndex).trim();
+    const expandedQuery = searchShortcutRegistry.expand(rawSearchInput || "/", {
+      currentContext: state?.currentContext
+    });
+    const query = queryForRuntimeSearchInput(normalizeNaturalDates(expandedQuery, { today }), state);
+    const ast = query === "*" ? { type: "all" } : searchQueryParser.parse(query);
+
+    return searchEngine.search(facts, ast, {
+      today,
+      currentContext: state?.currentContext ?? null
+    });
+  } catch {
+    return null;
+  }
+}
+
 function viewedContextForInput({
   input,
   facts = [],
@@ -507,12 +588,22 @@ function selectionPreviewForInput({
   resultSet,
   facts = [],
   selectionActionRegistry,
+  state,
   recentContexts = [],
   searchEngine,
   searchQueryParser,
+  searchShortcutRegistry,
   clock
 }) {
-  const activeResultSet = scopedResultSetForInput({
+  const activeResultSet = searchSelectionResultSetForInput({
+    input,
+    state,
+    facts,
+    searchEngine,
+    searchQueryParser,
+    searchShortcutRegistry,
+    clock
+  }) ?? scopedResultSetForInput({
     input,
     facts,
     recentContexts,
@@ -528,11 +619,20 @@ function selectionPreviewForInput({
 function selectionInputPreview(input, resultSet, selectionActionRegistry, {
   recentContexts = []
 } = {}) {
-  const scopedSelection = scopedContextSelectionInput(input, {
+  const actionKeywords = selectionActionRegistry.keywords();
+  let searchSelection = null;
+
+  try {
+    searchSelection = parseSearchSelectionInput(input, { actionKeywords });
+  } catch {
+    searchSelection = null;
+  }
+
+  const scopedSelection = searchSelection ? null : scopedContextSelectionInput(input, {
     recentContexts,
-    actionKeywords: selectionActionRegistry.keywords()
+    actionKeywords
   });
-  const selectionInput = scopedSelection?.selectionInput ?? input;
+  const selectionInput = searchSelection?.selectionInput ?? scopedSelection?.selectionInput ?? input;
 
   if (!resultSet || !/^\s*(\d+|\.)/.test(selectionInput)) {
     return null;
@@ -551,7 +651,7 @@ function selectionInputPreview(input, resultSet, selectionActionRegistry, {
 
   try {
     const actions = parseSelectionActions(tokens, {
-      actionKeywords: selectionActionRegistry.keywords()
+      actionKeywords
     });
     return {
       selection: Selection.resolve(selectorsForSelectionActions(selectors, actions), resultSet),
@@ -561,6 +661,24 @@ function selectionInputPreview(input, resultSet, selectionActionRegistry, {
   } catch {
     return null;
   }
+}
+
+function queryForRuntimeSearchInput(rawQuery, state) {
+  const query = rawQuery.trim().replace(/^\//, "").trim();
+
+  if (query) {
+    return query;
+  }
+
+  if (state?.currentQuery) {
+    return state.currentQuery;
+  }
+
+  if (state?.currentContext) {
+    return `context:"${state.currentContext.name}"`;
+  }
+
+  return "*";
 }
 
 function scopedResultSetForInput({
@@ -770,6 +888,63 @@ async function scopedSelectionCompletion({
     input,
     completed: `${scopedInput.prefix}${suggestion.completed}`,
     candidates: suggestion.candidates.map((candidate) => `${scopedInput.prefix}${candidate}`)
+  };
+}
+
+async function searchSelectionCompletion({
+  input,
+  state,
+  facts,
+  searchEngine,
+  searchQueryParser,
+  searchShortcutRegistry,
+  completionService,
+  completionIndex,
+  clock
+}) {
+  const delimiterIndex = searchSelectionDelimiterIndex(input);
+
+  if (delimiterIndex === -1) {
+    return null;
+  }
+
+  const rawSelectionInput = input.slice(delimiterIndex + 1);
+  const leadingSpace = rawSelectionInput.match(/^\s*/)?.[0] ?? "";
+  const selectionInput = rawSelectionInput.slice(leadingSpace.length);
+
+  if (!selectionInput) {
+    return null;
+  }
+
+  const targetResultSet = searchSelectionResultSetForInput({
+    input,
+    state,
+    facts,
+    searchEngine,
+    searchQueryParser,
+    searchShortcutRegistry,
+    clock
+  });
+
+  if (!targetResultSet) {
+    return null;
+  }
+
+  const suggestion = await completionService.suggest(selectionInput, {
+    resultSet: targetResultSet,
+    completionIndex
+  });
+
+  if (suggestion.completed === selectionInput && suggestion.candidates.length === 0) {
+    return null;
+  }
+
+  const prefix = `${input.slice(0, delimiterIndex + 1)}${leadingSpace}`;
+
+  return {
+    input,
+    completed: `${prefix}${suggestion.completed}`,
+    candidates: suggestion.candidates.map((candidate) => `${prefix}${candidate}`)
   };
 }
 

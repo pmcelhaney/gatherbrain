@@ -667,6 +667,52 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("previews, completes, and applies selection actions in delimited search results", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-search-selection-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit("@Current Context");
+    await runtime.submit("Current anchor.");
+    await runtime.submit("@Project Sapphire");
+    await runtime.submit("First Sapphire item.");
+    await runtime.submit("Second Sapphire item.");
+    await runtime.submit("@Other Context");
+    await runtime.submit("Other item.");
+    await runtime.submit("@Current Context");
+
+    const input = "/context:Project\\ Sapphire;1 2 gather";
+    const preview = runtime.render({ input });
+    const completion = await runtime.suggestCompletion("/context:Project\\ Sapphire;1 2 g");
+
+    assert.match(preview, /\d+\. First Sapphire item\./);
+    assert.match(preview, /\d+\. Second Sapphire item\./);
+    assert.doesNotMatch(preview, /Other item/);
+    assert.deepEqual(completion, {
+      input: "/context:Project\\ Sapphire;1 2 g",
+      completed: "/context:Project\\ Sapphire;1 2 gather",
+      candidates: ["/context:Project\\ Sapphire;1 2 gather"]
+    });
+
+    const result = await runtime.submit(input);
+
+    assert.equal(result.action, "selection_action");
+    assert.equal(result.message, "gather applied to 2 facts");
+    assert.equal(runtime.state.currentContext.name, "Current Context");
+    assert.equal(runtime.state.currentQuery, "context:Current Context");
+
+    const currentView = runtime.render();
+
+    assert.match(currentView, /Current anchor\./);
+    assert.match(currentView, /First Sapphire item\./);
+    assert.match(currentView, /Second Sapphire item\./);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("renders completion recommendations in gray through the runtime", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-completion-render-"));

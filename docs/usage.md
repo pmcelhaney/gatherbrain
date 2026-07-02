@@ -232,6 +232,16 @@ those actions inside that context and returns to the original context.
 @.. . waiting
 ```
 
+You can also scope a selection command to a search by ending the search text
+with `;` and placing the selectors and actions after it:
+
+```text
+/context:Project\ Sapphire;1 5 gather
+```
+
+This applies the action to the numbered results from the search before `;` and
+then returns to the previous active context and query.
+
 Current built-in actions:
 
 | Action | Effect |

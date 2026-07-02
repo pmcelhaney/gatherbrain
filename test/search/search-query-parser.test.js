@@ -40,6 +40,15 @@ describe("SearchQueryParser", () => {
     });
   });
 
+  it("parses escaped spaces in field values", () => {
+    assert.deepEqual(parser.parse("/context:Project\\ Sapphire"), {
+      type: "field",
+      field: "context",
+      operator: ":",
+      value: "Project Sapphire"
+    });
+  });
+
   it("parses unquoted spaced tag field values", () => {
     assert.deepEqual(parser.parse("/tag:Steve Ma"), {
       type: "field",

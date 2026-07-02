@@ -13,6 +13,7 @@ import { AppMode, Selection } from "../state/index.js";
 import { CommandRegistry } from "./command-registry.js";
 import { InteractionResult } from "./interaction-result.js";
 import { PromptClassifier } from "./prompt-classifier.js";
+import { parseSearchSelectionInput } from "./search-selection-input.js";
 import { parseSelectionInput, selectorsForSelectionActions } from "./selection-input.js";
 
 export class PromptController {
@@ -132,7 +133,11 @@ export class PromptController {
 
   async search(input) {
     const today = this.clock().toISOString().slice(0, 10);
-    const expandedQuery = this.searchShortcutRegistry.expand(input, {
+    const searchSelection = parseSearchSelectionInput(input, {
+      actionKeywords: this.selectionActionRegistry.keywords()
+    });
+    const searchInput = searchSelection?.searchInput ?? input;
+    const expandedQuery = this.searchShortcutRegistry.expand(searchInput, {
       currentContext: this.state.currentContext
     });
     const query = queryForSearch(normalizeNaturalDates(expandedQuery, { today }), this.state);
@@ -142,6 +147,29 @@ export class PromptController {
       today,
       currentContext: this.state.currentContext
     });
+
+    if (searchSelection) {
+      const selection = Selection.resolve(
+        selectorsForSelectionActions(searchSelection.selectors, searchSelection.actions),
+        resultSet
+      );
+      this.state.setSelection(selection);
+      const undoSnapshot = await this.snapshotSelection(selection);
+
+      const results = await this.selectionActionRegistry.executeAll(searchSelection.actions, {
+        selection,
+        factStore: this.factRepository,
+        state: this.state,
+        fileOpener: this.fileOpener,
+        today
+      });
+
+      return InteractionResult.selectionAction({
+        mode: AppMode.SEARCH,
+        message: selectionMessage(selectionActionsText(searchSelection.actions), selection, results),
+        undoSnapshot
+      });
+    }
 
     this.state.setQuery(query);
 

@@ -665,12 +665,22 @@ General form:
 ```text
 <selectors> <action> [arguments]
 @<number-or-dots> <selectors> <action> [arguments]
+/search query;<selectors> <action> [arguments]
 ```
 
 Multiple actions may be chained in the same prompt:
 
 ```text
 <selectors> <action> [arguments] <action> [arguments]
+```
+
+A search prompt may include `;` to end the search text and start a selection
+command. The selection applies to the numbered results from the search before
+the delimiter, while the active context and active query return to their
+previous values after the action completes.
+
+```text
+/context:Project\ Sapphire;1 5 gather
 ```
 
 Examples:

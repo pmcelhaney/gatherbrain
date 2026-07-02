@@ -116,7 +116,7 @@ function coalesceFieldValues(tokens) {
         type: "field",
         name: field.name,
         operator: field.operator,
-        value: values.join(" ").trim()
+        value: unescapeSearchValue(values.join(" ").trim())
       });
       continue;
     }
@@ -125,11 +125,15 @@ function coalesceFieldValues(tokens) {
       type: "field",
       name: field.name,
       operator: field.operator,
-      value: field.value
+      value: unescapeSearchValue(field.value)
     });
   }
 
   return result;
+}
+
+function unescapeSearchValue(value) {
+  return value.replace(/\\(\s|;)/g, "$1");
 }
 
 function isSpacedFieldContinuation(token) {
