@@ -253,6 +253,31 @@ describe("PromptController", () => {
     assert.match(editedFiles[0], /7f32fa70-f4b9-45fb-9ab7-2a48e9573f1b-second-follow-up\.md$/);
   });
 
+  it("goes to the context containing the last selected fact", async () => {
+    generatedIds.push("7f32fa70-f4b9-45fb-9ab7-2a48e9573f1b");
+    await controller.submit("Steve follow up.");
+    state.switchContext("Architecture Review Board");
+    await controller.submit("Architecture follow up.");
+    currentResultSet = {
+      factIdForNumber(number) {
+        return [
+          "7f32fa70-f4b9-45fb-9ab7-2a48e9573f1b",
+          "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
+        ][number - 1];
+      },
+      factIdAtVisibleIndex(index) {
+        return this.factIdForNumber(index + 1);
+      }
+    };
+
+    const result = await controller.submit("1 2 go");
+
+    assert.equal(result.action, "selection_action");
+    assert.equal(result.message, "showing Steve");
+    assert.equal(state.currentContext.name, "Steve");
+    assert.equal(state.currentQuery, 'context:"Steve"');
+  });
+
   it("treats former plan input as normal capture text", async () => {
     const result = await controller.submit("; 9-10 Steve");
 

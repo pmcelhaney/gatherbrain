@@ -145,6 +145,20 @@ export class EditFactFileAction {
   }
 }
 
+export class GoToFactContextAction {
+  async execute(context) {
+    const factId = context.selection.toArray().at(-1);
+
+    if (!factId) {
+      throw new Error("Go requires one selected fact");
+    }
+
+    const fact = await context.factStore.getFactById(factId);
+    context.state.switchContext(fact.homeContext);
+    return [{ fact, action: "go_context", value: fact.homeContext.name }];
+  }
+}
+
 async function mutateSelectedFacts({ selection, factStore }, mutate) {
   const results = [];
 

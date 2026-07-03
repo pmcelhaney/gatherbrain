@@ -3,6 +3,7 @@ import {
   ClaimCurrentContextAction,
   ClearDueDateAction,
   EditFactFileAction,
+  GoToFactContextAction,
   OpenFileAction,
   RemoveContextAssociationAction,
   SetDueDateAction,
@@ -129,6 +130,7 @@ export class SelectionActionRegistry {
         return previewFact;
       case "open_file":
       case "edit_file":
+      case "go_context":
         return previewFact;
       case "trash":
         previewFact.setType("deleted");
@@ -170,6 +172,8 @@ function buildAction(definition) {
       return new OpenFileAction();
     case "edit_file":
       return new EditFactFileAction();
+    case "go_context":
+      return new GoToFactContextAction();
     default:
       throw new Error(`Unsupported selection action type: ${definition.action}`);
   }
@@ -223,6 +227,9 @@ export function defaultActionConfig() {
       },
       edit: {
         action: "edit_file"
+      },
+      go: {
+        action: "go_context"
       }
     }
   };

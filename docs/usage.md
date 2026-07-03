@@ -227,6 +227,7 @@ Current built-in actions:
 | `delete` | Moves the fact to `.trash` |
 | `gather` | Associates the fact with the current context |
 | `claim` | Moves the fact to the current context as its home context |
+| `go` | Switches to the home context of the last selected fact |
 | `-@<context>` | Removes an associated context |
 | `open` | Opens the URL, file, or both associated with the fact |
 | `edit` | Opens the fact Markdown file in `$EDITOR`; with multiple selectors, only the last mentioned fact is edited |

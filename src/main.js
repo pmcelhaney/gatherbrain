@@ -166,6 +166,13 @@ export function createAppRuntime({
         });
 
         undoSnapshot = scopedUndoSnapshot;
+        const navigationResult = scopedResults.findLast((result) => result.action === "go_context");
+
+        if (navigationResult) {
+          recentContexts = recordRecentContext(recentContexts, state.currentContext);
+          state.switchContext(navigationResult.value);
+        }
+
         factIndex.invalidate();
         cachedFacts = await factIndex.list();
         cachedContextNames = await contextRepository.list();
@@ -1065,6 +1072,10 @@ function selectionActionMessage(actions, selection, results) {
 
   if (results.every((result) => result.action === "edit_file")) {
     return `editing ${results[0].value}`;
+  }
+
+  if (results.every((result) => result.action === "go_context")) {
+    return `showing ${results.at(-1).value}`;
   }
 
   return `${selectionActionsText(actions)} applied to ${selection.size} fact${selection.size === 1 ? "" : "s"}`;

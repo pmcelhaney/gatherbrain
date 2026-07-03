@@ -259,6 +259,10 @@ function selectionMessage(actionText, selection, results) {
     return `editing ${results[0].value}`;
   }
 
+  if (results.every((result) => result.action === "go_context")) {
+    return `showing ${results.at(-1).value}`;
+  }
+
   return `${actionText} applied to ${selection.size} fact${selection.size === 1 ? "" : "s"}`;
 }
 

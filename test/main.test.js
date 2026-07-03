@@ -1029,6 +1029,30 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("goes to the last selected fact context from a numbered recent context", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-scoped-go-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit("@Alpha Context!");
+    await runtime.submit("Alpha follow up.");
+    await runtime.submit("@Beta Context!");
+    await runtime.submit("Beta follow up.");
+
+    const result = await runtime.submit("@1 1 go");
+
+    assert.equal(result.action, "selection_action");
+    assert.equal(result.message, "showing Alpha Context");
+    assert.equal(runtime.state.currentContext.name, "Alpha Context");
+    assert.match(runtime.render(), /Alpha follow up\./);
+    assert.doesNotMatch(runtime.render(), /Beta follow up\./);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("previews, completes, and applies selection actions in delimited search results", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-search-selection-"));

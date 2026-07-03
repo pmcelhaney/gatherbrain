@@ -23,7 +23,7 @@ The app currently supports:
 - Capturing facts into the current context.
 - Searching persisted facts with `/...` queries and shortcuts.
 - Fact inspection with `:inspect <number>`.
-- Selection commands such as `. tomorrow`, `. task`, `. gather`, `. claim`, `. open`, `. edit`, and `. delete`.
+- Selection commands such as `. tomorrow`, `. task`, `. gather`, `. claim`, `. go`, `. open`, `. edit`, and `. delete`.
 - Undo for the last selection action with `:undo`.
 - Pasting clipboard text or screenshots into the current context with `:paste`.
 - Live mode and completion feedback while typing in the TUI.
