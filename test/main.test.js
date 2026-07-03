@@ -1053,6 +1053,34 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("claims recent-context selections into the current context", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-scoped-claim-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit("@Inbox!");
+    await runtime.submit("Test claim.");
+    await runtime.submit("@Sandbox!");
+
+    const preview = runtime.render({ input: "@1 1 claim" });
+
+    assert.match(preview, /> 1\. Test claim\./);
+
+    const result = await runtime.submit("@1 1 claim");
+
+    assert.equal(result.action, "selection_action");
+    assert.equal(result.message, "claim applied to 1 fact");
+    assert.equal(runtime.state.currentContext.name, "Sandbox");
+    assert.match(runtime.render(), /1\. Test claim\./);
+    assert.doesNotMatch(runtime.render(), /\[Inbox\] Test claim\./);
+    assert.doesNotMatch(runtime.render({ input: "@1" }), /Test claim/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("previews, completes, and applies selection actions in delimited search results", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-search-selection-"));

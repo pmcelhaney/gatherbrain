@@ -151,7 +151,6 @@ export function createAppRuntime({
           searchQueryParser,
           clock
         });
-        const targetState = new AppState({ currentContext: scopedSelection.contextName });
         const selection = Selection.resolve(
           selectorsForSelectionActions(scopedSelection.selectors, scopedSelection.actions),
           targetResultSet
@@ -160,7 +159,7 @@ export function createAppRuntime({
         const scopedResults = await selectionActionRegistry.executeAll(scopedSelection.actions, {
           selection,
           factStore: factRepository,
-          state: targetState,
+          state,
           fileOpener,
           today: clock().toISOString().slice(0, 10)
         });
@@ -536,7 +535,7 @@ function previewResultSetForInput({
     }
 
     return selectionActionRegistry.previewAll(parsed.actions, fact, {
-      state: parsed.contextName ? new AppState({ currentContext: parsed.contextName }) : state,
+      state,
       today
     }) ?? fact;
   });
