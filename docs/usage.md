@@ -261,8 +261,9 @@ Inspect one visible fact:
 | `:exit` | Exits the app |
 | `:quit` | Exits the app |
 
-Tab completes commands, `@<context>` switches, search shortcuts, selection
-actions, visible result numbers, and context names.
+Tab completes commands, `@<context>` switches, inline `@<context>` references in
+capture text, search shortcuts, selection actions, visible result numbers, and
+context names.
 
 ## Configuration
 

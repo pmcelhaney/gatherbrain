@@ -255,10 +255,11 @@ When the first prompt character is `@`, the body previews the most recently
 visited contexts other than the current context, ordered newest first. The list
 shows as many contexts as fit in the body.
 
-Tab completion is available for commands, `@<context>` switches, search
-shortcuts, selection actions, visible result numbers, and context names. Context
-switch completions include contexts discovered from fact folders. Highlighting a
-context completion previews that context in the header and body.
+Tab completion is available for commands, `@<context>` switches, inline
+`@<context>` references in capture text, search shortcuts, selection actions,
+visible result numbers, and context names. Context completions include contexts
+discovered from fact folders. Highlighting a leading context switch completion
+previews that context in the header and body.
 
 When multiple candidates match the same typed prefix, the first Tab completes
 any shared prefix and later Tab presses cycle through the matching candidates.

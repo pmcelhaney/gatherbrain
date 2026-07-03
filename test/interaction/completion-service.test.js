@@ -67,17 +67,17 @@ describe("CompletionService", () => {
     assert.equal(await service.complete("3", { resultSet }), "3");
   });
 
-  it("completes only leading context switches, not inline @ text", async () => {
+  it("completes leading context switches and inline context references", async () => {
     const service = new CompletionService({
       contextRepository: {
         async list() {
-          return ["Architecture Review Board", "Steve Ma"];
+          return ["Architecture Review Board", "Devin", "Steve Ma"];
         }
       }
     });
 
     assert.equal(await service.complete("@St"), "@Steve\\ Ma");
-    assert.equal(await service.complete("Confirm when @Dev"), "Confirm when @Dev");
+    assert.equal(await service.complete("Confirm when @Dev"), "Confirm when @Devin");
     assert.equal(await service.complete("@Architecture"), "@Architecture\\ Review\\ Board");
   });
 
@@ -109,6 +109,11 @@ describe("CompletionService", () => {
       input: "@Ste",
       completed: "@Stephanie\\ Garoza",
       candidates: ["@Stephanie\\ Garoza", "@Stephanie\\ Smith", "@Steve\\ Ma"]
+    });
+    assert.deepEqual(await service.suggest("Ask @Ste"), {
+      input: "Ask @Ste",
+      completed: "Ask @Stephanie\\ Garoza",
+      candidates: ["Ask @Stephanie\\ Garoza", "Ask @Stephanie\\ Smith", "Ask @Steve\\ Ma"]
     });
   });
 

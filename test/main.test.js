@@ -1792,7 +1792,7 @@ Login Screenshot
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("does not complete inline @ text from saved facts", async () => {
+  it("completes inline @ context references in capture input", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-tag-complete-"));
     const runtime = createAppRuntime({
@@ -1801,9 +1801,12 @@ Login Screenshot
     });
 
     await runtime.submit("@Steve!");
+    await runtime.submit("@Devin!");
+    await runtime.submit("Trial follow-up context exists.");
+    await runtime.submit("@Steve");
     await runtime.submit("Ask @Devin about the trial.");
 
-    assert.equal(await runtime.complete("Confirm @Dev"), "Confirm @Dev");
+    assert.equal(await runtime.complete("Confirm @Dev"), "Confirm @Devin");
     assert.equal(await runtime.complete("@St"), "@Steve");
     assert.equal(await runtime.complete(". @"), ". @");
     assert.equal(await runtime.complete(". @Dev"), ". @Dev");

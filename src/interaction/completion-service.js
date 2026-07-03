@@ -49,6 +49,11 @@ export class CompletionService {
       return noCompletion(input);
     }
 
+    const contextReferenceCompletion = await this.completeContextReference(input, matchIndex);
+    if (contextReferenceCompletion) {
+      return contextReferenceCompletion;
+    }
+
     return noCompletion(input);
   }
 
@@ -72,6 +77,26 @@ export class CompletionService {
     return completionResult(
       input,
       matches.map((match) => `@${escapeAtValue(match)}`),
+      matchIndex
+    );
+  }
+
+  async completeContextReference(input, matchIndex = 0) {
+    const activeContext = activeAtSegment(input);
+
+    if (!activeContext) {
+      return null;
+    }
+
+    const matches = matchingCandidates(await this.contextNames(), activeContext.value);
+
+    if (matches.length === 0) {
+      return null;
+    }
+
+    return completionResult(
+      input,
+      matches.map((match) => replaceAtSegment(input, activeContext.startIndex, match)),
       matchIndex
     );
   }
@@ -182,6 +207,10 @@ function replaceLastToken(tokens, replacement) {
   const completed = [...tokens];
   completed[completed.length - 1] = replacement;
   return completed.join(" ");
+}
+
+function replaceAtSegment(input, startIndex, replacement) {
+  return `${input.slice(0, startIndex)}@${escapeAtValue(replacement)}`;
 }
 
 function completionResult(input, candidates, matchIndex = 0) {
