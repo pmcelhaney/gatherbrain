@@ -1046,23 +1046,23 @@ describe("createAppRuntime", () => {
     await runtime.submit("Other item.");
     await runtime.submit("@Current Context!");
 
-    const input = "/context:Project\\ Sapphire;1 2 gather";
+    const input = "/context:Project\\ Sapphire;1 2 claim";
     const preview = runtime.render({ input });
-    const completion = await runtime.suggestCompletion("/context:Project\\ Sapphire;1 2 g");
+    const completion = await runtime.suggestCompletion("/context:Project\\ Sapphire;1 2 cla");
 
     assert.match(preview, /\d+\. First Sapphire item\./);
     assert.match(preview, /\d+\. Second Sapphire item\./);
     assert.doesNotMatch(preview, /Other item/);
     assert.deepEqual(completion, {
-      input: "/context:Project\\ Sapphire;1 2 g",
-      completed: "/context:Project\\ Sapphire;1 2 gather",
-      candidates: ["/context:Project\\ Sapphire;1 2 gather"]
+      input: "/context:Project\\ Sapphire;1 2 cla",
+      completed: "/context:Project\\ Sapphire;1 2 claim",
+      candidates: ["/context:Project\\ Sapphire;1 2 claim"]
     });
 
     const result = await runtime.submit(input);
 
     assert.equal(result.action, "selection_action");
-    assert.equal(result.message, "gather applied to 2 facts");
+    assert.equal(result.message, "claim applied to 2 facts");
     assert.equal(runtime.state.currentContext.name, "Current Context");
     assert.equal(runtime.state.currentQuery, 'context:"Current Context"');
 
@@ -1628,6 +1628,29 @@ Login Screenshot
     assert.equal(result.message, "undid last selection action");
     assert.match(runtime.render(), /1\. Follow up with Steve/);
     assert.doesNotMatch(runtime.render(), /task Follow up with Steve/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
+  it("undoes the last selection claim", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-undo-claim-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit("@Steve!");
+    await runtime.submit("Follow up with Steve.");
+    await runtime.submit("@Current Context!");
+    await runtime.submit("/Steve;1 claim");
+    assert.match(runtime.render(), /1\. Follow up with Steve/);
+    assert.doesNotMatch(runtime.render(), /\[Steve\] Follow up with Steve/);
+
+    const result = await runtime.submit(":undo");
+
+    assert.equal(result.message, "undid last selection action");
+    assert.match(runtime.render({ input: "/Steve" }), /\[Steve\] Follow up with Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

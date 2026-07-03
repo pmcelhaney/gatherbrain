@@ -40,6 +40,9 @@
       "gather": {
         "action": "associate_current_context"
       },
+      "claim": {
+        "action": "claim_current_context"
+      },
       "open": {
         "action": "open_file"
       },

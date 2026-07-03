@@ -1648,7 +1648,14 @@ async function initialResultSet({
 
 async function restoreUndoSnapshot({ undoSnapshot, factRepository }) {
   for (const item of undoSnapshot.facts ?? []) {
-    await factRepository.saveFact(new Fact(item.fact));
+    const fact = new Fact(item.fact);
+    const currentPath = await factRepository.findPathByFactId(fact.id);
+
+    if (currentPath && currentPath !== item.filePath) {
+      await factRepository.moveFactToContext(fact, fact.homeContext);
+    } else {
+      await factRepository.saveFact(fact);
+    }
   }
 }
 

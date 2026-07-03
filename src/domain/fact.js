@@ -43,6 +43,14 @@ export class Fact {
     this.dueDate = null;
   }
 
+  setHomeContext(context) {
+    const nextContext = Context.from(context);
+    this.homeContext = nextContext;
+    this.associatedContexts = this.associatedContexts.filter(
+      (existing) => !existing.equals(nextContext)
+    );
+  }
+
   associateContext(context) {
     const nextContext = Context.from(context);
 

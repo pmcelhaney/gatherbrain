@@ -8,8 +8,9 @@ This repository is a clean rebuild of Gatherbrain around the living
 specification in [docs/spec.md](docs/spec.md).
 
 The product centers on facts, contexts, capture, transient search, selection
-commands, and tab completion. A fact has one home context and can be gathered
-into additional contexts without being moved.
+commands, and tab completion. A fact has one home context, can be gathered into
+additional contexts without being moved, and can be claimed into the current
+context when its home should change.
 
 ## Current Status
 
@@ -22,7 +23,7 @@ The app currently supports:
 - Capturing facts into the current context.
 - Searching persisted facts with `/...` queries and shortcuts.
 - Fact inspection with `:inspect <number>`.
-- Selection commands such as `. tomorrow`, `. task`, `. gather`, `. open`, `. edit`, and `. delete`.
+- Selection commands such as `. tomorrow`, `. task`, `. gather`, `. claim`, `. open`, `. edit`, and `. delete`.
 - Undo for the last selection action with `:undo`.
 - Pasting clipboard text or screenshots into the current context with `:paste`.
 - Live mode and completion feedback while typing in the TUI.
@@ -110,6 +111,7 @@ Operate on visible facts:
 . open
 1 delete
 .. gather
+.. claim
 ```
 
 Exit:

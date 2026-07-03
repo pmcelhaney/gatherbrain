@@ -9,7 +9,8 @@ commands, and tab completion.
 
 A fact belongs to one home context. Selection commands such as `gather` can
 associate that fact with additional contexts without moving the underlying
-Markdown file.
+Markdown file. The `claim` selection command moves a fact into the current
+context by making the current context its home context.
 
 Tags and time boxes are not active product concepts.
 
@@ -207,6 +208,7 @@ with `;` and placing the selectors and actions after it:
 
 ```text
 /context:Project\ Sapphire;1 5 gather
+/context:Project\ Sapphire;1 5 claim
 ```
 
 Current built-in actions:
@@ -224,6 +226,7 @@ Current built-in actions:
 | `-due` | Removes the due date |
 | `delete` | Moves the fact to `.trash` |
 | `gather` | Associates the fact with the current context |
+| `claim` | Moves the fact to the current context as its home context |
 | `-@<context>` | Removes an associated context |
 | `open` | Opens the URL, file, or both associated with the fact |
 | `edit` | Opens the fact Markdown file in `$EDITOR`; with multiple selectors, only the last mentioned fact is edited |

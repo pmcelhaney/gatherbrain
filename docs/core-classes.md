@@ -134,6 +134,7 @@ Built-in actions include:
 - `ClearDueDateAction`
 - `TrashFactAction`
 - `AssociateCurrentContextAction`
+- `ClaimCurrentContextAction`
 - `RemoveContextAssociationAction`
 - `OpenFileAction`
 - `EditFactFileAction`

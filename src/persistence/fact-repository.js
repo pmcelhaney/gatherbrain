@@ -82,6 +82,29 @@ export class FactRepository {
     return this.update(filePath, fact);
   }
 
+  async moveFactToContext(fact, context) {
+    const filePath = await this.findPathByFactId(fact.id);
+
+    if (!filePath) {
+      throw new Error(`Fact not found: ${fact.id}`);
+    }
+
+    const nextFact = Fact.from(fact.toSerializable());
+    nextFact.setHomeContext(context);
+    const date = dateFromTimestamp(nextFact.createdAt);
+    const targetDirectory = this.workspace.contextDirectory(date, nextFact.homeContext);
+    const targetPath = path.join(targetDirectory, path.basename(filePath));
+
+    await fs.mkdir(targetDirectory, { recursive: true });
+
+    if (filePath !== targetPath) {
+      await fs.rename(filePath, targetPath);
+    }
+
+    await fs.writeFile(targetPath, this.codec.serialize(nextFact), "utf8");
+    return { fact: nextFact, filePath: targetPath };
+  }
+
   async trash(filePath) {
     const fact = await this.read(filePath);
     const date = dateFromTimestamp(fact.createdAt);

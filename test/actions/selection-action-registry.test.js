@@ -156,6 +156,24 @@ describe("SelectionActionRegistry", () => {
     );
   });
 
+  it("claims selected facts into the current context", async () => {
+    const factStore = new MemoryFactStore([buildFact({
+      associatedContexts: ["Steve"]
+    })]);
+    const registry = SelectionActionRegistry.fromConfig();
+
+    const results = await registry.execute("claim", {
+      selection: new Selection(["6f2308de-02e9-45db-8ff0-65ac793f4a24"]),
+      factStore,
+      state: new AppState({ currentContext: "Steve" })
+    });
+
+    const fact = factStore.fact("6f2308de-02e9-45db-8ff0-65ac793f4a24");
+    assert.equal(fact.homeContext.name, "Steve");
+    assert.deepEqual(fact.associatedContexts, []);
+    assert.deepEqual(results.map((result) => result.action), ["claim_current_context"]);
+  });
+
   it("trashes selected facts", async () => {
     const factStore = new MemoryFactStore([buildFact()]);
     const registry = SelectionActionRegistry.fromConfig();
@@ -288,6 +306,19 @@ describe("SelectionActionRegistry", () => {
     assert.equal(fact.dueDate, null);
   });
 
+  it("previews claim as moving the home context", () => {
+    const fact = buildFact({ associatedContexts: ["Steve"] });
+    const registry = SelectionActionRegistry.fromConfig();
+
+    const preview = registry.preview("claim", fact, {
+      state: new AppState({ currentContext: "Steve" })
+    });
+
+    assert.equal(preview.homeContext.name, "Steve");
+    assert.deepEqual(preview.associatedContexts, []);
+    assert.equal(fact.homeContext.name, "Architecture Review Board");
+  });
+
   it("previews due date removal", () => {
     const fact = buildFact({ dueDate: "2026-07-01" });
     const registry = SelectionActionRegistry.fromConfig();
@@ -346,6 +377,13 @@ class MemoryFactStore {
 
   async saveFact(fact) {
     this.facts.set(fact.id, fact);
+  }
+
+  async moveFactToContext(fact, context) {
+    const nextFact = Fact.from(fact.toSerializable());
+    nextFact.setHomeContext(context);
+    this.facts.set(nextFact.id, nextFact);
+    return { fact: nextFact, filePath: `/tmp/context/${nextFact.id}.md` };
   }
 
   async trashFact(fact) {

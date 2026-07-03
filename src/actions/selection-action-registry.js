@@ -1,5 +1,6 @@
 import {
   AssociateCurrentContextAction,
+  ClaimCurrentContextAction,
   ClearDueDateAction,
   EditFactFileAction,
   OpenFileAction,
@@ -120,6 +121,12 @@ export class SelectionActionRegistry {
         }
         previewFact.associateContext(context.state.currentContext);
         return previewFact;
+      case "claim_current_context":
+        if (!context.state?.currentContext) {
+          return previewFact;
+        }
+        previewFact.setHomeContext(context.state.currentContext);
+        return previewFact;
       case "open_file":
       case "edit_file":
         return previewFact;
@@ -157,6 +164,8 @@ function buildAction(definition) {
     case "associate_current_context":
     case "associate_current_session":
       return new AssociateCurrentContextAction();
+    case "claim_current_context":
+      return new ClaimCurrentContextAction();
     case "open_file":
       return new OpenFileAction();
     case "edit_file":
@@ -205,6 +214,9 @@ export function defaultActionConfig() {
       },
       gather: {
         action: "associate_current_context"
+      },
+      claim: {
+        action: "claim_current_context"
       },
       open: {
         action: "open_file"

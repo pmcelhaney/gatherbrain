@@ -81,6 +81,23 @@ export class AssociateCurrentContextAction {
   }
 }
 
+export class ClaimCurrentContextAction {
+  async execute(context) {
+    if (!context.state.currentContext) {
+      throw new Error("Current context is required to claim facts");
+    }
+
+    return mutateSelectedFacts(context, async (fact, factStore) => {
+      const result = await factStore.moveFactToContext(fact, context.state.currentContext);
+      return {
+        fact: result.fact,
+        action: "claim_current_context",
+        value: context.state.currentContext.name
+      };
+    });
+  }
+}
+
 export class OpenFileAction {
   async execute(context) {
     const opener = context.fileOpener ?? defaultFileOpener;

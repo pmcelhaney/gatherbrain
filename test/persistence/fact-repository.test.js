@@ -142,6 +142,26 @@ Mike prefers async architecture reviews.
     await assert.rejects(() => repository.getFactById(fact.id), /Fact not found/);
   });
 
+  it("moves facts to a new home context", async () => {
+    const { fact, filePath } = await repository.create(buildFact());
+
+    const result = await repository.moveFactToContext(fact, "Steve");
+
+    assert.equal(
+      result.filePath,
+      path.join(
+        rootPath,
+        "Steve",
+        "6f2308de-02e9-45db-8ff0-65ac793f4a24-mike-prefers-async-architecture-reviews.md"
+      )
+    );
+    await assert.rejects(() => fs.access(filePath));
+    await fs.access(result.filePath);
+    const saved = await repository.getFactById(fact.id);
+    assert.equal(saved.homeContext.name, "Steve");
+    assert.deepEqual(saved.associatedContexts, []);
+  });
+
   it("moves deleted facts into home context trash", async () => {
     const { filePath } = await repository.create(buildFact());
 

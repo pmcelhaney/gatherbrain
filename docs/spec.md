@@ -36,6 +36,9 @@ Fact associations, sometimes described as gathering, are part of the context
 model: they let a fact remain owned by one home context while also appearing in
 other relevant contexts.
 
+Claiming is a selection-command move: it changes a selected fact's home context
+to the current context instead of adding another association.
+
 Tags and time boxes are not active product concepts.
 
 ## Context
@@ -70,7 +73,9 @@ A fact has:
 Every fact belongs to exactly one home context. A fact may be associated with
 zero or more additional contexts through selection actions such as `gather`.
 An association does not move or copy the fact; it adds another context where the
-fact should be visible.
+fact should be visible. A fact may be claimed into the current context through
+the `claim` selection action, which moves the underlying Markdown file so that
+the current context becomes the fact's home context.
 
 There is no separate tag model. Text containing `@Steve` is stored as normal
 fact content unless it is the leading prompt form used for context switching.
@@ -129,6 +134,7 @@ or on a transient search result set using the semicolon form:
 
 ```text
 /context:Project\ Sapphire;1 5 gather
+/context:Project\ Sapphire;1 5 claim
 ```
 
 ## Tab Completion
@@ -394,6 +400,7 @@ Built-in actions:
 | `-due` | Removes the due date |
 | `delete` | Moves the fact to `.trash` |
 | `gather` | Associates the selected fact with the current context |
+| `claim` | Moves the selected fact to the current context as its home context |
 | `-@<context>` | Removes an associated context from the selected fact |
 | `open` | Opens the URL, file, or both associated with the fact |
 | `edit` | Opens the fact Markdown file in `$EDITOR`; with multiple selectors, only the last mentioned fact is edited |
