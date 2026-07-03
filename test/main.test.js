@@ -131,6 +131,45 @@ describe("main", () => {
     }
   });
 
+  it("highlights search-scoped selectors before an action is typed", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-search-selection-preview-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T15:45:00.000Z"),
+      idGenerator: (() => {
+        const ids = [
+          "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
+          "7f32fa70-f4b9-45fb-9ab7-2a48e9573f1b",
+          "402a959f-3fdf-4748-87f9-f27bbf053426"
+        ];
+        return () => ids.shift();
+      })()
+    });
+
+    try {
+      await runtime.initialize();
+      await runtime.submit("@Gatherbrain!");
+      await runtime.submit("First current item");
+      await runtime.submit("Second current item");
+      await runtime.submit("Third current item");
+      await runtime.submit("1 2 3 task today");
+
+      const preview = runtime.render({
+        input: "//current; 1 2 3",
+        width: 80,
+        height: 14,
+        colorEnabled: false
+      });
+
+      assert.match(preview, /^>\s*1\. task today/m);
+      assert.match(preview, /^>\s*2\. task today/m);
+      assert.match(preview, /^>\s*3\. task today/m);
+    } finally {
+      fs.rmSync(workspacePath, { recursive: true, force: true });
+    }
+  });
+
   it("exits on quit commands with surrounding whitespace", () => {
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-exit-"));
 

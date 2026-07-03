@@ -631,15 +631,8 @@ function selectionInputPreview(input, resultSet, selectionActionRegistry, {
   recentContexts = []
 } = {}) {
   const actionKeywords = selectionActionRegistry.keywords();
-  let searchSelection = null;
-
-  try {
-    searchSelection = parseSearchSelectionInput(input, { actionKeywords });
-  } catch {
-    searchSelection = null;
-  }
-
-  const scopedSelection = searchSelection ? null : scopedContextSelectionInput(input, {
+  const searchSelection = searchSelectionPreviewInput(input);
+  const scopedSelection = searchSelection ? null : scopedSelectionPreviewInput(input, {
     recentContexts,
     actionKeywords
   });
@@ -672,6 +665,53 @@ function selectionInputPreview(input, resultSet, selectionActionRegistry, {
   } catch {
     return null;
   }
+}
+
+function searchSelectionPreviewInput(input) {
+  const delimiterIndex = searchSelectionDelimiterIndex(input);
+
+  if (delimiterIndex === -1) {
+    return null;
+  }
+
+  const selectionInput = input.slice(delimiterIndex + 1).trim();
+
+  if (!selectionInput) {
+    return null;
+  }
+
+  return { selectionInput };
+}
+
+function scopedSelectionPreviewInput(input, {
+  recentContexts = [],
+  actionKeywords = []
+} = {}) {
+  let scopedSelection = null;
+
+  try {
+    scopedSelection = scopedContextSelectionInput(input, {
+      recentContexts,
+      actionKeywords
+    });
+  } catch {
+    scopedSelection = null;
+  }
+
+  if (scopedSelection) {
+    return scopedSelection;
+  }
+
+  const target = scopedContextTarget(input, { recentContexts });
+
+  if (!target || target.rest.trim().length === 0) {
+    return null;
+  }
+
+  return {
+    contextName: target.contextName,
+    selectionInput: target.rest
+  };
 }
 
 function queryForRuntimeSearchInput(rawQuery, state) {
