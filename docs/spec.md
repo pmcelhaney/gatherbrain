@@ -86,8 +86,8 @@ location and home context.
 ## Prompt History
 
 Submitted non-empty prompt lines are kept in interactive prompt history for the
-current TUI process. Up and Down cycle through that history, wrapping at either
-end, and recalled lines place the cursor at the end of the prompt.
+current TUI process. Up and Down navigate through that history without wrapping
+past either end, and recalled lines place the cursor at the end of the prompt.
 
 ## Search
 

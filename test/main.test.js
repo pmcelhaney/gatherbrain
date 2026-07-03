@@ -644,7 +644,7 @@ describe("main", () => {
     assert.deepEqual(submitted, ["bacd"]);
   });
 
-  it("cycles prompt history with up and down arrows", async () => {
+  it("navigates prompt history with up and down arrows without wrapping", async () => {
     const { runTui } = await import("../src/main.js");
     const input = new EventEmitter();
     const output = {
@@ -685,17 +685,21 @@ describe("main", () => {
     input.emit("keypress", undefined, { sequence: "\u001b[A", name: "up" });
     input.emit("keypress", undefined, { sequence: "\u001b[A", name: "up" });
     input.emit("keypress", undefined, { sequence: "\u001b[A", name: "up" });
+    input.emit("keypress", undefined, { sequence: "\u001b[A", name: "up" });
+    input.emit("keypress", undefined, { sequence: "\u001b[B", name: "down" });
     input.emit("keypress", undefined, { sequence: "\u001b[B", name: "down" });
     input.emit("keypress", undefined, { sequence: "\u001b[B", name: "down" });
     input.emit("keypress", "\u0003", { sequence: "\u0003", name: "c" });
 
     await run;
 
-    assert.deepEqual(renderedInputs.slice(-5), [
+    assert.deepEqual(renderedInputs.slice(-7), [
       { input: "Beta", cursor: 4 },
       { input: "Alpha", cursor: 5 },
-      { input: "Beta", cursor: 4 },
       { input: "Alpha", cursor: 5 },
+      { input: "Alpha", cursor: 5 },
+      { input: "Beta", cursor: 4 },
+      { input: "Beta", cursor: 4 },
       { input: "Beta", cursor: 4 }
     ]);
     assert.deepEqual(submitted, ["Alpha", "Beta"]);

@@ -1160,11 +1160,14 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
     }
 
     if (historyIndex === null) {
-      historyIndex = direction === "up" ? promptHistory.length - 1 : 0;
+      if (direction === "down") {
+        return false;
+      }
+      historyIndex = promptHistory.length - 1;
     } else if (direction === "up") {
-      historyIndex = (historyIndex - 1 + promptHistory.length) % promptHistory.length;
+      historyIndex = Math.max(0, historyIndex - 1);
     } else {
-      historyIndex = (historyIndex + 1) % promptHistory.length;
+      historyIndex = Math.min(promptHistory.length - 1, historyIndex + 1);
     }
 
     buffer.text = promptHistory[historyIndex];
