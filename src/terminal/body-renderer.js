@@ -98,11 +98,43 @@ function displayContent(fact, today) {
 }
 
 function renderContentLine(text, fact, colorEnabled) {
-  return fact.url ? hyperlink(text, fact.url) : text;
+  const content = highlightInlineContextReferences(text, fact, colorEnabled);
+  return fact.url ? hyperlink(content, fact.url) : content;
 }
 
 function hyperlink(text, url) {
   return `\x1b]8;;${url}\x1b\\${text}\x1b]8;;\x1b\\`;
+}
+
+function highlightInlineContextReferences(text, fact, colorEnabled) {
+  if (!colorEnabled) {
+    return text;
+  }
+
+  const contextNames = contextReferenceNames(fact);
+
+  if (contextNames.length === 0) {
+    return text;
+  }
+
+  const pattern = new RegExp(
+    `@(?:${contextNames.map(escapeRegex).join("|")})(?![\\p{L}\\p{N}_-]|\\s+\\p{Lu})`,
+    "gu"
+  );
+  return text.replace(pattern, (reference) => color(reference, ansi.green, true));
+}
+
+function contextReferenceNames(fact) {
+  const names = [
+    fact.homeContext?.name,
+    ...fact.associatedContexts.map((context) => context.name)
+  ].filter(Boolean);
+
+  return [...new Set(names)].sort((left, right) => right.length - left.length);
+}
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function isFactInCurrentContext(fact, currentContext) {

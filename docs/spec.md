@@ -234,6 +234,9 @@ Fact rows are numbered at the left with a muted number prefix. The implicit
 Bookmark rows with a `url` front matter value render their content as a terminal
 hyperlink to that URL.
 
+When color is enabled, inline `@<context>` text matching the fact's home context
+or associated contexts is highlighted as a context reference.
+
 Due dates are displayed as friendly labels when possible:
 
 - today

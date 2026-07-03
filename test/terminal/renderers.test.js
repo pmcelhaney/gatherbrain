@@ -90,11 +90,12 @@ describe("terminal renderers", () => {
     );
   });
 
-  it("renders @ text plainly", () => {
+  it("renders @ text plainly when color is disabled", () => {
     const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([
       buildFact({
-        content: "@Steve Ma said @Devin's trial ends."
+        content: "@Steve Ma said @Devin's trial ends.",
+        associatedContexts: ["Steve Ma"]
       })
     ]);
     const renderer = new BodyRenderer();
@@ -102,6 +103,30 @@ describe("terminal renderers", () => {
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
       " 1. task tomorrow @Steve Ma said @Devin's trial ends."
+    );
+  });
+
+  it("highlights inline context references when color is enabled", () => {
+    const state = new AppState({ currentContext: "Migration" });
+    const resultSet = new SearchResultSet([
+      buildFact({
+        content: "Migration is @Aruna Mahendravarman and @Devin's trial.",
+        homeContext: "Migration",
+        associatedContexts: ["Aruna Mahendravarman"]
+      })
+    ]);
+    const renderer = new BodyRenderer();
+
+    assert.equal(
+      renderer.render({
+        state,
+        resultSet,
+        width: 80,
+        height: 10,
+        today: "2026-06-30",
+        colorEnabled: true
+      }).join("\n"),
+      "\x1b[90m 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0mMigration is \x1b[32m@Aruna Mahendravarman\x1b[0m and @Devin's trial."
     );
   });
 
