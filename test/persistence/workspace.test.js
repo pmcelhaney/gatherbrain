@@ -25,13 +25,4 @@ describe("Workspace", () => {
       path.join("/tmp/gatherbrain", "Steve", "diagram.png")
     );
   });
-
-  it("builds daily timebox paths", () => {
-    const workspace = new Workspace("/tmp/gatherbrain");
-
-    assert.equal(
-      workspace.timeBoxPath("2026-06-30"),
-      path.join("/tmp/gatherbrain", "timeboxes", "2026-06-30.txt")
-    );
-  });
 });

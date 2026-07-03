@@ -49,12 +49,11 @@ describe("SearchQueryParser", () => {
     });
   });
 
-  it("parses unquoted spaced tag field values", () => {
+  it("does not coalesce removed tag field values", () => {
     assert.deepEqual(parser.parse("/tag:Steve Ma"), {
-      type: "field",
-      field: "tag",
-      operator: ":",
-      value: "Steve Ma"
+      type: "and",
+      left: { type: "field", field: "tag", operator: ":", value: "Steve" },
+      right: { type: "term", value: "Ma" }
     });
   });
 

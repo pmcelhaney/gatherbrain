@@ -35,10 +35,6 @@ export class Workspace {
     return path.join(this.contextDirectory(date, context), fileName);
   }
 
-  timeBoxPath(date) {
-    return path.join(this.rootPath, "timeboxes", `${normalizeDate(date)}.txt`);
-  }
-
   appStatePath() {
     return path.join(this.rootPath, ".gatherbrain-state.json");
   }

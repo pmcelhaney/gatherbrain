@@ -158,7 +158,7 @@ async function findMarkdownFiles(rootPath) {
       const entryPath = path.join(directory, entry.name);
 
       if (entry.isDirectory()) {
-        if (entry.name !== ".trash" && entry.name !== "timeboxes") {
+        if (entry.name !== ".trash") {
           await walk(entryPath);
         }
         continue;

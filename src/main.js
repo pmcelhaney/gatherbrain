@@ -11,8 +11,7 @@ import { normalizeNaturalDates } from "./domain/date-text.js";
 import { CompletionService, PromptClassifier, PromptController } from "./interaction/index.js";
 import { parseSearchSelectionInput, searchSelectionDelimiterIndex } from "./interaction/search-selection-input.js";
 import { parseSelectionActions, selectorsForSelectionActions } from "./interaction/selection-input.js";
-import { AppStateRepository, ClipboardReader, FactRepository, FileOpener, PasteRepository, ContextRepository, TagRepository, Workspace } from "./persistence/index.js";
-import { PlanParser, TimeBoxRepository } from "./planning/index.js";
+import { AppStateRepository, ClipboardReader, FactRepository, FileOpener, PasteRepository, ContextRepository, Workspace } from "./persistence/index.js";
 import { FactIndex, SearchEngine, SearchQueryParser, SearchResultSet, SearchShortcutRegistry } from "./search/index.js";
 import { AppState, Selection } from "./state/index.js";
 import { ansi, InputBuffer, TerminalApp } from "./terminal/index.js";
@@ -32,26 +31,21 @@ export function createAppRuntime({
   const factRepository = new FactRepository({ workspace });
   const pasteRepository = new PasteRepository({ workspace });
   const contextRepository = new ContextRepository({ workspace });
-  const tagRepository = new TagRepository({ workspace });
-  const timeBoxRepository = new TimeBoxRepository({ workspace });
   const factIndex = new FactIndex(factRepository);
   const searchEngine = new SearchEngine();
   const searchQueryParser = new SearchQueryParser();
   const searchShortcutRegistry = new SearchShortcutRegistry();
   const promptClassifier = new PromptClassifier();
-  const planParser = new PlanParser();
   const selectionActionRegistry = SelectionActionRegistry.fromConfig(appConfig.selectionActions);
   const completionService = new CompletionService({
     contextRepository,
     factSource: factIndex,
-    tagRepository,
     actionRegistry: selectionActionRegistry,
     shortcutRegistry: searchShortcutRegistry,
-    commandNames: ["exit", "help", "inspect", "paste", "quit", "restart", "context", "contexts", "timebox", "undo"]
+    commandNames: ["exit", "help", "inspect", "paste", "quit", "restart", "context", "contexts", "undo"]
   });
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;
-  let timeBoxes = [];
   let helpLines = null;
   let undoSnapshot = null;
   let pendingPaste = false;
@@ -65,17 +59,14 @@ export function createAppRuntime({
     contextRepository,
     searchShortcutRegistry,
     selectionActionRegistry,
-    timeBoxRepository,
     fileOpener,
     clock,
     defaultFactType: appConfig.defaultFactType,
     currentResultSetProvider: () => resultSet,
-    currentTimeBoxesProvider: () => timeBoxes,
     recentContextProvider: () => selectableRecentContexts(recentContexts, state.currentContext)
   });
 
   const initializeRuntimeState = async () => {
-    const today = clock().toISOString().slice(0, 10);
     const savedState = await appStateRepository.load();
 
     state.restart();
@@ -94,7 +85,6 @@ export function createAppRuntime({
       searchQueryParser,
       clock
     });
-    timeBoxes = await timeBoxRepository.listByDate(today);
     helpLines = null;
     undoSnapshot = null;
   };
@@ -231,16 +221,6 @@ export function createAppRuntime({
         helpLines = null;
       }
 
-      if (result.timeBox) {
-        timeBoxes = await timeBoxRepository.listByDate(result.timeBox.date);
-        cachedContextNames = await contextRepository.list();
-      }
-
-      if (result.timeBoxDate) {
-        timeBoxes = await timeBoxRepository.listByDate(result.timeBoxDate);
-        cachedContextNames = await contextRepository.list();
-      }
-
       if (result.action === "switch_context") {
         recentContexts = recordRecentContext(recentContexts, state.currentContext);
         resultSet = await searchCurrentFacts({
@@ -317,7 +297,6 @@ export function createAppRuntime({
           state,
           input,
           promptClassifier,
-          planParser,
           searchShortcutRegistry,
           clock
         }),
@@ -335,7 +314,6 @@ export function createAppRuntime({
           searchShortcutRegistry,
           clock
         }),
-        timeBoxes,
         helpLines: contextListPreviewForInput({
           input,
           recentContexts: visibleRecentContexts,
@@ -369,7 +347,6 @@ export function createAppRuntime({
         width,
         height,
         today: clock().toISOString().slice(0, 10),
-        now: clock(),
         colorEnabled
       });
     },
@@ -1062,7 +1039,6 @@ function stateForPreview({
   state,
   input,
   promptClassifier,
-  planParser,
   searchShortcutRegistry,
   clock
 }) {
@@ -1075,12 +1051,6 @@ function stateForPreview({
     ...state,
     currentMode
   };
-
-  if (currentMode === "Plan") {
-    previewState.planPreview = planParser.parse(input, {
-      today: clock().toISOString().slice(0, 10)
-    });
-  }
 
   if (currentMode === "Search") {
     previewState.currentQuery = queryForSearchPreview({

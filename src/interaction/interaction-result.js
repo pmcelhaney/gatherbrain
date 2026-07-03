@@ -7,8 +7,6 @@ export class InteractionResult {
     filePath = null,
     resultSet = null,
     query = null,
-    timeBox = null,
-    timeBoxDate = null,
     helpLines = null,
     undoSnapshot = null,
     transient = false
@@ -20,8 +18,6 @@ export class InteractionResult {
     this.filePath = filePath;
     this.resultSet = resultSet;
     this.query = query;
-    this.timeBox = timeBox;
-    this.timeBoxDate = timeBoxDate;
     this.helpLines = helpLines;
     this.undoSnapshot = undoSnapshot;
     this.transient = transient;
@@ -61,15 +57,6 @@ export class InteractionResult {
     });
   }
 
-  static planned({ mode, timeBox }) {
-    return new InteractionResult({
-      mode,
-      action: "plan",
-      message: `planned ${timeBox.startsAt}-${timeBox.endsAt} ${timeBox.context.name}`,
-      timeBox
-    });
-  }
-
   static help({ mode, helpLines }) {
     return new InteractionResult({
       mode,
@@ -85,15 +72,6 @@ export class InteractionResult {
       action,
       message,
       helpLines
-    });
-  }
-
-  static timeBoxChanged({ mode, action, message, timeBoxDate }) {
-    return new InteractionResult({
-      mode,
-      action,
-      message,
-      timeBoxDate
     });
   }
 }

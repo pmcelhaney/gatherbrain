@@ -1,5 +1,4 @@
 import { Context } from "./context.js";
-import { normalizeTags } from "./tags.js";
 
 export class Fact {
   constructor({
@@ -11,8 +10,7 @@ export class Fact {
     file = null,
     url = null,
     homeContext,
-    associatedContexts = [],
-    tags = []
+    associatedContexts = []
   }) {
     if (typeof content !== "string" || content.trim().length === 0) {
       throw new Error("Fact content is required");
@@ -27,7 +25,6 @@ export class Fact {
     this.dueDate = normalizeDate(dueDate);
     this.file = normalizeFile(file);
     this.url = normalizeUrl(url);
-    this.tags = normalizeTags(tags);
 
     for (const context of associatedContexts) {
       this.associateContext(context);
@@ -44,23 +41,6 @@ export class Fact {
 
   clearDueDate() {
     this.dueDate = null;
-  }
-
-  addTag(tag) {
-    this.tags = normalizeTags([...this.tags, tag]);
-  }
-
-  removeTag(tag) {
-    const [normalizedTag] = normalizeTags([tag]);
-
-    if (!normalizedTag) {
-      return;
-    }
-
-    const canonicalTag = normalizedTag.toLocaleLowerCase("en-US");
-    this.tags = this.tags.filter(
-      (existing) => existing.toLocaleLowerCase("en-US") !== canonicalTag
-    );
   }
 
   associateContext(context) {
@@ -94,8 +74,7 @@ export class Fact {
       file: this.file,
       url: this.url,
       homeContext: this.homeContext.name,
-      associatedContexts: this.associatedContexts.map((context) => context.name),
-      tags: this.tags
+      associatedContexts: this.associatedContexts.map((context) => context.name)
     };
   }
 

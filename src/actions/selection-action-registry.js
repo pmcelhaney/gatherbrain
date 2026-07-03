@@ -1,5 +1,4 @@
 import {
-  AddTagAction,
   AssociateCurrentContextAction,
   ClearDueDateAction,
   EditFactFileAction,
@@ -31,11 +30,7 @@ export class SelectionActionRegistry {
 
   resolve(keyword) {
     if (isRemoveContextAssociationAction(keyword)) {
-      return new RemoveContextAssociationAction(tagFromAction(keyword.slice(1)));
-    }
-
-    if (isTagAction(keyword)) {
-      return new AddTagAction(tagFromAction(keyword));
+      return new RemoveContextAssociationAction(contextFromAction(keyword.slice(1)));
     }
 
     const action = this.actions.get(keyword);
@@ -89,15 +84,8 @@ export class SelectionActionRegistry {
 
     if (isRemoveContextAssociationAction(resolvedKeyword)) {
       const previewFact = fact.constructor.from(fact.toSerializable());
-      const contextName = tagFromAction(resolvedKeyword.slice(1));
-      previewFact.removeTag(contextName);
+      const contextName = contextFromAction(resolvedKeyword.slice(1));
       previewFact.dissociateContext(contextName);
-      return previewFact;
-    }
-
-    if (isTagAction(resolvedKeyword)) {
-      const previewFact = fact.constructor.from(fact.toSerializable());
-      previewFact.addTag(tagFromAction(resolvedKeyword));
       return previewFact;
     }
 
@@ -148,15 +136,11 @@ function selectionActionText({ actionKeyword, args = [] }) {
   return [actionKeyword, ...args].filter(Boolean).join(" ");
 }
 
-function isTagAction(keyword) {
-  return typeof keyword === "string" && keyword.startsWith("@") && keyword.length > 1;
-}
-
 function isRemoveContextAssociationAction(keyword) {
   return typeof keyword === "string" && keyword.startsWith("-@") && keyword.length > 2;
 }
 
-function tagFromAction(keyword) {
+function contextFromAction(keyword) {
   return keyword.slice(1);
 }
 

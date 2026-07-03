@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, it } from "node:test";
 
 import { PromptController } from "../../src/interaction/index.js";
 import { FactRepository, Workspace } from "../../src/persistence/index.js";
-import { TimeBoxRepository } from "../../src/planning/index.js";
 import { AppMode, AppState } from "../../src/state/index.js";
 
 describe("PromptController", () => {
@@ -26,7 +25,6 @@ describe("PromptController", () => {
       state,
       factRepository: new FactRepository({ workspace: new Workspace(rootPath) }),
       factSource: new FactRepository({ workspace: new Workspace(rootPath) }),
-      timeBoxRepository: new TimeBoxRepository({ workspace: new Workspace(rootPath) }),
       clock: () => new Date("2026-06-30T15:45:00.000Z"),
       idGenerator: () => generatedIds.shift() ?? "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
       currentResultSetProvider: () => currentResultSet,
@@ -55,11 +53,10 @@ describe("PromptController", () => {
     await fs.access(result.filePath);
   });
 
-  it("captures @ tags and leaves possessives as text", async () => {
+  it("captures @ text without separate tag metadata", async () => {
     const result = await controller.submit("Ask @Steve\\ Ma when @Devin's trial ends.");
 
-    assert.equal(result.fact.content, "Ask @Steve Ma when @Devin's trial ends.");
-    assert.deepEqual(result.fact.tags, ["Steve Ma", "Devin"]);
+    assert.equal(result.fact.content, "Ask @Steve\\ Ma when @Devin's trial ends.");
   });
 
   it("captures natural language dates as ISO dates", async () => {
@@ -191,21 +188,21 @@ describe("PromptController", () => {
     assert.equal(saved.dueDate, "2026-06-30");
   });
 
-  it("removes due dates and context tag associations from selection commands", async () => {
+  it("removes due dates and context associations from selection commands", async () => {
     await controller.submit("Follow up with Steve.");
     const search = await controller.submit("/Steve");
     currentResultSet = search.resultSet;
 
-    await controller.submit("1 tomorrow @Steve\\ Ma");
-    const result = await controller.submit("1 -due -@Steve\\ Ma");
+    await controller.submit("1 tomorrow gather");
+    const result = await controller.submit("1 -due -@Steve");
 
     assert.equal(result.action, "selection_action");
-    assert.equal(result.message, "-due -@Steve\\ Ma applied to 1 fact");
+    assert.equal(result.message, "-due -@Steve applied to 1 fact");
     const saved = await controller.factRepository.getFactById(
       "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
     );
     assert.equal(saved.dueDate, null);
-    assert.deepEqual(saved.tags, []);
+    assert.deepEqual(saved.associatedContexts, []);
   });
 
   it("does not partially apply multiple selection actions when one is unknown", async () => {
@@ -256,18 +253,10 @@ describe("PromptController", () => {
     assert.match(editedFiles[0], /7f32fa70-f4b9-45fb-9ab7-2a48e9573f1b-second-follow-up\.md$/);
   });
 
-  it("executes plan input by saving a time box", async () => {
+  it("treats former plan input as normal capture text", async () => {
     const result = await controller.submit("; 9-10 Steve");
 
-    assert.equal(result.action, "plan");
-    assert.equal(result.timeBox.date, "2026-06-30");
-    assert.equal(result.message, "planned 09:00-10:00 Steve");
-  });
-
-  it("executes plan input with natural language dates", async () => {
-    const result = await controller.submit("; June 1 9-10 Steve");
-
-    assert.equal(result.action, "plan");
-    assert.equal(result.timeBox.date, "2026-06-01");
+    assert.equal(result.action, "capture");
+    assert.equal(result.fact.content, "; 9-10 Steve");
   });
 });

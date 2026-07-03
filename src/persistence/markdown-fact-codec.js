@@ -15,11 +15,6 @@ export class MarkdownFactCodec {
       lines.push(`  - ${context}`);
     }
 
-    lines.push("tags:");
-    for (const tag of serializable.tags) {
-      lines.push(`  - ${tag}`);
-    }
-
     lines.push(`due: ${serializable.dueDate ?? ""}`);
     lines.push(`file: ${serializable.file ?? ""}`);
     lines.push(`url: ${serializable.url ?? ""}`);
@@ -45,8 +40,7 @@ export class MarkdownFactCodec {
       file: frontMatter.file || null,
       url: frontMatter.url || null,
       homeContext: requiredOption(homeContext, "homeContext"),
-      associatedContexts: frontMatter.associated_contexts ?? [],
-      tags: frontMatter.tags ?? []
+      associatedContexts: frontMatter.associated_contexts ?? []
     });
   }
 }

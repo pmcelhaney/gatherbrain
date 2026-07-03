@@ -35,8 +35,6 @@ function prefixForMode(mode) {
       return ">";
     case AppMode.COMMAND:
       return ">";
-    case AppMode.PLAN:
-      return ">";
     case AppMode.SELECTION:
       return ">";
     case AppMode.CAPTURE:

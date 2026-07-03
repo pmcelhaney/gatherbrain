@@ -16,8 +16,7 @@ describe("MarkdownFactCodec", () => {
       file: "review-notes.txt",
       url: "https://example.com/review",
       homeContext: "Architecture Review Board",
-      associatedContexts: ["Steve", "Enterprise Architecture"],
-      tags: ["Devin", "Steve Ma"]
+      associatedContexts: ["Steve", "Enterprise Architecture"]
     });
 
     assert.equal(codec.serialize(fact), `---
@@ -27,9 +26,6 @@ created: 2026-06-30T14:15:23.000Z
 associated_contexts:
   - Steve
   - Enterprise Architecture
-tags:
-  - Devin
-  - Steve Ma
 due: 
 file: review-notes.txt
 url: https://example.com/review
@@ -62,11 +58,10 @@ Mike prefers async architecture reviews.
     assert.equal(fact.dueDate, "2026-07-01");
     assert.equal(fact.file, "review-notes.txt");
     assert.equal(fact.url, "https://example.com/review");
-    assert.deepEqual(fact.tags, ["Devin", "Steve Ma"]);
     assert.equal(fact.content, "Mike prefers async architecture reviews.");
   });
 
-  it("parses facts without tags for backward compatibility", () => {
+  it("parses facts without legacy tag metadata", () => {
     const codec = new MarkdownFactCodec();
     const fact = codec.parse(`---
 id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
@@ -79,7 +74,6 @@ file:
 Mike prefers async architecture reviews.
 `, { homeContext: "Architecture Review Board" });
 
-    assert.deepEqual(fact.tags, []);
     assert.equal(fact.url, null);
   });
 

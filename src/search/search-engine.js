@@ -59,8 +59,7 @@ function containsTerm(fact, term) {
     fact.type,
     fact.url,
     fact.homeContext.name,
-    ...fact.associatedContexts.map((context) => context.name),
-    ...fact.tags
+    ...fact.associatedContexts.map((context) => context.name)
   ].join(" ").toLocaleLowerCase("en-US");
 
   return haystack.includes(term.toLocaleLowerCase("en-US"));
@@ -80,10 +79,6 @@ function matchesField(fact, node, context) {
     ];
 
     return contexts.some((context) => compareText(context, node.operator, value));
-  }
-
-  if (node.field === "tag") {
-    return fact.tags.some((tag) => compareText(tag, node.operator, value));
   }
 
   if (node.field === "due") {

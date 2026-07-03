@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { Fact, TimeBox } from "../../src/domain/index.js";
+import { Fact } from "../../src/domain/index.js";
 import { SearchResultSet } from "../../src/search/index.js";
-import { AppMode, AppState, PlanPreview } from "../../src/state/index.js";
+import { AppMode, AppState } from "../../src/state/index.js";
 import {
   BodyRenderer,
-  CalendarRenderer,
   HeaderRenderer,
   PromptRenderer,
   TerminalApp
@@ -52,7 +51,7 @@ describe("terminal renderers", () => {
   it("renders fact rows in the body", () => {
     const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([buildFact()]);
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const renderer = new BodyRenderer();
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
@@ -65,7 +64,7 @@ describe("terminal renderers", () => {
     const resultSet = new SearchResultSet([
       buildFact({ type: "fact", dueDate: null })
     ]);
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const renderer = new BodyRenderer();
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
@@ -83,7 +82,7 @@ describe("terminal renderers", () => {
         url: "https://nodejs.org/api/test.html"
       })
     ]);
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const renderer = new BodyRenderer();
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
@@ -91,38 +90,14 @@ describe("terminal renderers", () => {
     );
   });
 
-  it("colors tag mentions in fact rows", () => {
+  it("renders @ text plainly", () => {
     const state = new AppState({ currentContext: "Steve" });
     const resultSet = new SearchResultSet([
       buildFact({
-        content: "@Steve Ma said @Devin's trial ends.",
-        tags: ["Steve Ma", "Devin"]
+        content: "@Steve Ma said @Devin's trial ends."
       })
     ]);
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
-
-    assert.equal(
-      renderer.render({
-        state,
-        resultSet,
-        width: 80,
-        height: 10,
-        today: "2026-06-30",
-        colorEnabled: true
-      }).join("\n"),
-      `\x1b[90m 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0m\x1b[32m@Steve Ma\x1b[0m said \x1b[32m@Devin\x1b[0m's trial ends.`
-    );
-  });
-
-  it("leaves tag mentions plain when color is disabled", () => {
-    const state = new AppState({ currentContext: "Steve" });
-    const resultSet = new SearchResultSet([
-      buildFact({
-        content: "@Steve Ma said @Devin's trial ends.",
-        tags: ["Steve Ma", "Devin"]
-      })
-    ]);
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const renderer = new BodyRenderer();
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
@@ -130,64 +105,9 @@ describe("terminal renderers", () => {
     );
   });
 
-  it("renders unmentioned tags after fact content", () => {
-    const state = new AppState({ currentContext: "Steve" });
-    const resultSet = new SearchResultSet([
-      buildFact({
-        content: "Follow up tomorrow.",
-        tags: ["Steve Ma"]
-      })
-    ]);
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
-
-    assert.equal(
-      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      " 1. task tomorrow Follow up tomorrow. >Steve Ma"
-    );
-  });
-
-  it("colors unmentioned tags after fact content", () => {
-    const state = new AppState({ currentContext: "Steve" });
-    const resultSet = new SearchResultSet([
-      buildFact({
-        content: "Follow up tomorrow.",
-        tags: ["Steve Ma"]
-      })
-    ]);
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
-
-    assert.equal(
-      renderer.render({
-        state,
-        resultSet,
-        width: 80,
-        height: 10,
-        today: "2026-06-30",
-        colorEnabled: true
-      }).join("\n"),
-      `\x1b[90m 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0mFollow up tomorrow. \x1b[32m>Steve Ma\x1b[0m`
-    );
-  });
-
-  it("does not repeat tags already mentioned in fact content", () => {
-    const state = new AppState({ currentContext: "Steve" });
-    const resultSet = new SearchResultSet([
-      buildFact({
-        content: "Follow up with @Steve Ma tomorrow.",
-        tags: ["Steve Ma"]
-      })
-    ]);
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
-
-    assert.equal(
-      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      " 1. task tomorrow Follow up with @Steve Ma tomorrow."
-    );
-  });
-
   it("renders friendly due labels", () => {
     const state = new AppState({ currentContext: "Steve" });
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const renderer = new BodyRenderer();
     const resultSet = new SearchResultSet([
       buildFact({ id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a", dueDate: "2026-06-30" }),
       buildFact({ id: "6f2308de-02e9-45db-8ff0-65ac793f4a24", dueDate: "2026-07-01" }),
@@ -219,7 +139,7 @@ describe("terminal renderers", () => {
         dueDate: null
       })
     ]);
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const renderer = new BodyRenderer();
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
@@ -229,7 +149,7 @@ describe("terminal renderers", () => {
 
   it("marks preview-selected fact rows", () => {
     const state = new AppState({ currentContext: "Steve" });
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const renderer = new BodyRenderer();
     const selectedFact = buildFact();
     const resultSet = new SearchResultSet([selectedFact]);
 
@@ -248,7 +168,7 @@ describe("terminal renderers", () => {
 
   it("renders facts outside the current context without a context marker", () => {
     const state = new AppState({ currentContext: "Steve" });
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const renderer = new BodyRenderer();
     const resultSet = new SearchResultSet([
       buildFact({ homeContext: "Architecture Review Board" })
     ]);
@@ -264,7 +184,7 @@ describe("terminal renderers", () => {
       currentContext: "Steve",
       currentMode: AppMode.SEARCH
     });
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const renderer = new BodyRenderer();
     const resultSet = new SearchResultSet([
       buildFact({ homeContext: "Architecture Review Board" })
     ]);
@@ -280,7 +200,7 @@ describe("terminal renderers", () => {
       currentContext: "Steve",
       currentMode: AppMode.SEARCH
     });
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const renderer = new BodyRenderer();
     const resultSet = new SearchResultSet([
       buildFact({ homeContext: "Steve" }),
       buildFact({
@@ -304,7 +224,7 @@ describe("terminal renderers", () => {
       currentContext: "Steve",
       currentMode: AppMode.SEARCH
     });
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const renderer = new BodyRenderer();
     const resultSet = new SearchResultSet([
       buildFact({ homeContext: "Steve" }),
       buildFact({
@@ -325,7 +245,7 @@ describe("terminal renderers", () => {
 
   it("renders facts associated with the current context without a context marker", () => {
     const state = new AppState({ currentContext: "Steve" });
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const renderer = new BodyRenderer();
     const resultSet = new SearchResultSet([
       buildFact({
         homeContext: "Architecture Review Board",
@@ -341,10 +261,9 @@ describe("terminal renderers", () => {
 
   it("uses reverse video for preview selection when color is enabled", () => {
     const state = new AppState({ currentContext: "Steve" });
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const renderer = new BodyRenderer();
     const selectedFact = buildFact({
-      content: "Follow up with @Steve Ma.",
-      tags: ["Steve Ma"]
+      content: "Follow up with @Steve Ma."
     });
     const resultSet = new SearchResultSet([selectedFact]);
 
@@ -360,36 +279,13 @@ describe("terminal renderers", () => {
 
     assert.equal(
       rendered,
-      "\x1b[7m\x1b[90m 1. \x1b[0m\x1b[7m\x1b[36mtask \x1b[0m\x1b[7m\x1b[35mtomorrow \x1b[0m\x1b[7mFollow up with \x1b[32m@Steve Ma\x1b[0m\x1b[7m.\x1b[0m"
+      "\x1b[7m\x1b[90m 1. \x1b[0m\x1b[7m\x1b[36mtask \x1b[0m\x1b[7m\x1b[35mtomorrow \x1b[0m\x1b[7mFollow up with @Steve Ma.\x1b[0m"
     );
   });
 
-  it("renders calendar rows and plan previews in plan mode", () => {
-    const state = new AppState({
-      currentContext: "Steve",
-      currentMode: AppMode.PLAN,
-      planPreview: PlanPreview.valid(buildTimeBox("preview", "11:00", "12:00", "Counterfact"))
-    });
-    const renderer = new CalendarRenderer();
-
-    const rendered = renderer.render({
-      timeBoxes: [buildTimeBox("actual", "09:00", "10:00", "Steve")],
-      planPreview: state.planPreview,
-      now: new Date(2026, 5, 30, 10, 30),
-      height: 21
-    });
-
-    assert.equal(rendered[0], " 8:00  ○  free · 1h");
-    assert.equal(rendered[2], " 9:00  ●  Steve · 1h");
-    assert.equal(rendered[4], "10:00  ○  free · 1h");
-    assert.equal(rendered[5], "10:30  ◆  now");
-    assert.equal(rendered[6], "11:00  ?  Counterfact · 1h");
-    assert.equal(rendered[8], "12:00  ○  free · 6h");
-  });
-
   it("renders help lines before other body modes", () => {
-    const state = new AppState({ currentMode: AppMode.PLAN });
-    const renderer = new BodyRenderer({ calendarRenderer: new CalendarRenderer() });
+    const state = new AppState({ currentMode: AppMode.COMMAND });
+    const renderer = new BodyRenderer();
 
     assert.equal(
       renderer.render({ state, helpLines: ["Commands", ":help"], height: 10 }).join("\n"),
@@ -486,15 +382,5 @@ function buildFact(overrides = {}) {
     dueDate: "2026-07-01",
     homeContext: "Steve",
     ...overrides
-  });
-}
-
-function buildTimeBox(id, startsAt, endsAt, context) {
-  return new TimeBox({
-    id,
-    date: "2026-06-30",
-    startsAt,
-    endsAt,
-    context
   });
 }

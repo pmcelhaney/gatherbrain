@@ -5,5 +5,4 @@ export { FileOpener } from "./file-opener.js";
 export { MarkdownFactCodec } from "./markdown-fact-codec.js";
 export { PasteRepository } from "./paste-repository.js";
 export { ContextRepository } from "./context-repository.js";
-export { TagRepository } from "./tag-repository.js";
 export { Workspace, normalizeDate } from "./workspace.js";

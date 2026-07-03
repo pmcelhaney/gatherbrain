@@ -4,9 +4,6 @@ This sketch treats the spec as a domain model first and a terminal UI second.
 The goal is to keep storage, parsing, state transitions, and rendering separate
 enough that each can be tested without running the full TUI.
 
-The application will be built in Node.js. Class names in this document refer to
-JavaScript classes unless a later implementation note says otherwise.
-
 ## Domain Classes
 
 ### `Context`
@@ -19,24 +16,19 @@ Responsibilities:
 - Provide filesystem-safe path segments for storage.
 - Compare contexts by canonical name.
 
-Does not:
-
-- Own facts.
-- Know about interactive query preview or selection state.
-- Manage time boxes directly.
-
 ### `Fact`
 
 Represents one Markdown-backed unit of knowledge.
 
 Core fields:
 
-- `id`, stored as a UUID
+- `id`
 - `content`
 - `type`
 - `createdAt`
 - `dueDate`
 - `file`
+- `url`
 - `homeContext`
 - `associatedContexts`
 
@@ -46,46 +38,13 @@ Responsibilities:
 - Enforce that every fact ID is a UUID.
 - Add or remove associated contexts without duplicating the home context.
 - Apply domain changes such as `setType`, `setDueDate`, and `associateContext`.
-- Produce a serializable representation for Markdown storage. The home context
-  stays on the domain object, but it is derived from the containing directory
-  and is not serialized into front matter.
-
-Does not:
-
-- Decide where files live.
-- Parse search syntax.
-- Render itself for the terminal.
-
-### `TimeBox`
-
-Represents planned work for a time range, date, and context.
-
-Core fields:
-
-- `id`
-- `date`
-- `context`
-- `startsAt`
-- `endsAt`
-
-Responsibilities:
-
-- Validate that the end is after the start.
-- Keep the calendar date explicit even when start and end times are local-time
-  values.
-- Answer overlap and containment questions.
-- Carry only planning data, never fact data.
-
-Does not:
-
-- Create facts.
-- Change the current context on its own.
+- Produce a serializable representation for Markdown storage.
 
 ## Application State
 
 ### `AppState`
 
-Owns the current interactive state from the spec.
+Owns the current interactive state.
 
 Core fields:
 
@@ -93,7 +52,6 @@ Core fields:
 - `currentQuery`
 - `currentSelection`
 - `currentMode`
-- `planPreview`
 
 Responsibilities:
 
@@ -102,15 +60,9 @@ Responsibilities:
 - Switch contexts and reset the query to `context:<new context>`.
 - Track mode transitions inferred from prompt input.
 
-Does not:
-
-- Persist facts.
-- Execute commands directly.
-- Parse every prompt grammar itself.
-
 ### `Selection`
 
-Represents the stable selected result identities, not just row numbers.
+Represents stable selected fact identities, not just row numbers.
 
 Responsibilities:
 
@@ -118,41 +70,11 @@ Responsibilities:
 - Preserve selected fact IDs for command execution.
 - Clear when the context or query changes.
 
-Does not:
-
-- Apply actions.
-- Store facts.
-
-### `PlanPreview`
-
-Represents the uncommitted edit in plan mode.
-
-Responsibilities:
-
-- Hold the parsed time box draft while the user types.
-- Report whether the preview is valid enough to commit.
-- Convert to a `TimeBox` on Enter.
-
-Does not:
-
-- Persist itself.
-- Create facts.
-
 ## Parsing And Dispatch
 
 ### `PromptClassifier`
 
-Classifies raw prompt input into one of the five modes.
-
-Responsibilities:
-
-- Detect capture, search, command, selection, and plan prefixes.
-- Keep the first-character mode rules centralized.
-
-Does not:
-
-- Execute the prompt.
-- Mutate application state.
+Classifies raw prompt input into capture, search, command, or selection mode.
 
 ### `PromptController`
 
@@ -162,12 +84,8 @@ Responsibilities:
 
 - Accept raw input.
 - Ask `PromptClassifier` which mode applies.
-- Route to the matching handler.
+- Route to capture, command, search, or selection handling.
 - Return an `InteractionResult` describing state changes and messages.
-
-Does not:
-
-- Contain detailed command, search, selection, or plan parsers.
 
 ### `SearchQueryParser`
 
@@ -180,81 +98,40 @@ Responsibilities:
 - Treat adjacent terms as implicit `AND`.
 - Produce a query AST.
 
-Does not:
-
-- Search files.
-- Know about terminal row numbers.
-
 ### `SearchShortcutRegistry`
 
 Expands `//shortcut` queries.
 
-Responsibilities:
-
-- Store named shortcut definitions.
-- Resolve dynamic values such as current context, today, and this week.
-- Return a complete search query string before parsing.
-
-Does not:
-
-- Parse the expanded query.
-- Execute searches.
-
 ### `CommandRegistry`
 
-Maps `:` command names to command objects.
+Maps command names to command objects.
 
-Initial commands:
+Supported commands include:
 
-- `SwitchContextCommand`
-- `RestartCommand`
-- `PasteCommand`
-
-Responsibilities:
-
-- Resolve command names.
-- Validate command arguments.
-- Execute state transitions through explicit command classes.
-
-Does not:
-
-- Handle selection actions.
+- `@<context>`
+- `:context`
+- `:contexts`
+- `:inspect`
+- `:undo`
+- `:restart`
+- `:paste`
+- `:help`
+- `:exit` / `:quit`
 
 ### `SelectionActionRegistry`
 
 Maps configurable action keywords to action objects.
 
-Initial actions:
+Built-in actions include:
 
 - `SetTypeAction`
 - `SetDueDateAction`
+- `ClearDueDateAction`
 - `TrashFactAction`
 - `AssociateCurrentContextAction`
-
-Responsibilities:
-
-- Load the action DSL.
-- Resolve an action keyword such as `task`, `tomorrow`, `delete`, or `gather`.
-- Apply the action to selected facts through repositories.
-
-Does not:
-
-- Parse search queries.
-- Change command-mode behavior.
-
-### `PlanParser`
-
-Parses `;` input into a `PlanPreview`.
-
-Responsibilities:
-
-- Parse examples such as `; 9-10 Steve` and `; tomorrow 2-3 Reading`.
-- Resolve the planning date and local start and end times.
-- Return a staged time box draft for immediate calendar rendering.
-
-Does not:
-
-- Persist the time box until the preview is committed.
+- `RemoveContextAssociationAction`
+- `OpenFileAction`
+- `EditFactFileAction`
 
 ## Persistence
 
@@ -264,15 +141,8 @@ Represents the root storage location.
 
 Responsibilities:
 
-- Locate root-level context folders, fact files, and `.trash`.
-- Locate the daily time box text file for a given date.
+- Locate context folders, fact files, pasted files, and `.trash`.
 - Provide path-building helpers for repositories.
-
-Does not:
-
-- Parse Markdown front matter.
-- Parse time box text files.
-- Execute searches.
 
 ### `FactRepository`
 
@@ -286,44 +156,9 @@ Responsibilities:
 - Update front matter and content.
 - Move deleted facts into `.trash` under their home context.
 
-Does not:
+### `PasteRepository`
 
-- Decide what a selection action means.
-- Maintain current UI state.
-
-### `TimeBoxRepository`
-
-Persists and retrieves time boxes in date-scoped text files.
-
-Responsibilities:
-
-- Save committed time boxes.
-- Store time boxes one file per date so historical plans remain available.
-- Load the current date cheaply for the normal interactive workflow.
-- Read and write through `TimeBoxTextCodec`.
-- Query historical dates without coupling planning data to fact storage.
-- Query time boxes by time range.
-- Keep planning storage independent from fact storage.
-
-Does not:
-
-- Create facts.
-- Drive plan preview rendering.
-
-### `TimeBoxTextCodec`
-
-Handles conversion between `TimeBox` instances and daily text files.
-
-Responsibilities:
-
-- Parse one date's time boxes from a text file.
-- Serialize one date's time boxes back to text.
-- Preserve enough stable identity to update or delete committed time boxes.
-
-Does not:
-
-- Choose file paths.
-- Query historical ranges.
+Writes clipboard payloads as files beside facts in the current context.
 
 ### `MarkdownFactCodec`
 
@@ -335,11 +170,11 @@ Responsibilities:
 - Serialize front matter.
 - Require repository-provided storage context for the fact's home context.
 - Preserve fact body content.
+- Tolerate legacy `tags:` front matter without exposing it as active metadata.
 
-Does not:
+### `AppStateRepository`
 
-- Choose file paths.
-- Move files to trash.
+Persists resumable app state, currently the last current context.
 
 ## Search And Results
 
@@ -350,13 +185,8 @@ Executes parsed search queries against facts.
 Responsibilities:
 
 - Evaluate query AST nodes against facts.
-- Support field filters such as `type`, `due`, and `context`.
+- Support field filters such as `type`, `due`, `context`, and `content`.
 - Return a stable `SearchResultSet`.
-
-Does not:
-
-- Parse prompt strings.
-- Render rows.
 
 ### `SearchResultSet`
 
@@ -368,41 +198,25 @@ Responsibilities:
 - Expose visible ordering for rendering and dot selection.
 - Resolve displayed numbers to fact IDs.
 
-Does not:
-
-- Mutate facts.
-
 ## Terminal UI
 
 ### `TerminalApp`
 
-Top-level runtime object.
-
-Responsibilities:
-
-- Wire together state, repositories, parsers, registries, and renderers.
-- Handle lifecycle startup and shutdown.
-- Drive the render loop.
-
-Does not:
-
-- Contain domain rules that belong in lower-level classes.
+Top-level renderer coordinator for header, body, completion/status lines, and
+prompt.
 
 ### `HeaderRenderer`
 
-Renders current context, preview query, mode, and result count.
+Renders current context, preview query, and viewed-context breadcrumbs.
 
 ### `BodyRenderer`
 
-Renders either the current `SearchResultSet` or the calendar in plan mode.
+Renders facts, search results, help lines, inspect panels, and selection
+previews.
 
 ### `PromptRenderer`
 
-Renders the prompt according to current mode and input buffer.
-
-### `CalendarRenderer`
-
-Renders committed time boxes plus the staged `PlanPreview`.
+Renders the prompt and cursor/completion suffix state.
 
 ## Suggested Dependency Direction
 
@@ -418,15 +232,3 @@ TerminalApp
 Renderers should read view models, not repositories directly.
 Repositories should know storage details, not terminal state.
 Domain classes should not import UI, parser, or persistence code.
-
-## First Implementation Slices
-
-1. Domain classes: `Context`, `Fact`, `TimeBox`.
-2. State classes: `AppState`, `Selection`, `PlanPreview`.
-3. Fact persistence: `Workspace`, `MarkdownFactCodec`, `FactRepository`.
-4. Prompt classification and capture flow.
-5. Search parser and shortcut expansion.
-6. Selection actions.
-7. Planning parser and daily time box persistence: `PlanParser`,
-   `TimeBoxTextCodec`, `TimeBoxRepository`.
-8. Terminal rendering.

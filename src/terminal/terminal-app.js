@@ -1,5 +1,4 @@
 import { BodyRenderer } from "./body-renderer.js";
-import { CalendarRenderer } from "./calendar-renderer.js";
 import { HeaderRenderer } from "./header-renderer.js";
 import { PromptRenderer } from "./prompt-renderer.js";
 import { ansi, color, truncateVisible } from "./ansi.js";
@@ -8,8 +7,7 @@ export class TerminalApp {
   constructor({
     state,
     headerRenderer = new HeaderRenderer(),
-    calendarRenderer = new CalendarRenderer(),
-    bodyRenderer = new BodyRenderer({ calendarRenderer }),
+    bodyRenderer = new BodyRenderer(),
     promptRenderer = new PromptRenderer()
   }) {
     this.state = state;
@@ -20,7 +18,6 @@ export class TerminalApp {
 
   render({
     resultSet = null,
-    timeBoxes = [],
     helpLines = null,
     selectionPreview = null,
     input = "",
@@ -33,7 +30,6 @@ export class TerminalApp {
     width = 80,
     height = 24,
     today = null,
-    now = null,
     colorEnabled = false,
     state = this.state,
     viewedContext = null
@@ -68,13 +64,11 @@ export class TerminalApp {
     const bodyLines = this.bodyRenderer.render({
       state,
       resultSet,
-      timeBoxes,
       helpLines,
       selectionPreview,
       width,
       height: bodyHeight,
       today,
-      now,
       colorEnabled
     });
     const paddedBody = padLines(bodyLines, bodyHeight);

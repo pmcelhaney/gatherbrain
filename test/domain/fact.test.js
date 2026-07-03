@@ -61,8 +61,7 @@ describe("Fact", () => {
       file: "launch-notes.txt",
       url: "https://example.com/launch",
       homeContext: "Steve",
-      associatedContexts: ["Architecture Review Board"],
-      tags: ["Devin", " devin ", "Steve Ma"]
+      associatedContexts: ["Architecture Review Board"]
     });
 
     assert.deepEqual(fact.toSerializable(), {
@@ -74,8 +73,7 @@ describe("Fact", () => {
       file: "launch-notes.txt",
       url: "https://example.com/launch",
       homeContext: "Steve",
-      associatedContexts: ["Architecture Review Board"],
-      tags: ["Devin", "Steve Ma"]
+      associatedContexts: ["Architecture Review Board"]
     });
   });
 

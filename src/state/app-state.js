@@ -1,13 +1,11 @@
 import { Context } from "../domain/index.js";
-import { PlanPreview } from "./plan-preview.js";
 import { Selection } from "./selection.js";
 
 export const AppMode = Object.freeze({
   CAPTURE: "Capture",
   SEARCH: "Search",
   COMMAND: "Command",
-  SELECTION: "Selection",
-  PLAN: "Plan"
+  SELECTION: "Selection"
 });
 
 export class AppState {
@@ -15,14 +13,12 @@ export class AppState {
     currentContext = null,
     currentQuery = null,
     currentSelection = new Selection(),
-    currentMode = AppMode.COMMAND,
-    planPreview = null
+    currentMode = AppMode.COMMAND
   } = {}) {
     this.currentContext = currentContext ? Context.from(currentContext) : null;
     this.currentQuery = currentQuery ?? defaultQueryFor(this.currentContext);
     this.currentSelection = Selection.from(currentSelection);
     this.currentMode = normalizeMode(currentMode);
-    this.planPreview = planPreview ? PlanPreview.from(planPreview) : null;
   }
 
   canCaptureFact() {
@@ -39,7 +35,6 @@ export class AppState {
     this.currentContext = Context.from(context);
     this.currentQuery = defaultQueryFor(this.currentContext);
     this.currentSelection.clear();
-    this.planPreview = null;
     this.currentMode = AppMode.CAPTURE;
   }
 
@@ -50,16 +45,11 @@ export class AppState {
 
     this.currentQuery = query.trim();
     this.currentSelection.clear();
-    this.planPreview = null;
     this.currentMode = AppMode.SEARCH;
   }
 
   setMode(mode) {
     this.currentMode = normalizeMode(mode);
-
-    if (this.currentMode !== AppMode.PLAN) {
-      this.planPreview = null;
-    }
   }
 
   setSelection(selection) {
@@ -67,21 +57,11 @@ export class AppState {
     this.currentMode = AppMode.SELECTION;
   }
 
-  setPlanPreview(planPreview) {
-    this.planPreview = PlanPreview.from(planPreview);
-    this.currentMode = AppMode.PLAN;
-  }
-
-  clearPlanPreview() {
-    this.planPreview = null;
-  }
-
   restart() {
     this.currentContext = null;
     this.currentQuery = null;
     this.currentSelection.clear();
     this.currentMode = AppMode.COMMAND;
-    this.planPreview = null;
   }
 }
 

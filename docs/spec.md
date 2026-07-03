@@ -1,24 +1,23 @@
 # Gatherbrain Core Interaction Specification
 
-This is the living project specification. It started from the original
-interaction spec and should be updated as product and architecture decisions
-are made.
+This is the living project specification. It should be updated as product and
+architecture decisions change.
 
 ## Implementation Target
 
-Gatherbrain will be built in Node.js.
+Gatherbrain is built in Node.js.
 
 ## Design Principles
 
-Gatherbrain is a local-first terminal application for capturing knowledge while doing work.
+Gatherbrain is a local-first terminal application for capturing knowledge while
+doing work.
 
 The user is always working in a context.
 
 Knowledge is captured as small facts.
 
-Planning is managed independently through time boxes.
-
-The interface is optimized for keyboard-first operation with minimal mode switching.
+The interface is optimized for keyboard-first operation with minimal mode
+switching.
 
 ---
 
@@ -26,21 +25,16 @@ The interface is optimized for keyboard-first operation with minimal mode switch
 
 ## Context
 
-A context is the unit of work.
-
-Every interaction occurs within a current context.
+A context is the unit of work. Every fact belongs to one home context.
 
 Examples:
 
 - Steve
 - Architecture Review Board
-- Counterfact
 - Reading: Team Topologies
-- 2026-06-30 ARB Meeting
+- Technology Assembly/2026-07-08
 
-Contexts may be associated with facts and time boxes.
-
----
+Slash-separated context names are stored as nested directories.
 
 ## Fact
 
@@ -54,73 +48,46 @@ A fact has:
 - created timestamp
 - optional due date
 - optional associated file
+- optional associated URL
 - home context
 - associated contexts
 
-Every fact belongs to exactly one home context.
+Every fact belongs to exactly one home context. A fact may be associated with
+zero or more additional contexts through selection actions such as `gather`.
 
-A fact may be associated with zero or more additional contexts. Associated
-contexts and tags are the same user-facing association namespace. Tags are
-captured from `@` mentions in fact text, and `@` refers to a context name.
-Escaped spaces are normalized when saving, so `@Steve\ Ma` stores the tag
-`Steve Ma`. Possessives keep the suffix as text, so `@Devin's` stores the tag
-`Devin`.
-
-Context tag associations may also be added to selected existing facts with
-selection input such as `. @Steve\ Ma` or `1 @Steve\ Ma`.
-
-Known tags are discovered from root-level workspace directories, the same way
-contexts are discovered. Tab completion applies to dynamic `@` selection
-actions, so typing `. @` or `1 @St` completes from known tags.
-
----
+There is no separate tag model. Text containing `@Steve` is stored as normal
+fact content unless it is the leading prompt form used for context switching.
 
 ## Search
 
 Search retrieves facts.
 
 Search prompts are transient. While a slash search is being typed, the body
-previews the matching results before Enter is pressed. Pressing Enter on a
-plain search returns the body to the current context instead of making the
-search sticky.
+previews matching results before Enter is pressed. Pressing Enter on a plain
+search returns the body to the current context instead of making the search
+sticky.
 
 An empty search prompt (`/`) previews the current context query. If there is no
 current context, it previews all facts.
 
-Search results show matches from the current context first, ordered newest first
-by fact creation time. A blank line separates those matches from matches in
-other contexts, which are also ordered newest first by fact creation time.
+Search results show matches from the current context first, ordered newest
+first by fact creation time. A blank line separates those matches from matches
+in other contexts, which are also ordered newest first.
 
 Search result rows show a fact's home context only when the fact is outside the
-current context. Facts that live in the current context or are associated
-with the current context keep the compact current-context row.
-
-While search mode is being previewed, the header appends the preview query
-after the current context:
-
-```text
-<current context> | <search query>
-```
+current context. Facts that live in the current context or are associated with
+the current context keep the compact current-context row.
 
 Context search supports quoted values, unquoted multi-word context values, and
 `@Context Name` shorthand.
 
-Tag search supports `tag:<name>` field filters. Tags also participate in normal
-term search.
+Supported field filters:
 
----
-
-## Time Box
-
-A time box represents planned work.
-
-A time box associates a date and period of time with a context.
-
-Time boxes are independent of facts.
-
-Time boxes are stored in text files, one file per date. The current date is the
-normal active working set, but historical time boxes remain available by loading
-the relevant date file.
+- `type:<value>`
+- `context:<value>`
+- `session:<value>` as a legacy alias for `context:<value>`
+- `due:<date>` and due-date comparisons
+- `content:<value>`
 
 ---
 
@@ -134,7 +101,6 @@ Directory layout:
 <workspace>/
     Architecture Review Board/
         6f2308de-02e9-45db-8ff0-65ac793f4a24-review.md
-        9b099737-48ad-4b28-88d3-ae75c66c9e24-risk.md
 
     Steve/
         5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a-follow-up.md
@@ -144,10 +110,8 @@ Directory layout:
             a75ee82c-6b89-4676-8cb1-01222f976885-prep.md
 ```
 
-The home context is defined by the containing context directory. Slash-separated
-context names are stored as nested directories, so a fact in
-`Technology Assembly/2026-07-08` lives under that subdirectory. The home context
-is not stored in front matter.
+The home context is defined by the containing context directory. The home
+context is not stored in front matter.
 
 Each fact contains front matter similar to:
 
@@ -159,9 +123,6 @@ created: 2026-06-30T10:15:23-04:00
 associated_contexts:
   - Steve
   - Enterprise Architecture
-tags:
-  - Devin
-  - Steve Ma
 due:
 file:
 url:
@@ -170,84 +131,22 @@ url:
 
 Deleted facts are moved into a `.trash` directory beneath their home context.
 
-Example:
-
-```text
-<workspace>/
-    Architecture Review Board/
-        .trash/
-```
-
-Time boxes are stored separately from facts as daily text files.
-
-Example:
-
-```text
-<workspace>/
-    timeboxes/
-        2026-06-30.txt
-        2026-07-01.txt
-```
-
-The storage invariant is one time box file per date.
-
-Initial time box text format:
-
-```text
-09:00-10:00 | Steve | 2026-06-30-0900-1000-steve
-11:00-12:00 | Counterfact | 2026-06-30-1100-1200-counterfact
-```
-
 ---
 
 # State Model
 
-The application maintains the following state.
+The application maintains:
 
-```text
-current_context
-current_selection
-current_mode
-plan_preview
-```
+- `current_context`
+- `current_selection`
+- `current_mode`
 
-Definitions:
-
-**current_context**
-
-The context the user is currently working in.
-
-A context must be entered before facts may be captured.
-
-If captured text contains an `http://` or `https://` URL, the fact is captured
-as `type: bookmark`. The first URL is stored in front matter as `url:` and is
-removed from the fact body. The remaining text becomes the body. If the capture
-contains only the URL, the body uses a readable host/path label while the full
-URL remains only in front matter.
-
-Natural language dates in captured text are normalized to `YYYY-MM-DD` before
-storage. Supported input forms are `today`, `tomorrow`, `yesterday`, weekdays
-such as `Friday`, `next <weekday>`, and month-day phrases such as `June 1`.
-Month-day phrases use the current year. Stored ISO dates render back as natural
-labels in terminal output.
-
-**current_selection**
-
-The facts currently selected by the user.
-
-**current_mode**
-
-One of:
+`current_mode` is one of:
 
 - Capture
 - Search
 - Command
 - Selection
-- Plan
-
-**plan_preview**
-
-An uncommitted time box currently being edited.
 
 ---
 
@@ -256,15 +155,6 @@ An uncommitted time box currently being edited.
 The terminal UI has three regions.
 
 ## Header
-
-Displays application state.
-
-Examples:
-
-- current context
-- preview query
-- current mode
-- result count
 
 The primary header form is the current context name:
 
@@ -280,31 +170,15 @@ the viewed context:
 Steve Ma > Gatherbrain
 ```
 
----
-
 ## Body
 
-Displays the current context facts, or transient search results while slash
-input is being previewed.
-
-Normally this is a list of facts.
-
-In plan mode it displays the calendar as a proportional timeline.
+The body displays current-context facts, transient search results, context
+lists, help, or inspect panels.
 
 Fact rows are numbered at the left with a muted number prefix. The implicit
 `fact` type is not shown. Other fact types are shown before the content.
 Bookmark rows with a `url` front matter value render their content as a terminal
 hyperlink to that URL.
-Tags that are not already mentioned in the fact content are shown after the
-content as `>Tag Name` in the tag color. Tags already mentioned inline are not
-repeated at the end of the row.
-When color is enabled, selected fact previews highlight the whole rendered fact
-row, including colored type, due-date, and tag segments.
-
-Timeline rows are spaced according to elapsed time. Busy time boxes use a solid
-line and filled marker. Free time uses a dotted line and open marker with the
-available duration. When the current time falls within the rendered day, the
-timeline includes a current-time marker at the proportional position.
 
 Due dates are displayed as friendly labels when possible:
 
@@ -316,49 +190,30 @@ Due dates are displayed as friendly labels when possible:
 The same friendly display is applied to ISO dates found in fact content and
 fact inspection output.
 
-Transient status messages are rendered inside the managed terminal screen above
-the prompt.
-
----
+When color is enabled, selected fact previews highlight the whole rendered fact
+row, including colored type and due-date segments.
 
 ## Prompt
 
-Accepts user input.
-
-The prompt determines the current interaction mode.
-
-The terminal UI redraws as a stable screen rather than printing a transcript of
-each interaction. The prompt remains at the bottom of the screen.
-
-While the user is typing, the UI previews the inferred mode. Plan input previews
-the parsed time box before it is committed.
+The prompt accepts user input and previews the inferred mode while typing.
 
 When the first prompt character is `@`, the body previews the most recently
 visited contexts other than the current context, ordered newest first. The list
 shows as many contexts as fit in the body.
 
 Tab completion is available for commands, `@<context>` switches, search
-shortcuts, selection actions, visible result numbers, and known context names
-after inline `@` tags in capture text. Context switch completions include
-contexts discovered from facts and time boxes, and highlighting a context
-completion previews that context in the header and body. When multiple
-candidates match the same typed prefix, the first Tab completes any shared
-prefix and later Tab presses cycle through the matching candidates. The typed
-prefix keeps the cursor in place while the recommended completion suffix is
-shown in gray. Multiple matches are shown in a compact candidate line above the
-prompt, with the active candidate highlighted even when repeated Tab presses
-wrap back to the first match. `Right` or `Ctrl+F` accepts a visible
-recommendation so typing can continue after the completed text.
+shortcuts, selection actions, visible result numbers, and context names. Context
+switch completions include contexts discovered from fact folders. Highlighting a
+context completion previews that context in the header and body.
 
-Command names may be typed as the shortest unambiguous prefix. Context switches
-use `@<context>` rather than a colon command, so `@St` completes to a known
-context such as `@Steve`.
+When multiple candidates match the same typed prefix, the first Tab completes
+any shared prefix and later Tab presses cycle through the matching candidates.
+The typed prefix keeps the cursor in place while the recommended completion
+suffix is shown in gray. Multiple matches are shown in a compact candidate line
+above the prompt.
 
-While typing in the interactive prompt, `Ctrl+A` moves the cursor to the start
-of the input and `Ctrl+E` moves the cursor to the end.
-
-Cursor movement does not change the visible input text. At the start of a
-non-empty prompt input, the cursor is shown over the first character.
+`Right` or `Ctrl+F` accepts a visible recommendation so typing can continue
+after the completed text.
 
 ---
 
@@ -368,10 +223,9 @@ The mode is inferred from the first character entered.
 
 | Prefix | Mode |
 | --- | --- |
-| none | Capture |
-| / | Search |
-| : or @ | Command |
-| ; | Plan |
+| none or `;` | Capture |
+| `/` | Search |
+| `:` or leading `@` | Command |
 | number or dots | Selection command |
 
 ---
@@ -385,10 +239,8 @@ The mode is inferred from the first character entered.
 | `@<dots>` | Switches to a dot-selected context from the current `@` preview list |
 | `@<number-or-dots> <selectors> <actions>` | Applies selection actions inside that recent context, then keeps the original context active |
 | `:context <number>` | Switches to a numbered context from `:contexts` |
-| `:contexts` | Lists contexts discovered from fact folders and timebox files |
+| `:contexts` | Lists contexts discovered from fact folders |
 | `:inspect <number>` | Shows full metadata and file path for a visible fact |
-| `:timebox <number> <range> <context>` | Updates a visible time box |
-| `:timebox delete <number>` | Deletes a visible time box |
 | `:undo` | Undoes the most recent selection action in memory |
 | `:help` | Shows in-app help |
 | `:restart` | Restarts the app, reloads the current context, and clears transient panels |
@@ -397,44 +249,18 @@ The mode is inferred from the first character entered.
 
 ---
 
-# Configuration
-
-Gatherbrain may load `gatherbrain.config.json` from the current working
-directory. User config is merged over defaults.
-
-Initial supported config:
-
-```json
-{
-  "defaultFactType": "note",
-  "selectionActions": {
-    "actions": {
-      "idea": { "action": "set_type", "value": "idea" }
-    }
-  }
-}
-```
-
-The repository includes `gatherbrain.config.example.json` as a starter config.
-
----
-
 # Capture Mode
 
-Capture mode is the default.
+Capture mode is the default. Anything entered becomes a new fact in the current
+context.
 
-Anything entered becomes a new fact.
+If captured text contains an `http://` or `https://` URL, the fact is captured
+as `type: bookmark`. The first URL is stored in front matter as `url:` and is
+removed from the fact body.
 
-Captured facts use the default type `fact` unless a later action changes the
-type.
-
-Example:
-
-```text
-Mike prefers async architecture reviews.
-```
-
-Creates a new fact in the current context.
+Natural language dates in captured text are normalized to `YYYY-MM-DD` before
+storage. Supported input forms are `today`, `tomorrow`, `yesterday`, weekdays,
+`next <weekday>`, and month-day phrases such as `June 1`.
 
 ---
 
@@ -442,25 +268,15 @@ Creates a new fact in the current context.
 
 Search mode begins with `/`.
 
-The entered query previews results while it is in the prompt. Pressing Enter on
-a plain search returns to the current context.
-
 Examples:
 
 ```text
 /Steve Ma
-
 /"caesar salad"
-
 /type:decision
-
 /due:today and "Steve Ma"
-
 /context:"Architecture Review Board"
-
-/tag:Devin
-
-/tag:Steve Ma
+/@Architecture Review Board
 ```
 
 Search supports:
@@ -475,120 +291,8 @@ Search supports:
 
 Adjacent terms imply AND.
 
-Operator precedence:
-
-1. NOT
-2. AND
-3. OR
-
----
-
-## Search Shortcuts
-
-Queries beginning with `//` reference named shortcuts.
-
-A shortcut expands into a complete query before parsing.
-
-Example:
-
-```text
-//current
-```
-
-expands to
-
-```text
-(type:task or type:inprogress or type:waiting)
-and due<=today
-```
-
-Shortcuts may reference dynamic values such as:
-
-- current context
-- today
-- this week
-
-Examples:
-
-```text
-//current
-
-//today
-
-//context
-
-//overdue
-```
-
----
-
-# Command Mode
-
-Command mode begins with `:`.
-
-Commands change application state.
-
-Initial commands:
-
-```text
-@<context>
-
-:restart
-
-:paste
-```
-
-### `@<context>`
-
-Changes the current context.
-
-Shell-style escaped spaces are normalized before the context is stored, so
-`@Steve\ Ma` switches to `Steve Ma`.
-
-If the typed context text is a unique prefix of a known context, submitting that
-prefix switches to the full known context name. The header, saved state, and
-recent-context history use the resolved context name, not the typed prefix. When
-a full context name replaces a previously recorded prefix, the prefix is
-removed from recent-context history.
-
-When the first prompt character is `@`, the body shows the last contexts visited
-other than the current context in most-recent-first order. Entering `@1` switches
-to the first listed context, and entering `@..` switches to the second listed
-context.
-
-The current context view becomes:
-
-```text
-context:<new context>
-```
-
-### `:restart`
-
-In the interactive TUI, restarts the application process so code and
-configuration changes are loaded. The restarted process reloads the saved
-current context.
-
-Transient state such as visible panels, selection previews, and undo history is
-cleared. Durable workspace state, including facts, time boxes, and the current
-context, is preserved.
-
-### `:paste`
-
-Prompts for a name for the pasted item.
-
-The next entered line becomes both the fact title and the file-name stem.
-
-The command requires a current context.
-
-Clipboard text is saved as a `.txt` file in the current context folder.
-
-Clipboard screenshots are saved as `.png` files in the current context folder.
-
-After writing the pasted file, the app creates a normal fact in the same context
-with type `file`, the entered name as content, and `file: <filename>` in front
-matter.
-
-The pasted file and the fact are both stored under the current context folder.
+Queries beginning with `//` reference named shortcuts such as `//current`,
+`//today`, `//context`, and `//overdue`.
 
 ---
 
@@ -600,58 +304,12 @@ Examples:
 
 ```text
 7
-
 .
-
 ..
-
-...
-
 1 3 7
-
-. ..
 ```
-
-## Number selectors
-
-Numbers refer to displayed fact numbers.
-
-Fact numbers remain stable until the context or search changes.
-
-Example:
-
-```text
-17
-```
-
-Selects fact number 17.
-
----
-
-## Dot selectors
-
-Dots refer to the nth visible item.
-
-```text
-.      first
-
-..     second
-
-...    third
-```
-
----
-
-## Selection Actions
 
 Selection is a prefix for an action.
-
-When the prompt contains a typed `@<context>` prefix, `@<number>`, or
-`@<dots>`, the body previews the associated context. If the prompt is only
-`@<context>`, `@<number>`, or `@<dots>`, pressing Enter switches to that
-context. If the prompt continues with fact selectors and selection actions, the
-actions apply to the associated context's visible facts and then the app
-returns to the original context.
 
 General form:
 
@@ -664,294 +322,52 @@ General form:
 Multiple actions may be chained in the same prompt:
 
 ```text
-<selectors> <action> [arguments] <action> [arguments]
-```
-
-A search prompt may include `;` to end the search text and start a selection
-command. The selection applies to the numbered results from the search before
-the delimiter, while the app returns to the current context after the action
-completes.
-
-```text
-/context:Project\ Sapphire;1 5 gather
-```
-
-Examples:
-
-```text
-. task
-
-. .. task
-
 3 task today
-
-7 tomorrow
-
-. Friday
-
-. next Friday
-
-. June 1
-
-3 delete
-
-.. gather
-
-. @Steve\ Ma
-
-. -due
-
-. -@Steve\ Ma
-
-@2 1 task today
-
-@.. . waiting
+. waiting tomorrow
 ```
+
+Built-in actions:
+
+| Action | Behavior |
+| --- | --- |
+| `task` | Sets type to `task` |
+| `waiting` | Sets type to `waiting` |
+| `inprogress` | Sets type to `inprogress` |
+| `abandoned` | Sets type to `abandoned` |
+| `done` | Sets type to `done` |
+| `today` | Sets due date to today |
+| `tomorrow` | Sets due date to tomorrow |
+| natural date phrase | Sets due date to the resolved date |
+| `-due` | Removes the due date |
+| `delete` | Moves the fact to `.trash` |
+| `gather` | Associates the selected fact with the current context |
+| `-@<context>` | Removes an associated context from the selected fact |
+| `open` | Opens the URL, file, or both associated with the fact |
+| `edit` | Opens the fact Markdown file in `$EDITOR`; with multiple selectors, only the last mentioned fact is edited |
 
 ---
 
-## Built-in Fact Actions
+# Configuration
 
-### Set due date
+Gatherbrain may load `gatherbrain.config.json` from the current working
+directory. User config is merged over defaults.
 
-Assigns a due date.
-
-Example:
-
-```text
-3 tomorrow
-. next Friday
-. June 1
+```json
+{
+  "defaultFactType": "note",
+  "selectionActions": {
+    "actions": {
+      "idea": { "action": "set_type", "value": "idea" }
+    }
+  }
+}
 ```
-
----
-
-### Clear due date
-
-Removes the selected fact's due date.
-
-Example:
-
-```text
-. -due
-```
-
----
-
-### Delete
-
-Moves the fact into the `.trash` folder within its home context.
-
-Example:
-
-```text
-5 delete
-```
-
----
-
-### Gather
-
-Associates the selected fact with the current context.
-
-Example:
-
-```text
-7 gather
-```
-
----
-
-### Change Type
-
-Changes the fact type.
-
-Example:
-
-```text
-. task
-```
-
----
-
-### Add Tag
-
-Adds a context tag association to the selected fact.
-
-Escaped spaces are normalized the same way as capture text.
-
-Example:
-
-```text
-. @Steve\ Ma
-```
-
----
-
-### Remove Tag
-
-Removes a context tag association from the selected fact.
-
-Escaped spaces are normalized the same way as capture text.
-
-Example:
-
-```text
-. -@Steve\ Ma
-```
-
----
-
-### Open
-
-Opens the URL, file, or both associated with the selected fact.
-
-Example:
-
-```text
-. open
-```
-
-The selected fact must have a `url` or `file` front matter value. Relative file
-names are resolved against the selected fact's own context folder. If both
-values are present, both targets are opened.
-
----
-
-### Edit Fact
-
-Opens the selected fact's own Markdown file in `$EDITOR`.
-
-Example:
-
-```text
-. edit
-1 3 edit
-```
-
-Because the editor can only handle one Gatherbrain fact at a time, `edit`
-applies only to the last mentioned fact in the selection command. In `1 3 edit`,
-fact 3 is edited.
-
----
-
-# Action DSL
-
-Selection actions are configurable.
-
-Keywords map to actions.
-
-Example configuration:
-
-```yaml
-actions:
-
-  task:
-    action: set_type
-    value: task
-
-  waiting:
-    action: set_type
-    value: waiting
-
-  inprogress:
-    action: set_type
-    value: inprogress
-
-  abandoned:
-    action: set_type
-    value: abandoned
-
-  done:
-    action: set_type
-    value: done
-
-  tomorrow:
-    action: set_due
-    value: tomorrow
-
-  delete:
-    action: trash
-
-  gather:
-    action: associate_current_context
-
-  open:
-    action: open_file
-
-  edit:
-    action: edit_file
-```
-
-Example:
-
-```text
-. .. task
-```
-
-expands conceptually to:
-
-```text
-Select first and second visible facts.
-
-Set type = task.
-```
-
----
-
-# Plan Mode
-
-Plan mode begins with `;`.
-
-Entering plan mode replaces the body with the calendar.
-
-Planning commands associate dates and time ranges with contexts.
-
-Plan dates accept `today`, `tomorrow`, `yesterday`, `next <weekday>`, explicit
-`YYYY-MM-DD`, weekdays such as `Friday`, and month-day phrases such as
-`June 1`.
-
-Example:
-
-```text
-; 9-10 Steve
-```
-
-The calendar updates immediately while typing.
-
-The change is staged.
-
-Nothing is committed until Enter is pressed.
-
-Esc abandons the staged change.
-
-Examples:
-
-```text
-; 9-10 Steve
-
-; 11-12 Counterfact
-
-; tomorrow 2-3 Reading
-
-; Friday 14:30-15:00 Reading
-
-; next Friday 14:30-15:00 Reading
-
-; June 1 9-10 Steve
-```
-
-Plan mode creates and edits time boxes only.
-
-It never creates facts.
-
-Committed time boxes are persisted to the text file for the planned date.
 
 ---
 
 # Interaction Philosophy
 
-The interface follows five simple modes:
+The interface follows four simple modes:
 
 **Capture**
 
@@ -968,9 +384,3 @@ Change application state.
 **Selection**
 
 Operate on existing facts.
-
-**Plan**
-
-Allocate time to contexts.
-
-Together these modes provide a complete keyboard-first workflow for capturing knowledge, retrieving it, organizing it, and planning future work while keeping the underlying interaction model small and predictable.

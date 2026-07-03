@@ -16,10 +16,6 @@ export class PromptClassifier {
       return AppMode.COMMAND;
     }
 
-    if (firstCharacter === ";") {
-      return AppMode.PLAN;
-    }
-
     if (firstCharacter === "." || isDigit(firstCharacter)) {
       return AppMode.SELECTION;
     }

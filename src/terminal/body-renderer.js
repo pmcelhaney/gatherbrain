@@ -6,34 +6,18 @@ import {
 import { ansi, color, padVisibleStart, wrapPlain } from "./ansi.js";
 
 export class BodyRenderer {
-  constructor({ calendarRenderer }) {
-    this.calendarRenderer = calendarRenderer;
-  }
-
   render({
     state,
     resultSet = null,
-    timeBoxes = [],
     helpLines = null,
     selectionPreview = null,
     width = 80,
     height = 20,
     today = null,
-    now = null,
     colorEnabled = false
   }) {
     if (helpLines) {
       return helpLines.slice(0, height);
-    }
-
-    if (state.currentMode === AppMode.PLAN) {
-      return this.calendarRenderer.render({
-        timeBoxes,
-        planPreview: state.planPreview,
-        height,
-        now,
-        colorEnabled
-      });
     }
 
     if (!resultSet || resultSet.count === 0) {
@@ -110,19 +94,11 @@ function colorIfPresent(text, code, enabled) {
 }
 
 function displayContent(fact, today) {
-  const content = replaceIsoDatesWithNaturalDates(fact.content, { today });
-  const appendedTags = unmentionedTags(content, fact.tags);
-
-  if (appendedTags.length === 0) {
-    return content;
-  }
-
-  return `${content} ${appendedTags.map((tag) => `>${tag}`).join(" ")}`;
+  return replaceIsoDatesWithNaturalDates(fact.content, { today });
 }
 
 function renderContentLine(text, fact, colorEnabled) {
-  const highlighted = highlightTags(text, fact.tags, colorEnabled);
-  return fact.url ? hyperlink(highlighted, fact.url) : highlighted;
+  return fact.url ? hyperlink(text, fact.url) : text;
 }
 
 function hyperlink(text, url) {
@@ -144,80 +120,6 @@ function highlight(text, enabled, colorEnabled) {
   }
 
   return `${ansi.reverse}${text.replaceAll(ansi.reset, `${ansi.reset}${ansi.reverse}`)}${ansi.reset}`;
-}
-
-function highlightTags(text, tags = [], colorEnabled) {
-  if (!colorEnabled || tags.length === 0) {
-    return text;
-  }
-
-  const sortedTags = [...tags].sort((left, right) => right.length - left.length);
-  let rendered = "";
-  let index = 0;
-
-  while (index < text.length) {
-    if (text[index] !== "@") {
-      rendered += text[index];
-      index += 1;
-      continue;
-    }
-
-    const tag = sortedTags.find((candidate) => isTagMention(text, index, candidate));
-
-    if (!tag) {
-      rendered += text[index];
-      index += 1;
-      continue;
-    }
-
-    const mention = `@${tag}`;
-    rendered += color(mention, ansi.green, colorEnabled);
-    index += mention.length;
-    continue;
-  }
-
-  return highlightTrailingTags(rendered, tags, colorEnabled);
-}
-
-function highlightTrailingTags(text, tags = [], colorEnabled) {
-  let rendered = text;
-
-  for (const tag of tags) {
-    rendered = rendered.replaceAll(`>${tag}`, color(`>${tag}`, ansi.green, colorEnabled));
-  }
-
-  return rendered;
-}
-
-function unmentionedTags(text, tags = []) {
-  return tags.filter((tag) => !containsTagMention(text, tag));
-}
-
-function containsTagMention(text, tag) {
-  let index = 0;
-
-  while (index < text.length) {
-    if (text[index] === "@" && isTagMention(text, index, tag)) {
-      return true;
-    }
-
-    index += 1;
-  }
-
-  return false;
-}
-
-function isTagMention(text, startIndex, tag) {
-  if (text.slice(startIndex + 1, startIndex + 1 + tag.length) !== tag) {
-    return false;
-  }
-
-  const nextChar = text[startIndex + 1 + tag.length];
-  return !nextChar || isTagStopChar(nextChar);
-}
-
-function isTagStopChar(char) {
-  return /\s/.test(char) || ["'", "\"", ".", ",", ";", ":", "!", "?", "(", ")", "[", "]", "{", "}", "<", ">"].includes(char);
 }
 
 function formatDueDate(dueDate, today) {

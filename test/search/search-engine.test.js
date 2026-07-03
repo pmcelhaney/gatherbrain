@@ -85,16 +85,11 @@ describe("SearchEngine", () => {
     ]);
   });
 
-  it("searches tags through terms and tag filters", () => {
-    const term = engine.search(facts(), parser.parse("/Devin"));
-    const tag = engine.search(facts(), parser.parse("/tag:Steve Ma"));
-
-    assert.deepEqual(term.facts.map((fact) => fact.id), [
-      "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
-    ]);
-    assert.deepEqual(tag.facts.map((fact) => fact.id), [
-      "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
-    ]);
+  it("rejects removed tag field filters", () => {
+    assert.throws(
+      () => engine.search(facts(), parser.parse("/tag:Steve")),
+      /Unsupported search field: tag/
+    );
   });
 });
 
@@ -114,8 +109,7 @@ function facts() {
       type: "task",
       createdAt: "2026-06-30T15:45:00.000Z",
       dueDate: "2026-06-30",
-      homeContext: "Steve",
-      tags: ["Devin", "Steve Ma"]
+      homeContext: "Steve"
     }),
     new Fact({
       id: "a75ee82c-6b89-4676-8cb1-01222f976885",

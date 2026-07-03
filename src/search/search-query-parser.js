@@ -104,7 +104,7 @@ function coalesceFieldValues(tokens) {
       continue;
     }
 
-    if (field.name === "context" || field.name === "tag") {
+    if (field.name === "context") {
       const values = [field.value];
 
       while (index + 1 < tokens.length && isSpacedFieldContinuation(tokens[index + 1])) {

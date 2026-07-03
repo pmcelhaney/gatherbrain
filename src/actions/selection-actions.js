@@ -30,20 +30,6 @@ export class SetDueDateAction {
   }
 }
 
-export class AddTagAction {
-  constructor(tag) {
-    this.tag = tag;
-  }
-
-  async execute(context) {
-    return mutateSelectedFacts(context, async (fact, factStore) => {
-      fact.addTag(this.tag);
-      await factStore.saveFact(fact);
-      return { fact, action: "add_tag", value: this.tag };
-    });
-  }
-}
-
 export class RemoveContextAssociationAction {
   constructor(contextName) {
     this.contextName = contextName;
@@ -51,7 +37,6 @@ export class RemoveContextAssociationAction {
 
   async execute(context) {
     return mutateSelectedFacts(context, async (fact, factStore) => {
-      fact.removeTag(this.contextName);
       fact.dissociateContext(this.contextName);
       await factStore.saveFact(fact);
       return { fact, action: "remove_context_association", value: this.contextName };

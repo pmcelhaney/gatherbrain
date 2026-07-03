@@ -5,14 +5,12 @@ export class CompletionService {
   constructor({
     contextRepository,
     factSource = null,
-    tagRepository = null,
     actionRegistry = SelectionActionRegistry.fromConfig(),
     shortcutRegistry = new SearchShortcutRegistry(),
-    commandNames = ["exit", "help", "inspect", "paste", "quit", "restart", "context", "contexts", "timebox", "undo"]
+    commandNames = ["exit", "help", "inspect", "paste", "quit", "restart", "context", "contexts", "undo"]
   } = {}) {
     this.contextRepository = contextRepository;
     this.factSource = factSource;
-    this.tagRepository = tagRepository;
     this.actionRegistry = actionRegistry;
     this.shortcutRegistry = shortcutRegistry;
     this.commandNames = commandNames;
@@ -48,13 +46,7 @@ export class CompletionService {
         return selectionCompletion;
       }
 
-      const selectionTagCompletion = await this.completeSelectionTag(input, matchIndex);
-      return selectionTagCompletion ?? noCompletion(input);
-    }
-
-    const tagCompletion = await this.completeTag(input, matchIndex);
-    if (tagCompletion) {
-      return tagCompletion;
+      return noCompletion(input);
     }
 
     return noCompletion(input);
@@ -62,26 +54,6 @@ export class CompletionService {
 
   async contextNames() {
     return this.contextRepository ? this.contextRepository.list() : [];
-  }
-
-  async completeTag(input, matchIndex = 0) {
-    const activeTag = activeTagSegment(input);
-
-    if (!activeTag) {
-      return null;
-    }
-
-    const matches = matchingCandidates(await this.tagNames(), activeTag.value);
-
-    if (matches.length === 0) {
-      return null;
-    }
-
-    return completionResult(
-      input,
-      matches.map((match) => `${input.slice(0, activeTag.startIndex)}@${escapeTag(match)}`),
-      matchIndex
-    );
   }
 
   async completeContextSwitch(input, matchIndex = 0) {
@@ -104,54 +76,6 @@ export class CompletionService {
     );
   }
 
-  async completeSelectionTag(input, matchIndex = 0) {
-    const activeTag = activeSelectionTagSegment(input);
-
-    if (!activeTag) {
-      return null;
-    }
-
-    const matches = matchingCandidates(await this.tagNames(), activeTag.value);
-
-    if (matches.length === 0) {
-      return null;
-    }
-
-    return completionResult(
-      input,
-      matches.map((match) => `${input.slice(0, activeTag.startIndex)}@${escapeTag(match)}`),
-      matchIndex
-    );
-  }
-
-  async tagNames() {
-    const facts = this.factSource ? await this.factSource.list() : [];
-    const workspaceTags = this.tagRepository ? await this.tagRepository.list() : [];
-    const tags = [];
-
-    for (const tag of workspaceTags) {
-      if (!tags.includes(tag)) {
-        tags.push(tag);
-      }
-    }
-
-    for (const fact of facts) {
-      for (const tag of fact.tags ?? []) {
-        if (!tags.includes(tag)) {
-          tags.push(tag);
-        }
-      }
-
-      for (const context of fact.associatedContexts ?? []) {
-        const contextName = context.name ?? context;
-        if (!tags.includes(contextName)) {
-          tags.push(contextName);
-        }
-      }
-    }
-
-    return tags.sort((left, right) => left.localeCompare(right, "en-US"));
-  }
 }
 
 function completeSuffix(input, prefix, candidates, matchIndex = 0) {
@@ -229,35 +153,6 @@ function isSelectionInput(input) {
   return /^\s*(\d+|\.)/.test(input);
 }
 
-function activeSelectionTagSegment(input) {
-  const actionStartIndex = selectionActionStartIndex(input);
-
-  if (actionStartIndex === null) {
-    return null;
-  }
-
-  const tagStartIndex = input[actionStartIndex] === "@"
-    ? actionStartIndex
-    : input.slice(actionStartIndex).startsWith("-@")
-      ? actionStartIndex + 1
-      : null;
-
-  if (tagStartIndex === null) {
-    return null;
-  }
-
-  const activeTag = activeTagSegment(input.slice(tagStartIndex), { allowEmpty: true });
-
-  if (!activeTag) {
-    return null;
-  }
-
-  return {
-    startIndex: tagStartIndex + activeTag.startIndex,
-    value: activeTag.value
-  };
-}
-
 function selectionActionStartIndex(input) {
   const tokens = input.matchAll(/\S+/g);
   let hasSelector = false;
@@ -309,10 +204,6 @@ function noCompletion(input) {
   };
 }
 
-function activeTagSegment(input, { allowEmpty = false } = {}) {
-  return activeAtSegment(input, { allowEmpty });
-}
-
 function activeLeadingAtSegment(input) {
   if (!input.startsWith("@")) {
     return null;
@@ -341,7 +232,7 @@ function activeAtSegment(input, { allowEmpty = false } = {}) {
       continue;
     }
 
-    if (/\s/.test(char) || isTagStopChar(char)) {
+    if (/\s/.test(char) || isAtStopChar(char)) {
       return null;
     }
 
@@ -351,12 +242,8 @@ function activeAtSegment(input, { allowEmpty = false } = {}) {
   return value.length > 0 || allowEmpty ? { startIndex, value } : null;
 }
 
-function isTagStopChar(char) {
+function isAtStopChar(char) {
   return ["'", "\"", ".", ",", ";", ":", "!", "?", "(", ")", "[", "]", "{", "}", "<", ">"].includes(char);
-}
-
-function escapeTag(tag) {
-  return escapeAtValue(tag);
 }
 
 function escapeAtValue(value) {

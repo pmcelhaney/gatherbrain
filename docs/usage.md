@@ -10,17 +10,17 @@ npm start
 
 Gatherbrain opens a terminal screen with:
 
-- a header showing the current date and context
+- a header showing the current context
 - a divider
-- a fact or calendar body
+- a fact/search/help body
 - a prompt at the bottom
 
-The default workspace is `./workspace`. It is ignored by git because it contains
-local user data.
+The default workspace is `./workspace`. It is ignored by git because it
+contains local user data.
 
-On startup, Gatherbrain loads persisted facts and today's time boxes from the
-workspace. Search results show current-context matches first, then other
-matches, with each group ordered newest first.
+On startup, Gatherbrain loads persisted facts from the workspace. Search results
+show current-context matches first, then other matches, with each group ordered
+newest first.
 
 Use `GATHERBRAIN_WORKSPACE` to choose another storage location:
 
@@ -43,8 +43,8 @@ capturing facts.
 Escaped spaces are normalized when switching, so the last example stores and
 searches the context as `Steve Ma`.
 
-There is no separate context creation command yet. Switching to a new name is
-enough; the context becomes real when facts or time boxes are stored for it.
+There is no separate context creation command. Switching to a new name is
+enough; the context becomes real when facts are stored for it.
 
 While typing a prompt that starts with `@`, the body shows the most recently
 visited contexts in newest-first order. Enter a listed number or dots to switch:
@@ -60,8 +60,7 @@ List discovered contexts:
 :contexts
 ```
 
-The current context is marked with `*`, and contexts are numbered. Switch to a
-numbered context:
+Switch to a numbered context from that list:
 
 ```text
 :context 2
@@ -86,37 +85,17 @@ from the body:
 Read the Node docs https://nodejs.org/api/test.html
 ```
 
-The stored body is `Read the Node docs`, and the terminal row renders that text
-as a hyperlink to the saved URL.
+The terminal row renders the saved body as a hyperlink to the saved URL.
 
 Natural language dates in captured text are stored as `YYYY-MM-DD`. Supported
-forms include `today`, `tomorrow`, `yesterday`, weekdays such as `Friday`,
-`next <weekday>`, and month-day phrases such as `June 1`:
-
-```text
-I will meet with Joe on Friday
-```
-
-The stored body is `I will meet with Joe on 2026-07-03` when today is
-2026-06-30. Terminal rows render ISO dates back as friendly labels.
+forms include `today`, `tomorrow`, `yesterday`, weekdays, `next <weekday>`, and
+month-day phrases such as `June 1`.
 
 Facts are stored as Markdown files with front matter beneath the workspace
-context folder. Slash-separated context names are stored as nested directories,
-so `Technology Assembly/2026-07-08` lives under
-`workspace/Technology Assembly/2026-07-08/`.
+context folder. Slash-separated context names are stored as nested directories.
 
-Use `@` to refer to a context name in captured facts:
-
-```text
-@Steve\ Ma said to confirm when the @Devin trial ends
-```
-
-This saves tags `Steve Ma` and `Devin`, which share the context namespace.
-Escaped spaces are input syntax only; they are not stored in the tag value.
-Possessives keep the suffix as text, so `@Devin's` stores the tag `Devin`.
-
-Root-level workspace directories are known tag/context names and are used for
-completion.
+There is no tag capture behavior. `@Steve` inside fact text is stored as normal
+content.
 
 ## Searching
 
@@ -131,8 +110,6 @@ Search mode begins with `/`.
 /context:"Architecture Review Board"
 /context:Architecture Review Board
 /@Architecture Review Board
-/tag:Devin
-/tag:Steve Ma
 ```
 
 Slash searches preview matching facts while the query is in the prompt.
@@ -141,14 +118,12 @@ Pressing Enter on a plain search returns to the current context.
 `/` by itself previews the current context query. If there is no current
 context, it previews all facts.
 
-Multi-word values may be quoted:
+Multi-word context values may be quoted or unquoted:
 
 ```text
 /context:"Architecture Review Board"
-/tag:"Steve Ma"
+/context:Architecture Review Board
 ```
-
-Context and tag fields also accept unquoted multi-word values.
 
 Adjacent terms imply `AND`:
 
@@ -175,17 +150,6 @@ Search shortcuts:
 
 `//context` requires a current context.
 
-Due dates in fact rows render as friendly labels before the content:
-
-```text
-task today Call Steve
-task tomorrow Call Steve
-task Fri Call Steve
-task Jul 10 Call Steve
-```
-
-ISO dates in fact content and `:inspect` output use the same friendly display.
-
 ## Selection Commands
 
 Search results are numbered in the body. A selection command starts with
@@ -207,28 +171,19 @@ Dots select visible row positions:
 . Friday
 . next Friday
 . June 1
-. @Steve\ Ma
 ```
 
-Multiple selectors can be used together:
+Multiple selectors and actions can be used together:
 
 ```text
 . .. task
 1 3 7 delete
-```
-
-Multiple actions can be used together against the same selectors:
-
-```text
 3 task today
 . waiting tomorrow
 ```
 
 You can scope a selection command to a recent context by starting with its
-`@` preview selector. While typing a matching `@<context>` prefix, `@<number>`,
-or `@<dots>`, the body shows that context. Pressing Enter on only `@<context>`,
-`@<number>`, or `@<dots>` switches there; adding selectors and actions commits
-those actions inside that context and returns to the original context.
+`@` preview selector:
 
 ```text
 @2 1 task today
@@ -242,9 +197,6 @@ with `;` and placing the selectors and actions after it:
 /context:Project\ Sapphire;1 5 gather
 ```
 
-This applies the action to the numbered results from the search before `;` and
-then returns to the current context.
-
 Current built-in actions:
 
 | Action | Effect |
@@ -256,17 +208,13 @@ Current built-in actions:
 | `done` | Sets type to `done` |
 | `today` | Sets due date to today |
 | `tomorrow` | Sets due date to tomorrow |
+| natural date phrase | Sets due date to the resolved date |
 | `-due` | Removes the due date |
 | `delete` | Moves the fact to `.trash` |
 | `gather` | Associates the fact with the current context |
+| `-@<context>` | Removes an associated context |
 | `open` | Opens the URL, file, or both associated with the fact |
 | `edit` | Opens the fact Markdown file in `$EDITOR`; with multiple selectors, only the last mentioned fact is edited |
-
-Any `@tag` action adds that context tag association to the selected facts, and
-`-@tag` removes it. Escaped spaces are normalized the same way as capture text,
-so `. @Steve\ Ma` stores `Steve Ma` and `. -@Steve\ Ma` removes it.
-Tags that are not already mentioned in the fact text render after the content as
-`>Steve Ma`; tags already mentioned inline are not repeated.
 
 Undo the most recent selection action:
 
@@ -274,48 +222,10 @@ Undo the most recent selection action:
 :undo
 ```
 
-Undo is in-memory and only covers the last selection action in the current app
-run.
-
 Inspect one visible fact:
 
 ```text
 :inspect 1
-```
-
-The inspect view shows the fact UUID, type, created timestamp, home context,
-associated contexts, due date, associated file, Markdown path, and content.
-
-## Planning Time
-
-Plan mode begins with `;`.
-
-```text
-; 9-10 Steve
-; 11-12 Counterfact
-; tomorrow 14:30-15:00 Reading
-; Friday 14:30-15:00 Reading
-; next Friday 14:30-15:00 Reading
-; June 1 9-10 Steve
-```
-
-Time boxes are independent from facts. They are stored in daily text files:
-
-```text
-workspace/timeboxes/2026-06-30.txt
-```
-
-Each line looks like:
-
-```text
-09:00-10:00 | Steve | 2026-06-30-0900-1000-steve
-```
-
-Calendar rows are numbered in plan mode. Update or delete a visible time box:
-
-```text
-:timebox 1 10-11 Architecture Review Board
-:timebox delete 1
 ```
 
 ## Commands
@@ -324,10 +234,8 @@ Calendar rows are numbered in plan mode. Update or delete a visible time box:
 | --- | --- |
 | `@<context>` | Switches to a context |
 | `:context <number>` | Switches to a numbered context from `:contexts` |
-| `:contexts` | Lists contexts discovered from facts and time boxes |
+| `:contexts` | Lists contexts discovered from facts |
 | `:inspect <number>` | Shows full details for a visible fact |
-| `:timebox <number> <range> <context>` | Updates a visible time box |
-| `:timebox delete <number>` | Deletes a visible time box |
 | `:undo` | Undoes the most recent selection action |
 | `:help` | Shows in-app help |
 | `:restart` | Restarts the TUI process and reloads current state |
@@ -335,46 +243,13 @@ Calendar rows are numbered in plan mode. Update or delete a visible time box:
 | `:exit` | Exits the app |
 | `:quit` | Exits the app |
 
-In the interactive TUI, Tab completes commands, `@<context>` switches, search
-shortcuts, selection actions, visible result numbers, and known context names
-after inline `@` tags in capture text. When multiple candidates match the same typed prefix,
-the first Tab completes any shared prefix and later Tab presses cycle through
-them. The cursor stays on the typed prefix, the recommended completion suffix
-appears in gray, and multiple matches appear in a compact candidate line above
-the prompt. Press `Right` or `Ctrl+F` to accept a visible recommendation and
-keep typing after it.
-
-Command names can also be submitted as an unambiguous prefix. Context switches
-use `@<context>` rather than a colon command, so `@St` completes to a known
-context such as `@Steve`.
-
-When the prompt starts with `@`, the body previews the recent-context switch
-list. The list excludes the current context, is ordered by most recently visited
-context, and is capped to the number of lines that fit in the body.
-
-While typing in the interactive TUI, `Ctrl+A` moves to the start of the input
-and `Ctrl+E` moves to the end.
-
-In the interactive TUI, `:restart` launches a fresh app process so recent code
-and configuration changes are loaded. Durable workspace state is preserved.
-
-`:paste` requires a current context. After `:paste`, enter a name for the
-pasted item. Gatherbrain writes text clipboard data as `<name>.txt` and
-screenshot clipboard data as `<name>.png` in the current context folder, then
-creates a `type: file` fact named the same way with `file: <filename>` in front
-matter. Select that fact and run `. open` to open the pasted file. Bookmark
-facts with `url:` front matter open the stored URL; if a fact has both `url:`
-and `file:`, `. open` opens both targets.
-
-While typing, the header and body preview the inferred mode. Plan input previews
-the parsed time box before Enter commits it.
+Tab completes commands, `@<context>` switches, search shortcuts, selection
+actions, visible result numbers, and context names.
 
 ## Configuration
 
 Gatherbrain loads `gatherbrain.config.json` from the current working directory
 when it starts. The file is optional. Settings merge over the built-in defaults.
-
-Example:
 
 ```json
 {
@@ -388,9 +263,6 @@ Example:
 ```
 
 Configured selection actions are available to both execution and completion.
-
-Use [../gatherbrain.config.example.json](../gatherbrain.config.example.json) as
-a starter config.
 
 ## Storage
 
@@ -420,14 +292,6 @@ Deleted facts:
 workspace/
   Steve/
     .trash/
-```
-
-Time boxes:
-
-```text
-workspace/
-  timeboxes/
-    2026-06-30.txt
 ```
 
 ## Current Limitations

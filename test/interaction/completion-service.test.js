@@ -56,41 +56,6 @@ describe("CompletionService", () => {
     assert.equal(await service.complete(". ed"), ". edit");
   });
 
-  it("completes dynamic @ selection actions from known tags", async () => {
-    const service = new CompletionService({
-      factSource: {
-        async list() {
-          return [
-            { tags: ["Steve Ma", "Devin"] }
-          ];
-        }
-      }
-    });
-
-    assert.equal(await service.complete(". @"), ". @Devin");
-    assert.equal(await service.complete(". @", { completionIndex: 1 }), ". @Steve\\ Ma");
-    assert.equal(await service.complete(". @St"), ". @Steve\\ Ma");
-    assert.equal(await service.complete("1 @St"), "1 @Steve\\ Ma");
-  });
-
-  it("completes dynamic -@ selection actions from known context tag associations", async () => {
-    const service = new CompletionService({
-      factSource: {
-        async list() {
-          return [
-            {
-              associatedContexts: ["Architecture Review Board"],
-              tags: ["Steve Ma"]
-            }
-          ];
-        }
-      }
-    });
-
-    assert.equal(await service.complete(". -@Arch"), ". -@Architecture\\ Review\\ Board");
-    assert.equal(await service.complete("1 -@St"), "1 -@Steve\\ Ma");
-  });
-
   it("completes visible selectors", async () => {
     const service = new CompletionService();
     const resultSet = new SearchResultSet([
@@ -102,51 +67,40 @@ describe("CompletionService", () => {
     assert.equal(await service.complete("3", { resultSet }), "3");
   });
 
-  it("completes capture tags from saved fact tags", async () => {
+  it("completes only leading context switches, not inline @ text", async () => {
     const service = new CompletionService({
-      factSource: {
-        async list() {
-          return [
-            { tags: ["Steve Ma", "Devin"] }
-          ];
-        }
-      },
       contextRepository: {
         async list() {
-          return ["Architecture Review Board"];
+          return ["Architecture Review Board", "Steve Ma"];
         }
       }
     });
 
     assert.equal(await service.complete("@St"), "@Steve\\ Ma");
-    assert.equal(await service.complete("Confirm when @Dev"), "Confirm when @Devin");
+    assert.equal(await service.complete("Confirm when @Dev"), "Confirm when @Dev");
     assert.equal(await service.complete("@Architecture"), "@Architecture\\ Review\\ Board");
   });
 
-  it("cycles through matching capture tag completions", async () => {
+  it("cycles through matching context switch completions", async () => {
     const service = new CompletionService({
-      factSource: {
+      contextRepository: {
         async list() {
-          return [
-            { tags: ["Steve Ma", "Stacy", "Stan"] }
-          ];
+          return ["Steve Ma", "Stacy", "Stan"];
         }
       }
     });
 
-    assert.equal(await service.complete("@St"), "@Stacy");
-    assert.equal(await service.complete("@St", { completionIndex: 1 }), "@Stan");
-    assert.equal(await service.complete("@St", { completionIndex: 2 }), "@Steve\\ Ma");
-    assert.equal(await service.complete("@St", { completionIndex: 3 }), "@Stacy");
+    assert.equal(await service.complete("@St"), "@Steve\\ Ma");
+    assert.equal(await service.complete("@St", { completionIndex: 1 }), "@Stacy");
+    assert.equal(await service.complete("@St", { completionIndex: 2 }), "@Stan");
+    assert.equal(await service.complete("@St", { completionIndex: 3 }), "@Steve\\ Ma");
   });
 
   it("returns matching candidates for richer completion displays", async () => {
     const service = new CompletionService({
-      factSource: {
+      contextRepository: {
         async list() {
-          return [
-            { tags: ["Stephanie Garoza", "Stephanie Smith", "Steve Ma"] }
-          ];
+          return ["Stephanie Garoza", "Stephanie Smith", "Steve Ma"];
         }
       }
     });
@@ -156,26 +110,6 @@ describe("CompletionService", () => {
       completed: "@Stephanie\\ Garoza",
       candidates: ["@Stephanie\\ Garoza", "@Stephanie\\ Smith", "@Steve\\ Ma"]
     });
-  });
-
-  it("completes capture tags from root context directory tags", async () => {
-    const service = new CompletionService({
-      tagRepository: {
-        async list() {
-          return ["Aamir Muhammad", "cognition"];
-        }
-      },
-      factSource: {
-        async list() {
-          return [];
-        }
-      }
-    });
-
-    assert.equal(await service.complete("@Aam"), "@Aamir\\ Muhammad");
-    assert.equal(await service.complete("@aam"), "@Aamir\\ Muhammad");
-    assert.equal(await service.complete("@cog"), "@cognition");
-    assert.equal(await service.complete("@COG"), "@cognition");
   });
 
   it("matches completion prefixes case-insensitively", async () => {
@@ -195,13 +129,11 @@ describe("CompletionService", () => {
     assert.equal(await service.complete(". INP"), ". inprogress");
   });
 
-  it("does not complete inactive tag text", async () => {
+  it("does not complete inactive @ text", async () => {
     const service = new CompletionService({
-      factSource: {
+      contextRepository: {
         async list() {
-          return [
-            { tags: ["Devin"] }
-          ];
+          return ["Devin"];
         }
       }
     });

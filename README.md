@@ -20,12 +20,10 @@ The app currently supports:
 - Fact inspection with `:inspect <number>`.
 - Selection commands such as `. tomorrow`, `. task`, `. gather`, `. open`, `. edit`, and `. delete`.
 - Undo for the last selection action with `:undo`.
-- Planning time boxes with `; 9-10 Steve`.
-- Updating and deleting time boxes with `:timebox`.
 - Pasting clipboard text or screenshots into the current context with `:paste`.
-- Live mode, plan, and completion feedback while typing in the TUI.
+- Live mode and completion feedback while typing in the TUI.
 - Config loading from `gatherbrain.config.json`.
-- Markdown fact storage and daily text-file timebox storage.
+- Markdown fact storage.
 
 Not implemented yet:
 
@@ -108,20 +106,6 @@ Operate on visible facts:
 . open
 1 delete
 .. gather
-```
-
-Plan time:
-
-```text
-; 9-10 Thinking about Gatherbrain design
-; tomorrow 14:30-15:00 Reading
-```
-
-Edit planned time:
-
-```text
-:timebox 1 10-11 Architecture Review Board
-:timebox delete 1
 ```
 
 Exit:

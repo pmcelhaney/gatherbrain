@@ -4,9 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 
-import { Fact, TimeBox } from "../../src/domain/index.js";
+import { Fact } from "../../src/domain/index.js";
 import { FactRepository, ContextRepository, Workspace } from "../../src/persistence/index.js";
-import { TimeBoxRepository } from "../../src/planning/index.js";
 
 describe("ContextRepository", () => {
   let rootPath;
@@ -21,7 +20,7 @@ describe("ContextRepository", () => {
     await fs.rm(rootPath, { recursive: true, force: true });
   });
 
-  it("discovers contexts from fact folders and timebox files", async () => {
+  it("discovers contexts from fact folders", async () => {
     await new FactRepository({ workspace }).create(new Fact({
       id: "6f2308de-02e9-45db-8ff0-65ac793f4a24",
       content: "Discuss architecture.",
@@ -29,17 +28,9 @@ describe("ContextRepository", () => {
       createdAt: "2026-06-30T14:00:00.000Z",
       homeContext: "Architecture Review Board"
     }));
-    await new TimeBoxRepository({ workspace }).save(new TimeBox({
-      id: "reading",
-      date: "2026-06-30",
-      startsAt: "09:00",
-      endsAt: "10:00",
-      context: "Reading"
-    }));
 
     assert.deepEqual(await new ContextRepository({ workspace }).list(), [
-      "Architecture Review Board",
-      "Reading"
+      "Architecture Review Board"
     ]);
   });
 

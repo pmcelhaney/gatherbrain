@@ -73,7 +73,7 @@ describe("main", () => {
 
     const result = spawnSync("node", ["src/main.js"], {
       cwd: process.cwd(),
-      input: "@Steve\nFollow up with Steve.\n/Steve\n. tomorrow\n; 9-10 Steve\n:exit\n",
+      input: "@Steve\nFollow up with Steve.\n/Steve\n. tomorrow\n:exit\n",
       encoding: "utf8",
       env: {
         ...process.env,
@@ -88,7 +88,6 @@ describe("main", () => {
     assert.match(result.stdout, /captured fact/);
     assert.match(result.stdout, /1 result/);
     assert.match(result.stdout, /tomorrow applied to 1 fact/);
-    assert.match(result.stdout, /planned 09:00-10:00 Steve/);
   });
 
   it("previews slash searches without making them sticky", async () => {
@@ -645,8 +644,7 @@ describe("createAppRuntime", () => {
 
     const rendered = runtime.render({ input: ";", showCursor: true });
 
-    assert.match(rendered, /Plan input is required/);
-    assert.doesNotMatch(rendered, /Follow up with Steve/);
+    assert.match(rendered, /Follow up with Steve/);
     assert.match(rendered, /> ;█/);
     assert.equal(runtime.state.currentMode, "Capture");
 
@@ -733,35 +731,6 @@ describe("createAppRuntime", () => {
     assert.match(rendered, /1\. July assembly item\./);
     assert.doesNotMatch(rendered, /Base assembly item/);
     assert.equal(runtime.state.currentContext.name, "Technology Assembly");
-
-    fs.rmSync(workspacePath, { recursive: true, force: true });
-  });
-
-  it("previews highlighted time-box-only context completions", async () => {
-    const { createAppRuntime } = await import("../src/main.js");
-    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-timebox-context-preview-"));
-    const runtime = createAppRuntime({
-      workspacePath,
-      clock: () => new Date("2026-06-30T12:00:00.000Z")
-    });
-
-    await runtime.submit("@Gatherbrain");
-    await runtime.submit("; 9-10 test");
-
-    const completion = await runtime.suggestCompletion("@te");
-    const rendered = runtime.render({
-      input: "@test",
-      cursor: 3,
-      completionSuggestionStart: 3,
-      completionCandidates: completion.candidates,
-      completionCandidateIndex: completion.candidates.indexOf("@test"),
-      width: 80,
-      height: 8
-    });
-
-    assert.deepEqual(completion.candidates, ["@test"]);
-    assert.match(rendered, /^Gatherbrain > test$/m);
-    assert.equal(runtime.state.currentContext.name, "Gatherbrain");
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -915,24 +884,7 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("previews plan input without committing it", async () => {
-    const { createAppRuntime } = await import("../src/main.js");
-    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-plan-preview-"));
-    const runtime = createAppRuntime({
-      workspacePath,
-      clock: () => new Date("2026-06-30T12:00:00.000Z")
-    });
-
-    const rendered = runtime.render({ input: "; 9-10 Steve", showCursor: true });
-
-    assert.match(rendered, /9:00  \?  Steve · 1h/);
-    assert.equal(runtime.state.planPreview, null);
-    assert.equal(fs.existsSync(path.join(workspacePath, "timeboxes", "2026-06-30.txt")), false);
-
-    fs.rmSync(workspacePath, { recursive: true, force: true });
-  });
-
-  it("restores persisted facts and today's timeboxes on startup", async () => {
+  it("restores persisted facts on startup", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-startup-"));
     const clock = () => new Date("2026-06-30T12:00:00.000Z");
@@ -940,16 +892,13 @@ describe("createAppRuntime", () => {
 
     await firstRuntime.submit("@Steve");
     await firstRuntime.submit("Follow up with Steve.");
-    await firstRuntime.submit("; 9-10 Steve");
 
     const secondRuntime = createAppRuntime({ workspacePath, clock });
     await secondRuntime.initialize();
 
     const rendered = secondRuntime.render();
-    const planRendered = secondRuntime.render({ input: ";" });
 
     assert.match(rendered, /Follow up with Steve/);
-    assert.match(planRendered, /9:00  ●  Steve · 1h/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -1061,7 +1010,6 @@ id: 11111111-1111-4111-8111-111111111111
 type: file
 created: 2026-07-01T12:00:00.000Z
 associated_contexts:
-tags:
 due: 
 file: launch-notes.txt
 url: ${""}
@@ -1110,7 +1058,6 @@ id: 22222222-2222-4222-8222-222222222222
 type: file
 created: 2026-07-01T12:00:00.000Z
 associated_contexts:
-tags:
 due: 
 file: login-screenshot.png
 url: ${""}
@@ -1281,7 +1228,7 @@ Login Screenshot
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("adds tags to selected facts", async () => {
+  it("rejects removed dynamic @ selection actions", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-add-tag-"));
     const runtime = createAppRuntime({
@@ -1292,16 +1239,14 @@ Login Screenshot
     await runtime.submit("@empty-space");
     await runtime.submit("first item in empty");
     const preview = runtime.render({ input: ". @Steve\\ Ma" });
-    const result = await runtime.submit(". @Steve\\ Ma");
 
-    assert.match(preview, /> 1\. first item in empty >Steve Ma/);
-    assert.equal(result.message, "@Steve\\ Ma applied to 1 fact");
-    assert.match(runtime.render(), / 1\. first item in empty >Steve Ma/);
+    assert.match(preview, /1\. first item in empty/);
+    await assert.rejects(() => runtime.submit(". @Steve\\ Ma"), /Unknown selection action/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("does not append selected tags already mentioned in fact text", async () => {
+  it("renders captured @ text without trailing tag echoes", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-add-inline-tag-"));
     const runtime = createAppRuntime({
@@ -1311,15 +1256,14 @@ Login Screenshot
 
     await runtime.submit("@empty-space");
     await runtime.submit("Ask @Steve\\ Ma about the launch");
-    await runtime.submit(". @Steve\\ Ma");
 
-    assert.match(runtime.render(), /Ask @Steve Ma about the launch/);
+    assert.match(runtime.render(), /Ask @Steve\\ Ma about the launch/);
     assert.doesNotMatch(runtime.render(), />Steve Ma/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("removes selected due dates and context tag associations", async () => {
+  it("removes selected due dates and context associations", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-remove-tag-"));
     const runtime = createAppRuntime({
@@ -1329,17 +1273,15 @@ Login Screenshot
 
     await runtime.submit("@empty-space");
     await runtime.submit("first item in empty");
-    await runtime.submit(". tomorrow @Steve\\ Ma");
+    await runtime.submit(". tomorrow gather");
 
-    const preview = runtime.render({ input: ". -due -@Steve\\ Ma" });
-    const result = await runtime.submit(". -due -@Steve\\ Ma");
+    const preview = runtime.render({ input: ". -due -@empty-space" });
+    const result = await runtime.submit(". -due -@empty-space");
     const rendered = runtime.render();
 
     assert.doesNotMatch(preview, /tomorrow/);
-    assert.doesNotMatch(preview, />Steve Ma/);
-    assert.equal(result.message, "-due -@Steve\\ Ma applied to 1 fact");
+    assert.equal(result.message, "-due -@empty-space applied to 1 fact");
     assert.doesNotMatch(rendered, /tomorrow/);
-    assert.doesNotMatch(rendered, />Steve Ma/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -1377,7 +1319,6 @@ Login Screenshot
 
     await runtime.submit("@Steve");
     await runtime.submit("Follow up with Steve.");
-    await runtime.submit("; 9-10 Steve");
     await runtime.submit(":help");
     await runtime.submit(":restart");
 
@@ -1386,7 +1327,7 @@ Login Screenshot
 
     assert.match(rendered, /Follow up with Steve/);
     assert.doesNotMatch(rendered, /@<context>/);
-    assert.match(planRendered, /9:00  ●  Steve · 1h/);
+    assert.match(planRendered, /Follow up with Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -1401,14 +1342,12 @@ Login Screenshot
 
     await runtime.submit("@Steve");
     await runtime.submit("Follow up with Steve.");
-    await runtime.submit("; 9-10 Architecture Review Board");
     await runtime.submit(":contexts");
 
     const rendered = runtime.render();
 
     assert.match(rendered, /Contexts/);
-    assert.match(rendered, /2\. \* Steve/);
-    assert.match(rendered, /1\.   Architecture Review Board/);
+    assert.match(rendered, /1\. \* Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
@@ -1502,45 +1441,6 @@ Login Screenshot
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("updates visible timeboxes by number", async () => {
-    const { createAppRuntime } = await import("../src/main.js");
-    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-timebox-update-"));
-    const runtime = createAppRuntime({
-      workspacePath,
-      clock: () => new Date("2026-06-30T12:00:00.000Z")
-    });
-
-    await runtime.submit("; 9-10 Steve");
-    await runtime.submit(":timebox 1 10-11 Architecture Review Board");
-
-    const rendered = runtime.render({ input: ";" });
-
-    assert.match(rendered, /10:00  ●  Architecture Review Board · 1h/);
-    assert.doesNotMatch(rendered, /9:00  ●  Steve · 1h/);
-
-    fs.rmSync(workspacePath, { recursive: true, force: true });
-  });
-
-  it("deletes visible timeboxes by number", async () => {
-    const { createAppRuntime } = await import("../src/main.js");
-    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-timebox-delete-"));
-    const runtime = createAppRuntime({
-      workspacePath,
-      clock: () => new Date("2026-06-30T12:00:00.000Z")
-    });
-
-    await runtime.submit("; 9-10 Steve");
-    await runtime.submit("; 11-12 Counterfact");
-    await runtime.submit(":timebox delete 1");
-
-    const rendered = runtime.render({ input: ";" });
-
-    assert.doesNotMatch(rendered, /9:00  ●  Steve · 1h/);
-    assert.match(rendered, /11:00  ●  Counterfact · 1h/);
-
-    fs.rmSync(workspacePath, { recursive: true, force: true });
-  });
-
   it("uses configured fact type and selection actions", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-config-runtime-"));
@@ -1572,7 +1472,7 @@ Login Screenshot
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("completes capture tags from saved facts", async () => {
+  it("does not complete inline @ text from saved facts", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-tag-complete-"));
     const runtime = createAppRuntime({
@@ -1583,10 +1483,10 @@ Login Screenshot
     await runtime.submit("@Steve");
     await runtime.submit("Ask @Devin about the trial.");
 
-    assert.equal(await runtime.complete("Confirm @Dev"), "Confirm @Devin");
+    assert.equal(await runtime.complete("Confirm @Dev"), "Confirm @Dev");
     assert.equal(await runtime.complete("@St"), "@Steve");
-    assert.equal(await runtime.complete(". @"), ". @Devin");
-    assert.equal(await runtime.complete(". @Dev"), ". @Devin");
+    assert.equal(await runtime.complete(". @"), ". @");
+    assert.equal(await runtime.complete(". @Dev"), ". @Dev");
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

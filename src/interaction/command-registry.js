@@ -1,5 +1,4 @@
 import { AppMode } from "../state/index.js";
-import { TimeBox } from "../domain/index.js";
 import {
   formatNaturalDate,
   replaceIsoDatesWithNaturalDates
@@ -100,8 +99,6 @@ class HelpCommand {
         ":contexts           list known contexts",
         ":context <number>   switch to a numbered context",
         ":inspect <number>   show visible fact details",
-        ":timebox <number> <range> <context>  update a timebox",
-        ":timebox delete <number>             delete a timebox",
         ":undo               undo the last selection action",
         ":restart            restart the app and reload current state",
         ":paste              paste clipboard into the current context",
@@ -112,9 +109,7 @@ class HelpCommand {
         "plain text          capture a fact",
         "/query              search facts",
         ". task              update first visible fact",
-        "@2 1 task          update fact 1 in recent context 2",
-        ". @tag              tag first visible fact",
-        "; 9-10 Context      plan a timebox"
+        "@2 1 task          update fact 1 in recent context 2"
       ]
     });
   }
@@ -211,53 +206,6 @@ class ContextCommand {
   }
 }
 
-class TimeBoxCommand {
-  async execute(args, { timeBoxRepository, timeBoxes, today }) {
-    if (!timeBoxRepository) {
-      throw new Error(":timebox requires a time box repository");
-    }
-
-    const tokens = args.trim().split(/\s+/).filter(Boolean);
-
-    if (tokens[0] === "delete") {
-      const timeBox = resolveTimeBoxNumber(tokens[1], timeBoxes);
-      await timeBoxRepository.delete(timeBox);
-      return InteractionResult.timeBoxChanged({
-        mode: AppMode.COMMAND,
-        action: "timebox_delete",
-        message: `deleted timebox ${tokens[1]}`,
-        timeBoxDate: timeBox.date
-      });
-    }
-
-    const timeBox = resolveTimeBoxNumber(tokens.shift(), timeBoxes);
-    const rangeToken = tokens.shift();
-    const context = tokens.join(" ").trim();
-
-    if (!rangeToken || !context) {
-      throw new Error(":timebox update requires a number, range, and context");
-    }
-
-    const [startsAt, endsAt] = parseTimeRange(rangeToken);
-    const updatedTimeBox = new TimeBox({
-      ...timeBox.toSerializable(),
-      date: today ?? timeBox.date,
-      startsAt,
-      endsAt,
-      context
-    });
-
-    await timeBoxRepository.save(updatedTimeBox);
-
-    return InteractionResult.timeBoxChanged({
-      mode: AppMode.COMMAND,
-      action: "timebox_update",
-      message: `updated timebox ${timeBoxNumberFor(timeBox, timeBoxes)}`,
-      timeBoxDate: updatedTimeBox.date
-    });
-  }
-}
-
 function defaultCommands() {
   const exitCommand = new ExitCommand();
 
@@ -269,58 +217,10 @@ function defaultCommands() {
     context: new ContextCommand(),
     contexts: new ContextsCommand(),
     "@context-switch": new SwitchContextCommand(),
-    timebox: new TimeBoxCommand(),
     undo: new UndoCommand(),
     restart: new RestartCommand(),
     paste: new PasteCommand()
   };
-}
-
-function resolveTimeBoxNumber(numberText, timeBoxes = []) {
-  if (!/^\d+$/.test(numberText ?? "")) {
-    throw new Error(":timebox requires a visible timebox number");
-  }
-
-  const sorted = sortedTimeBoxes(timeBoxes);
-  const timeBox = sorted[Number(numberText) - 1];
-
-  if (!timeBox) {
-    throw new Error(`No timebox numbered ${numberText}`);
-  }
-
-  return timeBox;
-}
-
-function timeBoxNumberFor(timeBox, timeBoxes) {
-  return String(sortedTimeBoxes(timeBoxes).findIndex((candidate) => candidate.id === timeBox.id) + 1);
-}
-
-function sortedTimeBoxes(timeBoxes = []) {
-  return [...timeBoxes].sort((left, right) => left.startsAt.localeCompare(right.startsAt));
-}
-
-function parseTimeRange(rangeToken) {
-  const match = rangeToken.match(/^(\d{1,2})(?::(\d{2}))?-(\d{1,2})(?::(\d{2}))?$/);
-
-  if (!match) {
-    throw new Error("Timebox range must look like 9-10 or 09:30-10:00");
-  }
-
-  return [
-    normalizeTime(match[1], match[2] ?? "00"),
-    normalizeTime(match[3], match[4] ?? "00")
-  ];
-}
-
-function normalizeTime(hoursValue, minutesValue) {
-  const hours = Number(hoursValue);
-  const minutes = Number(minutesValue);
-
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-    throw new Error("Timebox range contains an invalid local time");
-  }
-
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 function factDetailLines(fact, filePath, today) {

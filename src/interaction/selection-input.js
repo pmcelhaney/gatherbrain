@@ -28,16 +28,9 @@ export function parseSelectionActions(tokens, { actionKeywords = [] } = {}) {
 
   while (index < tokens.length) {
     if (tokens[index].startsWith("-@")) {
-      const tagTokens = readTagActionTokens(tokens, index);
-      actions.push(actionFromTokens(tagTokens));
-      index += tagTokens.length;
-      continue;
-    }
-
-    if (tokens[index].startsWith("@")) {
-      const tagTokens = readTagActionTokens(tokens, index);
-      actions.push(actionFromTokens(tagTokens));
-      index += tagTokens.length;
+      const contextTokens = readEscapedActionTokens(tokens, index);
+      actions.push(actionFromTokens(contextTokens));
+      index += contextTokens.length;
       continue;
     }
 
@@ -73,16 +66,16 @@ function isSelectionSelector(token) {
   return /^\d+$/.test(token) || /^\.+$/.test(token);
 }
 
-function readTagActionTokens(tokens, startIndex) {
-  const tagTokens = [tokens[startIndex]];
+function readEscapedActionTokens(tokens, startIndex) {
+  const actionTokens = [tokens[startIndex]];
   let index = startIndex;
 
   while (tokens[index]?.endsWith("\\") && index + 1 < tokens.length) {
     index += 1;
-    tagTokens.push(tokens[index]);
+    actionTokens.push(tokens[index]);
   }
 
-  return tagTokens;
+  return actionTokens;
 }
 
 function readDateActionTokens(tokens, startIndex) {

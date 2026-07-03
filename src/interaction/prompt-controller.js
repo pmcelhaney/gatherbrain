@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { extractTags, Fact, normalizeTaggedContent } from "../domain/index.js";
+import { Fact } from "../domain/index.js";
 import { normalizeNaturalDates } from "../domain/date-text.js";
 import { SelectionActionRegistry } from "../actions/index.js";
 import {
@@ -8,7 +8,6 @@ import {
   SearchQueryParser,
   SearchShortcutRegistry
 } from "../search/index.js";
-import { PlanParser } from "../planning/index.js";
 import { AppMode, Selection } from "../state/index.js";
 import { CommandRegistry } from "./command-registry.js";
 import { InteractionResult } from "./interaction-result.js";
@@ -29,10 +28,7 @@ export class PromptController {
     contextRepository = null,
     selectionActionRegistry = SelectionActionRegistry.fromConfig(),
     currentResultSetProvider = () => null,
-    currentTimeBoxesProvider = () => [],
     recentContextProvider = () => [],
-    planParser = null,
-    timeBoxRepository = null,
     fileOpener = null,
     clock = () => new Date(),
     idGenerator = randomUUID,
@@ -49,10 +45,7 @@ export class PromptController {
     this.contextRepository = contextRepository;
     this.selectionActionRegistry = selectionActionRegistry;
     this.currentResultSetProvider = currentResultSetProvider;
-    this.currentTimeBoxesProvider = currentTimeBoxesProvider;
     this.recentContextProvider = recentContextProvider;
-    this.planParser = planParser;
-    this.timeBoxRepository = timeBoxRepository;
     this.fileOpener = fileOpener;
     this.clock = clock;
     this.idGenerator = idGenerator;
@@ -73,8 +66,6 @@ export class PromptController {
         contextRepository: this.contextRepository,
         factRepository: this.factRepository,
         resultSet: this.currentResultSetProvider(),
-        timeBoxRepository: this.timeBoxRepository,
-        timeBoxes: this.currentTimeBoxesProvider(),
         recentContexts: this.recentContextProvider(),
         today: this.clock().toISOString().slice(0, 10)
       });
@@ -88,10 +79,6 @@ export class PromptController {
       return this.selection(input);
     }
 
-    if (mode === AppMode.PLAN) {
-      return this.plan(input);
-    }
-
     return InteractionResult.classified({ mode });
   }
 
@@ -100,7 +87,7 @@ export class PromptController {
       today: this.clock().toISOString().slice(0, 10)
     });
     const bookmark = extractBookmark(rawContent);
-    const content = normalizeTaggedContent(bookmark.content);
+    const content = bookmark.content;
 
     if (!content) {
       return InteractionResult.classified({
@@ -118,8 +105,7 @@ export class PromptController {
       type: bookmark.url ? "bookmark" : this.defaultFactType,
       createdAt: this.clock(),
       homeContext: this.state.currentContext,
-      url: bookmark.url,
-      tags: extractTags(rawContent)
+      url: bookmark.url
     });
 
     const { filePath } = await this.factRepository.create(fact);
@@ -226,24 +212,6 @@ export class PromptController {
     return { facts };
   }
 
-  async plan(input) {
-    if (!this.timeBoxRepository) {
-      throw new Error("Time box repository is required for plan input");
-    }
-
-    const today = this.clock().toISOString().slice(0, 10);
-    const parser = this.planParser ?? new PlanParser({ today });
-    const preview = parser.parse(input, { today });
-    this.state.setPlanPreview(preview);
-
-    const timeBox = preview.commit();
-    await this.timeBoxRepository.save(timeBox);
-
-    return InteractionResult.planned({
-      mode: AppMode.PLAN,
-      timeBox
-    });
-  }
 }
 
 function extractBookmark(input) {
