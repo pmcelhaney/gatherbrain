@@ -775,12 +775,13 @@ function scopedContextTarget(input, { recentContexts = [], facts = [] } = {}) {
   }
 
   const contextMatch = String(input).match(/^@(?<context>\S+)$/);
+  const contextValue = contextMatch?.groups.context ?? leadingAtContextValue(input);
 
-  if (!contextMatch) {
+  if (!contextValue) {
     return null;
   }
 
-  const contextName = contextNameForTypedPrefix(contextMatch.groups.context, {
+  const contextName = contextNameForTypedPrefix(contextValue, {
     recentContexts,
     facts
   });
@@ -793,6 +794,32 @@ function scopedContextTarget(input, { recentContexts = [], facts = [] } = {}) {
     contextName,
     rest: ""
   };
+}
+
+function leadingAtContextValue(input) {
+  if (!String(input).startsWith("@")) {
+    return null;
+  }
+
+  let value = "";
+
+  for (let index = 1; index < input.length; index += 1) {
+    const char = input[index];
+
+    if (char === "\\" && /\s/.test(input[index + 1] ?? "")) {
+      value += input[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (/\s/.test(char)) {
+      return null;
+    }
+
+    value += char;
+  }
+
+  return value.length > 0 ? value : null;
 }
 
 function contextNameForRecentSelector(selector, recentContexts = []) {
@@ -1164,7 +1191,10 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
     if (completionCycle?.completed !== buffer.text || completionCycle.cursor !== buffer.cursor) {
       return null;
     }
-    return completionCycle.index >= 0 ? completionCycle.index : null;
+    const candidateCount = completionCycle.candidates?.length ?? 0;
+    return completionCycle.index >= 0 && candidateCount > 0
+      ? completionCycle.index % candidateCount
+      : null;
   };
 
   const redraw = () => {

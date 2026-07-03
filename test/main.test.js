@@ -283,6 +283,86 @@ describe("main", () => {
     assert.deepEqual(rawModes, [true, false]);
   });
 
+  it("keeps wrapped tab completions highlighted", async () => {
+    const { runTui } = await import("../src/main.js");
+    const input = new EventEmitter();
+    const output = {
+      columns: 80,
+      rows: 24,
+      writes: [],
+      write(value) {
+        this.writes.push(value);
+      }
+    };
+    const candidates = ["@Stacy", "@Stan", "@Steve\\ Ma"];
+    const suggestCalls = [];
+    const renderedInputs = [];
+    const submitted = [];
+    input.setRawMode = () => {};
+    input.pause = () => {};
+
+    const run = runTui({
+      render({
+        input: renderedInput,
+        cursor,
+        completionSuggestionStart,
+        completionCandidates,
+        completionCandidateIndex
+      }) {
+        renderedInputs.push({
+          input: renderedInput,
+          cursor,
+          completionSuggestionStart,
+          completionCandidates,
+          completionCandidateIndex
+        });
+        return "";
+      },
+      async suggestCompletion(value, options) {
+        suggestCalls.push({ value, options });
+        return {
+          input: value,
+          completed: candidates[options.completionIndex % candidates.length],
+          candidates
+        };
+      },
+      async submit(value) {
+        submitted.push(value);
+        return { action: "exit" };
+      }
+    }, { inputStream: input, outputStream: output });
+
+    input.emit("keypress", "@", { sequence: "@", name: undefined });
+    input.emit("keypress", "S", { sequence: "S", name: undefined });
+    input.emit("keypress", "t", { sequence: "t", name: undefined });
+    input.emit("keypress", "\t", { sequence: "\t", name: "tab" });
+    await new Promise((resolve) => setImmediate(resolve));
+    input.emit("keypress", "\t", { sequence: "\t", name: "tab" });
+    await new Promise((resolve) => setImmediate(resolve));
+    input.emit("keypress", "\t", { sequence: "\t", name: "tab" });
+    await new Promise((resolve) => setImmediate(resolve));
+    input.emit("keypress", "\t", { sequence: "\t", name: "tab" });
+    await new Promise((resolve) => setImmediate(resolve));
+    input.emit("keypress", "\r", { sequence: "\r", name: "return" });
+
+    await run;
+
+    assert.deepEqual(suggestCalls, [
+      { value: "@St", options: { completionIndex: 0 } },
+      { value: "@St", options: { completionIndex: 1 } },
+      { value: "@St", options: { completionIndex: 2 } },
+      { value: "@St", options: { completionIndex: 3 } }
+    ]);
+    assert.deepEqual(renderedInputs.at(-1), {
+      input: "@Stacy",
+      cursor: 3,
+      completionSuggestionStart: 3,
+      completionCandidates: candidates,
+      completionCandidateIndex: 0
+    });
+    assert.deepEqual(submitted, ["@Stacy"]);
+  });
+
   it("completes the common prefix before cycling full candidates", async () => {
     const { runTui } = await import("../src/main.js");
     const input = new EventEmitter();
@@ -621,6 +701,38 @@ describe("createAppRuntime", () => {
     assert.match(completedSuggestion, /1\. Review Gatherbrain items\./);
     assert.doesNotMatch(completedSuggestion, /^ 1\. Steve Ma$/m);
     assert.equal(runtime.state.currentContext.name, "Steve Ma");
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
+  it("previews the highlighted escaped context completion target", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-escaped-context-preview-"));
+    const runtime = createAppRuntime({ workspacePath });
+
+    await runtime.submit("@Technology Assembly");
+    await runtime.submit("Base assembly item.");
+    await runtime.submit("@Technology Assembly/2026-07-08");
+    await runtime.submit("July assembly item.");
+    await runtime.submit("@Technology Assembly");
+
+    const rendered = runtime.render({
+      input: "@Technology\\ Assembly/2026-07-08",
+      cursor: 3,
+      completionSuggestionStart: 3,
+      completionCandidates: [
+        "@Technology\\ Assembly",
+        "@Technology\\ Assembly/2026-07-08"
+      ],
+      completionCandidateIndex: 1,
+      width: 80,
+      height: 8
+    });
+
+    assert.match(rendered, /^Technology Assembly > Technology Assembly\/2026-07-08$/m);
+    assert.match(rendered, /1\. July assembly item\./);
+    assert.doesNotMatch(rendered, /Base assembly item/);
+    assert.equal(runtime.state.currentContext.name, "Technology Assembly");
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
