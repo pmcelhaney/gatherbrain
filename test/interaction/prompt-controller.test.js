@@ -191,6 +191,23 @@ describe("PromptController", () => {
     assert.equal(saved.dueDate, "2026-06-30");
   });
 
+  it("removes due dates and context tag associations from selection commands", async () => {
+    await controller.submit("Follow up with Steve.");
+    const search = await controller.submit("/Steve");
+    currentResultSet = search.resultSet;
+
+    await controller.submit("1 tomorrow @Steve\\ Ma");
+    const result = await controller.submit("1 -due -@Steve\\ Ma");
+
+    assert.equal(result.action, "selection_action");
+    assert.equal(result.message, "-due -@Steve\\ Ma applied to 1 fact");
+    const saved = await controller.factRepository.getFactById(
+      "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a"
+    );
+    assert.equal(saved.dueDate, null);
+    assert.deepEqual(saved.tags, []);
+  });
+
   it("does not partially apply multiple selection actions when one is unknown", async () => {
     await controller.submit("Follow up with Steve.");
     const search = await controller.submit("/Steve");

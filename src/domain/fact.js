@@ -50,6 +50,19 @@ export class Fact {
     this.tags = normalizeTags([...this.tags, tag]);
   }
 
+  removeTag(tag) {
+    const [normalizedTag] = normalizeTags([tag]);
+
+    if (!normalizedTag) {
+      return;
+    }
+
+    const canonicalTag = normalizedTag.toLocaleLowerCase("en-US");
+    this.tags = this.tags.filter(
+      (existing) => existing.toLocaleLowerCase("en-US") !== canonicalTag
+    );
+  }
+
   associateContext(context) {
     const nextContext = Context.from(context);
 

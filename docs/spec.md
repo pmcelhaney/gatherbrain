@@ -59,16 +59,15 @@ A fact has:
 
 Every fact belongs to exactly one home context.
 
-A fact may be associated with zero or more additional contexts.
+A fact may be associated with zero or more additional contexts. Associated
+contexts and tags are the same user-facing association namespace. Tags are
+captured from `@` mentions in fact text, and `@` refers to a context name.
+Escaped spaces are normalized when saving, so `@Steve\ Ma` stores the tag
+`Steve Ma`. Possessives keep the suffix as text, so `@Devin's` stores the tag
+`Devin`.
 
-A fact may have zero or more tags. Tags and contexts share the same workspace
-namespace. Tags are captured from `@` mentions in fact text, and `@` refers to a
-context name. Escaped spaces are normalized when saving, so `@Steve\ Ma` stores
-the tag `Steve Ma`. Possessives keep the suffix as text, so `@Devin's` stores
-the tag `Devin`.
-
-Tags may also be added to selected existing facts with selection input such as
-`. @Steve\ Ma` or `1 @Steve\ Ma`.
+Context tag associations may also be added to selected existing facts with
+selection input such as `. @Steve\ Ma` or `1 @Steve\ Ma`.
 
 Known tags are discovered from root-level workspace directories, the same way
 contexts are discovered. Tab completion applies to dynamic `@` selection
@@ -697,6 +696,10 @@ Examples:
 
 . @Steve\ Ma
 
+. -due
+
+. -@Steve\ Ma
+
 @2 1 task today
 
 @.. . waiting
@@ -716,6 +719,18 @@ Example:
 3 tomorrow
 . next Friday
 . June 1
+```
+
+---
+
+### Clear due date
+
+Removes the selected fact's due date.
+
+Example:
+
+```text
+. -due
 ```
 
 ---
@@ -758,7 +773,7 @@ Example:
 
 ### Add Tag
 
-Adds a tag to the selected fact.
+Adds a context tag association to the selected fact.
 
 Escaped spaces are normalized the same way as capture text.
 
@@ -766,6 +781,20 @@ Example:
 
 ```text
 . @Steve\ Ma
+```
+
+---
+
+### Remove Tag
+
+Removes a context tag association from the selected fact.
+
+Escaped spaces are normalized the same way as capture text.
+
+Example:
+
+```text
+. -@Steve\ Ma
 ```
 
 ---

@@ -256,13 +256,15 @@ Current built-in actions:
 | `done` | Sets type to `done` |
 | `today` | Sets due date to today |
 | `tomorrow` | Sets due date to tomorrow |
+| `-due` | Removes the due date |
 | `delete` | Moves the fact to `.trash` |
 | `gather` | Associates the fact with the current context |
 | `open` | Opens the URL, file, or both associated with the fact |
 | `edit` | Opens the fact Markdown file in `$EDITOR`; with multiple selectors, only the last mentioned fact is edited |
 
-Any `@tag` action adds that tag to the selected facts. Escaped spaces are
-normalized the same way as capture text, so `. @Steve\ Ma` stores `Steve Ma`.
+Any `@tag` action adds that context tag association to the selected facts, and
+`-@tag` removes it. Escaped spaces are normalized the same way as capture text,
+so `. @Steve\ Ma` stores `Steve Ma` and `. -@Steve\ Ma` removes it.
 Tags that are not already mentioned in the fact text render after the content as
 `>Steve Ma`; tags already mentioned inline are not repeated.
 

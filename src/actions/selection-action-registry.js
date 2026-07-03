@@ -1,8 +1,10 @@
 import {
   AddTagAction,
   AssociateCurrentContextAction,
+  ClearDueDateAction,
   EditFactFileAction,
   OpenFileAction,
+  RemoveContextAssociationAction,
   SetDueDateAction,
   SetTypeAction,
   TrashFactAction
@@ -28,6 +30,10 @@ export class SelectionActionRegistry {
   }
 
   resolve(keyword) {
+    if (isRemoveContextAssociationAction(keyword)) {
+      return new RemoveContextAssociationAction(tagFromAction(keyword.slice(1)));
+    }
+
     if (isTagAction(keyword)) {
       return new AddTagAction(tagFromAction(keyword));
     }
@@ -81,6 +87,14 @@ export class SelectionActionRegistry {
     const resolvedKeyword = selectionActionText(action);
     const keyword = action.actionKeyword;
 
+    if (isRemoveContextAssociationAction(resolvedKeyword)) {
+      const previewFact = fact.constructor.from(fact.toSerializable());
+      const contextName = tagFromAction(resolvedKeyword.slice(1));
+      previewFact.removeTag(contextName);
+      previewFact.dissociateContext(contextName);
+      return previewFact;
+    }
+
     if (isTagAction(resolvedKeyword)) {
       const previewFact = fact.constructor.from(fact.toSerializable());
       previewFact.addTag(tagFromAction(resolvedKeyword));
@@ -107,6 +121,9 @@ export class SelectionActionRegistry {
         return previewFact;
       case "set_due":
         previewFact.setDueDate(resolvePreviewDueDate(definition.value, context));
+        return previewFact;
+      case "clear_due":
+        previewFact.clearDueDate();
         return previewFact;
       case "associate_current_context":
       case "associate_current_session":
@@ -135,6 +152,10 @@ function isTagAction(keyword) {
   return typeof keyword === "string" && keyword.startsWith("@") && keyword.length > 1;
 }
 
+function isRemoveContextAssociationAction(keyword) {
+  return typeof keyword === "string" && keyword.startsWith("-@") && keyword.length > 2;
+}
+
 function tagFromAction(keyword) {
   return keyword.slice(1);
 }
@@ -145,6 +166,8 @@ function buildAction(definition) {
       return new SetTypeAction(definition.value);
     case "set_due":
       return new SetDueDateAction(definition.value);
+    case "clear_due":
+      return new ClearDueDateAction();
     case "trash":
       return new TrashFactAction();
     case "associate_current_context":
@@ -189,6 +212,9 @@ export function defaultActionConfig() {
       tomorrow: {
         action: "set_due",
         value: "tomorrow"
+      },
+      "-due": {
+        action: "clear_due"
       },
       delete: {
         action: "trash"

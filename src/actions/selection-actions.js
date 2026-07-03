@@ -44,6 +44,31 @@ export class AddTagAction {
   }
 }
 
+export class RemoveContextAssociationAction {
+  constructor(contextName) {
+    this.contextName = contextName;
+  }
+
+  async execute(context) {
+    return mutateSelectedFacts(context, async (fact, factStore) => {
+      fact.removeTag(this.contextName);
+      fact.dissociateContext(this.contextName);
+      await factStore.saveFact(fact);
+      return { fact, action: "remove_context_association", value: this.contextName };
+    });
+  }
+}
+
+export class ClearDueDateAction {
+  async execute(context) {
+    return mutateSelectedFacts(context, async (fact, factStore) => {
+      fact.clearDueDate();
+      await factStore.saveFact(fact);
+      return { fact, action: "clear_due" };
+    });
+  }
+}
+
 export class TrashFactAction {
   async execute(context) {
     return mutateSelectedFacts(context, async (fact, factStore) => {

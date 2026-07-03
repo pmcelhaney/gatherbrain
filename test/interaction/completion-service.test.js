@@ -52,6 +52,7 @@ describe("CompletionService", () => {
     assert.equal(await service.complete(". inp"), ". inprogress");
     assert.equal(await service.complete(". toda"), ". today");
     assert.equal(await service.complete(". tom"), ". tomorrow");
+    assert.equal(await service.complete(". -d"), ". -due");
     assert.equal(await service.complete(". ed"), ". edit");
   });
 
@@ -70,6 +71,24 @@ describe("CompletionService", () => {
     assert.equal(await service.complete(". @", { completionIndex: 1 }), ". @Steve\\ Ma");
     assert.equal(await service.complete(". @St"), ". @Steve\\ Ma");
     assert.equal(await service.complete("1 @St"), "1 @Steve\\ Ma");
+  });
+
+  it("completes dynamic -@ selection actions from known context tag associations", async () => {
+    const service = new CompletionService({
+      factSource: {
+        async list() {
+          return [
+            {
+              associatedContexts: ["Architecture Review Board"],
+              tags: ["Steve Ma"]
+            }
+          ];
+        }
+      }
+    });
+
+    assert.equal(await service.complete(". -@Arch"), ". -@Architecture\\ Review\\ Board");
+    assert.equal(await service.complete("1 -@St"), "1 -@Steve\\ Ma");
   });
 
   it("completes visible selectors", async () => {

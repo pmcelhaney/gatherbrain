@@ -1178,6 +1178,31 @@ Login Screenshot
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("removes selected due dates and context tag associations", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-remove-tag-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit("@empty-space");
+    await runtime.submit("first item in empty");
+    await runtime.submit(". tomorrow @Steve\\ Ma");
+
+    const preview = runtime.render({ input: ". -due -@Steve\\ Ma" });
+    const result = await runtime.submit(". -due -@Steve\\ Ma");
+    const rendered = runtime.render();
+
+    assert.doesNotMatch(preview, /tomorrow/);
+    assert.doesNotMatch(preview, />Steve Ma/);
+    assert.equal(result.message, "-due -@Steve\\ Ma applied to 1 fact");
+    assert.doesNotMatch(rendered, /tomorrow/);
+    assert.doesNotMatch(rendered, />Steve Ma/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("shows home context only for outside-context search results", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-context-prefix-"));

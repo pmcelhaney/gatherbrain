@@ -27,6 +27,13 @@ export function parseSelectionActions(tokens, { actionKeywords = [] } = {}) {
   let index = 0;
 
   while (index < tokens.length) {
+    if (tokens[index].startsWith("-@")) {
+      const tagTokens = readTagActionTokens(tokens, index);
+      actions.push(actionFromTokens(tagTokens));
+      index += tagTokens.length;
+      continue;
+    }
+
     if (tokens[index].startsWith("@")) {
       const tagTokens = readTagActionTokens(tokens, index);
       actions.push(actionFromTokens(tagTokens));

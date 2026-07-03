@@ -141,6 +141,13 @@ export class CompletionService {
           tags.push(tag);
         }
       }
+
+      for (const context of fact.associatedContexts ?? []) {
+        const contextName = context.name ?? context;
+        if (!tags.includes(contextName)) {
+          tags.push(contextName);
+        }
+      }
     }
 
     return tags.sort((left, right) => left.localeCompare(right, "en-US"));
@@ -225,18 +232,28 @@ function isSelectionInput(input) {
 function activeSelectionTagSegment(input) {
   const actionStartIndex = selectionActionStartIndex(input);
 
-  if (actionStartIndex === null || input[actionStartIndex] !== "@") {
+  if (actionStartIndex === null) {
     return null;
   }
 
-  const activeTag = activeTagSegment(input.slice(actionStartIndex), { allowEmpty: true });
+  const tagStartIndex = input[actionStartIndex] === "@"
+    ? actionStartIndex
+    : input.slice(actionStartIndex).startsWith("-@")
+      ? actionStartIndex + 1
+      : null;
+
+  if (tagStartIndex === null) {
+    return null;
+  }
+
+  const activeTag = activeTagSegment(input.slice(tagStartIndex), { allowEmpty: true });
 
   if (!activeTag) {
     return null;
   }
 
   return {
-    startIndex: actionStartIndex + activeTag.startIndex,
+    startIndex: tagStartIndex + activeTag.startIndex,
     value: activeTag.value
   };
 }
