@@ -226,8 +226,8 @@ Steve Ma > Gatherbrain
 
 ## Body
 
-The body displays current-context facts, transient search results, context
-lists, help, or inspect panels.
+The body displays current-context facts, transient search results, recent
+context lists, help, or selection previews.
 
 Fact rows are numbered at the left with a muted number prefix. The implicit
 `fact` type is not shown. Other fact types are shown before the content.
@@ -244,8 +244,7 @@ Due dates are displayed as friendly labels when possible:
 - short weekday for nearby dates
 - month and day for later dates
 
-The same friendly display is applied to ISO dates found in fact content and
-fact inspection output.
+The same friendly display is applied to ISO dates found in fact content.
 
 When color is enabled, selected fact previews highlight the whole rendered fact
 row, including colored type and due-date segments.
@@ -301,9 +300,6 @@ The mode is inferred from the first character entered.
 | `@<number>` | Switches to a numbered context from the current `@` preview list |
 | `@<dots>` | Switches to a dot-selected context from the current `@` preview list |
 | `@<number-or-dots-or-context> <selectors> <actions>` | Applies selection actions inside that context, then keeps the original context active |
-| `:context <number>` | Switches to a numbered context from `:contexts` |
-| `:contexts` | Lists contexts discovered from fact folders |
-| `:inspect <number>` | Shows full metadata and file path for a visible fact |
 | `:undo` | Undoes the most recent selection action in memory |
 | `:help` | Shows in-app help |
 | `:restart` | Restarts the app, reloads the current context, and clears transient panels |

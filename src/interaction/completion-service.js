@@ -7,7 +7,7 @@ export class CompletionService {
     factSource = null,
     actionRegistry = SelectionActionRegistry.fromConfig(),
     shortcutRegistry = new SearchShortcutRegistry(),
-    commandNames = ["exit", "help", "inspect", "paste", "quit", "restart", "context", "contexts", "undo"]
+    commandNames = ["exit", "help", "paste", "quit", "restart", "undo"]
   } = {}) {
     this.contextRepository = contextRepository;
     this.factSource = factSource;
@@ -22,11 +22,6 @@ export class CompletionService {
 
   async suggest(input, context = {}) {
     const matchIndex = context.completionIndex ?? 0;
-    const contextCommandPrefix = contextCompletionPrefix(input, this.commandNames);
-    if (contextCommandPrefix) {
-      return completeSuffix(input, contextCommandPrefix, await this.contextNames(), matchIndex);
-    }
-
     if (input.startsWith(":")) {
       return completeSuffix(input, ":", this.commandNames, matchIndex);
     }
@@ -108,48 +103,6 @@ function completeSuffix(input, prefix, candidates, matchIndex = 0) {
   const matches = matchingCandidates(candidates, partial);
 
   return completionResult(input, matches.map((match) => `${prefix}${match}`), matchIndex);
-}
-
-function contextCompletionPrefix(input, commandNames) {
-  const match = input.match(/^:([^\s]+)\s+/);
-
-  if (!match) {
-    return null;
-  }
-
-  const commandToken = match[1];
-  const commandName = resolveCommandName(commandToken, commandNames);
-
-  if (commandName === "context") {
-    if (commandToken.toLocaleLowerCase("en-US") === "context") {
-      return ":context ";
-    }
-
-    return `:${commandToken} `;
-  }
-
-  return null;
-}
-
-function resolveCommandName(commandToken, commandNames) {
-  const normalizedToken = commandToken.toLocaleLowerCase("en-US");
-  const exactMatch = commandNames.find((commandName) =>
-    commandName.toLocaleLowerCase("en-US") === normalizedToken
-  );
-
-  if (exactMatch) {
-    return exactMatch;
-  }
-
-  const matches = commandNames.filter((commandName) =>
-    commandName.toLocaleLowerCase("en-US").startsWith(normalizedToken)
-  );
-
-  if (matches.length === 1) {
-    return matches[0];
-  }
-
-  return null;
 }
 
 function completeSelection(input, actionKeywords, resultSet, matchIndex = 0) {

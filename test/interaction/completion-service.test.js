@@ -13,7 +13,7 @@ describe("CompletionService", () => {
     assert.equal(await service.complete(":qu"), ":quit");
   });
 
-  it("completes contexts for @ switches and context commands", async () => {
+  it("completes contexts for @ switches", async () => {
     const service = new CompletionService({
       contextRepository: {
         async list() {
@@ -23,7 +23,7 @@ describe("CompletionService", () => {
     });
 
     assert.equal(await service.complete("@Arch"), "@Architecture\\ Review\\ Board");
-    assert.equal(await service.complete(":context Ste"), ":context Steve");
+    assert.equal(await service.complete(":context Ste"), ":context Ste");
   });
 
   it("does not complete removed switch command shorthands", async () => {
@@ -129,7 +129,7 @@ describe("CompletionService", () => {
     assert.equal(await service.complete(":SW"), ":SW");
     assert.equal(await service.complete("@arch"), "@Architecture\\ Review\\ Board");
     assert.equal(await service.complete(":SWITCH arch"), ":SWITCH arch");
-    assert.equal(await service.complete(":CONTEXT arch"), ":context Architecture Review Board");
+    assert.equal(await service.complete(":CONTEXT arch"), ":CONTEXT arch");
     assert.equal(await service.complete("//CUR"), "//current");
     assert.equal(await service.complete(". INP"), ". inprogress");
   });

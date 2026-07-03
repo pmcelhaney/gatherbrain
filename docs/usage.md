@@ -67,18 +67,6 @@ visited contexts in newest-first order. Enter a listed number or dots to switch:
 @..
 ```
 
-List discovered contexts:
-
-```text
-:contexts
-```
-
-Switch to a numbered context from that list:
-
-```text
-:context 2
-```
-
 ## Capturing Facts
 
 In capture mode, plain text becomes a fact in the current context.
@@ -239,21 +227,12 @@ Undo the most recent selection action:
 :undo
 ```
 
-Inspect one visible fact:
-
-```text
-:inspect 1
-```
-
 ## Commands
 
 | Command | Status |
 | --- | --- |
 | `@<context>` | Switches to an existing context |
 | `@<context>!` | Creates the context if needed, then switches |
-| `:context <number>` | Switches to a numbered context from `:contexts` |
-| `:contexts` | Lists contexts discovered from facts |
-| `:inspect <number>` | Shows full details for a visible fact |
 | `:undo` | Undoes the most recent selection action |
 | `:help` | Shows in-app help |
 | `:restart` | Restarts the TUI process and reloads current state |

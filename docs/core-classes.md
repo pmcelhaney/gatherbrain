@@ -114,9 +114,6 @@ Supported commands include:
 
 - `@<context>`
 - `@<context>!`
-- `:context`
-- `:contexts`
-- `:inspect`
 - `:undo`
 - `:restart`
 - `:paste`
@@ -217,7 +214,7 @@ Renders current context, preview query, and viewed-context breadcrumbs.
 
 ### `BodyRenderer`
 
-Renders facts, search results, help lines, inspect panels, and selection
+Renders facts, search results, help lines, recent-context lists, and selection
 previews.
 
 ### `PromptRenderer`

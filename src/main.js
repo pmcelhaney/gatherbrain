@@ -42,7 +42,7 @@ export function createAppRuntime({
     factSource: factIndex,
     actionRegistry: selectionActionRegistry,
     shortcutRegistry: searchShortcutRegistry,
-    commandNames: ["exit", "help", "inspect", "paste", "quit", "restart", "context", "contexts", "undo"]
+    commandNames: ["exit", "help", "paste", "quit", "restart", "undo"]
   });
   const terminalApp = new TerminalApp({ state });
   let resultSet = null;

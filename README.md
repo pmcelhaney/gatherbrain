@@ -18,11 +18,9 @@ The app currently supports:
 
 - A persistent terminal screen with a header, fact body, and prompt.
 - Context switching with `@<context>` and explicit creation with `@<context>!`.
-- Context discovery with `:contexts`.
-- Numbered context navigation with `:context <number>`.
+- Recent-context discovery and navigation with leading `@`.
 - Capturing facts into the current context.
 - Searching persisted facts with `/...` queries and shortcuts.
-- Fact inspection with `:inspect <number>`.
 - Selection commands such as `. tomorrow`, `. task`, `. gather`, `. claim`, `. go`, `. open`, `. edit`, and `. delete`.
 - Undo for the last selection action with `:undo`.
 - Pasting clipboard text or screenshots into the current context with `:paste`.

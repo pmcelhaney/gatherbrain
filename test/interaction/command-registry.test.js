@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { Fact } from "../../src/domain/index.js";
 import { CommandRegistry } from "../../src/interaction/index.js";
 import { AppState } from "../../src/state/index.js";
 
@@ -121,17 +120,33 @@ describe("CommandRegistry", () => {
     );
   });
 
-  it("rejects ambiguous command shorthands", async () => {
+  it("rejects removed context commands", async () => {
     await assert.rejects(
       () => new CommandRegistry().execute(":c Steve", {
-        state: new AppState(),
-        contextRepository: {
-          async list() {
-            return ["Steve"];
-          }
-        }
+        state: new AppState()
       }),
-      /Ambiguous command: c \(:context, :contexts\)/
+      /Unknown command: c/
+    );
+
+    await assert.rejects(
+      () => new CommandRegistry().execute(":context 1", {
+        state: new AppState()
+      }),
+      /Unknown command: context/
+    );
+
+    await assert.rejects(
+      () => new CommandRegistry().execute(":contexts", {
+        state: new AppState()
+      }),
+      /Unknown command: contexts/
+    );
+
+    await assert.rejects(
+      () => new CommandRegistry().execute(":inspect 1", {
+        state: new AppState()
+      }),
+      /Unknown command: inspect/
     );
   });
 
@@ -170,83 +185,7 @@ describe("CommandRegistry", () => {
 
     assert.equal(result.action, "help");
     assert.match(result.helpLines.join("\n"), /@<context>/);
-    assert.match(result.helpLines.join("\n"), /:contexts/);
-  });
-
-  it("lists known contexts", async () => {
-    const state = new AppState({ currentContext: "Steve" });
-    const contextRepository = {
-      async list() {
-        return ["Architecture Review Board", "Steve"];
-      }
-    };
-
-    const result = await new CommandRegistry().execute(":contexts", {
-      state,
-      contextRepository
-    });
-
-    assert.equal(result.action, "help");
-    assert.deepEqual(result.helpLines, [
-      "Contexts",
-      " 1.   Architecture Review Board",
-      " 2. * Steve"
-    ]);
-  });
-
-  it("switches to a numbered context", async () => {
-    const state = new AppState({ currentContext: "Steve" });
-    const contextRepository = {
-      async list() {
-        return ["Architecture Review Board", "Steve"];
-      }
-    };
-
-    const result = await new CommandRegistry().execute(":context 1", {
-      state,
-      contextRepository
-    });
-
-    assert.equal(result.action, "switch_context");
-    assert.equal(state.currentContext.name, "Architecture Review Board");
-  });
-
-  it("inspects a visible fact", async () => {
-    const fact = new Fact({
-      id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
-      content: "Follow up with Steve.",
-      type: "task",
-      createdAt: "2026-06-30T15:45:00.000Z",
-      dueDate: "2026-07-01",
-      homeContext: "Steve",
-      associatedContexts: ["Architecture Review Board"]
-    });
-    const resultSet = {
-      factIdForNumber(number) {
-        assert.equal(number, 1);
-        return fact.id;
-      }
-    };
-    const factRepository = {
-      async getFactById(factId) {
-        assert.equal(factId, fact.id);
-        return fact;
-      },
-      async findPathByFactId(factId) {
-        assert.equal(factId, fact.id);
-        return "/tmp/fact.md";
-      }
-    };
-
-    const result = await new CommandRegistry().execute(":inspect 1", {
-      factRepository,
-      resultSet
-    });
-
-    assert.equal(result.action, "inspect");
-    assert.match(result.helpLines.join("\n"), /Fact 5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a/);
-    assert.match(result.helpLines.join("\n"), /associated contexts: Architecture Review Board/);
-    assert.match(result.helpLines.join("\n"), /attached file: \(none\)/);
-    assert.match(result.helpLines.join("\n"), /path: \/tmp\/fact\.md/);
+    assert.doesNotMatch(result.helpLines.join("\n"), /:context/);
+    assert.doesNotMatch(result.helpLines.join("\n"), /:inspect/);
   });
 });

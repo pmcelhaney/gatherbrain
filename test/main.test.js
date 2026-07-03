@@ -1629,9 +1629,9 @@ Login Screenshot
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("lists discovered contexts in the terminal body", async () => {
+  it("rejects removed context and inspect commands", async () => {
     const { createAppRuntime } = await import("../src/main.js");
-    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-contexts-command-"));
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-removed-commands-"));
     const runtime = createAppRuntime({
       workspacePath,
       clock: () => new Date("2026-06-30T12:00:00.000Z")
@@ -1639,59 +1639,9 @@ Login Screenshot
 
     await runtime.submit("@Steve!");
     await runtime.submit("Follow up with Steve.");
-    await runtime.submit(":contexts");
-
-    const rendered = runtime.render();
-
-    assert.match(rendered, /Contexts/);
-    assert.match(rendered, /1\. \* Steve/);
-
-    fs.rmSync(workspacePath, { recursive: true, force: true });
-  });
-
-  it("switches contexts by number from the context list", async () => {
-    const { createAppRuntime } = await import("../src/main.js");
-    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-numbered-context-"));
-    const runtime = createAppRuntime({
-      workspacePath,
-      clock: () => new Date("2026-06-30T12:00:00.000Z")
-    });
-
-    await runtime.submit("@Steve!");
-    await runtime.submit("Steve-only fact.");
-    await runtime.submit("@Architecture Review Board!");
-    await runtime.submit("Architecture fact.");
-    await runtime.submit(":context 2");
-
-    const rendered = runtime.render();
-
-    assert.match(rendered, /^Steve$/m);
-    assert.match(rendered, /Steve-only fact/);
-    assert.doesNotMatch(rendered, /Architecture fact/);
-
-    fs.rmSync(workspacePath, { recursive: true, force: true });
-  });
-
-  it("inspects visible fact details", async () => {
-    const { createAppRuntime } = await import("../src/main.js");
-    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-inspect-"));
-    const runtime = createAppRuntime({
-      workspacePath,
-      clock: () => new Date("2026-06-30T12:00:00.000Z")
-    });
-
-    await runtime.submit("@Steve!");
-    await runtime.submit("Follow up with Steve.");
-    await runtime.submit(":inspect 1");
-
-    const rendered = runtime.render();
-
-    assert.match(rendered, /Fact [0-9a-f-]{36}/);
-    assert.match(rendered, /type: fact/);
-    assert.match(rendered, /home context: Steve/);
-    assert.match(rendered, /attached file: \(none\)/);
-    assert.match(rendered, /path: .*follow-up-with-steve\.md/);
-    assert.match(rendered, /Follow up with Steve\./);
+    await assert.rejects(() => runtime.submit(":contexts"), /Unknown command: contexts/);
+    await assert.rejects(() => runtime.submit(":context 1"), /Unknown command: context/);
+    await assert.rejects(() => runtime.submit(":inspect 1"), /Unknown command: inspect/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

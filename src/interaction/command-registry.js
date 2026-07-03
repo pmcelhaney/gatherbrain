@@ -1,8 +1,4 @@
 import { AppMode } from "../state/index.js";
-import {
-  formatNaturalDate,
-  replaceIsoDatesWithNaturalDates
-} from "../domain/date-text.js";
 import { Context } from "../domain/index.js";
 import { InteractionResult } from "./interaction-result.js";
 
@@ -104,9 +100,6 @@ class HelpCommand {
         "Commands",
         "@<context>          switch to an existing context",
         "@<context>!         create the context if needed, then switch",
-        ":contexts           list known contexts",
-        ":context <number>   switch to a numbered context",
-        ":inspect <number>   show visible fact details",
         ":undo               undo the last selection action",
         ":restart            restart the app and reload current state",
         ":paste              paste clipboard into the current context",
@@ -119,35 +112,6 @@ class HelpCommand {
         ". task              update first visible fact",
         "@2 1 task          update fact 1 in recent context 2"
       ]
-    });
-  }
-}
-
-class InspectCommand {
-  async execute(args, { factRepository, resultSet, today }) {
-    const selector = args.trim();
-
-    if (!selector) {
-      throw new Error(":inspect requires a visible fact number");
-    }
-
-    if (!resultSet) {
-      throw new Error(":inspect requires visible search results");
-    }
-
-    if (!/^\d+$/.test(selector)) {
-      throw new Error(":inspect currently accepts a visible fact number");
-    }
-
-    const factId = resultSet.factIdForNumber(Number(selector));
-    const fact = await factRepository.getFactById(factId);
-    const filePath = await factRepository.findPathByFactId(factId);
-
-    return InteractionResult.panel({
-      mode: AppMode.COMMAND,
-      action: "inspect",
-      message: `inspected fact ${selector}`,
-      helpLines: factDetailLines(fact, filePath, today)
     });
   }
 }
@@ -166,103 +130,18 @@ class UndoCommand {
   }
 }
 
-class ContextsCommand {
-  async execute(args, { state, contextRepository }) {
-    if (args.trim()) {
-      throw new Error(":contexts does not accept arguments");
-    }
-
-    if (!contextRepository) {
-      throw new Error(":contexts requires a context repository");
-    }
-
-    const contexts = await contextRepository.list();
-    const currentName = state.currentContext?.name ?? null;
-    const helpLines = contexts.length > 0
-      ? [
-          "Contexts",
-          ...contexts.map((context, index) => {
-            const marker = context === currentName ? "*" : " ";
-            return `${String(index + 1).padStart(2, " ")}. ${marker} ${context}`;
-          })
-        ]
-      : ["Contexts", "(none)"];
-
-    return InteractionResult.help({
-      mode: AppMode.COMMAND,
-      helpLines
-    });
-  }
-}
-
-class ContextCommand {
-  async execute(args, { state, contextRepository }) {
-    const target = args.trim();
-
-    if (!target) {
-      throw new Error(":context requires a number or context name");
-    }
-
-    const contextName = await resolveContextName(target, contextRepository);
-    state.switchContext(contextName);
-
-    return InteractionResult.classified({
-      mode: AppMode.COMMAND,
-      action: "switch_context",
-      message: `switched to ${state.currentContext.name}`
-    });
-  }
-}
-
 function defaultCommands() {
   const exitCommand = new ExitCommand();
 
   return {
     exit: exitCommand,
     help: new HelpCommand(),
-    inspect: new InspectCommand(),
     quit: exitCommand,
-    context: new ContextCommand(),
-    contexts: new ContextsCommand(),
     "@context-switch": new SwitchContextCommand(),
     undo: new UndoCommand(),
     restart: new RestartCommand(),
     paste: new PasteCommand()
   };
-}
-
-function factDetailLines(fact, filePath, today) {
-  return [
-    `Fact ${fact.id}`,
-    `type: ${fact.type}`,
-    `created: ${fact.createdAt.toISOString()}`,
-    `home context: ${fact.homeContext.name}`,
-    `associated contexts: ${fact.associatedContexts.map((context) => context.name).join(", ") || "(none)"}`,
-    `due: ${fact.dueDate ? formatNaturalDate(fact.dueDate, { today }) : "(none)"}`,
-    `attached file: ${fact.file ?? "(none)"}`,
-    `path: ${filePath ?? "(not found)"}`,
-    "",
-    replaceIsoDatesWithNaturalDates(fact.content, { today })
-  ];
-}
-
-async function resolveContextName(target, contextRepository) {
-  if (!/^\d+$/.test(target)) {
-    return target;
-  }
-
-  if (!contextRepository) {
-    throw new Error(":context number requires a context repository");
-  }
-
-  const contexts = await contextRepository.list();
-  const contextName = contexts[Number(target) - 1];
-
-  if (!contextName) {
-    throw new Error(`No context numbered ${target}`);
-  }
-
-  return contextName;
 }
 
 async function resolveContextSwitchTarget(target, {
