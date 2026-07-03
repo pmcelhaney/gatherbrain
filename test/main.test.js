@@ -644,6 +644,63 @@ describe("main", () => {
     assert.deepEqual(submitted, ["bacd"]);
   });
 
+  it("cycles prompt history with up and down arrows", async () => {
+    const { runTui } = await import("../src/main.js");
+    const input = new EventEmitter();
+    const output = {
+      columns: 80,
+      rows: 24,
+      writes: [],
+      write(value) {
+        this.writes.push(value);
+      }
+    };
+    const renderedInputs = [];
+    const submitted = [];
+    input.setRawMode = () => {};
+    input.pause = () => {};
+
+    const run = runTui({
+      render({ input: renderedInput, cursor }) {
+        renderedInputs.push({ input: renderedInput, cursor });
+        return "";
+      },
+      async submit(value) {
+        submitted.push(value);
+        return {};
+      }
+    }, { inputStream: input, outputStream: output });
+
+    for (const character of "Alpha") {
+      input.emit("keypress", character, { sequence: character, name: undefined });
+    }
+    input.emit("keypress", "\r", { sequence: "\r", name: "return" });
+    await new Promise((resolve) => setImmediate(resolve));
+    for (const character of "Beta") {
+      input.emit("keypress", character, { sequence: character, name: undefined });
+    }
+    input.emit("keypress", "\r", { sequence: "\r", name: "return" });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    input.emit("keypress", undefined, { sequence: "\u001b[A", name: "up" });
+    input.emit("keypress", undefined, { sequence: "\u001b[A", name: "up" });
+    input.emit("keypress", undefined, { sequence: "\u001b[A", name: "up" });
+    input.emit("keypress", undefined, { sequence: "\u001b[B", name: "down" });
+    input.emit("keypress", undefined, { sequence: "\u001b[B", name: "down" });
+    input.emit("keypress", "\u0003", { sequence: "\u0003", name: "c" });
+
+    await run;
+
+    assert.deepEqual(renderedInputs.slice(-5), [
+      { input: "Beta", cursor: 4 },
+      { input: "Alpha", cursor: 5 },
+      { input: "Beta", cursor: 4 },
+      { input: "Alpha", cursor: 5 },
+      { input: "Beta", cursor: 4 }
+    ]);
+    assert.deepEqual(submitted, ["Alpha", "Beta"]);
+  });
+
   it("suspends raw tty input while edit selection commands run", async () => {
     const { runTui } = await import("../src/main.js");
     const input = new EventEmitter();

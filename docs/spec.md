@@ -83,6 +83,12 @@ current context.
 Capture requires a current context. The context supplies the fact's storage
 location and home context.
 
+## Prompt History
+
+Submitted non-empty prompt lines are kept in interactive prompt history for the
+current TUI process. Up and Down cycle through that history, wrapping at either
+end, and recalled lines place the cursor at the end of the prompt.
+
 ## Search
 
 Search retrieves facts.

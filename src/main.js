@@ -1143,9 +1143,40 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
   const buffer = new InputBuffer();
   let status = "";
   let completionCycle = null;
+  const promptHistory = [];
+  let historyIndex = null;
 
   const resetCompletionCycle = () => {
     completionCycle = null;
+  };
+
+  const resetHistoryNavigation = () => {
+    historyIndex = null;
+  };
+
+  const recallPromptHistory = (direction) => {
+    if (promptHistory.length === 0) {
+      return false;
+    }
+
+    if (historyIndex === null) {
+      historyIndex = direction === "up" ? promptHistory.length - 1 : 0;
+    } else if (direction === "up") {
+      historyIndex = (historyIndex - 1 + promptHistory.length) % promptHistory.length;
+    } else {
+      historyIndex = (historyIndex + 1) % promptHistory.length;
+    }
+
+    buffer.text = promptHistory[historyIndex];
+    buffer.moveEnd();
+    return true;
+  };
+
+  const rememberPromptHistory = (line) => {
+    if (line.trim() !== "") {
+      promptHistory.push(line);
+    }
+    resetHistoryNavigation();
   };
 
   const restoreCompletionInput = () => {
@@ -1249,6 +1280,7 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
 
       if (isControlKey(key, sequence, "a", "\u0001")) {
         restoreCompletionInput();
+        resetHistoryNavigation();
         buffer.moveHome();
         redraw();
         return;
@@ -1256,6 +1288,7 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
 
       if (isControlKey(key, sequence, "e", "\u0005")) {
         restoreCompletionInput();
+        resetHistoryNavigation();
         buffer.moveEnd();
         redraw();
         return;
@@ -1271,6 +1304,7 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
 
       if (key.name === "escape") {
         resetCompletionCycle();
+        resetHistoryNavigation();
         buffer.clear();
         status = "";
         redraw();
@@ -1279,6 +1313,7 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
 
       if (key.name === "backspace") {
         restoreCompletionInput();
+        resetHistoryNavigation();
         buffer.backspace();
         redraw();
         return;
@@ -1286,6 +1321,7 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
 
       if (key.name === "delete") {
         restoreCompletionInput();
+        resetHistoryNavigation();
         buffer.delete();
         redraw();
         return;
@@ -1293,6 +1329,7 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
 
       if (key.name === "left") {
         restoreCompletionInput();
+        resetHistoryNavigation();
         buffer.moveLeft();
         redraw();
         return;
@@ -1308,6 +1345,7 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
 
       if (key.name === "home") {
         restoreCompletionInput();
+        resetHistoryNavigation();
         buffer.moveHome();
         redraw();
         return;
@@ -1315,12 +1353,21 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
 
       if (key.name === "end") {
         restoreCompletionInput();
+        resetHistoryNavigation();
         buffer.moveEnd();
         redraw();
         return;
       }
 
+      if (key.name === "up" || key.name === "down") {
+        resetCompletionCycle();
+        recallPromptHistory(key.name);
+        redraw();
+        return;
+      }
+
       if (key.name === "tab") {
+        resetHistoryNavigation();
         const isContinuingCycle = completionCycle?.completed === buffer.text
           && completionCycle.cursor === buffer.cursor;
         const cycleInput = isContinuingCycle ? completionCycle.input : buffer.text;
@@ -1341,6 +1388,8 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
           resolve();
           return;
         }
+
+        rememberPromptHistory(line);
 
         const restoreInput = isEditSelectionCommand(line)
           ? suspendTuiInputForChildProcess(inputStream, outputStream)
@@ -1378,6 +1427,7 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
         }
 
         restoreCompletionInput();
+        resetHistoryNavigation();
         buffer.insert(sequence);
         redraw();
       }
