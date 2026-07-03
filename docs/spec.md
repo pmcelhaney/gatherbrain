@@ -296,7 +296,7 @@ The mode is inferred from the first character entered.
 | `@<context>!` | Creates the named context if needed, then switches to it |
 | `@<number>` | Switches to a numbered context from the current `@` preview list |
 | `@<dots>` | Switches to a dot-selected context from the current `@` preview list |
-| `@<number-or-dots> <selectors> <actions>` | Applies selection actions inside that recent context, then keeps the original context active |
+| `@<number-or-dots-or-context> <selectors> <actions>` | Applies selection actions inside that context, then keeps the original context active |
 | `:context <number>` | Switches to a numbered context from `:contexts` |
 | `:contexts` | Lists contexts discovered from fact folders |
 | `:inspect <number>` | Shows full metadata and file path for a visible fact |

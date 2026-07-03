@@ -196,11 +196,12 @@ Multiple selectors and actions can be used together:
 ```
 
 You can scope a selection command to a recent context by starting with its
-`@` preview selector:
+`@` preview selector or context name:
 
 ```text
 @2 1 task today
 @.. . waiting
+@Gatherbrain 1 task
 ```
 
 You can also scope a selection command to a search by ending the search text

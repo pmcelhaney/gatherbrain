@@ -1029,6 +1029,40 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("previews, completes, and applies selection actions in a named context", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-named-scoped-selection-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit("@Gatherbrain!");
+    await runtime.submit("Gatherbrain follow up.");
+    await runtime.submit("@Inbox!");
+    await runtime.submit("Inbox follow up.");
+
+    const preview = runtime.render({ input: "@Gatherbrain 1 task" });
+    const completion = await runtime.suggestCompletion("@Gatherbrain 1 t");
+
+    assert.match(preview, /> 1\. task Gatherbrain follow up\./);
+    assert.doesNotMatch(preview, /Inbox follow up/);
+    assert.deepEqual(completion, {
+      input: "@Gatherbrain 1 t",
+      completed: "@Gatherbrain 1 task",
+      candidates: ["@Gatherbrain 1 task", "@Gatherbrain 1 today", "@Gatherbrain 1 tomorrow"]
+    });
+
+    const result = await runtime.submit("@Gatherbrain 1 task");
+
+    assert.equal(result.action, "selection_action");
+    assert.equal(result.message, "task applied to 1 fact");
+    assert.equal(runtime.state.currentContext.name, "Inbox");
+    assert.match(runtime.render({ input: "@Gatherbrain" }), /1\. task Gatherbrain follow up\./);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("goes to the last selected fact context from a numbered recent context", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-scoped-go-"));

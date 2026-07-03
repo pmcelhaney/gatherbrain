@@ -141,6 +141,8 @@ export function createAppRuntime({
 
       const scopedSelection = scopedContextSelectionInput(line, {
         recentContexts: selectableRecentContexts(recentContexts, state.currentContext),
+        facts: cachedFacts,
+        contextNames: cachedContextNames,
         actionKeywords: selectionActionRegistry.keywords()
       });
       if (scopedSelection) {
@@ -378,6 +380,7 @@ export function createAppRuntime({
         input,
         recentContexts: selectableRecentContexts(recentContexts, state.currentContext),
         facts: cachedFacts,
+        contextNames: cachedContextNames,
         searchEngine,
         searchQueryParser,
         completionService,
@@ -412,6 +415,7 @@ export function createAppRuntime({
         input,
         recentContexts: selectableRecentContexts(recentContexts, state.currentContext),
         facts: cachedFacts,
+        contextNames: cachedContextNames,
         searchEngine,
         searchQueryParser,
         completionService,
@@ -629,17 +633,23 @@ function selectionPreviewForInput({
     clock
   }) ?? resultSet;
   return selectionInputPreview(input, activeResultSet, selectionActionRegistry, {
-    recentContexts
+    recentContexts,
+    facts,
+    contextNames
   })?.selection ?? null;
 }
 
 function selectionInputPreview(input, resultSet, selectionActionRegistry, {
-  recentContexts = []
+  recentContexts = [],
+  facts = [],
+  contextNames = []
 } = {}) {
   const actionKeywords = selectionActionRegistry.keywords();
   const searchSelection = searchSelectionPreviewInput(input);
   const scopedSelection = searchSelection ? null : scopedSelectionPreviewInput(input, {
     recentContexts,
+    facts,
+    contextNames,
     actionKeywords
   });
   const selectionInput = searchSelection?.selectionInput ?? scopedSelection?.selectionInput ?? input;
@@ -691,6 +701,8 @@ function searchSelectionPreviewInput(input) {
 
 function scopedSelectionPreviewInput(input, {
   recentContexts = [],
+  facts = [],
+  contextNames = [],
   actionKeywords = []
 } = {}) {
   let scopedSelection = null;
@@ -698,6 +710,8 @@ function scopedSelectionPreviewInput(input, {
   try {
     scopedSelection = scopedContextSelectionInput(input, {
       recentContexts,
+      facts,
+      contextNames,
       actionKeywords
     });
   } catch {
@@ -708,7 +722,7 @@ function scopedSelectionPreviewInput(input, {
     return scopedSelection;
   }
 
-  const target = scopedContextTarget(input, { recentContexts });
+  const target = scopedContextTarget(input, { recentContexts, facts, contextNames });
 
   if (!target || target.rest.trim().length === 0) {
     return null;
@@ -764,9 +778,11 @@ function scopedResultSetForInput({
 
 function scopedContextSelectionInput(input, {
   recentContexts = [],
+  facts = [],
+  contextNames = [],
   actionKeywords = []
 } = {}) {
-  const target = scopedContextTarget(input, { recentContexts });
+  const target = scopedContextTarget(input, { recentContexts, facts, contextNames });
 
   if (!target || target.rest.trim().length === 0) {
     return null;
@@ -817,12 +833,14 @@ function scopedContextTarget(input, { recentContexts = [], facts = [], contextNa
 
   const contextMatch = String(input).match(/^@(?<context>\S+)$/);
   const contextValue = contextMatch?.groups.context ?? leadingAtContextValue(input);
+  const scopedContext = scopedContextValue(input);
+  const scopedContextValueText = scopedContext?.value ?? contextValue;
 
-  if (!contextValue) {
+  if (!scopedContextValueText) {
     return null;
   }
 
-  const contextName = contextNameForTypedPrefix(contextValue, {
+  const contextName = contextNameForTypedPrefix(scopedContextValueText, {
     recentContexts,
     facts,
     contextNames
@@ -834,7 +852,7 @@ function scopedContextTarget(input, { recentContexts = [], facts = [], contextNa
 
   return {
     contextName,
-    rest: ""
+    rest: scopedContext?.rest ?? ""
   };
 }
 
@@ -862,6 +880,33 @@ function leadingAtContextValue(input) {
   }
 
   return value.length > 0 ? value : null;
+}
+
+function scopedContextValue(input) {
+  if (!String(input).startsWith("@")) {
+    return null;
+  }
+
+  let value = "";
+
+  for (let index = 1; index < input.length; index += 1) {
+    const char = input[index];
+
+    if (char === "\\" && /\s/.test(input[index + 1] ?? "")) {
+      value += input[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (/\s/.test(char)) {
+      const rest = input.slice(index);
+      return value.length > 0 && rest.trim().length > 0 ? { value, rest } : null;
+    }
+
+    value += char;
+  }
+
+  return null;
 }
 
 function contextNameForRecentSelector(selector, recentContexts = []) {
@@ -950,13 +995,14 @@ async function scopedSelectionCompletion({
   input,
   recentContexts,
   facts,
+  contextNames,
   searchEngine,
   searchQueryParser,
   completionService,
   completionIndex,
   clock
 }) {
-  const scopedInput = scopedSelectionCompletionInput(input, recentContexts);
+  const scopedInput = scopedSelectionCompletionInput(input, { recentContexts, facts, contextNames });
 
   if (!scopedInput) {
     return null;
@@ -1038,23 +1084,20 @@ async function searchSelectionCompletion({
   };
 }
 
-function scopedSelectionCompletionInput(input, recentContexts = []) {
-  const match = String(input).match(/^(?<prefix>@(?<selector>\d+|\.{1,})\s+)(?<selectionInput>.*)$/);
+function scopedSelectionCompletionInput(input, { recentContexts = [], facts = [], contextNames = [] } = {}) {
+  const target = scopedContextTarget(input, { recentContexts, facts, contextNames });
 
-  if (!match) {
+  if (!target || target.rest.trim().length === 0) {
     return null;
   }
 
-  const contextName = contextNameForRecentSelector(match.groups.selector, recentContexts);
-
-  if (!contextName) {
-    return null;
-  }
+  const leadingSpace = target.rest.match(/^\s*/)[0];
+  const prefix = `${input.slice(0, input.length - target.rest.length)}${leadingSpace}`;
 
   return {
-    contextName,
-    prefix: match.groups.prefix,
-    selectionInput: match.groups.selectionInput
+    contextName: target.contextName,
+    prefix,
+    selectionInput: target.rest.slice(leadingSpace.length)
   };
 }
 
