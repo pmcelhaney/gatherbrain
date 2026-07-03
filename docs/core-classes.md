@@ -49,7 +49,7 @@ Owns the current interactive state.
 Core fields:
 
 - `currentContext`
-- `currentQuery`
+- `currentQuery`, derived from the current context or transient prompt preview
 - `currentSelection`
 - `currentMode`
 
@@ -57,7 +57,7 @@ Responsibilities:
 
 - Enforce that facts cannot be captured before a context is selected.
 - Reset in-memory state during startup and runtime restart reloads.
-- Switch contexts and reset the query to `context:<new context>`.
+- Switch contexts and derive the default context query.
 - Track mode transitions inferred from prompt input.
 
 ### `Selection`
@@ -69,6 +69,10 @@ Responsibilities:
 - Resolve number and dot selectors against the current `SearchResultSet`.
 - Preserve selected fact IDs for command execution.
 - Clear when the context or query changes.
+
+Selections are operated on through selection commands: selectors plus actions
+against the current body, a recent-context preview, or a semicolon-delimited
+transient search.
 
 ## Parsing And Dispatch
 

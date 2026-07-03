@@ -21,7 +21,22 @@ switching.
 
 ---
 
-# Core Primitives
+# Core Concepts
+
+Gatherbrain centers on a small set of concepts:
+
+- Facts
+- Contexts
+- Capture
+- Transient search
+- Selection commands
+- Tab completion
+
+Fact associations, sometimes described as gathering, are part of the context
+model: they let a fact remain owned by one home context while also appearing in
+other relevant contexts.
+
+Tags and time boxes are not active product concepts.
 
 ## Context
 
@@ -54,18 +69,27 @@ A fact has:
 
 Every fact belongs to exactly one home context. A fact may be associated with
 zero or more additional contexts through selection actions such as `gather`.
+An association does not move or copy the fact; it adds another context where the
+fact should be visible.
 
 There is no separate tag model. Text containing `@Steve` is stored as normal
 fact content unless it is the leading prompt form used for context switching.
+
+## Capture
+
+Capture is the default interaction. Plain prompt text creates a fact in the
+current context.
+
+Capture requires a current context. The context supplies the fact's storage
+location and home context.
 
 ## Search
 
 Search retrieves facts.
 
-Search prompts are transient. While a slash search is being typed, the body
-previews matching results before Enter is pressed. Pressing Enter on a plain
-search returns the body to the current context instead of making the search
-sticky.
+Search is transient. While a slash search is being typed, the body previews
+matching results before Enter is pressed. Pressing Enter on a plain search
+returns the body to the current context instead of making the search sticky.
 
 An empty search prompt (`/`) previews the current context query. If there is no
 current context, it previews all facts.
@@ -88,6 +112,24 @@ Supported field filters:
 - `session:<value>` as a legacy alias for `context:<value>`
 - `due:<date>` and due-date comparisons
 - `content:<value>`
+
+## Selection Commands
+
+A selection command applies instructions to visible facts. It starts with one or
+more selectors, such as result numbers or dots, followed by one or more actions.
+
+Selection commands can operate on the current body, on a recent-context preview,
+or on a transient search result set using the semicolon form:
+
+```text
+/context:Project\ Sapphire;1 5 gather
+```
+
+## Tab Completion
+
+Tab completion keeps the keyboard interaction fast and predictable. Completion
+applies to commands, context switches, search shortcuts, selection actions,
+visible result numbers, and context names.
 
 ---
 

@@ -2,6 +2,17 @@
 
 This guide describes the app as it works today.
 
+## Core Concepts
+
+Gatherbrain centers on facts, contexts, capture, transient search, selection
+commands, and tab completion.
+
+A fact belongs to one home context. Selection commands such as `gather` can
+associate that fact with additional contexts without moving the underlying
+Markdown file.
+
+Tags and time boxes are not active product concepts.
+
 ## Starting The App
 
 ```bash

@@ -7,6 +7,10 @@ workspace directory.
 This repository is a clean rebuild of Gatherbrain around the living
 specification in [docs/spec.md](docs/spec.md).
 
+The product centers on facts, contexts, capture, transient search, selection
+commands, and tab completion. A fact has one home context and can be gathered
+into additional contexts without being moved.
+
 ## Current Status
 
 The app currently supports:

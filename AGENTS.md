@@ -12,4 +12,6 @@
 - Prefer small, focused slices with their own commits.
 - Run `npm test` before committing each implementation slice.
 - Keep architecture decisions documented before or alongside implementation.
-- Treat facts as the core knowledge-capture domain; tags and time boxes are not active product concepts.
+- Treat facts, contexts, capture, transient search, selection commands, and tab completion as the core product concepts.
+- Treat fact associations as part of the context model: a fact has one home context and may be gathered into additional contexts.
+- Tags and time boxes are not active product concepts.
