@@ -212,6 +212,10 @@ The typed prefix keeps the cursor in place while the recommended completion
 suffix is shown in gray. Multiple matches are shown in a compact candidate line
 above the prompt.
 
+Typing another character while a recommendation is visible keeps completion
+active and narrows the candidate list from the original typed prefix plus the
+new character.
+
 `Right` or `Ctrl+F` accepts a visible recommendation so typing can continue
 after the completed text.
 

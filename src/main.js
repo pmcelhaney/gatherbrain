@@ -1189,6 +1189,36 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
       : null;
   };
 
+  const completeFromCycleInput = async (cycleInput, cursor, {
+    completionIndex = 0,
+    isContinuingCycle = false
+  } = {}) => {
+    const suggestion = await completeRuntimeInput(runtime, cycleInput, { completionIndex });
+    const commonPrefix = commonCompletionPrefix(suggestion.candidates);
+    const shouldCompleteCommonPrefix = !isContinuingCycle
+      && suggestion.candidates.length > 1
+      && commonPrefix.length > cycleInput.length
+      && commonPrefix !== suggestion.completed;
+    const completed = shouldCompleteCommonPrefix ? commonPrefix : suggestion.completed;
+
+    buffer.text = completed;
+    buffer.cursor = Math.min(cursor, completed.length);
+
+    if (suggestion.candidates.length === 0 && completed === cycleInput) {
+      resetCompletionCycle();
+      return;
+    }
+
+    completionCycle = {
+      input: cycleInput,
+      cursor: buffer.cursor,
+      index: shouldCompleteCommonPrefix ? -1 : completionIndex,
+      phase: shouldCompleteCommonPrefix ? "common-prefix" : "candidate",
+      completed,
+      candidates: suggestion.candidates
+    };
+  };
+
   const redraw = () => {
     outputStream.write(`${ansi.clear}${ansi.home}`);
     outputStream.write(runtime.render({
@@ -1297,23 +1327,7 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
           ? completionCycle.index + 1
           : 0;
         const cursor = isContinuingCycle ? completionCycle.cursor : buffer.cursor;
-        const suggestion = await completeRuntimeInput(runtime, cycleInput, { completionIndex });
-        const commonPrefix = commonCompletionPrefix(suggestion.candidates);
-        const shouldCompleteCommonPrefix = !isContinuingCycle
-          && suggestion.candidates.length > 1
-          && commonPrefix.length > cycleInput.length
-          && commonPrefix !== suggestion.completed;
-        const completed = shouldCompleteCommonPrefix ? commonPrefix : suggestion.completed;
-        buffer.text = completed;
-        buffer.cursor = Math.min(cursor, completed.length);
-        completionCycle = {
-          input: cycleInput,
-          cursor: buffer.cursor,
-          index: shouldCompleteCommonPrefix ? -1 : completionIndex,
-          phase: shouldCompleteCommonPrefix ? "common-prefix" : "candidate",
-          completed,
-          candidates: suggestion.candidates
-        };
+        await completeFromCycleInput(cycleInput, cursor, { completionIndex, isContinuingCycle });
         redraw();
         return;
       }
@@ -1354,6 +1368,14 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
       }
 
       if (isPrintableKeypress(key, sequence)) {
+        if (completionCycle?.completed === buffer.text && completionCycle.cursor === buffer.cursor) {
+          const cycleInput = insertIntoText(completionCycle.input, completionCycle.cursor, sequence);
+          const cursor = completionCycle.cursor + sequence.length;
+          await completeFromCycleInput(cycleInput, cursor);
+          redraw();
+          return;
+        }
+
         restoreCompletionInput();
         buffer.insert(sequence);
         redraw();
@@ -1367,6 +1389,10 @@ export async function runTui(runtime, { inputStream = input, outputStream = outp
     inputStream.pause();
     outputStream.write(`${ansi.showCursor}\n`);
   });
+}
+
+function insertIntoText(text, index, value) {
+  return `${text.slice(0, index)}${value}${text.slice(index)}`;
 }
 
 async function completeRuntimeInput(runtime, input, { completionIndex = 0 } = {}) {

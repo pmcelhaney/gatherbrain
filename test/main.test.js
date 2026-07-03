@@ -362,6 +362,92 @@ describe("main", () => {
     assert.deepEqual(submitted, ["@Stacy"]);
   });
 
+  it("narrows a visible tab completion when typing another character", async () => {
+    const { runTui } = await import("../src/main.js");
+    const input = new EventEmitter();
+    const output = {
+      columns: 80,
+      rows: 24,
+      writes: [],
+      write(value) {
+        this.writes.push(value);
+      }
+    };
+    const allCandidates = ["@Technology\\ Assembly", "@test"];
+    const suggestCalls = [];
+    const renderedInputs = [];
+    const submitted = [];
+    input.setRawMode = () => {};
+    input.pause = () => {};
+
+    const run = runTui({
+      render({
+        input: renderedInput,
+        cursor,
+        completionSuggestionStart,
+        completionCandidates,
+        completionCandidateIndex
+      }) {
+        renderedInputs.push({
+          input: renderedInput,
+          cursor,
+          completionSuggestionStart,
+          completionCandidates,
+          completionCandidateIndex
+        });
+        return "";
+      },
+      async suggestCompletion(value, options) {
+        suggestCalls.push({ value, options });
+        const candidates = allCandidates.filter((candidate) =>
+          candidate.toLocaleLowerCase("en-US").startsWith(value.toLocaleLowerCase("en-US"))
+        );
+        return {
+          input: value,
+          completed: candidates[options.completionIndex % candidates.length] ?? value,
+          candidates
+        };
+      },
+      async submit(value) {
+        submitted.push(value);
+        return { action: "exit" };
+      }
+    }, { inputStream: input, outputStream: output });
+
+    input.emit("keypress", "@", { sequence: "@", name: undefined });
+    input.emit("keypress", "T", { sequence: "T", name: undefined });
+    input.emit("keypress", "e", { sequence: "e", name: undefined });
+    input.emit("keypress", "\t", { sequence: "\t", name: "tab" });
+    await new Promise((resolve) => setImmediate(resolve));
+    input.emit("keypress", "c", { sequence: "c", name: undefined });
+    await new Promise((resolve) => setImmediate(resolve));
+    input.emit("keypress", "\r", { sequence: "\r", name: "return" });
+
+    await run;
+
+    assert.deepEqual(suggestCalls, [
+      { value: "@Te", options: { completionIndex: 0 } },
+      { value: "@Tec", options: { completionIndex: 0 } }
+    ]);
+    assert.deepEqual(renderedInputs.slice(-2), [
+      {
+        input: "@Technology\\ Assembly",
+        cursor: 3,
+        completionSuggestionStart: 3,
+        completionCandidates: allCandidates,
+        completionCandidateIndex: 0
+      },
+      {
+        input: "@Technology\\ Assembly",
+        cursor: 4,
+        completionSuggestionStart: 4,
+        completionCandidates: ["@Technology\\ Assembly"],
+        completionCandidateIndex: 0
+      }
+    ]);
+    assert.deepEqual(submitted, ["@Technology\\ Assembly"]);
+  });
+
   it("completes the common prefix before cycling full candidates", async () => {
     const { runTui } = await import("../src/main.js");
     const input = new EventEmitter();
