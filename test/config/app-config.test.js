@@ -21,12 +21,20 @@ describe("app config", () => {
     const config = await loadAppConfig({ cwd: rootPath });
 
     assert.equal(config.defaultFactType, "fact");
+    assert.equal(
+      config.searchShortcuts.current,
+      "(type:task OR type:inprogress OR type:waiting) AND (due<=today OR NOT due:*)"
+    );
+    assert.equal(config.searchShortcuts.context, undefined);
     assert.equal(config.selectionActions.actions.task.action, "set_type");
   });
 
-  it("merges user selection actions over defaults", () => {
+  it("merges user shortcuts and selection actions over defaults", () => {
     const config = mergeAppConfig({
       defaultFactType: "fact",
+      searchShortcuts: {
+        current: "type:task"
+      },
       selectionActions: {
         actions: {
           task: { action: "set_type", value: "task" }
@@ -34,6 +42,9 @@ describe("app config", () => {
       }
     }, {
       defaultFactType: "note",
+      searchShortcuts: {
+        inbox: 'context:"Inbox"'
+      },
       selectionActions: {
         actions: {
           idea: { action: "set_type", value: "idea" }
@@ -42,6 +53,8 @@ describe("app config", () => {
     });
 
     assert.equal(config.defaultFactType, "note");
+    assert.equal(config.searchShortcuts.current, "type:task");
+    assert.equal(config.searchShortcuts.inbox, 'context:"Inbox"');
     assert.equal(config.selectionActions.actions.task.value, "task");
     assert.equal(config.selectionActions.actions.idea.value, "idea");
   });
@@ -49,6 +62,9 @@ describe("app config", () => {
   it("loads gatherbrain.config.json from the current directory", async () => {
     await fs.writeFile(path.join(rootPath, "gatherbrain.config.json"), JSON.stringify({
       defaultFactType: "note",
+      searchShortcuts: {
+        inbox: 'context:"Inbox"'
+      },
       selectionActions: {
         actions: {
           idea: { action: "set_type", value: "idea" }
@@ -59,6 +75,8 @@ describe("app config", () => {
     const config = await loadAppConfig({ cwd: rootPath });
 
     assert.equal(config.defaultFactType, "note");
+    assert.equal(config.searchShortcuts.inbox, 'context:"Inbox"');
+    assert.equal(config.searchShortcuts.current, "(type:task OR type:inprogress OR type:waiting) AND (due<=today OR NOT due:*)");
     assert.equal(config.selectionActions.actions.idea.value, "idea");
     assert.equal(config.selectionActions.actions.task.value, "task");
   });

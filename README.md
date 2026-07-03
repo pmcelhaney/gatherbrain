@@ -93,6 +93,7 @@ Search facts:
 /type:task
 /due:today
 //current
+//overdue
 ```
 
 Slash searches preview matching facts while the query is in the prompt.

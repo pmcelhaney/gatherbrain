@@ -9,18 +9,23 @@ describe("SearchShortcutRegistry", () => {
 
     assert.equal(
       registry.expand("//current"),
-      "(type:task OR type:inprogress OR type:waiting) AND due<=today"
+      "(type:task OR type:inprogress OR type:waiting) AND (due<=today OR NOT due:*)"
     );
     assert.equal(registry.expand("//overdue"), "due<today");
-    assert.equal(
-      registry.expand("//context", { currentContext: { name: "Architecture Review Board" } }),
-      'context:"Architecture Review Board"'
-    );
   });
 
   it("rejects unknown shortcuts", () => {
     const registry = new SearchShortcutRegistry();
 
     assert.throws(() => registry.expand("//missing"), /Unknown search shortcut/);
+    assert.throws(() => registry.expand("//context"), /Unknown search shortcut/);
+  });
+
+  it("expands configured shortcuts", () => {
+    const registry = new SearchShortcutRegistry({
+      inbox: 'context:"Inbox"'
+    });
+
+    assert.equal(registry.expand("//inbox"), 'context:"Inbox"');
   });
 });

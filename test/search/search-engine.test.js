@@ -32,6 +32,19 @@ describe("SearchEngine", () => {
     ]);
   });
 
+  it("supports current-task searches with undated active tasks", () => {
+    const result = engine.search(
+      currentShortcutFacts(),
+      parser.parse("(type:task OR type:inprogress OR type:waiting) AND (due<=today OR NOT due:*)"),
+      { today: "2026-06-30" }
+    );
+
+    assert.deepEqual(result.facts.map((fact) => fact.id), [
+      "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
+      "9c402d1d-fd46-4200-9e75-cbcdd7a57abc"
+    ]);
+  });
+
   it("orders search results newest first", () => {
     const result = engine.search(facts(), { type: "all" });
 
@@ -117,6 +130,34 @@ function facts() {
       type: "fact",
       createdAt: "2026-06-30T13:00:00.000Z",
       homeContext: "Technology Assembly/2026-07-08"
+    })
+  ];
+}
+
+function currentShortcutFacts() {
+  return [
+    new Fact({
+      id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
+      content: "Follow up with Steve.",
+      type: "task",
+      createdAt: "2026-06-30T15:45:00.000Z",
+      dueDate: "2026-06-30",
+      homeContext: "Steve"
+    }),
+    new Fact({
+      id: "9c402d1d-fd46-4200-9e75-cbcdd7a57abc",
+      content: "Call Steve.",
+      type: "waiting",
+      createdAt: "2026-06-30T12:00:00.000Z",
+      homeContext: "Steve"
+    }),
+    new Fact({
+      id: "98f76f93-ad4c-4038-9545-ff0fb808108a",
+      content: "Schedule next month.",
+      type: "task",
+      createdAt: "2026-06-30T11:00:00.000Z",
+      dueDate: "2026-07-01",
+      homeContext: "Steve"
     })
   ];
 }

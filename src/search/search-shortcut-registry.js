@@ -1,5 +1,7 @@
+import { defaultSearchShortcutConfig } from "../config/index.js";
+
 export class SearchShortcutRegistry {
-  constructor(shortcuts = defaultShortcuts()) {
+  constructor(shortcuts = defaultSearchShortcutConfig()) {
     this.shortcuts = new Map(Object.entries(shortcuts));
   }
 
@@ -27,19 +29,4 @@ export class SearchShortcutRegistry {
   names() {
     return [...this.shortcuts.keys()].sort();
   }
-}
-
-function defaultShortcuts() {
-  return {
-    current: () => "(type:task OR type:inprogress OR type:waiting) AND due<=today",
-    overdue: () => "due<today",
-    today: () => "due:today",
-    context: ({ currentContext }) => {
-      if (!currentContext) {
-        throw new Error("Current context is required for //context");
-      }
-
-      return `context:"${currentContext.name ?? currentContext}"`;
-    }
-  };
 }

@@ -351,7 +351,8 @@ Search supports:
 Adjacent terms imply AND.
 
 Queries beginning with `//` reference named shortcuts such as `//current`,
-`//today`, `//context`, and `//overdue`.
+`//today`, and `//overdue`. Default shortcuts live in `gatherbrain.config.json`
+and may be extended or overridden there.
 
 ---
 
@@ -416,6 +417,11 @@ directory. User config is merged over defaults.
 ```json
 {
   "defaultFactType": "note",
+  "searchShortcuts": {
+    "current": "(type:task OR type:inprogress OR type:waiting) AND (due<=today OR NOT due:*)",
+    "overdue": "due<today",
+    "today": "due:today"
+  },
   "selectionActions": {
     "actions": {
       "idea": { "action": "set_type", "value": "idea" }

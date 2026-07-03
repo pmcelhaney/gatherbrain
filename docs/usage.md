@@ -145,11 +145,11 @@ Search shortcuts:
 ```text
 //current
 //today
-//context
 //overdue
 ```
 
-`//context` requires a current context.
+`//current` includes active tasks with no due date. Default shortcuts are
+defined in `gatherbrain.config.json` and may be extended or overridden there.
 
 ## Selection Commands
 
@@ -252,6 +252,11 @@ when it starts. The file is optional. Settings merge over the built-in defaults.
 ```json
 {
   "defaultFactType": "note",
+  "searchShortcuts": {
+    "current": "(type:task OR type:inprogress OR type:waiting) AND (due<=today OR NOT due:*)",
+    "overdue": "due<today",
+    "today": "due:today"
+  },
   "selectionActions": {
     "actions": {
       "idea": { "action": "set_type", "value": "idea" }
@@ -260,7 +265,8 @@ when it starts. The file is optional. Settings merge over the built-in defaults.
 }
 ```
 
-Configured selection actions are available to both execution and completion.
+Configured search shortcuts and selection actions are available to both
+execution and completion.
 
 ## Storage
 

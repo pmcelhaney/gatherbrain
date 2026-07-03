@@ -105,6 +105,14 @@ function compareText(actual, operator, expected) {
 }
 
 function compareDate(actual, operator, expected) {
+  if (expected === "*") {
+    if (operator !== ":") {
+      throw new Error(`Operator ${operator} is not supported for date existence`);
+    }
+
+    return Boolean(actual);
+  }
+
   if (!actual) {
     return false;
   }

@@ -34,7 +34,7 @@ export function createAppRuntime({
   const factIndex = new FactIndex(factRepository);
   const searchEngine = new SearchEngine();
   const searchQueryParser = new SearchQueryParser();
-  const searchShortcutRegistry = new SearchShortcutRegistry();
+  const searchShortcutRegistry = new SearchShortcutRegistry(appConfig.searchShortcuts);
   const promptClassifier = new PromptClassifier();
   const selectionActionRegistry = SelectionActionRegistry.fromConfig(appConfig.selectionActions);
   const completionService = new CompletionService({
