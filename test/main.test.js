@@ -737,6 +737,35 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("previews highlighted time-box-only context completions", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-timebox-context-preview-"));
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date("2026-06-30T12:00:00.000Z")
+    });
+
+    await runtime.submit("@Gatherbrain");
+    await runtime.submit("; 9-10 test");
+
+    const completion = await runtime.suggestCompletion("@te");
+    const rendered = runtime.render({
+      input: "@test",
+      cursor: 3,
+      completionSuggestionStart: 3,
+      completionCandidates: completion.candidates,
+      completionCandidateIndex: completion.candidates.indexOf("@test"),
+      width: 80,
+      height: 8
+    });
+
+    assert.deepEqual(completion.candidates, ["@test"]);
+    assert.match(rendered, /^Gatherbrain > test$/m);
+    assert.equal(runtime.state.currentContext.name, "Gatherbrain");
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("switches typed context prefixes to the resolved context name", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-typed-context-switch-"));

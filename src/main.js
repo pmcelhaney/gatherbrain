@@ -57,6 +57,7 @@ export function createAppRuntime({
   let pendingPaste = false;
   let recentContexts = [];
   let cachedFacts = [];
+  let cachedContextNames = [];
   const promptController = new PromptController({
     state,
     factRepository,
@@ -85,6 +86,7 @@ export function createAppRuntime({
 
     factIndex.invalidate();
     cachedFacts = await factIndex.list();
+    cachedContextNames = await contextRepository.list();
     resultSet = await initialResultSet({
       state,
       factIndex,
@@ -120,6 +122,7 @@ export function createAppRuntime({
         pendingPaste = false;
         factIndex.invalidate();
         cachedFacts = await factIndex.list();
+        cachedContextNames = await contextRepository.list();
         resultSet = await searchCurrentFacts({
           state,
           factIndex,
@@ -175,6 +178,7 @@ export function createAppRuntime({
         undoSnapshot = scopedUndoSnapshot;
         factIndex.invalidate();
         cachedFacts = await factIndex.list();
+        cachedContextNames = await contextRepository.list();
         resultSet = await searchCurrentFacts({
           state,
           factIndex,
@@ -209,6 +213,7 @@ export function createAppRuntime({
         await restoreUndoSnapshot({ undoSnapshot, factRepository });
         factIndex.invalidate();
         cachedFacts = await factIndex.list();
+        cachedContextNames = await contextRepository.list();
         resultSet = await searchCurrentFacts({
           state,
           factIndex,
@@ -228,10 +233,12 @@ export function createAppRuntime({
 
       if (result.timeBox) {
         timeBoxes = await timeBoxRepository.listByDate(result.timeBox.date);
+        cachedContextNames = await contextRepository.list();
       }
 
       if (result.timeBoxDate) {
         timeBoxes = await timeBoxRepository.listByDate(result.timeBoxDate);
+        cachedContextNames = await contextRepository.list();
       }
 
       if (result.action === "switch_context") {
@@ -255,6 +262,7 @@ export function createAppRuntime({
       if (result.fact || result.action === "selection_action") {
         factIndex.invalidate();
         cachedFacts = await factIndex.list();
+        cachedContextNames = await contextRepository.list();
         resultSet = await searchCurrentFacts({
           state,
           factIndex,
@@ -299,7 +307,8 @@ export function createAppRuntime({
       const previewContext = viewedContextForInput({
         input,
         facts: cachedFacts,
-        recentContexts: selectableRecentContexts(recentContexts, state.currentContext)
+        recentContexts: selectableRecentContexts(recentContexts, state.currentContext),
+        contextNames: cachedContextNames
       });
       const visibleRecentContexts = selectableRecentContexts(recentContexts, state.currentContext);
 
@@ -320,6 +329,7 @@ export function createAppRuntime({
           selectionActionRegistry,
           state,
           recentContexts: visibleRecentContexts,
+          contextNames: cachedContextNames,
           searchEngine,
           searchQueryParser,
           searchShortcutRegistry,
@@ -343,6 +353,7 @@ export function createAppRuntime({
           selectionActionRegistry,
           state,
           recentContexts: visibleRecentContexts,
+          contextNames: cachedContextNames,
           searchEngine,
           searchQueryParser,
           searchShortcutRegistry,
@@ -501,6 +512,7 @@ function previewResultSetForInput({
   selectionActionRegistry,
   state,
   recentContexts = [],
+  contextNames = [],
   searchEngine,
   searchQueryParser,
   searchShortcutRegistry,
@@ -518,6 +530,7 @@ function previewResultSetForInput({
     input,
     facts,
     recentContexts,
+    contextNames,
     searchEngine,
     searchQueryParser,
     clock
@@ -595,9 +608,10 @@ function searchInputForPreview(input) {
 function viewedContextForInput({
   input,
   facts = [],
-  recentContexts = []
+  recentContexts = [],
+  contextNames = []
 }) {
-  return scopedContextTarget(input, { recentContexts, facts })?.contextName ?? null;
+  return scopedContextTarget(input, { recentContexts, facts, contextNames })?.contextName ?? null;
 }
 
 function selectionPreviewForInput({
@@ -607,6 +621,7 @@ function selectionPreviewForInput({
   selectionActionRegistry,
   state,
   recentContexts = [],
+  contextNames = [],
   searchEngine,
   searchQueryParser,
   searchShortcutRegistry,
@@ -624,6 +639,7 @@ function selectionPreviewForInput({
     input,
     facts,
     recentContexts,
+    contextNames,
     searchEngine,
     searchQueryParser,
     clock
@@ -702,11 +718,12 @@ function scopedResultSetForInput({
   input,
   facts,
   recentContexts,
+  contextNames,
   searchEngine,
   searchQueryParser,
   clock
 }) {
-  const target = scopedContextTarget(input, { recentContexts, facts });
+  const target = scopedContextTarget(input, { recentContexts, facts, contextNames });
 
   if (!target || !searchEngine || !searchQueryParser) {
     return null;
@@ -758,7 +775,7 @@ function scopedContextSelectionInput(input, {
   };
 }
 
-function scopedContextTarget(input, { recentContexts = [], facts = [] } = {}) {
+function scopedContextTarget(input, { recentContexts = [], facts = [], contextNames = [] } = {}) {
   const selectorMatch = String(input).match(/^@(?<selector>\d+|\.+)(?<rest>\s+.*)?$/);
 
   if (selectorMatch) {
@@ -783,7 +800,8 @@ function scopedContextTarget(input, { recentContexts = [], facts = [] } = {}) {
 
   const contextName = contextNameForTypedPrefix(contextValue, {
     recentContexts,
-    facts
+    facts,
+    contextNames
   });
 
   if (!contextName) {
@@ -827,7 +845,7 @@ function contextNameForRecentSelector(selector, recentContexts = []) {
   return recentContexts[index] ?? null;
 }
 
-function contextNameForTypedPrefix(rawPrefix, { recentContexts = [], facts = [] } = {}) {
+function contextNameForTypedPrefix(rawPrefix, { recentContexts = [], facts = [], contextNames = [] } = {}) {
   const prefix = Context.normalizeName(rawPrefix);
 
   if (!prefix) {
@@ -835,7 +853,7 @@ function contextNameForTypedPrefix(rawPrefix, { recentContexts = [], facts = [] 
   }
 
   const normalizedPrefix = Context.canonicalize(prefix);
-  const matches = contextNamesFromFactsAndRecentContexts(facts, recentContexts).filter((contextName) =>
+  const matches = contextNamesFromFactsAndRecentContexts(facts, recentContexts, contextNames).filter((contextName) =>
     Context.canonicalize(contextName).startsWith(normalizedPrefix)
   );
   const strictMatches = matches.filter((contextName) =>
@@ -855,8 +873,12 @@ function contextNameForTypedPrefix(rawPrefix, { recentContexts = [], facts = [] 
   ) ?? null;
 }
 
-function contextNamesFromFactsAndRecentContexts(facts = [], recentContexts = []) {
+function contextNamesFromFactsAndRecentContexts(facts = [], recentContexts = [], knownContextNames = []) {
   const contextNames = [];
+
+  for (const contextName of knownContextNames) {
+    appendUniqueContextName(contextNames, contextName);
+  }
 
   for (const contextName of recentContexts) {
     appendUniqueContextName(contextNames, contextName);

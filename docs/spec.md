@@ -339,14 +339,16 @@ shows as many contexts as fit in the body.
 
 Tab completion is available for commands, `@<context>` switches, search
 shortcuts, selection actions, visible result numbers, and known context names
-after inline `@` tags in capture text. When multiple candidates match the same typed
-prefix, the first Tab completes any shared prefix and later Tab presses cycle
-through the matching candidates. The typed prefix keeps the cursor in place
-while the recommended completion suffix is shown in gray. Multiple matches are
-shown in a compact candidate line above the prompt, with the active candidate
-highlighted even when repeated Tab presses wrap back to the first match.
-`Right` or `Ctrl+F` accepts a visible recommendation so typing can continue
-after the completed text.
+after inline `@` tags in capture text. Context switch completions include
+contexts discovered from facts and time boxes, and highlighting a context
+completion previews that context in the header and body. When multiple
+candidates match the same typed prefix, the first Tab completes any shared
+prefix and later Tab presses cycle through the matching candidates. The typed
+prefix keeps the cursor in place while the recommended completion suffix is
+shown in gray. Multiple matches are shown in a compact candidate line above the
+prompt, with the active candidate highlighted even when repeated Tab presses
+wrap back to the first match. `Right` or `Ctrl+F` accepts a visible
+recommendation so typing can continue after the completed text.
 
 Command names may be typed as the shortest unambiguous prefix. Context switches
 use `@<context>` rather than a colon command, so `@St` completes to a known
