@@ -22,7 +22,7 @@ describe("AppState", () => {
     state.switchContext("Steve");
 
     assert.equal(state.currentContext.name, "Steve");
-    assert.equal(state.currentQuery, "context:Steve");
+    assert.equal(state.currentQuery, 'context:"Steve"');
     assert.equal(state.currentSelection.isEmpty(), true);
     assert.equal(state.currentMode, AppMode.CAPTURE);
   });

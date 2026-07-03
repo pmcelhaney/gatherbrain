@@ -9,23 +9,79 @@ describe("CommandRegistry", () => {
   it("switches the current context", async () => {
     const state = new AppState();
     const result = await new CommandRegistry().execute("@Architecture Review Board", {
-      state
+      state,
+      contextRepository: {
+        async list() {
+          return ["Architecture Review Board"];
+        }
+      }
     });
 
     assert.equal(result.action, "switch_context");
     assert.equal(state.currentContext.name, "Architecture Review Board");
-    assert.equal(state.currentQuery, "context:Architecture Review Board");
+    assert.equal(state.currentQuery, 'context:"Architecture Review Board"');
   });
 
   it("switches escaped-space context input to the canonical context name", async () => {
     const state = new AppState();
     const result = await new CommandRegistry().execute("@Steve\\ Ma", {
-      state
+      state,
+      contextRepository: {
+        async list() {
+          return ["Steve Ma"];
+        }
+      }
     });
 
     assert.equal(result.message, "switched to Steve Ma");
     assert.equal(state.currentContext.name, "Steve Ma");
-    assert.equal(state.currentQuery, "context:Steve Ma");
+    assert.equal(state.currentQuery, 'context:"Steve Ma"');
+  });
+
+  it("rejects unknown contexts unless creation is explicit", async () => {
+    const state = new AppState({ currentContext: "Steve" });
+
+    await assert.rejects(
+      () => new CommandRegistry().execute("@Context\\ That\\ Does\\ Not\\ Exist", {
+        state,
+        contextRepository: {
+          async list() {
+            return ["Steve"];
+          }
+        }
+      }),
+      /Context does not exist: Context That Does Not Exist\. Add ! to create it\./
+    );
+
+    assert.equal(state.currentContext.name, "Steve");
+  });
+
+  it("creates missing contexts when the context switch ends with a bang", async () => {
+    const state = new AppState({ currentContext: "Steve" });
+
+    const escaped = await new CommandRegistry().execute("@Context\\ That\\ Does\\ Not\\ Exist\\!", {
+      state,
+      contextRepository: {
+        async list() {
+          return ["Steve"];
+        }
+      }
+    });
+
+    assert.equal(escaped.action, "switch_context");
+    assert.equal(state.currentContext.name, "Context That Does Not Exist");
+
+    const spaced = await new CommandRegistry().execute("@Context That Does Not Exist!", {
+      state,
+      contextRepository: {
+        async list() {
+          return ["Steve"];
+        }
+      }
+    });
+
+    assert.equal(spaced.action, "switch_context");
+    assert.equal(state.currentContext.name, "Context That Does Not Exist");
   });
 
   it("switches to a numbered recent context", async () => {

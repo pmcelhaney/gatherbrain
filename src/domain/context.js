@@ -16,6 +16,7 @@ export class Context {
     }
 
     return name
+      .replace(/\\!/g, "!")
       .replace(/\\(\s)/g, "$1")
       .trim()
       .replace(/\s+/g, " ")

@@ -113,7 +113,7 @@ describe("PromptController", () => {
     const result = await controller.submit("/");
 
     assert.equal(result.action, "search");
-    assert.equal(result.query, "context:Steve");
+    assert.equal(result.query, 'context:"Steve"');
     assert.equal(result.resultSet.count, 1);
   });
 
@@ -152,7 +152,7 @@ describe("PromptController", () => {
   });
 
   it("executes commands through the interaction layer", async () => {
-    const result = await controller.submit("@Architecture Review Board");
+    const result = await controller.submit("@Architecture Review Board!");
 
     assert.equal(result.action, "switch_context");
     assert.equal(state.currentContext.name, "Architecture Review Board");

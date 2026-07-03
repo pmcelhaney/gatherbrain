@@ -45,17 +45,18 @@ A context is the current unit of work. You must switch to a context before
 capturing facts.
 
 ```text
-@Steve
-@Architecture Review Board
-@Thinking about Gatherbrain design
-@Steve\ Ma
+@Steve!
+@Architecture Review Board!
+@Thinking about Gatherbrain design!
+@Steve\ Ma\!
 ```
 
-Escaped spaces are normalized when switching, so the last example stores and
+Escaped spaces are normalized when switching, and a trailing `!` opts into
+creating the context if it does not exist yet. The last example stores and
 searches the context as `Steve Ma`.
 
-There is no separate context creation command. Switching to a new name is
-enough; the context becomes real when facts are stored for it.
+Plain `@<context>` switches only to an existing context. If the context does
+not exist, the switch is rejected instead of creating it on the fly.
 
 While typing a prompt that starts with `@`, the body shows the most recently
 visited contexts in newest-first order. Enter a listed number or dots to switch:
@@ -243,7 +244,8 @@ Inspect one visible fact:
 
 | Command | Status |
 | --- | --- |
-| `@<context>` | Switches to a context |
+| `@<context>` | Switches to an existing context |
+| `@<context>!` | Creates the context if needed, then switches |
 | `:context <number>` | Switches to a numbered context from `:contexts` |
 | `:contexts` | Lists contexts discovered from facts |
 | `:inspect <number>` | Shows full details for a visible fact |

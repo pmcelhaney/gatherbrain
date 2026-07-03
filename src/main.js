@@ -187,7 +187,8 @@ export function createAppRuntime({
 
       const result = await promptController.submit(canonicalizeContextSwitchInput(line, {
         facts: cachedFacts,
-        recentContexts: selectableRecentContexts(recentContexts, state.currentContext)
+        recentContexts: selectableRecentContexts(recentContexts, state.currentContext),
+        contextNames: cachedContextNames
       }));
 
       if (result.action === "exit") {
@@ -448,8 +449,8 @@ function selectableRecentContexts(recentContexts, currentContext) {
   );
 }
 
-function canonicalizeContextSwitchInput(input, { facts = [], recentContexts = [] } = {}) {
-  const target = scopedContextTarget(input, { recentContexts, facts });
+function canonicalizeContextSwitchInput(input, { facts = [], recentContexts = [], contextNames = [] } = {}) {
+  const target = scopedContextTarget(input, { recentContexts, facts, contextNames });
 
   if (!target || target.rest.trim()) {
     return input;

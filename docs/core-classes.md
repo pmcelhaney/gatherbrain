@@ -113,6 +113,7 @@ Maps command names to command objects.
 Supported commands include:
 
 - `@<context>`
+- `@<context>!`
 - `:context`
 - `:contexts`
 - `:inspect`

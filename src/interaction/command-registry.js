@@ -3,6 +3,7 @@ import {
   formatNaturalDate,
   replaceIsoDatesWithNaturalDates
 } from "../domain/date-text.js";
+import { Context } from "../domain/index.js";
 import { InteractionResult } from "./interaction-result.js";
 
 export class CommandRegistry {
@@ -24,14 +25,20 @@ export class CommandRegistry {
 }
 
 class SwitchContextCommand {
-  execute(args, { state, recentContexts = [] }) {
-    const target = args.trim();
+  async execute(args, { state, recentContexts = [], contextRepository }) {
+    const rawTarget = args.trim();
 
-    if (!target) {
+    if (!rawTarget) {
       throw new Error("@ requires a context");
     }
 
-    const contextName = resolveRecentContextTarget(target, recentContexts);
+    const { target, createIfMissing } = parseContextCreationTarget(rawTarget);
+    const contextName = await resolveContextSwitchTarget(target, {
+      state,
+      recentContexts,
+      contextRepository,
+      createIfMissing
+    });
 
     state.switchContext(contextName);
 
@@ -95,7 +102,8 @@ class HelpCommand {
       mode: AppMode.COMMAND,
       helpLines: [
         "Commands",
-        "@<context>          switch or create a context",
+        "@<context>          switch to an existing context",
+        "@<context>!         create the context if needed, then switch",
         ":contexts           list known contexts",
         ":context <number>   switch to a numbered context",
         ":inspect <number>   show visible fact details",
@@ -257,7 +265,12 @@ async function resolveContextName(target, contextRepository) {
   return contextName;
 }
 
-function resolveRecentContextTarget(target, recentContexts) {
+async function resolveContextSwitchTarget(target, {
+  state,
+  recentContexts = [],
+  contextRepository,
+  createIfMissing = false
+} = {}) {
   if (/^\d+$/.test(target)) {
     const contextName = recentContexts[Number(target) - 1];
 
@@ -278,7 +291,85 @@ function resolveRecentContextTarget(target, recentContexts) {
     return contextName;
   }
 
-  return target;
+  const contextName = Context.normalizeName(target);
+
+  if (!contextName) {
+    throw new Error("@ requires a context");
+  }
+
+  if (createIfMissing) {
+    return contextName;
+  }
+
+  const exactContextName = await resolveExistingContextName(contextName, {
+    state,
+    recentContexts,
+    contextRepository
+  });
+
+  if (!exactContextName) {
+    throw new Error(`Context does not exist: ${contextName}. Add ! to create it.`);
+  }
+
+  return exactContextName;
+}
+
+async function resolveExistingContextName(target, {
+  state,
+  recentContexts = [],
+  contextRepository
+} = {}) {
+  const contextNames = [];
+  appendUniqueContextName(contextNames, state?.currentContext?.name);
+
+  for (const contextName of recentContexts) {
+    appendUniqueContextName(contextNames, contextName);
+  }
+
+  if (contextRepository) {
+    for (const contextName of await contextRepository.list()) {
+      appendUniqueContextName(contextNames, contextName);
+    }
+  }
+
+  const canonicalTarget = Context.canonicalize(target);
+  return contextNames.find((contextName) =>
+    Context.canonicalize(contextName) === canonicalTarget
+  ) ?? null;
+}
+
+function appendUniqueContextName(contextNames, contextName) {
+  if (!contextName) {
+    return;
+  }
+
+  const normalizedName = Context.normalizeName(contextName);
+  const canonicalName = Context.canonicalize(normalizedName);
+
+  if (!contextNames.some((existing) => Context.canonicalize(existing) === canonicalName)) {
+    contextNames.push(normalizedName);
+  }
+}
+
+function parseContextCreationTarget(target) {
+  if (target.endsWith("\\!")) {
+    return {
+      target: target.slice(0, -2),
+      createIfMissing: true
+    };
+  }
+
+  if (target.endsWith("!")) {
+    return {
+      target: target.slice(0, -1),
+      createIfMissing: true
+    };
+  }
+
+  return {
+    target,
+    createIfMissing: false
+  };
 }
 
 function parseCommand(input) {

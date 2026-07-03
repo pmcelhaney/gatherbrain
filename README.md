@@ -16,7 +16,7 @@ into additional contexts without being moved.
 The app currently supports:
 
 - A persistent terminal screen with a header, fact body, and prompt.
-- Context switching with `@<context>`.
+- Context switching with `@<context>` and explicit creation with `@<context>!`.
 - Context discovery with `:contexts`.
 - Numbered context navigation with `:context <number>`.
 - Capturing facts into the current context.

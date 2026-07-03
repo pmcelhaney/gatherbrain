@@ -18,6 +18,13 @@ describe("Context", () => {
     assert.equal(context.pathSegment(), "Steve Ma");
   });
 
+  it("normalizes shell-style escaped exclamation marks in names", () => {
+    const context = new Context("Context\\!");
+
+    assert.equal(context.name, "Context!");
+    assert.equal(context.pathSegment(), "Context!");
+  });
+
   it("normalizes slash-separated context hierarchies", () => {
     const context = new Context("  Technology Assembly / 2026-07-08  ");
 

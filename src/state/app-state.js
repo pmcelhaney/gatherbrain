@@ -66,7 +66,7 @@ export class AppState {
 }
 
 function defaultQueryFor(context) {
-  return context ? `context:${context.name}` : null;
+  return context ? `context:"${context.name}"` : null;
 }
 
 function normalizeMode(mode) {
