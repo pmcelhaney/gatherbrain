@@ -45,10 +45,10 @@ export class BodyRenderer {
       const prefix = isSelected && !colorEnabled ? `>${basePrefix}` : basePrefix;
       const type = displayType(fact);
       const due = fact.dueDate ? `${formatDueDate(fact.dueDate, today)} ` : "";
-      const home = displayHomeContext(fact, state);
-      const firstLinePrefix = `${color(prefix, ansi.gray, colorEnabled)}${color(type, ansi.cyan, colorEnabled)}${color(due, ansi.magenta, colorEnabled)}${colorIfPresent(home, ansi.gray, colorEnabled)}`;
+      const contextMarker = displayContextMarker(fact, state);
+      const firstLinePrefix = `${color(prefix, ansi.gray, colorEnabled)}${color(type, ansi.cyan, colorEnabled)}${color(due, ansi.magenta, colorEnabled)}${colorIfPresent(contextMarker, ansi.gray, colorEnabled)}`;
       const continuationPrefix = " ".repeat(numberWidth + 2);
-      const firstLineWidth = Math.max(1, width - prefix.length - type.length - due.length - home.length);
+      const firstLineWidth = Math.max(1, width - prefix.length - type.length - due.length - contextMarker.length);
       const continuationWidth = Math.max(1, width - continuationPrefix.length);
       const [first, ...rest] = wrapPlain(displayContent(fact, today), firstLineWidth);
 
@@ -78,11 +78,12 @@ function displayType(fact) {
   return `${fact.type} `;
 }
 
-function displayHomeContext(fact, state) {
-  if (
-    state.currentMode !== AppMode.SEARCH ||
-    isFactInCurrentContext(fact, state.currentContext)
-  ) {
+function displayContextMarker(fact, state) {
+  if (isFactAssociatedWithCurrentContext(fact, state.currentContext)) {
+    return "< ";
+  }
+
+  if (state.currentMode !== AppMode.SEARCH || isFactInCurrentContext(fact, state.currentContext)) {
     return "";
   }
 
@@ -144,6 +145,14 @@ function isFactInCurrentContext(fact, currentContext) {
 
   return fact.homeContext.equals(currentContext) ||
     fact.associatedContexts.some((context) => context.equals(currentContext));
+}
+
+function isFactAssociatedWithCurrentContext(fact, currentContext) {
+  if (!currentContext || fact.homeContext.equals(currentContext)) {
+    return false;
+  }
+
+  return fact.associatedContexts.some((context) => context.equals(currentContext));
 }
 
 function highlight(text, enabled, colorEnabled) {

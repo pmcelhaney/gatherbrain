@@ -107,12 +107,15 @@ An empty search prompt (`/`) previews the current context query. If there is no
 current context, it previews all facts.
 
 Search results show matches from the current context first, ordered newest
-first by fact creation time. A blank line separates those matches from matches
-in other contexts, which are also ordered newest first.
+first by fact creation time. Facts whose home context is the current context
+come before facts that are only associated with the current context. A blank
+line separates those matches from matches in other contexts, which are also
+ordered newest first.
 
 Search result rows show a fact's home context only when the fact is outside the
-current context. Facts that live in the current context or are associated with
-the current context keep the compact current-context row.
+current context. Facts that live in the current context keep the compact
+current-context row. Facts that are associated with the current context but live
+elsewhere render with a `<` marker.
 
 Context search supports quoted values, unquoted multi-word context values, and
 `@Context Name` shorthand.

@@ -244,7 +244,7 @@ describe("terminal renderers", () => {
     );
   });
 
-  it("does not show the home context for current-context search results", () => {
+  it("marks associated facts after home facts for current-context search results", () => {
     const state = new AppState({
       currentContext: "Steve",
       currentMode: AppMode.SEARCH
@@ -263,12 +263,12 @@ describe("terminal renderers", () => {
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
       [
         " 1. task tomorrow Follow up with Steve.",
-        " 2. task tomorrow Follow up with Steve."
+        " 2. task tomorrow < Follow up with Steve."
       ].join("\n")
     );
   });
 
-  it("renders facts associated with the current context without a context marker", () => {
+  it("marks facts associated with the current context", () => {
     const state = new AppState({ currentContext: "Steve" });
     const renderer = new BodyRenderer();
     const resultSet = new SearchResultSet([
@@ -280,7 +280,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      " 1. task tomorrow Follow up with Steve."
+      " 1. task tomorrow < Follow up with Steve."
     );
   });
 

@@ -69,6 +69,19 @@ describe("SearchEngine", () => {
     assert.equal(result.factIdForNumber(1), "a75ee82c-6b89-4676-8cb1-01222f976885");
   });
 
+  it("orders associated current-context matches after home current-context matches", () => {
+    const result = engine.search(facts(), { type: "all" }, {
+      currentContext: "Steve"
+    });
+
+    assert.deepEqual(result.facts.map((fact) => fact.id), [
+      "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
+      "6f2308de-02e9-45db-8ff0-65ac793f4a24",
+      "a75ee82c-6b89-4676-8cb1-01222f976885"
+    ]);
+    assert.equal(result.factIdForNumber(2), "6f2308de-02e9-45db-8ff0-65ac793f4a24");
+  });
+
   it("searches contexts through shorthand parser forms", () => {
     const unquoted = engine.search(
       facts(),

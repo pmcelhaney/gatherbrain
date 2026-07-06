@@ -12,11 +12,11 @@ export class SearchEngine {
 
 function compareSearchResults(left, right, currentContext) {
   if (currentContext) {
-    const leftIsCurrent = isFactInCurrentContext(left, currentContext);
-    const rightIsCurrent = isFactInCurrentContext(right, currentContext);
+    const leftContextRank = currentContextRank(left, currentContext);
+    const rightContextRank = currentContextRank(right, currentContext);
 
-    if (leftIsCurrent !== rightIsCurrent) {
-      return leftIsCurrent ? -1 : 1;
+    if (leftContextRank !== rightContextRank) {
+      return leftContextRank - rightContextRank;
     }
   }
 
@@ -27,11 +27,18 @@ function compareNewestFirst(left, right) {
   return right.createdAt.getTime() - left.createdAt.getTime();
 }
 
-function isFactInCurrentContext(fact, currentContext) {
+function currentContextRank(fact, currentContext) {
   const currentContextName = currentContext.name ?? currentContext;
 
-  return fact.homeContext.name === currentContextName ||
-    fact.associatedContexts.some((context) => context.name === currentContextName);
+  if (fact.homeContext.name === currentContextName) {
+    return 0;
+  }
+
+  if (fact.associatedContexts.some((context) => context.name === currentContextName)) {
+    return 1;
+  }
+
+  return 2;
 }
 
 function evaluate(node, fact, context) {
