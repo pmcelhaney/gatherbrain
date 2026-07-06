@@ -5,36 +5,13 @@ export class SearchEngine {
     return new SearchResultSet(
       facts
         .filter((fact) => evaluate(queryAst, fact, context))
-        .sort((left, right) => compareSearchResults(left, right, context.currentContext))
+        .sort(compareNewestFirst)
     );
   }
 }
 
-function compareSearchResults(left, right, currentContext) {
-  if (currentContext) {
-    const leftContextRank = currentContextRank(left, currentContext);
-    const rightContextRank = currentContextRank(right, currentContext);
-
-    if (leftContextRank !== rightContextRank) {
-      return leftContextRank - rightContextRank;
-    }
-  }
-
-  return compareNewestFirst(left, right);
-}
-
 function compareNewestFirst(left, right) {
   return right.createdAt.getTime() - left.createdAt.getTime();
-}
-
-function currentContextRank(fact, currentContext) {
-  const currentContextName = currentContext.name ?? currentContext;
-
-  if (fact.homeContext.name === currentContextName) {
-    return 0;
-  }
-
-  return 1;
 }
 
 function evaluate(node, fact, context) {

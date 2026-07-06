@@ -27,19 +27,8 @@ export class BodyRenderer {
     const rows = resultSet.toRows();
     const numberWidth = Math.max(2, String(resultSet.count).length);
     const rendered = [];
-    let previousFactWasInCurrentContext = null;
 
     for (const { number, fact } of rows) {
-      const factIsInCurrentContext = isFactInCurrentContext(fact, state.currentContext);
-
-      if (
-        state.currentMode === AppMode.SEARCH &&
-        previousFactWasInCurrentContext === true &&
-        factIsInCurrentContext === false
-      ) {
-        rendered.push("");
-      }
-
       const isSelected = selectionPreview?.includes(fact.id) ?? false;
       const basePrefix = `${padVisibleStart(String(number), numberWidth)}. `;
       const prefix = isSelected && !colorEnabled ? `>${basePrefix}` : basePrefix;
@@ -58,8 +47,6 @@ export class BodyRenderer {
           rendered.push(highlight(`${continuationPrefix}${renderContentLine(wrapped, fact, colorEnabled)}`, isSelected, colorEnabled));
         }
       }
-
-      previousFactWasInCurrentContext = factIsInCurrentContext;
     }
 
     if (rendered.length > height) {

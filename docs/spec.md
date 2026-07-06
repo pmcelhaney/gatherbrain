@@ -106,9 +106,8 @@ returns the body to the current context instead of making the search sticky.
 An empty search prompt (`/`) previews the current context query. If there is no
 current context, it previews all facts.
 
-Search results show facts whose home context is the current context first,
-ordered newest first by fact creation time. A blank line separates those
-matches from facts in other contexts, which are also ordered newest first.
+Search results are ordered newest first by fact creation time. Current-context
+membership does not change result order.
 
 Search result rows show a fact's home context only when the fact does not have
 the current context as its home context. Facts that live in the current context

@@ -220,7 +220,7 @@ describe("terminal renderers", () => {
     );
   });
 
-  it("separates current-context search results from other contexts", () => {
+  it("renders outside-context search results inline with their home context", () => {
     const state = new AppState({
       currentContext: "Steve",
       currentMode: AppMode.SEARCH
@@ -238,13 +238,12 @@ describe("terminal renderers", () => {
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
       [
         " 1. task tomorrow Follow up with Steve.",
-        "",
         " 2. task tomorrow [Architecture Review Board] Follow up with Steve."
       ].join("\n")
     );
   });
 
-  it("treats associated facts as outside current-context search grouping", () => {
+  it("shows associated outside-context search results without grouping", () => {
     const state = new AppState({
       currentContext: "Steve",
       currentMode: AppMode.SEARCH
@@ -263,7 +262,6 @@ describe("terminal renderers", () => {
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
       [
         " 1. task tomorrow Follow up with Steve.",
-        "",
         " 2. task tomorrow [Architecture Review Board] Follow up with Steve. >Steve"
       ].join("\n")
     );

@@ -1603,7 +1603,6 @@ Login Screenshot
 
     assert.match(rendered, /^Architecture Review Board \| Shared$/m);
     assert.match(rendered, / 1\. Shared search term in Architecture/);
-    assert.match(rendered, /Shared search term in Architecture\.\n\n 2\./);
     assert.match(rendered, /\n 2\. \[Steve\] Shared search term in Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
@@ -1788,6 +1787,30 @@ Login Screenshot
 
     assert.match(rendered, /New-context fact/);
     assert.doesNotMatch(rendered, /Steve-only fact/);
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
+  it("orders current context facts by creation time across home and associated facts", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-context-newest-first-"));
+    let now = "2026-06-30T10:00:00.000Z";
+    const runtime = createAppRuntime({
+      workspacePath,
+      clock: () => new Date(now)
+    });
+
+    await runtime.submit("@ARB!");
+    await runtime.submit("Older home fact.");
+    await runtime.submit("@Other!");
+    now = "2026-06-30T11:00:00.000Z";
+    await runtime.submit("Newer associated fact @ARB.");
+    await runtime.submit("@ARB");
+
+    const rendered = runtime.render();
+
+    assert.match(rendered, / 1\. Newer associated fact @ARB\./);
+    assert.match(rendered, / 2\. Older home fact\./);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
