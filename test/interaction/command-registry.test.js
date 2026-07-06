@@ -64,6 +64,25 @@ describe("CommandRegistry", () => {
     assert.equal(state.currentQuery, 'context:"Corrine Spell"');
   });
 
+  it("does not treat recent context names as existing contexts", async () => {
+    const state = new AppState({ currentContext: "AI Enablement" });
+
+    await assert.rejects(
+      () => new CommandRegistry().execute("@Corrine\\ Spell", {
+        state,
+        recentContexts: ["Corrine Spell"],
+        contextRepository: {
+          async list() {
+            return ["AI Enablement"];
+          }
+        }
+      }),
+      /Context does not exist: Corrine Spell\. Add ! to create it\./
+    );
+
+    assert.equal(state.currentContext.name, "AI Enablement");
+  });
+
   it("rejects unknown contexts unless creation is explicit", async () => {
     const state = new AppState({ currentContext: "Steve" });
 

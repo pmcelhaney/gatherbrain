@@ -26,6 +26,12 @@ export class ContextRepository {
   async listFactContexts() {
     return this.listWorkspaceContexts();
   }
+
+  async create(context) {
+    const nextContext = Context.from(context);
+    await fs.mkdir(this.workspace.contextDirectory(null, nextContext), { recursive: true });
+    return nextContext;
+  }
 }
 
 function isIgnoredWorkspaceDirectory(name) {

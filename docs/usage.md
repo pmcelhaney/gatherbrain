@@ -62,7 +62,9 @@ switch is rejected instead of creating it on the fly.
 
 While typing a prompt that starts with `@`, the body shows the most recently
 visited contexts in newest-first order, remembered between application
-sessions. Enter a listed number or dots to switch:
+sessions. Restored recent-context entries are shown only when they still resolve
+to a workspace context directory or a fact reference. Enter a listed number or
+dots to switch:
 
 ```text
 @1

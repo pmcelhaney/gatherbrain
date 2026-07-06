@@ -276,7 +276,9 @@ The prompt accepts user input and previews the inferred mode while typing.
 When the first prompt character is `@`, the body previews the most recently
 visited contexts other than the current context, ordered newest first. The list
 shows as many contexts as fit in the body. Recent contexts are remembered
-between application sessions.
+between application sessions. Restored recent-context entries are used only
+when they still resolve to a workspace context directory or a fact's home or
+associated context.
 
 Tab completion is available for commands, `@<context>` switches, inline
 `@<context>` references in capture text, search shortcuts, selection actions,

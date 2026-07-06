@@ -179,6 +179,11 @@ async function resolveContextSwitchTarget(target, {
   }
 
   if (createIfMissing) {
+    if (contextRepository?.create) {
+      const createdContext = await contextRepository.create(contextName);
+      return createdContext.name;
+    }
+
     return contextName;
   }
 
@@ -197,17 +202,10 @@ async function resolveContextSwitchTarget(target, {
 }
 
 async function resolveExistingContextName(target, {
-  state,
-  recentContexts = [],
   contextRepository,
   factSource
 } = {}) {
   const contextNames = [];
-  appendUniqueContextName(contextNames, state?.currentContext?.name);
-
-  for (const contextName of recentContexts) {
-    appendUniqueContextName(contextNames, contextName);
-  }
 
   if (contextRepository) {
     for (const contextName of await contextRepository.list()) {

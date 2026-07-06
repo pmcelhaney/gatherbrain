@@ -886,6 +886,52 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("does not let stale recent context names mask real associated context previews", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-stale-recent-context-"));
+    const homePath = path.join(workspacePath, "Home");
+
+    fs.mkdirSync(homePath, { recursive: true });
+    fs.writeFileSync(
+      path.join(homePath, "11111111-1111-4111-8111-111111111111-associated-arb.md"),
+      [
+        "---",
+        "id: 11111111-1111-4111-8111-111111111111",
+        "type: fact",
+        "created: 2026-07-06T13:00:00.000Z",
+        "associated_contexts:",
+        "  - ARB 2.0",
+        "due: ",
+        "file: ",
+        "url: ",
+        "---",
+        "Associated with @ARB 2.0",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(workspacePath, ".gatherbrain-state.json"),
+      `${JSON.stringify({
+        currentContext: "Home",
+        recentContexts: ["ARB", "Home"]
+      }, null, 2)}\n`
+    );
+
+    try {
+      const runtime = createAppRuntime({ workspacePath });
+      await runtime.initialize();
+
+      const preview = runtime.render({ input: "@ARB", height: 8 });
+      const recentPreview = runtime.render({ input: "@", height: 8 });
+
+      assert.match(preview, /^Home > ARB 2\.0$/m);
+      assert.match(preview, /1\. Associated with @ARB 2\.0/);
+      assert.doesNotMatch(recentPreview, /^ 1\. ARB$/m);
+    } finally {
+      fs.rmSync(workspacePath, { recursive: true, force: true });
+    }
+  });
+
   it("previews a typed context's items before switching to it", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-typed-context-preview-"));

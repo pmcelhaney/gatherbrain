@@ -71,14 +71,24 @@ export function createAppRuntime({
 
     state.restart();
     recentContexts = Array.isArray(savedState?.recentContexts) ? savedState.recentContexts : [];
-    if (savedState?.currentContext) {
-      state.switchContext(savedState.currentContext);
-      recentContexts = recordRecentContext(recentContexts, state.currentContext);
-    }
 
     factIndex.invalidate();
     cachedFacts = await factIndex.list();
     cachedContextNames = await contextRepository.list();
+    recentContexts = pruneRecentContexts(recentContexts, {
+      facts: cachedFacts,
+      contextNames: cachedContextNames
+    });
+
+    const savedContextName = contextNameForExactMatch(savedState?.currentContext, {
+      facts: cachedFacts,
+      contextNames: cachedContextNames
+    });
+    if (savedContextName) {
+      state.switchContext(savedContextName);
+      recentContexts = recordRecentContext(recentContexts, state.currentContext);
+    }
+
     resultSet = await initialResultSet({
       state,
       factIndex,
@@ -233,6 +243,7 @@ export function createAppRuntime({
 
       if (result.action === "switch_context") {
         recentContexts = recordRecentContext(recentContexts, state.currentContext);
+        cachedContextNames = await contextRepository.list();
         resultSet = await searchCurrentFacts({
           state,
           factIndex,
@@ -327,6 +338,7 @@ export function createAppRuntime({
         helpLines: contextListPreviewForInput({
           input,
           recentContexts: visibleRecentContexts,
+          contextNames: cachedContextNames,
           facts: cachedFacts,
           height: bodyHeightForRender({
             height,
@@ -460,6 +472,18 @@ function selectableRecentContexts(recentContexts, currentContext) {
   );
 }
 
+function pruneRecentContexts(recentContexts, { facts = [], contextNames = [] } = {}) {
+  const discoverableContextNames = contextNamesFromFactsAndKnownContexts(facts, contextNames);
+  const prunedContexts = [];
+
+  for (const contextName of recentContexts) {
+    const matchedName = exactContextName(contextName, discoverableContextNames);
+    appendUniqueContextName(prunedContexts, matchedName);
+  }
+
+  return prunedContexts;
+}
+
 function canonicalizeContextSwitchInput(input, { facts = [], recentContexts = [], contextNames = [] } = {}) {
   const target = scopedContextTarget(input, { recentContexts, facts, contextNames });
 
@@ -470,12 +494,12 @@ function canonicalizeContextSwitchInput(input, { facts = [], recentContexts = []
   return `@${target.contextName}`;
 }
 
-function contextListPreviewForInput({ input, recentContexts, facts = [], height }) {
+function contextListPreviewForInput({ input, recentContexts, facts = [], contextNames = [], height }) {
   if (!input.startsWith("@")) {
     return null;
   }
 
-  if (scopedContextTarget(input, { recentContexts, facts })) {
+  if (scopedContextTarget(input, { recentContexts, facts, contextNames })) {
     return null;
   }
 
@@ -525,7 +549,9 @@ function previewResultSetForInput({
     clock
   }) ?? resultSet;
   const parsed = selectionInputPreview(input, activeResultSet, selectionActionRegistry, {
-    recentContexts
+    recentContexts,
+    facts,
+    contextNames
   });
 
   if (!parsed?.actions.length) {
@@ -923,7 +949,8 @@ function contextNameForTypedPrefix(rawPrefix, { recentContexts = [], facts = [],
   }
 
   const normalizedPrefix = Context.canonicalize(prefix);
-  const matches = contextNamesFromFactsAndRecentContexts(facts, recentContexts, contextNames).filter((contextName) =>
+  const discoverableContextNames = contextNamesFromFactsAndKnownContexts(facts, contextNames);
+  const matches = discoverableContextNames.filter((contextName) =>
     Context.canonicalize(contextName).startsWith(normalizedPrefix)
   );
   const exactMatch = matches.find((contextName) =>
@@ -949,14 +976,26 @@ function contextNameForTypedPrefix(rawPrefix, { recentContexts = [], facts = [],
   return null;
 }
 
-function contextNamesFromFactsAndRecentContexts(facts = [], recentContexts = [], knownContextNames = []) {
+function contextNameForExactMatch(rawName, { facts = [], contextNames = [] } = {}) {
+  if (!rawName) {
+    return null;
+  }
+
+  return exactContextName(rawName, contextNamesFromFactsAndKnownContexts(facts, contextNames));
+}
+
+function exactContextName(rawName, contextNames = []) {
+  const canonicalName = Context.canonicalize(rawName);
+
+  return contextNames.find((contextName) =>
+    Context.canonicalize(contextName) === canonicalName
+  ) ?? null;
+}
+
+function contextNamesFromFactsAndKnownContexts(facts = [], knownContextNames = []) {
   const contextNames = [];
 
   for (const contextName of knownContextNames) {
-    appendUniqueContextName(contextNames, contextName);
-  }
-
-  for (const contextName of recentContexts) {
     appendUniqueContextName(contextNames, contextName);
   }
 
