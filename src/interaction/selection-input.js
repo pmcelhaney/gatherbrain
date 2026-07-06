@@ -27,7 +27,7 @@ export function parseSelectionActions(tokens, { actionKeywords = [] } = {}) {
   let index = 0;
 
   while (index < tokens.length) {
-    if (tokens[index].startsWith("-@")) {
+    if (tokens[index].startsWith("-@") || tokens[index].startsWith("@")) {
       const contextTokens = readEscapedActionTokens(tokens, index);
       actions.push(actionFromTokens(contextTokens));
       index += contextTokens.length;

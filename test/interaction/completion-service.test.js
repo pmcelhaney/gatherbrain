@@ -79,6 +79,8 @@ describe("CompletionService", () => {
     assert.equal(await service.complete("@St"), "@Steve\\ Ma");
     assert.equal(await service.complete("Confirm when @Dev"), "Confirm when @Devin");
     assert.equal(await service.complete("@Architecture"), "@Architecture\\ Review\\ Board");
+    assert.equal(await service.complete(". @Dev"), ". @Devin");
+    assert.equal(await service.complete("1 -@St"), "1 -@Steve\\ Ma");
   });
 
   it("cycles through matching context switch completions", async () => {

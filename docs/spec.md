@@ -77,8 +77,9 @@ fact should be visible. A fact may be claimed into the current context through
 the `claim` selection action, which moves the underlying Markdown file so that
 the current context becomes the fact's home context.
 
-There is no separate tag model. Text containing `@Steve` is stored as normal
-fact content unless it is the leading prompt form used for context switching.
+There is no separate tag model. Text containing `@Steve` in captured content is
+stored as normal fact content and also associates the fact with the referenced
+context.
 
 ## Capture
 
@@ -403,6 +404,7 @@ Built-in actions:
 | `gather` | Associates the selected fact with the current context |
 | `claim` | Moves the selected fact to the current context as its home context |
 | `go` | Switches to the home context of the last selected fact |
+| `@<context>` | Adds an associated context to the selected fact |
 | `-@<context>` | Removes an associated context from the selected fact |
 | `open` | Opens the URL, file, or both associated with the fact |
 | `edit` | Opens the fact Markdown file in `$EDITOR`; with multiple selectors, only the last mentioned fact is edited |

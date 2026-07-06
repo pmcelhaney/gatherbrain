@@ -36,7 +36,13 @@ export class CompletionService {
     }
 
     if (isSelectionInput(input)) {
-      const selectionCompletion = completeSelection(input, this.actionRegistry.keywords(), context.resultSet, matchIndex);
+      const selectionCompletion = await completeSelection(
+        input,
+        this.actionRegistry.keywords(),
+        context.resultSet,
+        await this.contextNames(),
+        matchIndex
+      );
       if (selectionCompletion) {
         return selectionCompletion;
       }
@@ -105,7 +111,7 @@ function completeSuffix(input, prefix, candidates, matchIndex = 0) {
   return completionResult(input, matches.map((match) => `${prefix}${match}`), matchIndex);
 }
 
-function completeSelection(input, actionKeywords, resultSet, matchIndex = 0) {
+async function completeSelection(input, actionKeywords, resultSet, contextNames = [], matchIndex = 0) {
   const tokens = input.trim().split(/\s+/);
   const last = tokens[tokens.length - 1] ?? "";
 
@@ -118,6 +124,11 @@ function completeSelection(input, actionKeywords, resultSet, matchIndex = 0) {
   }
 
   if (/^\d+$|^\.+$/.test(tokens[0]) && tokens.length > 1) {
+    const contextAction = contextActionCompletion(input, tokens, last, contextNames, matchIndex);
+    if (contextAction) {
+      return contextAction;
+    }
+
     const matches = matchingCandidates(actionKeywords, last);
     if (matches.length > 0) {
       return completionResult(input, matches.map((match) => replaceLastToken(tokens, match)), matchIndex);
@@ -125,6 +136,29 @@ function completeSelection(input, actionKeywords, resultSet, matchIndex = 0) {
   }
 
   return null;
+}
+
+function contextActionCompletion(input, tokens, last, contextNames, matchIndex = 0) {
+  const removePrefix = last.startsWith("-@");
+  const associatePrefix = !removePrefix && last.startsWith("@");
+
+  if (!removePrefix && !associatePrefix) {
+    return null;
+  }
+
+  const actionPrefix = removePrefix ? "-@" : "@";
+  const partial = last.slice(actionPrefix.length).replace(/\\(\s)/g, "$1");
+  const matches = matchingCandidates(contextNames, partial);
+
+  if (matches.length === 0) {
+    return null;
+  }
+
+  return completionResult(
+    input,
+    matches.map((match) => replaceLastToken(tokens, `${actionPrefix}${escapeAtValue(match)}`)),
+    matchIndex
+  );
 }
 
 function isSelectionInput(input) {

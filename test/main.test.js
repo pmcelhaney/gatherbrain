@@ -1525,7 +1525,7 @@ Login Screenshot
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("rejects removed dynamic @ selection actions", async () => {
+  it("associates selected facts with dynamic @ selection actions", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-add-tag-"));
     const runtime = createAppRuntime({
@@ -1538,12 +1538,15 @@ Login Screenshot
     const preview = runtime.render({ input: ". @Steve\\ Ma" });
 
     assert.match(preview, /1\. first item in empty/);
-    await assert.rejects(() => runtime.submit(". @Steve\\ Ma"), /Unknown selection action/);
+    const result = await runtime.submit(". @Steve\\ Ma");
+
+    assert.equal(result.action, "selection_action");
+    assert.equal(result.message, "@Steve\\ Ma applied to 1 fact");
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("renders captured @ text without trailing tag echoes", async () => {
+  it("associates captured @ context references without trailing tag echoes", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-add-inline-tag-"));
     const runtime = createAppRuntime({
@@ -1758,8 +1761,8 @@ Login Screenshot
 
     assert.equal(await runtime.complete("Confirm @Dev"), "Confirm @Devin");
     assert.equal(await runtime.complete("@St"), "@Steve");
-    assert.equal(await runtime.complete(". @"), ". @");
-    assert.equal(await runtime.complete(". @Dev"), ". @Dev");
+    assert.equal(await runtime.complete(". @"), ". @Devin");
+    assert.equal(await runtime.complete(". @Dev"), ". @Devin");
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

@@ -103,17 +103,21 @@ describe("SelectionActionRegistry", () => {
     );
   });
 
-  it("rejects removed dynamic @ selection actions", async () => {
+  it("associates selected facts with dynamic @ selection actions", async () => {
     const factStore = new MemoryFactStore([buildFact()]);
     const registry = SelectionActionRegistry.fromConfig();
 
-    await assert.rejects(
-      registry.execute("@Steve\\", {
-        selection: new Selection(["6f2308de-02e9-45db-8ff0-65ac793f4a24"]),
-        factStore,
-        actionArgs: ["Ma"]
-      }),
-      /Unknown selection action/
+    await registry.execute("@Steve\\", {
+      selection: new Selection(["6f2308de-02e9-45db-8ff0-65ac793f4a24"]),
+      factStore,
+      actionArgs: ["Ma"]
+    });
+
+    assert.deepEqual(
+      factStore
+        .fact("6f2308de-02e9-45db-8ff0-65ac793f4a24")
+        .associatedContexts.map((context) => context.name),
+      ["Steve Ma"]
     );
   });
 
@@ -339,6 +343,16 @@ describe("SelectionActionRegistry", () => {
 
     assert.deepEqual(preview.associatedContexts, []);
     assert.deepEqual(fact.associatedContexts.map((context) => context.name), ["Steve Ma"]);
+  });
+
+  it("previews dynamic @ context association", () => {
+    const fact = buildFact();
+    const registry = SelectionActionRegistry.fromConfig();
+
+    const preview = registry.preview("@Steve\\", fact, { actionArgs: ["Ma"] });
+
+    assert.deepEqual(preview.associatedContexts.map((context) => context.name), ["Steve Ma"]);
+    assert.deepEqual(fact.associatedContexts, []);
   });
 });
 

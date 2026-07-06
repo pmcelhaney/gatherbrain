@@ -1,5 +1,6 @@
 import {
   AssociateCurrentContextAction,
+  AssociateNamedContextAction,
   ClaimCurrentContextAction,
   ClearDueDateAction,
   EditFactFileAction,
@@ -31,6 +32,10 @@ export class SelectionActionRegistry {
   }
 
   resolve(keyword) {
+    if (isAssociateNamedContextAction(keyword)) {
+      return new AssociateNamedContextAction(contextFromAction(keyword));
+    }
+
     if (isRemoveContextAssociationAction(keyword)) {
       return new RemoveContextAssociationAction(contextFromAction(keyword.slice(1)));
     }
@@ -88,6 +93,13 @@ export class SelectionActionRegistry {
       const previewFact = fact.constructor.from(fact.toSerializable());
       const contextName = contextFromAction(resolvedKeyword.slice(1));
       previewFact.dissociateContext(contextName);
+      return previewFact;
+    }
+
+    if (isAssociateNamedContextAction(resolvedKeyword)) {
+      const previewFact = fact.constructor.from(fact.toSerializable());
+      const contextName = contextFromAction(resolvedKeyword);
+      previewFact.associateContext(contextName);
       return previewFact;
     }
 
@@ -149,8 +161,12 @@ function isRemoveContextAssociationAction(keyword) {
   return typeof keyword === "string" && keyword.startsWith("-@") && keyword.length > 2;
 }
 
+function isAssociateNamedContextAction(keyword) {
+  return typeof keyword === "string" && keyword.startsWith("@") && keyword.length > 1;
+}
+
 function contextFromAction(keyword) {
-  return keyword.slice(1);
+  return keyword.slice(1).replace(/\\(\s)/g, "$1");
 }
 
 function buildAction(definition) {

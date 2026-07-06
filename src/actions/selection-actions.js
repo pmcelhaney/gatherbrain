@@ -44,6 +44,20 @@ export class RemoveContextAssociationAction {
   }
 }
 
+export class AssociateNamedContextAction {
+  constructor(contextName) {
+    this.contextName = contextName;
+  }
+
+  async execute(context) {
+    return mutateSelectedFacts(context, async (fact, factStore) => {
+      fact.associateContext(this.contextName);
+      await factStore.saveFact(fact);
+      return { fact, action: "associate_named_context", value: this.contextName };
+    });
+  }
+}
+
 export class ClearDueDateAction {
   async execute(context) {
     return mutateSelectedFacts(context, async (fact, factStore) => {

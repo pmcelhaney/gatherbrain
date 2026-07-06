@@ -95,8 +95,8 @@ month-day phrases such as `June 1`.
 Facts are stored as Markdown files with front matter beneath the workspace
 context folder. Slash-separated context names are stored as nested directories.
 
-There is no tag capture behavior. `@Steve` inside fact text is stored as normal
-content.
+There is no separate tag model. `@Steve` inside fact text is stored as normal
+content and also associates the fact with the referenced context.
 
 ## Searching
 
@@ -217,6 +217,7 @@ Current built-in actions:
 | `gather` | Associates the fact with the current context |
 | `claim` | Moves the fact to the current context as its home context |
 | `go` | Switches to the home context of the last selected fact |
+| `@<context>` | Adds an associated context |
 | `-@<context>` | Removes an associated context |
 | `open` | Opens the URL, file, or both associated with the fact |
 | `edit` | Opens the fact Markdown file in `$EDITOR`; with multiple selectors, only the last mentioned fact is edited |

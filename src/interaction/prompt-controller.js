@@ -105,7 +105,8 @@ export class PromptController {
       type: bookmark.url ? "bookmark" : this.defaultFactType,
       createdAt: this.clock(),
       homeContext: this.state.currentContext,
-      url: bookmark.url
+      url: bookmark.url,
+      associatedContexts: contextReferencesFromCapture(content)
     });
 
     const { filePath } = await this.factRepository.create(fact);
@@ -233,6 +234,24 @@ function extractBookmark(input) {
     content: withoutUrl || labelForUrl(url),
     url
   };
+}
+
+function contextReferencesFromCapture(content) {
+  const references = [];
+  const pattern = /(^|\s)@(?<name>(?:\\\s|[^\s,.;:!?()[\]{}"'`])+)/gu;
+
+  for (const match of content.matchAll(pattern)) {
+    const name = match.groups.name
+      .replace(/\\(\s)/g, "$1")
+      .replace(/'s$/u, "")
+      .trim();
+
+    if (name && !references.some((existing) => existing.toLocaleLowerCase("en-US") === name.toLocaleLowerCase("en-US"))) {
+      references.push(name);
+    }
+  }
+
+  return references;
 }
 
 function labelForUrl(url) {
