@@ -253,7 +253,7 @@ or associated contexts is highlighted as a context reference.
 
 Facts associated with the viewed context but stored in another home context show
 that origin at the end of the row as `<Home Context`. When color is enabled,
-this origin suffix uses the muted provenance color.
+this origin suffix uses the same green as associated-context suffixes.
 
 Due dates are displayed as friendly labels when possible:
 

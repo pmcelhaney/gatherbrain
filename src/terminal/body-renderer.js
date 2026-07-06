@@ -216,7 +216,7 @@ function highlightOriginMarker(text, fact, state, colorEnabled) {
   }
 
   const pattern = new RegExp(`(^|\\s)(<${escapeRegex(fact.homeContext.name)})(?=\\s|$)`, "gu");
-  return text.replace(pattern, (_, prefix, marker) => `${prefix}${color(marker, ansi.gray, true)}`);
+  return text.replace(pattern, (_, prefix, marker) => `${prefix}${color(marker, ansi.green, true)}`);
 }
 
 function escapeRegex(value) {

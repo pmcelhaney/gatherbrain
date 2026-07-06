@@ -375,7 +375,7 @@ describe("terminal renderers", () => {
         today: "2026-06-30",
         colorEnabled: true
       }).join("\n"),
-      "\x1b[90m 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0mFollow up with Steve. \x1b[90m<Architecture Review Board\x1b[0m"
+      "\x1b[90m 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0mFollow up with Steve. \x1b[32m<Architecture Review Board\x1b[0m"
     );
   });
 
