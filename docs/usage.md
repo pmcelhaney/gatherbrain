@@ -98,6 +98,10 @@ context folder. Slash-separated context names are stored as nested directories.
 There is no separate tag model. `@Steve` inside fact text is stored as normal
 content and also associates the fact with the referenced context.
 
+When a fact is shown in a context because it is associated with that context but
+was created somewhere else, the row ends with its origin context as
+`<Origin Context`.
+
 ## Searching
 
 Search mode begins with `/`.

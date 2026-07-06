@@ -244,6 +244,22 @@ describe("terminal renderers", () => {
     );
   });
 
+  it("shows the origin context for facts related to the current context", () => {
+    const state = new AppState({ currentContext: "Steve" });
+    const renderer = new BodyRenderer();
+    const resultSet = new SearchResultSet([
+      buildFact({
+        homeContext: "Architecture Review Board",
+        associatedContexts: ["Steve"]
+      })
+    ]);
+
+    assert.equal(
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      " 1. task tomorrow Follow up with Steve. <Architecture Review Board"
+    );
+  });
+
   it("keeps associated current-context search results in the first group", () => {
     const state = new AppState({
       currentContext: "Steve",
@@ -263,7 +279,7 @@ describe("terminal renderers", () => {
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
       [
         " 1. task tomorrow Follow up with Steve.",
-        " 2. task tomorrow Follow up with Steve. >Steve"
+        " 2. task tomorrow Follow up with Steve. <Architecture Review Board"
       ].join("\n")
     );
   });
@@ -297,7 +313,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      " 1. task tomorrow Ask @Steve\\ Ma about the launch."
+      " 1. task tomorrow Ask @Steve\\ Ma about the launch. <Architecture Review Board"
     );
   });
 
@@ -314,7 +330,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      " 1. task tomorrow Ask @Steve\\ Ma about the launch. >Steve"
+      " 1. task tomorrow Ask @Steve\\ Ma about the launch. <Architecture Review Board"
     );
   });
 
@@ -337,6 +353,29 @@ describe("terminal renderers", () => {
         colorEnabled: true
       }).join("\n"),
       "\x1b[90m 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0mFollow up with Steve. \x1b[32m>Foo\x1b[0m \x1b[32m>Bar\x1b[0m"
+    );
+  });
+
+  it("renders origin context suffixes as provenance when color is enabled", () => {
+    const state = new AppState({ currentContext: "Steve" });
+    const renderer = new BodyRenderer();
+    const resultSet = new SearchResultSet([
+      buildFact({
+        homeContext: "Architecture Review Board",
+        associatedContexts: ["Steve"]
+      })
+    ]);
+
+    assert.equal(
+      renderer.render({
+        state,
+        resultSet,
+        width: 80,
+        height: 10,
+        today: "2026-06-30",
+        colorEnabled: true
+      }).join("\n"),
+      "\x1b[90m 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0mFollow up with Steve. \x1b[90m<Architecture Review Board\x1b[0m"
     );
   });
 

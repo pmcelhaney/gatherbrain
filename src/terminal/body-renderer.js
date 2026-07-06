@@ -52,12 +52,12 @@ export class BodyRenderer {
       const continuationPrefix = " ".repeat(numberWidth + 2);
       const firstLineWidth = Math.max(1, width - prefix.length - type.length - due.length - home.length);
       const continuationWidth = Math.max(1, width - continuationPrefix.length);
-      const [first, ...rest] = wrapPlain(displayContentWithAssociations(fact, today), firstLineWidth);
+      const [first, ...rest] = wrapPlain(displayContentWithContextSuffixes(fact, state, today), firstLineWidth);
 
-      rendered.push(highlight(`${firstLinePrefix}${renderContentLine(first, fact, colorEnabled)}`, isSelected, colorEnabled));
+      rendered.push(highlight(`${firstLinePrefix}${renderContentLine(first, fact, state, colorEnabled)}`, isSelected, colorEnabled));
       for (const line of rest) {
         for (const wrapped of wrapPlain(line, continuationWidth)) {
-          rendered.push(highlight(`${continuationPrefix}${renderContentLine(wrapped, fact, colorEnabled)}`, isSelected, colorEnabled));
+          rendered.push(highlight(`${continuationPrefix}${renderContentLine(wrapped, fact, state, colorEnabled)}`, isSelected, colorEnabled));
         }
       }
     }
@@ -94,20 +94,37 @@ function displayContent(fact, today) {
   return replaceIsoDatesWithNaturalDates(fact.content, { today });
 }
 
-function displayContentWithAssociations(fact, today) {
-  const suffix = displayAssociationSuffix(fact);
+function displayContentWithContextSuffixes(fact, state, today) {
+  const suffix = displayContextSuffix(fact, state);
   return suffix ? `${displayContent(fact, today)} ${suffix}` : displayContent(fact, today);
 }
 
-function displayAssociationSuffix(fact) {
-  const markers = associationMarkerNames(fact).map((name) => `>${name}`);
+function displayContextSuffix(fact, state) {
+  const markers = [
+    ...associationMarkerNames(fact, state).map((name) => `>${name}`),
+    displayOriginMarker(fact, state)
+  ].filter(Boolean);
   return markers.join(" ");
 }
 
-function renderContentLine(text, fact, colorEnabled) {
-  const content = highlightAssociationMarkers(
-    highlightInlineContextReferences(text, fact, colorEnabled),
+function displayOriginMarker(fact, state) {
+  if (!factIsAssociatedWithCurrentContext(fact, state?.currentContext)) {
+    return "";
+  }
+
+  return `<${fact.homeContext.name}`;
+}
+
+function renderContentLine(text, fact, state, colorEnabled) {
+  const content = highlightOriginMarker(
+    highlightAssociationMarkers(
+      highlightInlineContextReferences(text, fact, colorEnabled),
+      fact,
+      state,
+      colorEnabled
+    ),
     fact,
+    state,
     colorEnabled
   );
   return fact.url ? hyperlink(content, fact.url) : content;
@@ -168,18 +185,19 @@ function contextReferenceNames(fact) {
   return [...new Set(names)].sort((left, right) => right.length - left.length);
 }
 
-function associationMarkerNames(fact) {
+function associationMarkerNames(fact, state) {
   return fact.associatedContexts
     .map((context) => context.name)
+    .filter((name) => !isCurrentContextName(name, state?.currentContext))
     .filter((name) => !hasInlineContextReference(fact.content, { name }));
 }
 
-function highlightAssociationMarkers(text, fact, colorEnabled) {
+function highlightAssociationMarkers(text, fact, state, colorEnabled) {
   if (!colorEnabled) {
     return text;
   }
 
-  const markerNames = associationMarkerNames(fact);
+  const markerNames = associationMarkerNames(fact, state);
   if (markerNames.length === 0) {
     return text;
   }
@@ -192,6 +210,15 @@ function highlightAssociationMarkers(text, fact, colorEnabled) {
   return text.replace(pattern, (_, prefix, marker) => `${prefix}${color(marker, ansi.green, true)}`);
 }
 
+function highlightOriginMarker(text, fact, state, colorEnabled) {
+  if (!colorEnabled || !factIsAssociatedWithCurrentContext(fact, state?.currentContext)) {
+    return text;
+  }
+
+  const pattern = new RegExp(`(^|\\s)(<${escapeRegex(fact.homeContext.name)})(?=\\s|$)`, "gu");
+  return text.replace(pattern, (_, prefix, marker) => `${prefix}${color(marker, ansi.gray, true)}`);
+}
+
 function escapeRegex(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -202,7 +229,23 @@ function isFactInCurrentContext(fact, currentContext) {
   }
 
   return fact.homeContext.equals(currentContext) ||
-    fact.associatedContexts.some((context) => context.equals(currentContext));
+    factIsAssociatedWithCurrentContext(fact, currentContext);
+}
+
+function factIsAssociatedWithCurrentContext(fact, currentContext) {
+  if (!currentContext || fact.homeContext.equals(currentContext)) {
+    return false;
+  }
+
+  return fact.associatedContexts.some((context) => context.equals(currentContext));
+}
+
+function isCurrentContextName(name, currentContext) {
+  if (!currentContext) {
+    return false;
+  }
+
+  return currentContext.equals(name);
 }
 
 function highlight(text, enabled, colorEnabled) {

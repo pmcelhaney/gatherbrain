@@ -113,15 +113,19 @@ the current context or whose associated contexts include the current context.
 The second group contains every other matching fact. Each group is ordered
 newest first by fact creation time.
 
-Search result rows show a fact's home context only when the fact is not in the
-current context and is not associated with the current context. Facts in the
-first group keep the compact current-context row.
+Search result rows show a fact's home context as `[Home Context]` only when the
+fact is not in the current context and is not associated with the current
+context. Facts associated with the current context stay in the first group and
+show their origin as a `<Home Context` suffix.
 
 Associated contexts render as inline suffixes at the end of fact text, one
 marker per context, such as `>Foo >Bar`. When color is enabled, these markers
 use the same color as inline `@<context>` references to associated contexts. A
 context is omitted from the suffix when the fact text already contains an inline
-`@<context>` reference to that same context.
+`@<context>` reference to that same context or when that context is the current
+context being viewed. When a fact appears in a context because it is associated
+with that context rather than living there, its home context renders as a
+`<Home Context` suffix.
 
 Context search supports quoted values, unquoted multi-word context values, and
 `@Context Name` shorthand.
@@ -246,6 +250,10 @@ hyperlink to that URL.
 
 When color is enabled, inline `@<context>` text matching the fact's home context
 or associated contexts is highlighted as a context reference.
+
+Facts associated with the viewed context but stored in another home context show
+that origin at the end of the row as `<Home Context`. When color is enabled,
+this origin suffix uses the muted provenance color.
 
 Due dates are displayed as friendly labels when possible:
 
