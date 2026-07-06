@@ -45,12 +45,12 @@ export class BodyRenderer {
       const prefix = isSelected && !colorEnabled ? `>${basePrefix}` : basePrefix;
       const type = displayType(fact);
       const due = fact.dueDate ? `${formatDueDate(fact.dueDate, today)} ` : "";
-      const contextMarker = displayContextMarker(fact, state);
-      const firstLinePrefix = `${color(prefix, ansi.gray, colorEnabled)}${color(type, ansi.cyan, colorEnabled)}${color(due, ansi.magenta, colorEnabled)}${colorIfPresent(contextMarker, ansi.gray, colorEnabled)}`;
+      const home = displayHomeContext(fact, state);
+      const firstLinePrefix = `${color(prefix, ansi.gray, colorEnabled)}${color(type, ansi.cyan, colorEnabled)}${color(due, ansi.magenta, colorEnabled)}${colorIfPresent(home, ansi.gray, colorEnabled)}`;
       const continuationPrefix = " ".repeat(numberWidth + 2);
-      const firstLineWidth = Math.max(1, width - prefix.length - type.length - due.length - contextMarker.length);
+      const firstLineWidth = Math.max(1, width - prefix.length - type.length - due.length - home.length);
       const continuationWidth = Math.max(1, width - continuationPrefix.length);
-      const [first, ...rest] = wrapPlain(displayContent(fact, today), firstLineWidth);
+      const [first, ...rest] = wrapPlain(displayContentWithAssociations(fact, today), firstLineWidth);
 
       rendered.push(highlight(`${firstLinePrefix}${renderContentLine(first, fact, colorEnabled)}`, isSelected, colorEnabled));
       for (const line of rest) {
@@ -78,14 +78,7 @@ function displayType(fact) {
   return `${fact.type} `;
 }
 
-function displayContextMarker(fact, state) {
-  if (
-    isFactAssociatedWithCurrentContext(fact, state.currentContext) &&
-    !hasInlineContextReference(fact.content, state.currentContext)
-  ) {
-    return "< ";
-  }
-
+function displayHomeContext(fact, state) {
   if (state.currentMode !== AppMode.SEARCH || isFactInCurrentContext(fact, state.currentContext)) {
     return "";
   }
@@ -101,8 +94,22 @@ function displayContent(fact, today) {
   return replaceIsoDatesWithNaturalDates(fact.content, { today });
 }
 
+function displayContentWithAssociations(fact, today) {
+  const suffix = displayAssociationSuffix(fact);
+  return suffix ? `${displayContent(fact, today)} ${suffix}` : displayContent(fact, today);
+}
+
+function displayAssociationSuffix(fact) {
+  const markers = associationMarkerNames(fact).map((name) => `<${name}`);
+  return markers.join(" ");
+}
+
 function renderContentLine(text, fact, colorEnabled) {
-  const content = highlightInlineContextReferences(text, fact, colorEnabled);
+  const content = highlightAssociationMarkers(
+    highlightInlineContextReferences(text, fact, colorEnabled),
+    fact,
+    colorEnabled
+  );
   return fact.url ? hyperlink(content, fact.url) : content;
 }
 
@@ -161,6 +168,30 @@ function contextReferenceNames(fact) {
   return [...new Set(names)].sort((left, right) => right.length - left.length);
 }
 
+function associationMarkerNames(fact) {
+  return fact.associatedContexts
+    .map((context) => context.name)
+    .filter((name) => !hasInlineContextReference(fact.content, { name }));
+}
+
+function highlightAssociationMarkers(text, fact, colorEnabled) {
+  if (!colorEnabled) {
+    return text;
+  }
+
+  const markerNames = associationMarkerNames(fact);
+  if (markerNames.length === 0) {
+    return text;
+  }
+
+  markerNames.sort((left, right) => right.length - left.length);
+  const pattern = new RegExp(
+    `(^|\\s)(<${markerNames.map(escapeRegex).join("|<")})(?=\\s|$)`,
+    "gu"
+  );
+  return text.replace(pattern, (_, prefix, marker) => `${prefix}${color(marker, ansi.gray, true)}`);
+}
+
 function escapeRegex(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -172,14 +203,6 @@ function isFactInCurrentContext(fact, currentContext) {
 
   return fact.homeContext.equals(currentContext) ||
     fact.associatedContexts.some((context) => context.equals(currentContext));
-}
-
-function isFactAssociatedWithCurrentContext(fact, currentContext) {
-  if (!currentContext || fact.homeContext.equals(currentContext)) {
-    return false;
-  }
-
-  return fact.associatedContexts.some((context) => context.equals(currentContext));
 }
 
 function highlight(text, enabled, colorEnabled) {

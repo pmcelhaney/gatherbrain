@@ -263,28 +263,28 @@ describe("terminal renderers", () => {
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
       [
         " 1. task tomorrow Follow up with Steve.",
-        " 2. task tomorrow < Follow up with Steve."
+        " 2. task tomorrow Follow up with Steve. <Steve"
       ].join("\n")
     );
   });
 
-  it("marks facts associated with the current context", () => {
+  it("lists associated contexts at the end of fact text", () => {
     const state = new AppState({ currentContext: "Steve" });
     const renderer = new BodyRenderer();
     const resultSet = new SearchResultSet([
       buildFact({
         homeContext: "Architecture Review Board",
-        associatedContexts: ["Steve"]
+        associatedContexts: ["Foo", "Bar"]
       })
     ]);
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      " 1. task tomorrow < Follow up with Steve."
+      " 1. task tomorrow Follow up with Steve. <Foo <Bar"
     );
   });
 
-  it("does not mark associated facts when the content already references the current context", () => {
+  it("does not list associated contexts when the content already references them", () => {
     const state = new AppState({ currentContext: "Steve Ma" });
     const renderer = new BodyRenderer();
     const resultSet = new SearchResultSet([
@@ -314,7 +314,29 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      " 1. task tomorrow < Ask @Steve\\ Ma about the launch."
+      " 1. task tomorrow Ask @Steve\\ Ma about the launch. <Steve"
+    );
+  });
+
+  it("renders associated context suffixes in gray when color is enabled", () => {
+    const state = new AppState({ currentContext: "Steve" });
+    const renderer = new BodyRenderer();
+    const resultSet = new SearchResultSet([
+      buildFact({
+        associatedContexts: ["Foo", "Bar"]
+      })
+    ]);
+
+    assert.equal(
+      renderer.render({
+        state,
+        resultSet,
+        width: 80,
+        height: 10,
+        today: "2026-06-30",
+        colorEnabled: true
+      }).join("\n"),
+      "\x1b[90m 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0mFollow up with Steve. \x1b[90m<Foo\x1b[0m \x1b[90m<Bar\x1b[0m"
     );
   });
 

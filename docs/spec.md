@@ -114,9 +114,13 @@ ordered newest first.
 
 Search result rows show a fact's home context only when the fact is outside the
 current context. Facts that live in the current context keep the compact
-current-context row. Facts that are associated with the current context but live
-elsewhere render with a `<` marker unless the fact text already contains an
-inline `@<context>` reference to the current context.
+current-context row.
+
+Associated contexts render as inline suffixes at the end of fact text, one
+marker per context, such as `<Foo <Bar`. When color is enabled, these markers
+use a different color from the fact text. A context is omitted from the suffix
+when the fact text already contains an inline `@<context>` reference to that
+same context.
 
 Context search supports quoted values, unquoted multi-word context values, and
 `@Context Name` shorthand.
