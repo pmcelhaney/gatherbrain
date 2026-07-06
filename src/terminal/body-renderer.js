@@ -118,7 +118,7 @@ function displayOriginMarker(fact, state) {
 function renderContentLine(text, fact, state, colorEnabled) {
   const content = highlightOriginMarker(
     highlightAssociationMarkers(
-      highlightInlineContextReferences(text, fact, colorEnabled),
+      highlightInlineContextReferences(text, colorEnabled),
       fact,
       state,
       colorEnabled
@@ -134,18 +134,15 @@ function hyperlink(text, url) {
   return `\x1b]8;;${url}\x1b\\${text}\x1b]8;;\x1b\\`;
 }
 
-function highlightInlineContextReferences(text, fact, colorEnabled) {
+function highlightInlineContextReferences(text, colorEnabled) {
   if (!colorEnabled) {
     return text;
   }
 
-  const contextNames = contextReferenceNames(fact);
-  const pattern = contextReferencePattern(contextNames);
-  if (!pattern) {
-    return text;
-  }
-
-  return text.replace(pattern, (reference) => color(reference, ansi.green, true));
+  return text.replace(
+    inlineContextReferencePattern(),
+    (_, prefix, reference) => `${prefix}${color(reference, ansi.green, true)}`
+  );
 }
 
 function hasInlineContextReference(text, context) {
@@ -176,13 +173,8 @@ function escapedContextReferenceName(name) {
   return String(name).replaceAll(" ", "\\ ");
 }
 
-function contextReferenceNames(fact) {
-  const names = [
-    fact.homeContext?.name,
-    ...fact.associatedContexts.map((context) => context.name)
-  ].filter(Boolean);
-
-  return [...new Set(names)].sort((left, right) => right.length - left.length);
+function inlineContextReferencePattern() {
+  return /(^|\s)(@[^@\s.,;:!?()[\]{}<>'"]+(?:(?:\\\s|\s+)[\p{Lu}0-9][^@\s.,;:!?()[\]{}<>'"]*)*)/gu;
 }
 
 function associationMarkerNames(fact, state) {

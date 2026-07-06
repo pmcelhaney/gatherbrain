@@ -121,8 +121,8 @@ show their origin as a `<Home Context` suffix.
 
 Associated contexts render as inline suffixes at the end of fact text, one
 marker per context, such as `>Foo >Bar`. When color is enabled, these markers
-use the same color as inline `@<context>` references to associated contexts. A
-context is omitted from the suffix when the fact text already contains an inline
+use the same color as inline `@<context>` references. A context is omitted from
+the suffix when the fact text already contains an inline
 `@<context>` reference to that same context or when that context is the current
 context being viewed. When a fact appears in a context because it is associated
 with that context rather than living there, its home context renders as a
@@ -249,8 +249,8 @@ Fact rows are numbered at the left with a muted number prefix. The implicit
 Bookmark rows with a `url` front matter value render their content as a terminal
 hyperlink to that URL.
 
-When color is enabled, inline `@<context>` text matching the fact's home context
-or associated contexts is highlighted as a context reference.
+When color is enabled, inline `@<context>` text is highlighted as a context
+reference.
 
 Facts associated with the viewed context but stored in another home context show
 that origin at the end of the row as `<Home Context`. When color is enabled,

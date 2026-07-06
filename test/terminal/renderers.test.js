@@ -126,7 +126,7 @@ describe("terminal renderers", () => {
         today: "2026-06-30",
         colorEnabled: true
       }).join("\n"),
-      "\x1b[90m 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0mMigration is \x1b[32m@Aruna Mahendravarman\x1b[0m and @Devin's trial."
+      "\x1b[90m 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0mMigration is \x1b[32m@Aruna Mahendravarman\x1b[0m and \x1b[32m@Devin\x1b[0m's trial."
     );
   });
 
@@ -399,7 +399,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       rendered,
-      "\x1b[7m\x1b[90m 1. \x1b[0m\x1b[7m\x1b[36mtask \x1b[0m\x1b[7m\x1b[35mtomorrow \x1b[0m\x1b[7mFollow up with @Steve Ma.\x1b[0m"
+      "\x1b[7m\x1b[90m 1. \x1b[0m\x1b[7m\x1b[36mtask \x1b[0m\x1b[7m\x1b[35mtomorrow \x1b[0m\x1b[7mFollow up with \x1b[32m@Steve Ma\x1b[0m\x1b[7m.\x1b[0m"
     );
   });
 
