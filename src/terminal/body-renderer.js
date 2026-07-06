@@ -28,7 +28,20 @@ export class BodyRenderer {
     const numberWidth = Math.max(2, String(resultSet.count).length);
     const rendered = [];
 
+    let lastRowWasCurrentContext = false;
+
     for (const { number, fact } of rows) {
+      const rowIsCurrentContext = isFactInCurrentContext(fact, state.currentContext);
+      if (
+        state.currentMode === AppMode.SEARCH &&
+        rendered.length > 0 &&
+        lastRowWasCurrentContext &&
+        !rowIsCurrentContext
+      ) {
+        rendered.push("");
+      }
+      lastRowWasCurrentContext = rowIsCurrentContext;
+
       const isSelected = selectionPreview?.includes(fact.id) ?? false;
       const basePrefix = `${padVisibleStart(String(number), numberWidth)}. `;
       const prefix = isSelected && !colorEnabled ? `>${basePrefix}` : basePrefix;
@@ -188,7 +201,8 @@ function isFactInCurrentContext(fact, currentContext) {
     return false;
   }
 
-  return fact.homeContext.equals(currentContext);
+  return fact.homeContext.equals(currentContext) ||
+    fact.associatedContexts.some((context) => context.equals(currentContext));
 }
 
 function highlight(text, enabled, colorEnabled) {

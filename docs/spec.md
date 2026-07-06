@@ -106,12 +106,15 @@ returns the body to the current context instead of making the search sticky.
 An empty search prompt (`/`) previews the current context query. If there is no
 current context, it previews all facts.
 
-Search results are ordered newest first by fact creation time. Current-context
-membership does not change result order.
+When there is a current context, search results are split into two groups with
+a blank line between them. The first group contains facts whose home context is
+the current context or whose associated contexts include the current context.
+The second group contains every other matching fact. Each group is ordered
+newest first by fact creation time.
 
-Search result rows show a fact's home context only when the fact does not have
-the current context as its home context. Facts that live in the current context
-keep the compact current-context row.
+Search result rows show a fact's home context only when the fact is not in the
+current context and is not associated with the current context. Facts in the
+first group keep the compact current-context row.
 
 Associated contexts render as inline suffixes at the end of fact text, one
 marker per context, such as `>Foo >Bar`. When color is enabled, these markers

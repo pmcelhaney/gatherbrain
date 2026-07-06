@@ -31,8 +31,8 @@ The default workspace is `./workspace`. It is ignored by git because it
 contains local user data.
 
 On startup, Gatherbrain loads persisted facts from the workspace. Search results
-show current-context matches first, then other matches, with each group ordered
-newest first.
+show facts in or associated with the current context first, then a blank line,
+then other matches. Each group is ordered newest first.
 
 Use `GATHERBRAIN_WORKSPACE` to choose another storage location:
 

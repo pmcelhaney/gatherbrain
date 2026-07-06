@@ -56,14 +56,15 @@ describe("SearchEngine", () => {
     assert.equal(result.factIdForNumber(1), "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a");
   });
 
-  it("keeps newest-first order when a current context is present", () => {
-    const result = engine.search(facts(), { type: "all" }, {
-      currentContext: "Technology Assembly/2026-07-08"
+  it("groups current and associated context results before other results", () => {
+    const result = engine.search(groupingFacts(), { type: "all" }, {
+      currentContext: "Steve"
     });
 
     assert.deepEqual(result.facts.map((fact) => fact.id), [
       "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
       "6f2308de-02e9-45db-8ff0-65ac793f4a24",
+      "7f32fa70-f4b9-45fb-9ab7-2a48e9573f1b",
       "a75ee82c-6b89-4676-8cb1-01222f976885"
     ]);
     assert.equal(result.factIdForNumber(1), "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a");
@@ -127,6 +128,40 @@ function facts() {
     new Fact({
       id: "a75ee82c-6b89-4676-8cb1-01222f976885",
       content: "Prep the assembly agenda.",
+      type: "fact",
+      createdAt: "2026-06-30T13:00:00.000Z",
+      homeContext: "Technology Assembly/2026-07-08"
+    })
+  ];
+}
+
+function groupingFacts() {
+  return [
+    new Fact({
+      id: "6f2308de-02e9-45db-8ff0-65ac793f4a24",
+      content: "Associated with Steve.",
+      type: "fact",
+      createdAt: "2026-06-30T14:15:23.000Z",
+      homeContext: "Architecture Review Board",
+      associatedContexts: ["Steve"]
+    }),
+    new Fact({
+      id: "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
+      content: "Home in Steve.",
+      type: "fact",
+      createdAt: "2026-06-30T15:45:00.000Z",
+      homeContext: "Steve"
+    }),
+    new Fact({
+      id: "7f32fa70-f4b9-45fb-9ab7-2a48e9573f1b",
+      content: "Newest outside Steve.",
+      type: "fact",
+      createdAt: "2026-06-30T16:00:00.000Z",
+      homeContext: "Devin"
+    }),
+    new Fact({
+      id: "a75ee82c-6b89-4676-8cb1-01222f976885",
+      content: "Older outside Steve.",
       type: "fact",
       createdAt: "2026-06-30T13:00:00.000Z",
       homeContext: "Technology Assembly/2026-07-08"

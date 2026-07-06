@@ -5,13 +5,35 @@ export class SearchEngine {
     return new SearchResultSet(
       facts
         .filter((fact) => evaluate(queryAst, fact, context))
-        .sort(compareNewestFirst)
+        .sort(compareSearchResults(context.currentContext))
     );
   }
 }
 
+function compareSearchResults(currentContext) {
+  return (left, right) => {
+    const leftCurrent = isFactInCurrentContext(left, currentContext);
+    const rightCurrent = isFactInCurrentContext(right, currentContext);
+
+    if (leftCurrent !== rightCurrent) {
+      return leftCurrent ? -1 : 1;
+    }
+
+    return compareNewestFirst(left, right);
+  };
+}
+
 function compareNewestFirst(left, right) {
   return right.createdAt.getTime() - left.createdAt.getTime();
+}
+
+function isFactInCurrentContext(fact, currentContext) {
+  if (!currentContext) {
+    return false;
+  }
+
+  return fact.homeContext.equals(currentContext) ||
+    fact.associatedContexts.some((context) => context.equals(currentContext));
 }
 
 function evaluate(node, fact, context) {

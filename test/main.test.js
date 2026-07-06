@@ -1589,21 +1589,23 @@ Login Screenshot
   it("shows home context only for outside-context search results", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-context-prefix-"));
+    let now = "2026-06-30T12:00:00.000Z";
     const runtime = createAppRuntime({
       workspacePath,
-      clock: () => new Date("2026-06-30T12:00:00.000Z")
+      clock: () => new Date(now)
     });
 
     await runtime.submit("@Steve!");
     await runtime.submit("Shared search term in Steve.");
     await runtime.submit("@Architecture Review Board!");
+    now = "2026-06-30T12:05:00.000Z";
     await runtime.submit("Shared search term in Architecture.");
 
     const rendered = runtime.render({ input: "/Shared" });
 
     assert.match(rendered, /^Architecture Review Board \| Shared$/m);
     assert.match(rendered, / 1\. Shared search term in Architecture/);
-    assert.match(rendered, /\n 2\. \[Steve\] Shared search term in Steve/);
+    assert.match(rendered, /\n\n 2\. \[Steve\] Shared search term in Steve/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
