@@ -921,13 +921,11 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
-  it("switches typed context prefixes to the resolved context name", async () => {
+  it("switches typed context prefixes unless the typed name is an exact context", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-typed-context-switch-"));
     const runtime = createAppRuntime({ workspacePath });
 
-    await runtime.submit("@Ga!");
-    assert.equal(runtime.state.currentContext.name, "Ga");
     await runtime.submit("@Gatherbrain!");
     await runtime.submit("Review Gatherbrain items.");
     await runtime.submit("@Steve Ma!");
@@ -944,13 +942,35 @@ describe("createAppRuntime", () => {
     assert.equal(runtime.state.currentQuery, 'context:"Gatherbrain"');
     assert.doesNotMatch(recentPreview, /^ \d+\. Gatherbrain$/m);
     assert.match(recentPreview, /^ 1\. Steve Ma$/m);
-    assert.doesNotMatch(recentPreview, /^ \d+\. Ga$/m);
+
+    await runtime.submit("@ARB!");
+    await runtime.submit("Review ARB items.");
+    await runtime.submit("@ARB 2.0!");
+    await runtime.submit("Review ARB 2.0 items.");
+    await runtime.submit("@Steve Ma");
+
+    const exactPreview = runtime.render({ input: "@ARB" });
+    const exactSwitch = await runtime.submit("@ARB");
+
+    assert.match(exactPreview, /^Steve Ma > ARB$/m);
+    assert.match(exactPreview, /1\. Review ARB items\./);
+    assert.equal(exactSwitch.action, "switch_context");
+    assert.equal(exactSwitch.message, "switched to ARB");
+    assert.equal(runtime.state.currentContext.name, "ARB");
+    assert.equal(runtime.state.currentQuery, 'context:"ARB"');
+
+    const completedSwitch = await runtime.submit("@ARB\\ 2.0");
+
+    assert.equal(completedSwitch.action, "switch_context");
+    assert.equal(completedSwitch.message, "switched to ARB 2.0");
+    assert.equal(runtime.state.currentContext.name, "ARB 2.0");
+    assert.equal(runtime.state.currentQuery, 'context:"ARB 2.0"');
 
     const restoredRuntime = createAppRuntime({ workspacePath });
     await restoredRuntime.initialize();
 
-    assert.equal(restoredRuntime.state.currentContext.name, "Gatherbrain");
-    assert.equal(restoredRuntime.state.currentQuery, 'context:"Gatherbrain"');
+    assert.equal(restoredRuntime.state.currentContext.name, "ARB 2.0");
+    assert.equal(restoredRuntime.state.currentQuery, 'context:"ARB 2.0"');
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });

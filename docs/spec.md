@@ -273,6 +273,11 @@ visible result numbers, and context names. Context completions include contexts
 discovered from fact folders. Highlighting a leading context switch completion
 previews that context in the header and body.
 
+For leading `@<context>` switches, an exact typed context name takes precedence
+over longer context names with the same prefix. For example, if both `ARB` and
+`ARB 2.0` exist, submitting `@ARB` switches to `ARB`; `ARB 2.0` is selected only
+when its Tab completion is highlighted or otherwise typed explicitly.
+
 When multiple candidates match the same typed prefix, the first Tab completes
 any shared prefix and later Tab presses cycle through the matching candidates.
 The typed prefix keeps the cursor in place while the recommended completion

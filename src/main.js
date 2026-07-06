@@ -925,6 +925,14 @@ function contextNameForTypedPrefix(rawPrefix, { recentContexts = [], facts = [],
   const matches = contextNamesFromFactsAndRecentContexts(facts, recentContexts, contextNames).filter((contextName) =>
     Context.canonicalize(contextName).startsWith(normalizedPrefix)
   );
+  const exactMatch = matches.find((contextName) =>
+    Context.canonicalize(contextName) === normalizedPrefix
+  );
+
+  if (exactMatch) {
+    return exactMatch;
+  }
+
   const strictMatches = matches.filter((contextName) =>
     Context.canonicalize(contextName) !== normalizedPrefix
   );
@@ -937,9 +945,7 @@ function contextNameForTypedPrefix(rawPrefix, { recentContexts = [], facts = [],
     return matches[0];
   }
 
-  return matches.find((contextName) =>
-    Context.canonicalize(contextName) === normalizedPrefix
-  ) ?? null;
+  return null;
 }
 
 function contextNamesFromFactsAndRecentContexts(facts = [], recentContexts = [], knownContextNames = []) {
