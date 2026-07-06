@@ -1383,13 +1383,13 @@ describe("createAppRuntime", () => {
     assert.equal(prompt.message, "name this paste");
     assert.equal(result.message, "pasted launch-notes.txt");
     assert.equal(
-      fs.readFileSync(path.join(workspacePath, "Steve", "launch-notes.txt"), "utf8"),
+      fs.readFileSync(path.join(workspacePath, "contexts", "Steve", "launch-notes.txt"), "utf8"),
       "clipboard contents\n"
     );
     assert.match(runtime.render(), /file Launch notes/);
     assert.equal(
       fs.readFileSync(
-        path.join(workspacePath, "Steve", "11111111-1111-4111-8111-111111111111-launch-notes.md"),
+        path.join(workspacePath, "contexts", "Steve", "11111111-1111-4111-8111-111111111111-launch-notes.md"),
         "utf8"
       ),
       `---
@@ -1432,12 +1432,12 @@ Launch notes
 
     assert.equal(result.message, "pasted login-screenshot.png");
     assert.deepEqual(
-      fs.readFileSync(path.join(workspacePath, "Steve", "login-screenshot.png")),
+      fs.readFileSync(path.join(workspacePath, "contexts", "Steve", "login-screenshot.png")),
       Buffer.from([0x89, 0x50, 0x4e, 0x47])
     );
     assert.equal(
       fs.readFileSync(
-        path.join(workspacePath, "Steve", "22222222-2222-4222-8222-222222222222-login-screenshot.md"),
+        path.join(workspacePath, "contexts", "Steve", "22222222-2222-4222-8222-222222222222-login-screenshot.md"),
         "utf8"
       ),
       `---
@@ -1489,7 +1489,7 @@ Login Screenshot
     assert.equal(result.message, "opened launch-notes.txt");
     assert.deepEqual(opened, [{
       file: "launch-notes.txt",
-      factPath: path.join(workspacePath, "Steve", "33333333-3333-4333-8333-333333333333-launch-notes.md")
+      factPath: path.join(workspacePath, "contexts", "Steve", "33333333-3333-4333-8333-333333333333-launch-notes.md")
     }]);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
@@ -1516,7 +1516,7 @@ Login Screenshot
 
     assert.equal(result.message, "opened https://nodejs.org/api/test.html");
     assert.deepEqual(opened.map((item) => item.url), ["https://nodejs.org/api/test.html"]);
-    assert.equal(path.dirname(opened[0].factPath), path.join(workspacePath, "Steve"));
+    assert.equal(path.dirname(opened[0].factPath), path.join(workspacePath, "contexts", "Steve"));
     assert.match(path.basename(opened[0].factPath), /^[0-9a-f-]+-nodejs-org-api-test-html\.md$/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });
@@ -1839,7 +1839,7 @@ Login Screenshot
   it("completes inline @ context references in capture input", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-tag-complete-"));
-    fs.mkdirSync(path.join(workspacePath, "Corinne Spell"), { recursive: true });
+    fs.mkdirSync(path.join(workspacePath, "contexts", "Corinne Spell"), { recursive: true });
     const runtime = createAppRuntime({
       workspacePath,
       clock: () => new Date("2026-06-30T12:00:00.000Z")
@@ -1938,8 +1938,9 @@ Login Screenshot
     const factMarkdown = fs.readFileSync(
       path.join(
         workspacePath,
+        "contexts",
         "Steve Ma",
-        fs.readdirSync(path.join(workspacePath, "Steve Ma")).find((name) => name.endsWith(".md"))
+        fs.readdirSync(path.join(workspacePath, "contexts", "Steve Ma")).find((name) => name.endsWith(".md"))
       ),
       "utf8"
     );
@@ -1963,7 +1964,7 @@ Login Screenshot
     assert.match(rendered, /^Technology Assembly\/2026-07-08$/m);
     assert.match(rendered, /Prep the assembly agenda/);
 
-    const contextDirectory = path.join(workspacePath, "Technology Assembly", "2026-07-08");
+    const contextDirectory = path.join(workspacePath, "contexts", "Technology Assembly", "2026-07-08");
     const factMarkdown = fs.readFileSync(
       path.join(contextDirectory, fs.readdirSync(contextDirectory).find((name) => name.endsWith(".md"))),
       "utf8"

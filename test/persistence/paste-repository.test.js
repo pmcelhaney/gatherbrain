@@ -25,7 +25,7 @@ describe("PasteRepository", () => {
     assert.equal(result.fileName, "screenshot-login-flow.png");
     assert.equal(
       result.filePath,
-      path.join(rootPath, "Architecture Review Board", "screenshot-login-flow.png")
+      path.join(rootPath, "contexts", "Architecture Review Board", "screenshot-login-flow.png")
     );
     assert.deepEqual(await fs.readFile(result.filePath), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
 

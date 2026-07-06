@@ -35,11 +35,21 @@ describe("ContextRepository", () => {
   });
 
   it("discovers empty context directories", async () => {
+    await fs.mkdir(path.join(rootPath, "contexts", "Corrine Spell"), { recursive: true });
+
+    assert.deepEqual(await new ContextRepository({ workspace }).list(), [
+      "Corrine Spell"
+    ]);
+  });
+
+  it("migrates legacy root-level context directories into contexts", async () => {
     await fs.mkdir(path.join(rootPath, "Corrine Spell"), { recursive: true });
 
     assert.deepEqual(await new ContextRepository({ workspace }).list(), [
       "Corrine Spell"
     ]);
+    await fs.access(path.join(rootPath, "contexts", "Corrine Spell"));
+    await assert.rejects(() => fs.access(path.join(rootPath, "Corrine Spell")));
   });
 
   it("discovers nested contexts from fact folders", async () => {

@@ -20,7 +20,7 @@ describe("FactRepository", () => {
     await fs.rm(rootPath, { recursive: true, force: true });
   });
 
-  it("creates facts under root-level home context directories", async () => {
+  it("creates facts under contexts home context directories", async () => {
     const fact = buildFact();
 
     const result = await repository.create(fact);
@@ -29,6 +29,7 @@ describe("FactRepository", () => {
       result.filePath,
       path.join(
         rootPath,
+        "contexts",
         "Architecture Review Board",
         "6f2308de-02e9-45db-8ff0-65ac793f4a24-mike-prefers-async-architecture-reviews.md"
       )
@@ -56,6 +57,7 @@ describe("FactRepository", () => {
       result.filePath,
       path.join(
         rootPath,
+        "contexts",
         "Technology Assembly",
         "2026-07-08",
         "a75ee82c-6b89-4676-8cb1-01222f976885-prep-the-assembly-agenda.md"
@@ -80,7 +82,12 @@ describe("FactRepository", () => {
   });
 
   it("derives a fact home context from its containing directory", async () => {
-    const filePath = path.join(rootPath, "Steve Ma", "6f2308de-02e9-45db-8ff0-65ac793f4a24-review.md");
+    const filePath = path.join(
+      rootPath,
+      "contexts",
+      "Steve Ma",
+      "6f2308de-02e9-45db-8ff0-65ac793f4a24-review.md"
+    );
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, `---
 id: 6f2308de-02e9-45db-8ff0-65ac793f4a24
@@ -101,6 +108,7 @@ Mike prefers async architecture reviews.
   it("derives a slash-separated home context from nested containing directories", async () => {
     const filePath = path.join(
       rootPath,
+      "contexts",
       "Technology Assembly",
       "2026-07-08",
       "6f2308de-02e9-45db-8ff0-65ac793f4a24-review.md"
@@ -151,6 +159,7 @@ Mike prefers async architecture reviews.
       result.filePath,
       path.join(
         rootPath,
+        "contexts",
         "Steve",
         "6f2308de-02e9-45db-8ff0-65ac793f4a24-mike-prefers-async-architecture-reviews.md"
       )

@@ -144,7 +144,7 @@ Represents the root storage location.
 
 Responsibilities:
 
-- Locate context folders, fact files, pasted files, and `.trash`.
+- Locate the `contexts/` root, context folders, fact files, pasted files, and `.trash`.
 - Provide path-building helpers for repositories.
 
 ### `FactRepository`
@@ -153,7 +153,7 @@ Persists facts as Markdown files with front matter.
 
 Responsibilities:
 
-- Create facts in `<workspace>/<home context>/`.
+- Create facts in `<workspace>/contexts/<home context>/`.
 - Read facts from Markdown files and derive each fact's home context from its
   containing directory.
 - Update front matter and content.

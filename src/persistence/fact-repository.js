@@ -12,6 +12,7 @@ export class FactRepository {
   }
 
   async create(fact) {
+    await this.workspace.prepare();
     const nextFact = Fact.from(fact);
     const date = dateFromTimestamp(nextFact.createdAt);
     const directory = this.workspace.contextDirectory(date, nextFact.homeContext);
@@ -30,12 +31,13 @@ export class FactRepository {
   async read(filePath) {
     const markdown = await fs.readFile(filePath, "utf8");
     return this.codec.parse(markdown, {
-      homeContext: homeContextFromPath(this.workspace.rootPath, filePath)
+      homeContext: homeContextFromPath(this.workspace.contextsDirectory(), filePath)
     });
   }
 
   async list() {
-    const filePaths = await findMarkdownFiles(this.workspace.rootPath);
+    await this.workspace.prepare();
+    const filePaths = await findMarkdownFiles(this.workspace.contextsDirectory());
     const facts = [];
 
     for (const filePath of filePaths) {
@@ -56,7 +58,8 @@ export class FactRepository {
   }
 
   async findPathByFactId(factId) {
-    const filePaths = await findMarkdownFiles(this.workspace.rootPath);
+    await this.workspace.prepare();
+    const filePaths = await findMarkdownFiles(this.workspace.contextsDirectory());
 
     for (const filePath of filePaths) {
       if (path.basename(filePath).startsWith(`${factId}-`)) {
@@ -83,6 +86,7 @@ export class FactRepository {
   }
 
   async moveFactToContext(fact, context) {
+    await this.workspace.prepare();
     const filePath = await this.findPathByFactId(fact.id);
 
     if (!filePath) {

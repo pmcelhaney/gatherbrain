@@ -283,9 +283,9 @@ associated context.
 Tab completion is available for commands, `@<context>` switches, inline
 `@<context>` references in capture text, search shortcuts, selection actions,
 visible result numbers, and context names. Context completions include contexts
-discovered from workspace context directories and contexts already referenced
-by facts. Highlighting a leading context switch completion previews that context
-in the header and body.
+discovered from directories under `workspace/contexts/` and contexts already
+referenced by facts. Highlighting a leading context switch completion previews
+that context in the header and body.
 
 For leading `@<context>` switches, an exact typed context name takes precedence
 over longer context names with the same prefix. For example, if both `ARB` and
@@ -324,7 +324,7 @@ The mode is inferred from the first character entered.
 
 | Command | Behavior |
 | --- | --- |
-| `@<context>` | Switches to the named context if it exists as a workspace directory or is already referenced by a fact |
+| `@<context>` | Switches to the named context if it exists under `workspace/contexts/` or is already referenced by a fact |
 | `@<context>!` | Creates the named context if needed, then switches to it |
 | `@<number>` | Switches to a numbered context from the current `@` preview list |
 | `@<dots>` | Switches to a dot-selected context from the current `@` preview list |

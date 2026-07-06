@@ -56,6 +56,9 @@ By default, Gatherbrain stores local app data in:
 ./workspace
 ```
 
+Contexts and their facts live under `./workspace/contexts/`; durable app state
+stays at the workspace root.
+
 To use a different workspace:
 
 ```bash

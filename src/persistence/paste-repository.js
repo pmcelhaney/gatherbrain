@@ -13,6 +13,7 @@ export class PasteRepository {
       throw new Error("Clipboard item is required");
     }
 
+    await this.workspace.prepare();
     const directory = this.workspace.contextDirectory(date, context);
     const fileName = await this.uniqueFileName({
       directory,

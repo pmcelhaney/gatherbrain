@@ -56,9 +56,9 @@ Escaped spaces are normalized when switching, and a trailing `!` opts into
 creating the context if it does not exist yet. The last example stores and
 searches the context as `Steve Ma`.
 
-Plain `@<context>` switches only to an existing context: a workspace directory
-or a context already referenced by a fact. If the context does not exist, the
-switch is rejected instead of creating it on the fly.
+Plain `@<context>` switches only to an existing context: a directory under
+`workspace/contexts/` or a context already referenced by a fact. If the context
+does not exist, the switch is rejected instead of creating it on the fly.
 
 While typing a prompt that starts with `@`, the body shows the most recently
 visited contexts in newest-first order, remembered between application
@@ -252,8 +252,8 @@ Undo the most recent selection action:
 
 Tab completes commands, `@<context>` switches, inline `@<context>` references in
 capture text, search shortcuts, selection actions, visible result numbers, and
-context names. Context completions include workspace context directories and
-contexts already referenced by facts.
+context names. Context completions include directories under
+`workspace/contexts/` and contexts already referenced by facts.
 
 ## Configuration
 
@@ -285,28 +285,31 @@ Facts:
 
 ```text
 workspace/
-  Steve/
-    <uuid>-follow-up-with-steve.md
-  Technology Assembly/
-    2026-07-08/
-      <uuid>-prep-the-assembly-agenda.md
+  contexts/
+    Steve/
+      <uuid>-follow-up-with-steve.md
+    Technology Assembly/
+      2026-07-08/
+        <uuid>-prep-the-assembly-agenda.md
 ```
 
 Pasted files live alongside facts in the same context folder:
 
 ```text
 workspace/
-  Steve/
-    login-screenshot.png
-    <uuid>-login-screenshot.md
+  contexts/
+    Steve/
+      login-screenshot.png
+      <uuid>-login-screenshot.md
 ```
 
 Deleted facts:
 
 ```text
 workspace/
-  Steve/
-    .trash/
+  contexts/
+    Steve/
+      .trash/
 ```
 
 ## Current Limitations

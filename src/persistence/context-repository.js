@@ -20,7 +20,8 @@ export class ContextRepository {
   }
 
   async listWorkspaceContexts() {
-    return findWorkspaceContextNames(this.workspace.rootPath);
+    await this.workspace.prepare();
+    return findWorkspaceContextNames(this.workspace.contextsDirectory());
   }
 
   async listFactContexts() {
@@ -29,6 +30,7 @@ export class ContextRepository {
 
   async create(context) {
     const nextContext = Context.from(context);
+    await this.workspace.prepare();
     await fs.mkdir(this.workspace.contextDirectory(null, nextContext), { recursive: true });
     return nextContext;
   }
