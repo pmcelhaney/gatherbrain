@@ -1790,6 +1790,14 @@ Login Screenshot
     assert.equal(await runtime.complete(". @Cori"), ". @Corinne\\ Spell");
     assert.equal(await runtime.complete(". @Dev"), ". @Devin");
 
+    const associatedSwitch = await runtime.submit("@Corrine\\ Spell");
+    const associatedView = runtime.render();
+
+    assert.equal(associatedSwitch.action, "switch_context");
+    assert.equal(associatedSwitch.message, "switched to Corrine Spell");
+    assert.equal(runtime.state.currentContext.name, "Corrine Spell");
+    assert.match(associatedView, /Core team meeting with @Corrine Spell/);
+
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 

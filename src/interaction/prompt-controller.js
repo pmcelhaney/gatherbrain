@@ -64,6 +64,7 @@ export class PromptController {
       return this.commandRegistry.execute(input, {
         state: this.state,
         contextRepository: this.contextRepository,
+        factSource: this.factSource,
         factRepository: this.factRepository,
         resultSet: this.currentResultSetProvider(),
         recentContexts: this.recentContextProvider(),

@@ -21,7 +21,7 @@ export class CommandRegistry {
 }
 
 class SwitchContextCommand {
-  async execute(args, { state, recentContexts = [], contextRepository }) {
+  async execute(args, { state, recentContexts = [], contextRepository, factSource }) {
     const rawTarget = args.trim();
 
     if (!rawTarget) {
@@ -33,6 +33,7 @@ class SwitchContextCommand {
       state,
       recentContexts,
       contextRepository,
+      factSource,
       createIfMissing
     });
 
@@ -148,6 +149,7 @@ async function resolveContextSwitchTarget(target, {
   state,
   recentContexts = [],
   contextRepository,
+  factSource,
   createIfMissing = false
 } = {}) {
   if (/^\d+$/.test(target)) {
@@ -183,7 +185,8 @@ async function resolveContextSwitchTarget(target, {
   const exactContextName = await resolveExistingContextName(contextName, {
     state,
     recentContexts,
-    contextRepository
+    contextRepository,
+    factSource
   });
 
   if (!exactContextName) {
@@ -196,7 +199,8 @@ async function resolveContextSwitchTarget(target, {
 async function resolveExistingContextName(target, {
   state,
   recentContexts = [],
-  contextRepository
+  contextRepository,
+  factSource
 } = {}) {
   const contextNames = [];
   appendUniqueContextName(contextNames, state?.currentContext?.name);
@@ -211,17 +215,28 @@ async function resolveExistingContextName(target, {
     }
   }
 
+  if (factSource) {
+    for (const fact of await factSource.list()) {
+      appendUniqueContextName(contextNames, fact.homeContext);
+
+      for (const context of fact.associatedContexts ?? []) {
+        appendUniqueContextName(contextNames, context);
+      }
+    }
+  }
+
   const canonicalTarget = Context.canonicalize(target);
   return contextNames.find((contextName) =>
     Context.canonicalize(contextName) === canonicalTarget
   ) ?? null;
 }
 
-function appendUniqueContextName(contextNames, contextName) {
-  if (!contextName) {
+function appendUniqueContextName(contextNames, context) {
+  if (!context) {
     return;
   }
 
+  const contextName = context.name ?? context;
   const normalizedName = Context.normalizeName(contextName);
   const canonicalName = Context.canonicalize(normalizedName);
 

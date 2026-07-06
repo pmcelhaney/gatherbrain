@@ -56,8 +56,9 @@ Escaped spaces are normalized when switching, and a trailing `!` opts into
 creating the context if it does not exist yet. The last example stores and
 searches the context as `Steve Ma`.
 
-Plain `@<context>` switches only to an existing context. If the context does
-not exist, the switch is rejected instead of creating it on the fly.
+Plain `@<context>` switches only to an existing context: a workspace directory
+or a context already referenced by a fact. If the context does not exist, the
+switch is rejected instead of creating it on the fly.
 
 While typing a prompt that starts with `@`, the body shows the most recently
 visited contexts in newest-first order. Enter a listed number or dots to switch:
@@ -237,7 +238,7 @@ Undo the most recent selection action:
 
 | Command | Status |
 | --- | --- |
-| `@<context>` | Switches to an existing context |
+| `@<context>` | Switches to an existing workspace or fact-referenced context |
 | `@<context>!` | Creates the context if needed, then switches |
 | `:undo` | Undoes the most recent selection action |
 | `:help` | Shows in-app help |

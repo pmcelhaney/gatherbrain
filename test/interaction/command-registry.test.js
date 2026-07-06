@@ -37,6 +37,33 @@ describe("CommandRegistry", () => {
     assert.equal(state.currentQuery, 'context:"Steve Ma"');
   });
 
+  it("switches to associated contexts from facts", async () => {
+    const state = new AppState({ currentContext: "AI Enablement" });
+    const result = await new CommandRegistry().execute("@Corrine\\ Spell", {
+      state,
+      contextRepository: {
+        async list() {
+          return ["AI Enablement"];
+        }
+      },
+      factSource: {
+        async list() {
+          return [
+            {
+              homeContext: { name: "AI Enablement" },
+              associatedContexts: [{ name: "Corrine Spell" }]
+            }
+          ];
+        }
+      }
+    });
+
+    assert.equal(result.action, "switch_context");
+    assert.equal(result.message, "switched to Corrine Spell");
+    assert.equal(state.currentContext.name, "Corrine Spell");
+    assert.equal(state.currentQuery, 'context:"Corrine Spell"');
+  });
+
   it("rejects unknown contexts unless creation is explicit", async () => {
     const state = new AppState({ currentContext: "Steve" });
 
