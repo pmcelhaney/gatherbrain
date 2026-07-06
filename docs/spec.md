@@ -115,7 +115,8 @@ ordered newest first.
 Search result rows show a fact's home context only when the fact is outside the
 current context. Facts that live in the current context keep the compact
 current-context row. Facts that are associated with the current context but live
-elsewhere render with a `<` marker.
+elsewhere render with a `<` marker unless the fact text already contains an
+inline `@<context>` reference to the current context.
 
 Context search supports quoted values, unquoted multi-word context values, and
 `@Context Name` shorthand.

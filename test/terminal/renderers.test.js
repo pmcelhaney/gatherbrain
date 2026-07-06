@@ -284,6 +284,40 @@ describe("terminal renderers", () => {
     );
   });
 
+  it("does not mark associated facts when the content already references the current context", () => {
+    const state = new AppState({ currentContext: "Steve Ma" });
+    const renderer = new BodyRenderer();
+    const resultSet = new SearchResultSet([
+      buildFact({
+        content: "Ask @Steve\\ Ma about the launch.",
+        homeContext: "Architecture Review Board",
+        associatedContexts: ["Steve Ma"]
+      })
+    ]);
+
+    assert.equal(
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      " 1. task tomorrow Ask @Steve\\ Ma about the launch."
+    );
+  });
+
+  it("does not treat a longer inline context reference as redundant for a shorter current context", () => {
+    const state = new AppState({ currentContext: "Steve" });
+    const renderer = new BodyRenderer();
+    const resultSet = new SearchResultSet([
+      buildFact({
+        content: "Ask @Steve\\ Ma about the launch.",
+        homeContext: "Architecture Review Board",
+        associatedContexts: ["Steve"]
+      })
+    ]);
+
+    assert.equal(
+      renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
+      " 1. task tomorrow < Ask @Steve\\ Ma about the launch."
+    );
+  });
+
   it("uses reverse video for preview selection when color is enabled", () => {
     const state = new AppState({ currentContext: "Steve" });
     const renderer = new BodyRenderer();

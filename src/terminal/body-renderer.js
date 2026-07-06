@@ -79,7 +79,10 @@ function displayType(fact) {
 }
 
 function displayContextMarker(fact, state) {
-  if (isFactAssociatedWithCurrentContext(fact, state.currentContext)) {
+  if (
+    isFactAssociatedWithCurrentContext(fact, state.currentContext) &&
+    !hasInlineContextReference(fact.content, state.currentContext)
+  ) {
     return "< ";
   }
 
@@ -113,16 +116,40 @@ function highlightInlineContextReferences(text, fact, colorEnabled) {
   }
 
   const contextNames = contextReferenceNames(fact);
-
-  if (contextNames.length === 0) {
+  const pattern = contextReferencePattern(contextNames);
+  if (!pattern) {
     return text;
   }
 
-  const pattern = new RegExp(
-    `@(?:${contextNames.map(escapeRegex).join("|")})(?![\\p{L}\\p{N}_-]|\\s+\\p{Lu})`,
+  return text.replace(pattern, (reference) => color(reference, ansi.green, true));
+}
+
+function hasInlineContextReference(text, context) {
+  const pattern = contextReferencePattern([context?.name].filter(Boolean));
+  return pattern ? pattern.test(text) : false;
+}
+
+function contextReferencePattern(contextNames) {
+  const referenceNames = [
+    ...new Set(contextNames.flatMap((name) => [
+      name,
+      escapedContextReferenceName(name)
+    ]))
+  ].filter(Boolean);
+
+  if (referenceNames.length === 0) {
+    return null;
+  }
+
+  referenceNames.sort((left, right) => right.length - left.length);
+  return new RegExp(
+    `@(?:${referenceNames.map(escapeRegex).join("|")})(?![\\\\\\p{L}\\p{N}_-]|\\s+\\p{Lu})`,
     "gu"
   );
-  return text.replace(pattern, (reference) => color(reference, ansi.green, true));
+}
+
+function escapedContextReferenceName(name) {
+  return String(name).replaceAll(" ", "\\ ");
 }
 
 function contextReferenceNames(fact) {
