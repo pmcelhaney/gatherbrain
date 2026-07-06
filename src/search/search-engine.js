@@ -34,11 +34,7 @@ function currentContextRank(fact, currentContext) {
     return 0;
   }
 
-  if (fact.associatedContexts.some((context) => context.name === currentContextName)) {
-    return 1;
-  }
-
-  return 2;
+  return 1;
 }
 
 function evaluate(node, fact, context) {

@@ -244,7 +244,7 @@ describe("terminal renderers", () => {
     );
   });
 
-  it("marks associated facts after home facts for current-context search results", () => {
+  it("treats associated facts as outside current-context search grouping", () => {
     const state = new AppState({
       currentContext: "Steve",
       currentMode: AppMode.SEARCH
@@ -263,7 +263,8 @@ describe("terminal renderers", () => {
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
       [
         " 1. task tomorrow Follow up with Steve.",
-        " 2. task tomorrow Follow up with Steve. >Steve"
+        "",
+        " 2. task tomorrow [Architecture Review Board] Follow up with Steve. >Steve"
       ].join("\n")
     );
   });

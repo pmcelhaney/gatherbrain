@@ -201,8 +201,7 @@ function isFactInCurrentContext(fact, currentContext) {
     return false;
   }
 
-  return fact.homeContext.equals(currentContext) ||
-    fact.associatedContexts.some((context) => context.equals(currentContext));
+  return fact.homeContext.equals(currentContext);
 }
 
 function highlight(text, enabled, colorEnabled) {

@@ -69,17 +69,40 @@ describe("SearchEngine", () => {
     assert.equal(result.factIdForNumber(1), "a75ee82c-6b89-4676-8cb1-01222f976885");
   });
 
-  it("orders associated current-context matches after home current-context matches", () => {
-    const result = engine.search(facts(), { type: "all" }, {
+  it("does not prioritize facts only associated with the current context", () => {
+    const result = engine.search([
+      new Fact({
+        id: "11111111-1111-4111-8111-111111111111",
+        content: "Home fact",
+        type: "fact",
+        createdAt: "2026-06-30T10:00:00.000Z",
+        homeContext: "Steve"
+      }),
+      new Fact({
+        id: "22222222-2222-4222-8222-222222222222",
+        content: "Other context fact",
+        type: "fact",
+        createdAt: "2026-06-30T09:00:00.000Z",
+        homeContext: "Architecture Review Board"
+      }),
+      new Fact({
+        id: "33333333-3333-4333-8333-333333333333",
+        content: "Associated context fact",
+        type: "fact",
+        createdAt: "2026-06-30T08:00:00.000Z",
+        homeContext: "Enterprise Architecture",
+        associatedContexts: ["Steve"]
+      })
+    ], { type: "all" }, {
       currentContext: "Steve"
     });
 
     assert.deepEqual(result.facts.map((fact) => fact.id), [
-      "5ddbf77c-cd5e-4d9c-9906-4c18d3217b7a",
-      "6f2308de-02e9-45db-8ff0-65ac793f4a24",
-      "a75ee82c-6b89-4676-8cb1-01222f976885"
+      "11111111-1111-4111-8111-111111111111",
+      "22222222-2222-4222-8222-222222222222",
+      "33333333-3333-4333-8333-333333333333"
     ]);
-    assert.equal(result.factIdForNumber(2), "6f2308de-02e9-45db-8ff0-65ac793f4a24");
+    assert.equal(result.factIdForNumber(3), "33333333-3333-4333-8333-333333333333");
   });
 
   it("searches contexts through shorthand parser forms", () => {
