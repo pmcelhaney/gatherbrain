@@ -177,7 +177,8 @@ Responsibilities:
 
 ### `AppStateRepository`
 
-Persists resumable app state, currently the last current context.
+Persists resumable app state, including the last current context and recent
+contexts.
 
 ## Search And Results
 

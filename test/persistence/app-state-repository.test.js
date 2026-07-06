@@ -28,10 +28,13 @@ describe("AppStateRepository", () => {
     const state = new AppState({ currentContext: "Steve" });
     state.setQuery("type:task");
 
-    await repository.save(state);
+    await repository.save(state, {
+      recentContexts: ["Steve", "Architecture Review Board", "  Steve  ", "", 42]
+    });
 
     assert.deepEqual(await repository.load(), {
-      currentContext: "Steve"
+      currentContext: "Steve",
+      recentContexts: ["Steve", "Architecture Review Board"]
     });
   });
 
@@ -46,7 +49,24 @@ describe("AppStateRepository", () => {
     );
 
     assert.deepEqual(await repository.load(), {
-      currentContext: "Architecture Review Board"
+      currentContext: "Architecture Review Board",
+      recentContexts: []
+    });
+  });
+
+  it("loads legacy recent sessions as recent contexts", async () => {
+    await fs.writeFile(
+      new Workspace(rootPath).appStatePath(),
+      `${JSON.stringify({
+        currentSession: "Architecture Review Board",
+        recentSessions: ["Architecture Review Board", "Steve"]
+      })}\n`,
+      "utf8"
+    );
+
+    assert.deepEqual(await repository.load(), {
+      currentContext: "Architecture Review Board",
+      recentContexts: ["Architecture Review Board", "Steve"]
     });
   });
 });

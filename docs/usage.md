@@ -61,7 +61,8 @@ or a context already referenced by a fact. If the context does not exist, the
 switch is rejected instead of creating it on the fly.
 
 While typing a prompt that starts with `@`, the body shows the most recently
-visited contexts in newest-first order. Enter a listed number or dots to switch:
+visited contexts in newest-first order, remembered between application
+sessions. Enter a listed number or dots to switch:
 
 ```text
 @1

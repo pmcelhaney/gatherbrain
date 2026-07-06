@@ -862,6 +862,30 @@ describe("createAppRuntime", () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it("remembers recent contexts between runtime sessions", async () => {
+    const { createAppRuntime } = await import("../src/main.js");
+    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-recent-contexts-restored-"));
+    const runtime = createAppRuntime({ workspacePath });
+
+    await runtime.submit("@Alpha Context!");
+    await runtime.submit("@Beta Context!");
+    await runtime.submit("@Gamma Context!");
+
+    const restoredRuntime = createAppRuntime({ workspacePath });
+    await restoredRuntime.initialize();
+    const rendered = restoredRuntime.render({ input: "@", height: 5 });
+
+    assert.equal(restoredRuntime.state.currentContext.name, "Gamma Context");
+    assert.doesNotMatch(rendered, /^ 1\. Gamma Context$/m);
+    assert.match(rendered, /^ 1\. Beta Context$/m);
+    assert.match(rendered, /^ 2\. Alpha Context$/m);
+
+    await restoredRuntime.submit("@2");
+    assert.equal(restoredRuntime.state.currentContext.name, "Alpha Context");
+
+    fs.rmSync(workspacePath, { recursive: true, force: true });
+  });
+
   it("previews a typed context's items before switching to it", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-typed-context-preview-"));

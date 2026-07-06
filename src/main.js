@@ -70,6 +70,7 @@ export function createAppRuntime({
     const savedState = await appStateRepository.load();
 
     state.restart();
+    recentContexts = Array.isArray(savedState?.recentContexts) ? savedState.recentContexts : [];
     if (savedState?.currentContext) {
       state.switchContext(savedState.currentContext);
       recentContexts = recordRecentContext(recentContexts, state.currentContext);
@@ -121,7 +122,7 @@ export function createAppRuntime({
           clock
         });
         helpLines = null;
-        await appStateRepository.save(state);
+        await appStateRepository.save(state, { recentContexts });
         return result;
       }
 
@@ -135,7 +136,7 @@ export function createAppRuntime({
         });
         resultSet = result.resultSet;
         helpLines = null;
-        await appStateRepository.save(state);
+        await appStateRepository.save(state, { recentContexts });
         return result;
       }
 
@@ -185,7 +186,7 @@ export function createAppRuntime({
           clock
         });
         helpLines = null;
-        await appStateRepository.save(state);
+        await appStateRepository.save(state, { recentContexts });
 
         return {
           action: "selection_action",
@@ -200,7 +201,7 @@ export function createAppRuntime({
       }));
 
       if (result.action === "exit") {
-        await appStateRepository.save(state);
+        await appStateRepository.save(state, { recentContexts });
         return result;
       }
 
@@ -271,13 +272,13 @@ export function createAppRuntime({
       }
 
       if (result.action === "restart") {
-        await appStateRepository.save(state);
+        await appStateRepository.save(state, { recentContexts });
         pendingPaste = false;
         await initializeRuntimeState();
         return result;
       }
 
-      await appStateRepository.save(state);
+      await appStateRepository.save(state, { recentContexts });
 
       return result;
     },
