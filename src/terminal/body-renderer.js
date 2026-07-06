@@ -100,7 +100,7 @@ function displayContentWithAssociations(fact, today) {
 }
 
 function displayAssociationSuffix(fact) {
-  const markers = associationMarkerNames(fact).map((name) => `<${name}`);
+  const markers = associationMarkerNames(fact).map((name) => `>${name}`);
   return markers.join(" ");
 }
 
@@ -186,10 +186,10 @@ function highlightAssociationMarkers(text, fact, colorEnabled) {
 
   markerNames.sort((left, right) => right.length - left.length);
   const pattern = new RegExp(
-    `(^|\\s)(<${markerNames.map(escapeRegex).join("|<")})(?=\\s|$)`,
+    `(^|\\s)(>${markerNames.map(escapeRegex).join("|>")})(?=\\s|$)`,
     "gu"
   );
-  return text.replace(pattern, (_, prefix, marker) => `${prefix}${color(marker, ansi.gray, true)}`);
+  return text.replace(pattern, (_, prefix, marker) => `${prefix}${color(marker, ansi.green, true)}`);
 }
 
 function escapeRegex(value) {

@@ -263,7 +263,7 @@ describe("terminal renderers", () => {
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
       [
         " 1. task tomorrow Follow up with Steve.",
-        " 2. task tomorrow Follow up with Steve. <Steve"
+        " 2. task tomorrow Follow up with Steve. >Steve"
       ].join("\n")
     );
   });
@@ -280,7 +280,7 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      " 1. task tomorrow Follow up with Steve. <Foo <Bar"
+      " 1. task tomorrow Follow up with Steve. >Foo >Bar"
     );
   });
 
@@ -314,11 +314,11 @@ describe("terminal renderers", () => {
 
     assert.equal(
       renderer.render({ state, resultSet, width: 80, height: 10, today: "2026-06-30" }).join("\n"),
-      " 1. task tomorrow Ask @Steve\\ Ma about the launch. <Steve"
+      " 1. task tomorrow Ask @Steve\\ Ma about the launch. >Steve"
     );
   });
 
-  it("renders associated context suffixes in gray when color is enabled", () => {
+  it("renders associated context suffixes like inline context references when color is enabled", () => {
     const state = new AppState({ currentContext: "Steve" });
     const renderer = new BodyRenderer();
     const resultSet = new SearchResultSet([
@@ -336,7 +336,7 @@ describe("terminal renderers", () => {
         today: "2026-06-30",
         colorEnabled: true
       }).join("\n"),
-      "\x1b[90m 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0mFollow up with Steve. \x1b[90m<Foo\x1b[0m \x1b[90m<Bar\x1b[0m"
+      "\x1b[90m 1. \x1b[0m\x1b[36mtask \x1b[0m\x1b[35mtomorrow \x1b[0mFollow up with Steve. \x1b[32m>Foo\x1b[0m \x1b[32m>Bar\x1b[0m"
     );
   });
 

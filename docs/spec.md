@@ -117,10 +117,10 @@ current context. Facts that live in the current context keep the compact
 current-context row.
 
 Associated contexts render as inline suffixes at the end of fact text, one
-marker per context, such as `<Foo <Bar`. When color is enabled, these markers
-use a different color from the fact text. A context is omitted from the suffix
-when the fact text already contains an inline `@<context>` reference to that
-same context.
+marker per context, such as `>Foo >Bar`. When color is enabled, these markers
+use the same color as inline `@<context>` references to associated contexts. A
+context is omitted from the suffix when the fact text already contains an inline
+`@<context>` reference to that same context.
 
 Context search supports quoted values, unquoted multi-word context values, and
 `@Context Name` shorthand.
