@@ -12,15 +12,19 @@ export class ContextRepository {
   async list() {
     const names = new Map();
 
-    for (const name of await this.listFactContexts()) {
+    for (const name of await this.listWorkspaceContexts()) {
       names.set(Context.canonicalize(name), name);
     }
 
     return [...names.values()].sort((left, right) => left.localeCompare(right));
   }
 
+  async listWorkspaceContexts() {
+    return findWorkspaceContextNames(this.workspace.rootPath);
+  }
+
   async listFactContexts() {
-    return findFactContextNames(this.workspace.rootPath);
+    return this.listWorkspaceContexts();
   }
 }
 
@@ -31,7 +35,7 @@ function isIgnoredWorkspaceDirectory(name) {
   );
 }
 
-async function findFactContextNames(rootPath) {
+async function findWorkspaceContextNames(rootPath) {
   const contexts = new Set();
 
   async function walk(directory) {
@@ -47,12 +51,10 @@ async function findFactContextNames(rootPath) {
       throw error;
     }
 
-    if (entries.some((entry) => entry.isFile() && entry.name.endsWith(".md"))) {
-      const relativeDirectory = path.relative(rootPath, directory);
+    const relativeDirectory = path.relative(rootPath, directory);
 
-      if (relativeDirectory) {
-        contexts.add(relativeDirectory.split(path.sep).join("/"));
-      }
+    if (relativeDirectory) {
+      contexts.add(relativeDirectory.split(path.sep).join("/"));
     }
 
     for (const entry of entries) {

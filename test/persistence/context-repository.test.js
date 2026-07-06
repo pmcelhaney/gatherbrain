@@ -34,6 +34,14 @@ describe("ContextRepository", () => {
     ]);
   });
 
+  it("discovers empty context directories", async () => {
+    await fs.mkdir(path.join(rootPath, "Corrine Spell"), { recursive: true });
+
+    assert.deepEqual(await new ContextRepository({ workspace }).list(), [
+      "Corrine Spell"
+    ]);
+  });
+
   it("discovers nested contexts from fact folders", async () => {
     await new FactRepository({ workspace }).create(new Fact({
       id: "a75ee82c-6b89-4676-8cb1-01222f976885",
@@ -44,6 +52,7 @@ describe("ContextRepository", () => {
     }));
 
     assert.deepEqual(await new ContextRepository({ workspace }).list(), [
+      "Technology Assembly",
       "Technology Assembly/2026-07-08"
     ]);
   });

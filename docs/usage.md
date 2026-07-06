@@ -94,6 +94,7 @@ month-day phrases such as `June 1`.
 
 Facts are stored as Markdown files with front matter beneath the workspace
 context folder. Slash-separated context names are stored as nested directories.
+Workspace directories are valid contexts even before they contain facts.
 
 There is no separate tag model. `@Steve` inside fact text is stored as normal
 content and also associates the fact with the referenced context.
@@ -247,7 +248,8 @@ Undo the most recent selection action:
 
 Tab completes commands, `@<context>` switches, inline `@<context>` references in
 capture text, search shortcuts, selection actions, visible result numbers, and
-context names.
+context names. Context completions include workspace context directories and
+contexts already referenced by facts.
 
 ## Configuration
 

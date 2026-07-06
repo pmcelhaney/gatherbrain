@@ -1769,20 +1769,25 @@ Login Screenshot
   it("completes inline @ context references in capture input", async () => {
     const { createAppRuntime } = await import("../src/main.js");
     const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "gatherbrain-tag-complete-"));
+    fs.mkdirSync(path.join(workspacePath, "Corinne Spell"), { recursive: true });
     const runtime = createAppRuntime({
       workspacePath,
       clock: () => new Date("2026-06-30T12:00:00.000Z")
     });
 
+    await runtime.initialize();
     await runtime.submit("@Steve!");
     await runtime.submit("@Devin!");
     await runtime.submit("Trial follow-up context exists.");
     await runtime.submit("@Steve");
+    await runtime.submit("Core team meeting with @Corrine\\ Spell.");
     await runtime.submit("Ask @Devin about the trial.");
 
+    assert.equal(await runtime.complete("@Cori"), "@Corinne\\ Spell");
+    assert.equal(await runtime.complete("Confirm @Corr"), "Confirm @Corrine\\ Spell");
     assert.equal(await runtime.complete("Confirm @Dev"), "Confirm @Devin");
     assert.equal(await runtime.complete("@St"), "@Steve");
-    assert.equal(await runtime.complete(". @"), ". @Devin");
+    assert.equal(await runtime.complete(". @Cori"), ". @Corinne\\ Spell");
     assert.equal(await runtime.complete(". @Dev"), ". @Devin");
 
     fs.rmSync(workspacePath, { recursive: true, force: true });

@@ -1,4 +1,5 @@
 import { SelectionActionRegistry } from "../actions/index.js";
+import { Context } from "../domain/index.js";
 import { SearchShortcutRegistry } from "../search/index.js";
 
 export class CompletionService {
@@ -59,7 +60,25 @@ export class CompletionService {
   }
 
   async contextNames() {
-    return this.contextRepository ? this.contextRepository.list() : [];
+    const names = [];
+
+    if (this.contextRepository) {
+      for (const name of await this.contextRepository.list()) {
+        appendUniqueContextName(names, name);
+      }
+    }
+
+    if (this.factSource) {
+      for (const fact of await this.factSource.list()) {
+        appendUniqueContextName(names, fact.homeContext);
+
+        for (const context of fact.associatedContexts ?? []) {
+          appendUniqueContextName(names, context);
+        }
+      }
+    }
+
+    return names;
   }
 
   async completeContextSwitch(input, matchIndex = 0) {
@@ -188,6 +207,19 @@ function matchingCandidates(candidates, partial) {
   return candidates.filter((candidate) =>
     candidate.toLocaleLowerCase("en-US").startsWith(normalizedPartial)
   );
+}
+
+function appendUniqueContextName(contextNames, context) {
+  if (!context) {
+    return;
+  }
+
+  const contextName = context.name ?? context;
+  const normalizedName = Context.canonicalize(contextName);
+
+  if (!contextNames.some((existing) => Context.canonicalize(existing) === normalizedName)) {
+    contextNames.push(Context.normalizeName(contextName));
+  }
 }
 
 function replaceLastToken(tokens, replacement) {

@@ -83,6 +83,30 @@ describe("CompletionService", () => {
     assert.equal(await service.complete("1 -@St"), "1 -@Steve\\ Ma");
   });
 
+  it("completes associated contexts from facts", async () => {
+    const service = new CompletionService({
+      contextRepository: {
+        async list() {
+          return ["AI Enablement"];
+        }
+      },
+      factSource: {
+        async list() {
+          return [
+            {
+              homeContext: { name: "AI Enablement" },
+              associatedContexts: [{ name: "Corrine Spell" }]
+            }
+          ];
+        }
+      }
+    });
+
+    assert.equal(await service.complete("@Corr"), "@Corrine\\ Spell");
+    assert.equal(await service.complete("Mention @Corr"), "Mention @Corrine\\ Spell");
+    assert.equal(await service.complete(". @Corr"), ". @Corrine\\ Spell");
+  });
+
   it("cycles through matching context switch completions", async () => {
     const service = new CompletionService({
       contextRepository: {

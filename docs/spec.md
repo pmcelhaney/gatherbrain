@@ -53,6 +53,7 @@ Examples:
 - Technology Assembly/2026-07-08
 
 Slash-separated context names are stored as nested directories.
+Workspace directories are valid contexts even before they contain facts.
 
 ## Fact
 
@@ -278,8 +279,9 @@ shows as many contexts as fit in the body.
 Tab completion is available for commands, `@<context>` switches, inline
 `@<context>` references in capture text, search shortcuts, selection actions,
 visible result numbers, and context names. Context completions include contexts
-discovered from fact folders. Highlighting a leading context switch completion
-previews that context in the header and body.
+discovered from workspace context directories and contexts already referenced
+by facts. Highlighting a leading context switch completion previews that context
+in the header and body.
 
 For leading `@<context>` switches, an exact typed context name takes precedence
 over longer context names with the same prefix. For example, if both `ARB` and
