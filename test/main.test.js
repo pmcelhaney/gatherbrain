@@ -1557,7 +1557,7 @@ Login Screenshot
     await runtime.submit("@empty-space!");
     await runtime.submit("Ask @Steve\\ Ma about the launch");
 
-    assert.match(runtime.render(), /Ask @Steve\\ Ma about the launch/);
+    assert.match(runtime.render(), /Ask @Steve Ma about the launch/);
     assert.doesNotMatch(runtime.render(), />Steve Ma/);
 
     fs.rmSync(workspacePath, { recursive: true, force: true });

@@ -79,7 +79,8 @@ the current context becomes the fact's home context.
 
 There is no separate tag model. Text containing `@Steve` in captured content is
 stored as normal fact content and also associates the fact with the referenced
-context.
+context. Escaped spaces used while typing a multi-word reference, such as
+`@Steve\ Ma`, are saved as plain spaces in the fact body.
 
 ## Capture
 

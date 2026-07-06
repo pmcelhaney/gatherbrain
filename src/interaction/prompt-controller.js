@@ -87,7 +87,8 @@ export class PromptController {
       today: this.clock().toISOString().slice(0, 10)
     });
     const bookmark = extractBookmark(rawContent);
-    const content = bookmark.content;
+    const associatedContexts = contextReferencesFromCapture(bookmark.content);
+    const content = normalizeInlineContextReferences(bookmark.content);
 
     if (!content) {
       return InteractionResult.classified({
@@ -106,7 +107,7 @@ export class PromptController {
       createdAt: this.clock(),
       homeContext: this.state.currentContext,
       url: bookmark.url,
-      associatedContexts: contextReferencesFromCapture(content)
+      associatedContexts
     });
 
     const { filePath } = await this.factRepository.create(fact);
@@ -252,6 +253,14 @@ function contextReferencesFromCapture(content) {
   }
 
   return references;
+}
+
+function normalizeInlineContextReferences(content) {
+  const pattern = /(^|\s)@(?<name>(?:\\\s|[^\s,.;:!?()[\]{}"'`])+)/gu;
+
+  return content.replace(pattern, (match, prefix, name) => {
+    return `${prefix}@${name.replace(/\\(\s)/g, "$1")}`;
+  });
 }
 
 function labelForUrl(url) {

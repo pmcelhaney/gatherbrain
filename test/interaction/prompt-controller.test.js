@@ -54,13 +54,15 @@ describe("PromptController", () => {
   });
 
   it("captures @ context references as associated contexts", async () => {
-    const result = await controller.submit("Ask @Steve\\ Ma when @Devin's trial ends.");
+    const result = await controller.submit("Talk to @Steve\\ Ma about @Devin's trial.");
+    const markdown = await fs.readFile(result.filePath, "utf8");
 
-    assert.equal(result.fact.content, "Ask @Steve\\ Ma when @Devin's trial ends.");
+    assert.equal(result.fact.content, "Talk to @Steve Ma about @Devin's trial.");
     assert.deepEqual(
       result.fact.associatedContexts.map((context) => context.name),
       ["Steve Ma", "Devin"]
     );
+    assert.match(markdown, /\nTalk to @Steve Ma about @Devin's trial\.\n$/);
   });
 
   it("captures natural language dates as ISO dates", async () => {
