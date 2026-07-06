@@ -52,7 +52,7 @@ export class BodyRenderer {
       const continuationPrefix = " ".repeat(numberWidth + 2);
       const firstLineWidth = Math.max(1, width - prefix.length - type.length - due.length - home.length);
       const continuationWidth = Math.max(1, width - continuationPrefix.length);
-      const [first, ...rest] = wrapPlain(displayContentWithContextSuffixes(fact, state, today), firstLineWidth);
+      const [first, ...rest] = wrapContentWithContextSuffixes(fact, state, today, firstLineWidth);
 
       rendered.push(highlight(`${firstLinePrefix}${renderContentLine(first, fact, state, colorEnabled)}`, isSelected, colorEnabled));
       for (const line of rest) {
@@ -94,17 +94,22 @@ function displayContent(fact, today) {
   return replaceIsoDatesWithNaturalDates(fact.content, { today });
 }
 
-function displayContentWithContextSuffixes(fact, state, today) {
-  const suffix = displayContextSuffix(fact, state);
-  return suffix ? `${displayContent(fact, today)} ${suffix}` : displayContent(fact, today);
+function wrapContentWithContextSuffixes(fact, state, today, width) {
+  const content = displayContent(fact, today);
+  const suffixMarkers = contextSuffixMarkers(fact, state);
+
+  if (suffixMarkers.length === 0) {
+    return wrapPlain(content, width);
+  }
+
+  return wrapTokens([...wordsForWrapping(content), ...suffixMarkers], width);
 }
 
-function displayContextSuffix(fact, state) {
-  const markers = [
+function contextSuffixMarkers(fact, state) {
+  return [
     ...associationMarkerNames(fact, state).map((name) => `>${name}`),
     displayOriginMarker(fact, state)
   ].filter(Boolean);
-  return markers.join(" ");
 }
 
 function displayOriginMarker(fact, state) {
@@ -128,6 +133,47 @@ function renderContentLine(text, fact, state, colorEnabled) {
     colorEnabled
   );
   return fact.url ? hyperlink(content, fact.url) : content;
+}
+
+function wordsForWrapping(text) {
+  return String(text).split(/\s+/).filter(Boolean);
+}
+
+function wrapTokens(tokens, width) {
+  if (width <= 0) {
+    return [""];
+  }
+
+  const lines = [];
+  let current = "";
+
+  for (const token of tokens) {
+    if (token.length > width) {
+      if (current) {
+        lines.push(current);
+        current = "";
+      }
+      for (let index = 0; index < token.length; index += width) {
+        lines.push(token.slice(index, index + width));
+      }
+      continue;
+    }
+
+    const candidate = current ? `${current} ${token}` : token;
+
+    if (candidate.length > width) {
+      lines.push(current);
+      current = token;
+    } else {
+      current = candidate;
+    }
+  }
+
+  if (current || lines.length === 0) {
+    lines.push(current);
+  }
+
+  return lines;
 }
 
 function hyperlink(text, url) {

@@ -356,6 +356,30 @@ describe("terminal renderers", () => {
     );
   });
 
+  it("keeps multi-word associated context suffixes highlighted after wrapping", () => {
+    const state = new AppState({ currentContext: "Devin" });
+    const renderer = new BodyRenderer();
+    const resultSet = new SearchResultSet([
+      buildFact({
+        homeContext: "Devin",
+        content: "Shared the judge output with Sisto, Andrew, Walid, Steve, and Kimberly in an email.",
+        associatedContexts: ["ARB", "EA Core Team"]
+      })
+    ]);
+
+    const rendered = renderer.render({
+      state,
+      resultSet,
+      width: 81,
+      height: 10,
+      today: "2026-06-30",
+      colorEnabled: true
+    }).join("\n");
+
+    assert.match(rendered, /\n {4}.*\x1b\[32m>ARB\x1b\[0m \x1b\[32m>EA Core Team\x1b\[0m$/);
+    assert.doesNotMatch(rendered, /\x1b\[32m>EA\x1b\[0m/);
+  });
+
   it("renders origin context suffixes as provenance when color is enabled", () => {
     const state = new AppState({ currentContext: "Steve" });
     const renderer = new BodyRenderer();
