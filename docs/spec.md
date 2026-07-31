@@ -12,6 +12,11 @@ Gatherbrain is built in Node.js.
 Gatherbrain is a local-first terminal application for capturing knowledge while
 doing work.
 
+It is designed for knowledge workers who switch constantly among people,
+projects, meetings, and decisions while their work is distributed across other
+tools. Its purpose is to offload small, relevant details from working memory so
+they can be captured and retrieved without breaking the flow of work.
+
 The user is always working in a context.
 
 Knowledge is captured as small facts.

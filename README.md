@@ -1,165 +1,78 @@
 # Gatherbrain
 
-Gatherbrain is a local-first terminal app for capturing small facts while you
-work. The app is built in Node.js and stores data as plain text files in a
-workspace directory.
+Gatherbrain is a local-first terminal app for keeping track of work when the
+work itself is scattered. It was created for enterprise architecture: moving
+between projects, meetings, people, and decisions while tasks live across
+email, PowerPoint, Excel, and Miro.
 
-This repository is a clean rebuild of Gatherbrain around the living
-specification in [docs/spec.md](docs/spec.md).
+Instead of asking you to hold all of that in working memory, Gatherbrain lets
+you quickly capture small pieces of information as **facts**, organize them by
+the **context** you are currently working in, and bring them back with
+keyboard-first search and selection commands. The data is stored as plain
+Markdown files in a local workspace.
 
-The product centers on facts, contexts, capture, transient search, selection
-commands, and tab completion. A fact has one home context, can be gathered into
-additional contexts without being moved, and can be claimed into the current
-context when its home should change.
+It is an installable work in progress, not a finished product. It may also be
+of interest to people exploring human-computer interaction, keyboard-efficient
+input, and tools that offload working memory.
 
-## Current Status
+## The Idea
 
-The app currently supports:
+At any moment, you work in a context: a person, meeting, project, or topic.
+Capture a fact in that context with plain text, then search for it or associate
+it with other contexts later—without duplicating it or losing its original
+home.
 
-- A persistent terminal screen with a header, fact body, and prompt.
-- Context switching with `@<context>` and explicit creation with `@<context>!`.
-- Recent-context discovery and navigation with leading `@`.
-- Capturing facts into the current context.
-- Searching persisted facts with `/...` queries and shortcuts.
-- Selection commands such as `. tomorrow`, `. task`, `. gather`, `. claim`, `. go`, `. open`, `. edit`, and `. delete`.
-- Undo for the last selection action with `:undo`.
-- Pasting clipboard text or screenshots into the current context with `:paste`.
-- Live mode and completion feedback while typing in the TUI.
-- Config loading from `gatherbrain.config.json`.
-- Markdown fact storage.
-
-Not implemented yet:
-
-- A full-screen browser-style navigation model.
-
-## Requirements
-
-- Node.js 20 or newer.
-
-## Install
-
-This project currently has no external npm dependencies.
-
-```bash
-npm test
+```text
+@Architecture Review Board!
+Ask whether the reference architecture needs an exception process.
 ```
 
-## Run
+Later, search and act without leaving the keyboard:
+
+```text
+/exception process
+. task tomorrow
+```
+
+Contexts, facts, transient search, selection commands, and tab completion are
+the core interaction model. Read the [usage guide](docs/usage.md) for the
+complete command reference and examples.
+
+## Try It
+
+Requirements: Node.js 20 or newer.
 
 ```bash
 npm start
 ```
 
-By default, Gatherbrain stores local app data in:
+Run that from a local clone of this repository.
 
-```text
-./workspace
-```
-
-Contexts and their facts live under `./workspace/contexts/`; durable app state
-stays at the workspace root.
-
-To use a different workspace:
+Gatherbrain has no external npm dependencies. By default, it keeps your local
+data in `./workspace`, which is ignored by Git. To store it elsewhere:
 
 ```bash
 GATHERBRAIN_WORKSPACE=/path/to/workspace npm start
 ```
 
-For a non-interactive smoke render:
+Create or enter a context with `@<context>!`, write a fact, and use `:help`
+inside the app whenever you need a reminder.
 
-```bash
-npm start -- --render-once
-```
+## Project Status and Provenance
 
-## Basic Workflow
+Gatherbrain is actively exploratory. The current terminal interface supports
+context switching, capture, search, fact associations, selection actions,
+undo, paste, configuration, and Markdown-based storage. A browser-style
+full-screen navigation model has not been built yet.
 
-Start by switching to a context:
-
-```text
-@Thinking about Gatherbrain design
-```
-
-Capture a fact by typing plain text:
-
-```text
-Search shortcuts should work like //current.
-```
-
-Search facts:
-
-```text
-/ 
-/Search shortcuts
-/context:"Thinking about Gatherbrain design"
-/context:Thinking about Gatherbrain design
-/@Thinking about Gatherbrain design
-/type:task
-/due:today
-//current
-//overdue
-```
-
-Slash searches preview matching facts while the query is in the prompt.
-Pressing Enter on a plain search returns to the current context. `/` by itself
-previews the current context query, or all facts if no context exists.
-
-Operate on visible facts:
-
-```text
-. task
-. task today
-. inprogress
-. tomorrow
-. open
-1 delete
-.. gather
-.. claim
-```
-
-Exit:
-
-```text
-:exit
-```
-
-or:
-
-```text
-:quit
-```
+This project was built through an AI-assisted, "vibe-coded" process. Its
+behavior is protected by deterministic automated tests, developed alongside the
+application. See the [development notes](docs/development.md) if you want to
+run or contribute to it.
 
 ## Documentation
 
-- [Usage guide](docs/usage.md)
-- [Core interaction specification](docs/spec.md)
-- [Core class sketch](docs/core-classes.md)
-
-## Configuration
-
-Gatherbrain loads `gatherbrain.config.json` from the current working directory
-when the app starts. User settings merge over the built-in defaults.
-
-```json
-{
-  "defaultFactType": "note",
-  "selectionActions": {
-    "actions": {
-      "idea": { "action": "set_type", "value": "idea" }
-    }
-  }
-}
-```
-
-See [gatherbrain.config.example.json](gatherbrain.config.example.json) for a
-complete starter file.
-
-## Development
-
-Run the full test suite:
-
-```bash
-npm test
-```
-
-The project uses small committed slices. See [AGENTS.md](AGENTS.md) for workflow
-notes.
+- [Usage guide](docs/usage.md): commands, configuration, storage, and current limitations
+- [Core interaction specification](docs/spec.md): product model and design decisions
+- [Core class sketch](docs/core-classes.md): implementation-oriented class overview
+- [Development notes](docs/development.md): tests, smoke rendering, and contributor workflow
